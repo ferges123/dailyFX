@@ -10,8 +10,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Używa nazwy użytkownika i nazwy repozytorium jako bazy
-  IMAGE_BASE: ghcr.io/${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -23,6 +21,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Downcase repository name
+        run: |
+          echo "IMAGE_BASE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
