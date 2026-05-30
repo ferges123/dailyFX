@@ -55,7 +55,7 @@ jobs:
 
       # 1. Budowanie i wysyłanie obrazu API
       - name: Build and push API image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -67,7 +67,7 @@ jobs:
 
       # 2. Budowanie i wysyłanie obrazu Schedulera
       - name: Build and push Scheduler image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile.scheduler
@@ -79,7 +79,7 @@ jobs:
 
       # 3. Budowanie i wysyłanie obrazu Web (Frontend)
       - name: Build and push Web image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
