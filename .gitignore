@@ -23,3 +23,5 @@ data/logs/*
 data/backups/*
 data/scheduler.health
 !data/results/.gitkeep
+docs/plans/
+
