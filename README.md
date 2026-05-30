@@ -76,8 +76,8 @@ Once an effect is generated, you are notified through your preferred channel, wh
 ## Quick start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/DailyFX-for-immich.git
-cd DailyFX-for-immich
+git clone https://github.com/ferges123/dailyFX.git
+cd dailyFX
 cp .env.example .env
 ```
 
