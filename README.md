@@ -2,6 +2,8 @@
 
 ### *Turn your static photo library into a dynamic, AI-powered creative playground.*
 
+![DailyFX Dashboard Mockup](docs/images/dashboard_mockup.png)
+
 **DailyFX** is a self-hosted creative companion designed specifically for [Immich](https://immich.app). It breathes new life into your photo archives by automatically transforming your pictures into stunning artistic masterpieces—from vintage film strips and pop-art collages to next-gen AI-generated transformations. Review them daily, approve your favorites with one click, and seamlessly upload them back to Immich with all original EXIF metadata (camera, GPS, and timestamp) perfectly preserved.
 
 Unlike generic photo filters that strip away metadata or require tedious manual work, DailyFX acts as an automated background curator. It connects directly to your Immich instance, retrieves assets based on your custom schedules, and applies any of its 40+ built-in creative modules. You can choose classic darkroom simulations like Cyanotype and Polaroid, high-dynamic-range enhancements, or leverage state-of-the-art Generative AI models to reimagine your photos in comic book, cyberpunk, or claymation styles.
