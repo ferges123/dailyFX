@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Review — dailyFX</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f4;min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:1rem 1rem 2rem}
+.card{background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(245,245,244,.6));border:1px solid rgba(231,229,228,.7);border-radius:16px;width:100%;max-width:480px;margin-top:1rem;padding:1rem;display:flex;flex-direction:column;gap:.625rem;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+
+/* header */
+.header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem}
+.title{font-size:.8125rem;font-weight:800;color:#1c1917;line-height:1.3;flex:1;min-width:0}
+.badge{flex-shrink:0;background:#f5f5f4;border:1px solid rgba(231,229,228,.5);border-radius:999px;padding:.2rem .6rem;font-size:.625rem;font-weight:700;color:#78716c;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+
+/* summary */
+.summary{font-size:.6875rem;color:#57534e;line-height:1.5;font-style:italic;background:rgba(245,245,244,.5);padding:.375rem .5rem;border-radius:.5rem;border:1px solid #f5f5f4}
+.summary:empty{display:none}
+
+/* tags */
+.tags{display:flex;flex-wrap:wrap;gap:.25rem}
+.tags:empty{display:none}
+.tag{background:#f0fdf4;border:1px solid rgba(187,247,208,.6);border-radius:999px;padding:.15rem .5rem;font-size:.6875rem;font-weight:500;color:#166534}
+
+/* source link */
+.source-link{display:none;align-items:center;gap:.375rem;font-size:.6875rem;color:#78716c;font-weight:500}
+.source-link a{display:inline-flex;align-items:center;gap:.25rem;background:#f0fdf4;border:1px solid rgba(187,247,208,.5);border-radius:.375rem;padding:.15rem .5rem;font-size:.6875rem;font-weight:600;color:#166534;text-decoration:none}
+.source-link a:hover{background:#dcfce7}
+
+/* metadata grid */
+.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;background:rgba(245,245,244,.8);border:1px solid rgba(231,229,228,.8);border-radius:.75rem;padding:.5rem;font-size:.6875rem}
+.meta-cell .label{font-size:.5625rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a8a29e;display:block;margin-bottom:.125rem}
+.meta-cell .value{font-weight:600;color:#44403c;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.value.pending{color:#b45309}
+.value.uploaded{color:#166534}
+.value.rejected{color:#78716c}
+.value.failed{color:#dc2626}
+
+/* image */
+.img-wrap{position:relative;overflow:hidden;border-radius:.75rem;border:1px solid #e7e5e4;background:#111;cursor:zoom-in}
+.img-wrap img{width:100%;display:block;max-height:55dvh;object-fit:contain}
+.img-wrap:hover .zoom-hint{opacity:1}
+.zoom-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.zoom-hint span{background:rgba(255,255,255,.15);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;font-size:1rem}
+
+/* token row */
+#token-row{display:none;flex-direction:column;gap:.375rem}
+#token-row.visible{display:flex}
+#token-row label{font-size:.6875rem;font-weight:500;color:#57534e}
+#token-row input{height:2.25rem;border:1px solid #d6d3d1;border-radius:.5rem;padding:0 .75rem;font-size:.8125rem;outline:none;background:#fff}
+#token-row input:focus{border-color:#166534}
+
+/* actions */
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.actions.single{grid-template-columns:1fr}
+button,a.btn{height:2rem;border:none;border-radius:.5rem;font-size:.75rem;font-weight:700;cursor:pointer;transition:background .15s,opacity .15s;display:inline-flex;align-items:center;justify-content:center;gap:.375rem;text-decoration:none}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-accept{background:#166534;color:#fff}
+.btn-accept:hover:not(:disabled){background:#14532d}
+.btn-reject{background:#fff;color:#57534e;border:1px solid #d6d3d1}
+.btn-reject:hover:not(:disabled){background:#f5f5f4}
+.btn-immich{background:#f5f5f4;color:#1c1917;border:1px solid #e7e5e4}
+.btn-immich:hover{background:#e7e5e4}
+.btn-warn{background:#b45309;color:#fff}
+.btn-warn:hover:not(:disabled){background:#92400e}
+
+/* status */
+#status{font-size:.75rem;text-align:center;padding:.25rem 0;display:none}
+#status.ok{color:#166534;display:block}
+#status.err{color:#dc2626;display:block}
+
+/* notes */
+.notes{font-size:.6875rem;color:#92400e;background:rgba(254,243,199,.7);border:1px solid #fde68a;border-radius:.5rem;padding:.5rem .625rem;line-height:1.5;display:none}
+.notes.visible{display:block}
+
+/* additional info */
+.info-wrap{margin-top:.5rem;border:1px solid #e5e7eb;border-radius:.6rem;background:rgba(255,255,255,.65);overflow:hidden}
+.info-wrap > summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:.5rem;align-items:center;padding:.5rem .65rem;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4b5563}
+.info-wrap > summary::-webkit-details-marker{display:none}
+.info-wrap > summary span:last-child{font-weight:600;color:#9ca3af;text-transform:none;letter-spacing:0}
+.info-body{padding:.55rem .65rem .65rem;border-top:1px solid #e5e7eb}
+
+/* provenance */
+.provenance{font-size:.65rem;color:#0f172a;background:rgba(224,242,254,.55);border:1px solid #bae6fd;border-radius:.45rem;padding:.45rem .55rem;line-height:1.45}
+.provenance .provenance-title{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#0284c7;margin-bottom:.3rem}
+.provenance .provenance-row{display:flex;flex-wrap:wrap;gap:.3rem .4rem;align-items:center;margin:.18rem 0}
+.provenance .provenance-label{font-weight:700;color:#0369a1}
+.provenance .provenance-pill{border:1px solid #bae6fd;background:rgba(255,255,255,.92);border-radius:999px;padding:.08rem .4rem;font-weight:600;color:#0f172a}
+
+/* timeline */
+.timeline{font-size:.65rem;color:#1f2937;background:rgba(255,255,255,.78);border:1px solid #e5e7eb;border-radius:.45rem;padding:.45rem .55rem;line-height:1.45;margin-top:.45rem}
+.timeline .timeline-title{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:.3rem}
+.timeline .timeline-item{border:1px solid #e5e7eb;background:rgba(249,250,251,.78);border-radius:.45rem;padding:.4rem .45rem;margin:.3rem 0}
+.timeline .timeline-stage{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af}
+.timeline .timeline-message{font-weight:600;color:#111827;margin-top:.12rem}
+.timeline .timeline-meta{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.2rem}
+.timeline .timeline-pill{border:1px solid #e5e7eb;background:rgba(255,255,255,.92);border-radius:999px;padding:.07rem .35rem;font-weight:600;color:#4b5563}
+.timeline .timeline-elapsed{color:#0369a1;border-color:#bae6fd;background:#f0f9ff}
+
+/* logo */
+.logo{font-size:.6875rem;color:#a8a29e;margin-top:1.25rem}
+
+/* New Lightbox styling unified with History.tsx */
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.98);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(20px);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+.lightbox.open {
+  display: flex;
+}
+.lb-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: rgba(12, 10, 9, 0.8);
+  border: 1px solid #292524;
+  border-radius: 16px;
+  overflow: hidden;
+  max-height: 92vh;
+  max-width: 94vw;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  width: 100%;
+}
+.lb-canvas {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  background: #0c0a09;
+  max-height: 50vh;
+  padding: 0.5rem;
+}
+.lb-canvas img {
+  max-height: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+.lb-panel {
+  width: 100%;
+  background: #1c1917;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #e7e5e4;
+  border-top: 1px solid #292524;
+  box-sizing: border-box;
+}
+.lb-meta-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #10b981;
+  margin-bottom: 4px;
+}
+.lb-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-summary {
+  font-size: 11px;
+  color: #a8a29e;
+  line-height: 1.5;
+  margin-top: 4px;
+  max-height: 64px;
+  overflow-y: auto;
+}
+.lb-divider {
+  height: 1px;
+  background-color: #292524;
+  margin: 12px 0;
+}
+.lb-exif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.lb-exif-row {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+  font-size: 12px;
+}
+.lb-exif-icon {
+  color: #78716c;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lb-exif-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #78716c;
+}
+.lb-exif-value {
+  font-weight: 600;
+  color: #e7e5e4;
+  margin-top: 2px;
+  word-break: break-all;
+}
+.lb-exif-value a {
+  color: #34d399;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lb-exif-value a:hover {
+  color: #6ee7b7;
+  text-decoration: underline;
+}
+.lb-no-exif {
+  font-size: 10px;
+  color: #78716c;
+  text-align: center;
+  padding: 1rem;
+  background: rgba(12, 10, 9, 0.2);
+  border: 1px solid #1c1917;
+  border-radius: 12px;
+}
+.lb-footer {
+  margin-top: 1rem;
+}
+.lb-download-btn {
+  width: 100%;
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: #065f46;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s;
+  border: none;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.lb-download-btn:hover {
+  background: #047857;
+}
+.lb-download-btn:active {
+  transform: scale(0.98);
+}
+.lb-close-btn {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 30;
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: background 0.15s, transform 0.1s;
+}
+.lb-close-btn:hover {
+  background: #fff;
+  color: #1c1917;
+}
+.lb-close-btn:active {
+  transform: scale(0.9);
+}
+
+@media (min-width: 768px) {
+  .lb-content {
+    flex-direction: row;
+    max-width: 90vw;
+  }
+  .lb-canvas {
+    max-height: 85vh;
+  }
+  .lb-panel {
+    width: 320px;
+    flex-shrink: 0;
+    border-top: none;
+    border-left: 1px solid #292524;
+  }
+  .lb-footer {
+    margin-top: 0;
+  }
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <!-- header -->
+  <div class="header-row">
+    <h1 class="title" id="title">Loading…</h1>
+    <span class="badge" id="badge"></span>
+  </div>
+
+  <!-- summary -->
+  <p class="summary" id="summary"></p>
+
+  <!-- tags -->
+  <div class="tags" id="tags"></div>
+
+  <!-- source link -->
+  <div class="source-link" id="source-row">
+    <span>Source photo:</span>
+    <a id="source-link" href="#" target="_blank" rel="noopener">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      View original in Immich
+    </a>
+  </div>
+
+  <!-- metadata grid -->
+  <div class="meta-grid">
+    <div class="meta-cell">
+      <span class="label">Status</span>
+      <span class="value" id="meta-status">—</span>
+    </div>
+    <div class="meta-cell">
+      <span class="label">Effect</span>
+      <span class="value" id="meta-type">—</span>
+    </div>
+    <div class="meta-cell">
+      <span class="label">Provider</span>
+      <span class="value" id="meta-provider">—</span>
+    </div>
+  </div>
+
+  <!-- image -->
+  <div class="img-wrap" id="img-wrap">
+    <img id="img" src="" alt="Generated image" />
+    <div class="zoom-hint"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></span></div>
+  </div>
+
+  <!-- token row -->
+  <div id="token-row">
+    <label>Access token</label>
+    <input id="token" type="password" placeholder="Enter APP_ACCESS_TOKEN" />
+  </div>
+
+  <!-- actions -->
+  <div class="actions" id="actions">
+    <button class="btn-accept" id="btn-accept" disabled>✓ Accept &amp; upload</button>
+    <button class="btn-reject" id="btn-reject" disabled>✕ Reject</button>
+  </div>
+
+  <!-- notes / warnings -->
+  <div class="notes" id="notes"></div>
+
+  <!-- additional info -->
+  <details class="info-wrap">
+    <summary>
+      <span>Additional info</span>
+      <span>Metadata provenance and timeline</span>
+    </summary>
+    <div class="info-body">
+      <div class="provenance" id="provenance"></div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </details>
+
+  <!-- status message -->
+  <div id="status"></div>
+</div>
+<div class="logo">dailyFX</div>
+
+<div class="lightbox" id="lightbox">
+  <div class="lb-content" id="lb-content">
+    <!-- Photo Canvas -->
+    <div class="lb-canvas">
+      <img id="lb-img" src="" alt="Preview" />
+    </div>
+
+    <!-- EXIF Panel -->
+    <div class="lb-panel">
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <div class="lb-meta-tag">Image Metadata</div>
+          <h3 class="lb-title" id="lb-title-text">Untitled Image</h3>
+          <p class="lb-summary" id="lb-summary-text"></p>
+        </div>
+
+        <div class="lb-divider"></div>
+
+        <!-- EXIF Info List -->
+        <div class="lb-exif-list" id="lb-exif-list">
+          <!-- Dynamically populated EXIF rows -->
+        </div>
+      </div>
+
+      <!-- Footer Download Button -->
+      <div class="lb-footer">
+        <button id="lb-download" class="lb-download-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Full-Res PNG
+        </button>
+      </div>
+    </div>
+
+    <!-- Close Button -->
+    <button class="lb-close-btn" id="lb-close" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const taskId = location.pathname.split('/').pop();
+const imgEl = document.getElementById('img');
+const titleEl = document.getElementById('title');
+const summaryEl = document.getElementById('summary');
+const badgeEl = document.getElementById('badge');
+const metaStatus = document.getElementById('meta-status');
+const metaType = document.getElementById('meta-type');
+const metaProvider = document.getElementById('meta-provider');
+const acceptBtn = document.getElementById('btn-accept');
+const rejectBtn = document.getElementById('btn-reject');
+const actionsEl = document.getElementById('actions');
+const statusEl = document.getElementById('status');
+const notesEl = document.getElementById('notes');
+const provenanceEl = document.getElementById('provenance');
+const timelineEl = document.getElementById('timeline');
+const tokenRow = document.getElementById('token-row');
+const tokenInput = document.getElementById('token');
+
+let authRequired = false;
+let immichUrl = '';
+let currentEntry = null;
+let selectedExifData = null;
+let eTitle = 'image';
+
+// Format shutter speed decimal into a readable fraction
+function formatShutterSpeed(seconds) {
+  if (seconds === undefined || seconds === null) return '';
+  const s = Number(seconds);
+  if (isNaN(s)) return String(seconds);
+  if (s >= 0.5) return `${s.toFixed(1)}s`;
+  const fraction = Math.round(1 / s);
+  return `1/${fraction}s`;
+}
+
+function formatFileSize(bytes) {
+  if (bytes === undefined || bytes === null || isNaN(bytes)) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const kib = bytes / 1024;
+  if (kib < 1024) return `${kib.toFixed(1)} KB`;
+  const mib = kib / 1024;
+  return `${mib.toFixed(1)} MB`;
+}
+
+function parseDate(value) {
+  if (!value || typeof value !== 'string') return new Date(NaN);
+  const normalized = value.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(value) ? value : value + 'Z';
+  return new Date(normalized);
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const parsed = parseDate(value);
+  if (Number.isNaN(parsed.getTime())) return typeof value === 'string' ? value : '';
+  return parsed.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function createExifRow(iconSvg, label, value) {
+  const row = document.createElement('div');
+  row.className = 'lb-exif-row';
+  row.innerHTML = `
+    <div class="lb-exif-icon">${iconSvg}</div>
+    <div>
+      <div class="lb-exif-label">${label}</div>
+      <div class="lb-exif-value">${value}</div>
+    </div>
+  `;
+  return row;
+}
+
+function renderProvenance(provenance) {
+  provenanceEl.innerHTML = '';
+  setSectionVisible(provenanceEl, false);
+  if (!provenance) return;
+
+  const rows = [
+    ['Title', provenance.title_source],
+    ['Summary', provenance.summary_source],
+    ['Tags', provenance.tags_source],
+  ];
+
+  const title = document.createElement('div');
+  title.className = 'provenance-title';
+  title.textContent = 'Metadata provenance';
+  provenanceEl.appendChild(title);
+
+  rows.forEach(([label, value]) => {
+    const row = document.createElement('div');
+    row.className = 'provenance-row';
+    row.appendChild(document.createElement('span')).className = 'provenance-label';
+    row.firstChild.textContent = `${label}:`;
+    row.appendChild(createPill(String(value || 'unknown').replace(/_/g, ' ')));
+    provenanceEl.appendChild(row);
+  });
+
+  const visionRow = document.createElement('div');
+  visionRow.className = 'provenance-row';
+  visionRow.appendChild(document.createElement('span')).className = 'provenance-label';
+  visionRow.firstChild.textContent = 'Source Vision:';
+  visionRow.appendChild(createPill(formatVisionState(provenance.source_vision)));
+  const finalLabel = document.createElement('span');
+  finalLabel.className = 'provenance-label';
+  finalLabel.style.marginLeft = '.5rem';
+  finalLabel.textContent = 'Final Vision:';
+  visionRow.appendChild(finalLabel);
+  visionRow.appendChild(createPill(formatVisionState(provenance.final_vision)));
+  provenanceEl.appendChild(visionRow);
+
+  if (Array.isArray(provenance.tag_injections) && provenance.tag_injections.length > 0) {
+    const row = document.createElement('div');
+    row.className = 'provenance-row';
+    const label = document.createElement('span');
+    label.className = 'provenance-label';
+    label.textContent = 'Injected tags:';
+    row.appendChild(label);
+    provenance.tag_injections.forEach((tag) => {
+      row.appendChild(createPill(`#${tag}`));
+    });
+    provenanceEl.appendChild(row);
+  }
+
+  setSectionVisible(provenanceEl, true);
+}
+
+function renderTimeline(taskTrace) {
+  timelineEl.innerHTML = '';
+  setSectionVisible(timelineEl, false);
+  if (!Array.isArray(taskTrace) || taskTrace.length === 0) return;
+
+  const title = document.createElement('div');
+  title.className = 'timeline-title';
+  title.textContent = 'Task timeline';
+  timelineEl.appendChild(title);
+
+  taskTrace.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'timeline-item';
+    const meta = [];
+    if (item.status) meta.push(item.status.toLowerCase());
+    if (item.step) meta.push(item.step.replace(/_/g, ' '));
+    if (typeof item.progress === 'number') meta.push(`${Math.round(item.progress * 100)}%`);
+    const elapsed = formatElapsed(taskTrace[idx - 1]?.timestamp, item.timestamp);
+    row.innerHTML = `
+      <div class="timeline-stage">${String(item.stage || 'step').replace(/_/g, ' ')}</div>
+      <div class="timeline-message">${item.message || '—'}</div>
+      <div class="timeline-meta">${meta.map((part) => `<span class="timeline-pill">${part}</span>`).join('')}${elapsed ? `<span class="timeline-pill timeline-elapsed">${elapsed}</span>` : ''}</div>
+    `;
+    timelineEl.appendChild(row);
+  });
+
+  setSectionVisible(timelineEl, true);
+}
+
+function renderExif(e, selectedExif) {
+  document.getElementById('lb-title-text').textContent = e.title || 'Untitled Image';
+  document.getElementById('lb-summary-text').textContent = e.summary || '';
+  
+  const container = document.getElementById('lb-exif-list');
+  container.innerHTML = '';
+  
+  if (!selectedExif) {
+    container.innerHTML = `<div class="lb-no-exif">No EXIF metadata found in database.</div>`;
+    return;
+  }
+  
+  // Camera Model
+  const make = selectedExif.make || '';
+  const model = selectedExif.model || '';
+  let cameraText = '';
+  if (make && model) {
+    cameraText = model.toLowerCase().includes(make.toLowerCase()) ? model : `${make} ${model}`;
+  } else {
+    cameraText = make || model;
+  }
+  if (cameraText) {
+    container.appendChild(createExifRow(
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>`,
+      'Camera',
+      cameraText
+    ));
+  }
+  
+  // Lens Model
+  if (selectedExif.lensModel) {
+    container.appendChild(createExifRow(
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polygon points="2 17 12 22 22 17"/><polygon points="2 12 12 17 22 12"/></svg>`,
+      'Lens',
+      selectedExif.lensModel
+    ));
+  }
+  
+  // Settings
+  const settingsParts = [];
+  if (selectedExif.exposureTime) settingsParts.push(formatShutterSpeed(selectedExif.exposureTime));
+  if (selectedExif.fNumber) settingsParts.push(`f/${selectedExif.fNumber}`);
+  if (selectedExif.iso) settingsParts.push(`ISO ${selectedExif.iso}`);
+  if (selectedExif.focalLength) settingsParts.push(`${selectedExif.focalLength}mm`);
+  if (settingsParts.length > 0) {
+    container.appendChild(createExifRow(
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+      'Settings',
+      settingsParts.join(' • ')
+    ));
+  }
+  
+  // File / Dimension
+  const fileParts = [];
+  if (selectedExif.fileSizeInByte) fileParts.push(formatFileSize(selectedExif.fileSizeInByte));
+  if (selectedExif.exifImageWidth && selectedExif.exifImageHeight) {
+    fileParts.push(`${selectedExif.exifImageWidth} × ${selectedExif.exifImageHeight}`);
+  }
+  if (fileParts.length > 0) {
+    container.appendChild(createExifRow(
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="14" x2="6.01" y2="14"/><line x1="10" y1="14" x2="10.01" y2="14"/></svg>`,
+      'File / Dimension',
+      fileParts.join(' • ')
+    ));
+  }
+  
+  // Date Captured
+  const captureDate = selectedExif.dateTimeOriginal || e.created_at;
+  if (captureDate) {
+    container.appendChild(createExifRow(
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+      'Captured',
+      formatDateTime(captureDate)
+    ));
+  }
+  
+  // Location
+  if (typeof selectedExif.latitude === 'number' && typeof selectedExif.longitude === 'number') {
+    const lat = selectedExif.latitude;
+    const lon = selectedExif.longitude;
+    const parts = [];
+    if (selectedExif.city) parts.push(selectedExif.city);
+    if (selectedExif.state) parts.push(selectedExif.state);
+    if (selectedExif.country) parts.push(selectedExif.country);
+    const locName = parts.length > 0 ? parts.join(', ') : `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    
+    const row = document.createElement('div');
+    row.className = 'lb-exif-row';
+    row.innerHTML = `
+      <div class="lb-exif-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div>
+        <div class="lb-exif-label">Location</div>
+        <div class="lb-exif-value">
+          <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lon}" target="_blank" rel="noopener">
+            <span>${locName}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+    `;
+    container.appendChild(row);
+  }
+}
+
+function getToken() {
+  return new URLSearchParams(location.search).get('token')
+    || tokenInput.value.trim()
+    || localStorage.getItem('dailyfx_token')
+    || '';
+}
+
+function headers() {
+  const t = getToken();
+  return t ? {'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json'}
+           : {'Content-Type': 'application/json'};
+}
+
+function setStatus(msg, ok) {
+  statusEl.textContent = msg;
+  statusEl.className = ok ? 'ok' : 'err';
+}
+
+function statusClass(s) {
+  if (s === 'UPLOADED') return 'uploaded';
+  if (s === 'REJECTED') return 'rejected';
+  if (s === 'FAILED') return 'failed';
+  return 'pending';
+}
+
+function statusLabel(s) {
+  return {PENDING_REVIEW: 'Pending review', UPLOADED: 'Uploaded', REJECTED: 'Rejected', FAILED: 'Failed'}[s] || s;
+}
+
+function setSectionVisible(el, visible) {
+  el.style.display = visible ? '' : 'none';
+}
+
+function createPill(text, extraClass = '') {
+  const pill = document.createElement('span');
+  pill.className = `provenance-pill${extraClass ? ` ${extraClass}` : ''}`;
+  pill.textContent = text;
+  return pill;
+}
+
+function formatVisionState(vision) {
+  if (!vision) return 'unknown';
+  if (!vision.attempted) return 'not used';
+  return vision.succeeded ? 'succeeded' : 'failed';
+}
+
+function formatElapsed(previousTimestamp, currentTimestamp) {
+  if (!previousTimestamp || !currentTimestamp) return '';
+  const previous = Date.parse(previousTimestamp);
+  const current = Date.parse(currentTimestamp);
+  if (Number.isNaN(previous) || Number.isNaN(current) || current <= previous) return '';
+  const totalSeconds = Math.round((current - previous) / 1000);
+  if (totalSeconds < 60) return `+${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `+${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+function setUploadSuccessState(uploadedAssetId) {
+  metaStatus.textContent = 'Uploaded';
+  metaStatus.className = 'value uploaded';
+  actionsEl.className = 'actions single';
+  actionsEl.innerHTML = immichUrl && uploadedAssetId
+    ? `<a class="btn btn-immich" href="${immichUrl}/photos/${uploadedAssetId}" target="_blank" rel="noopener">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        View in Immich
+      </a>`
+    : '';
+}
+
+async function load() {
+  try {
+    const [rEntry, rSettings] = await Promise.all([
+      fetch(`/api/generation/history/${taskId}`, {headers: headers()}),
+      fetch(`/api/settings`, {headers: headers()}),
+    ]);
+    if (rEntry.status === 401) {
+      authRequired = true;
+      tokenRow.classList.add('visible');
+      titleEl.textContent = 'Authentication required';
+      return;
+    }
+    if (!rEntry.ok) { titleEl.textContent = 'Generation not found'; return; }
+    const e = await rEntry.json();
+    currentEntry = e;
+    eTitle = e.title || 'image';
+
+    // Parse EXIF from config_json if available
+    if (e.config_json) {
+      try {
+        const config = JSON.parse(e.config_json);
+        selectedExifData = config.exif || null;
+        renderProvenance(config.metadata_provenance || null);
+        renderTimeline(config.task_trace || null);
+      } catch {}
+    }
+
+    let sourceAssetId = null;
+    if (e.source_asset_ids) {
+      try {
+        const ids = JSON.parse(e.source_asset_ids);
+        if (ids.length > 0) sourceAssetId = ids[0];
+      } catch {}
+    }
+
+    if (!selectedExifData && sourceAssetId) {
+      try {
+        const rExif = await fetch(`/api/immich/assets/${sourceAssetId}/exif`, {headers: headers()});
+        if (rExif.ok) {
+          selectedExifData = await rExif.json();
+        }
+      } catch {}
+    }
+
+    if (rSettings.ok) {
+      const s = await rSettings.json();
+      immichUrl = (s.immich_url || '').replace(/\/$/, '');
+    }
+
+    document.title = `${e.title} — Review`;
+    titleEl.textContent = e.title || 'Untitled Generation';
+    badgeEl.textContent = (e.generation_type || '').replace(/_/g, ' ');
+    summaryEl.textContent = e.summary || '';
+    metaStatus.textContent = statusLabel(e.status);
+    metaStatus.className = `value ${statusClass(e.status)}`;
+    metaType.textContent = (e.generation_type || '').replace(/_/g, ' ');
+    metaProvider.textContent = e.provider ? `${e.provider} (${e.model || '?'})` : 'Local';
+
+    // tags
+    if (e.tags_json) {
+      try {
+        const tags = JSON.parse(e.tags_json);
+        const tagsContainer = document.getElementById('tags');
+        tagsContainer.innerHTML = '';
+        tags.forEach(t => {
+          const span = document.createElement('span');
+          span.className = 'tag';
+          span.textContent = `#${t}`;
+          tagsContainer.appendChild(span);
+        });
+      } catch {}
+    }
+
+    // source link
+    if (immichUrl && e.source_asset_ids) {
+      try {
+        const ids = JSON.parse(e.source_asset_ids);
+        if (ids.length > 0) {
+          document.getElementById('source-link').href = `${immichUrl}/photos/${ids[0]}`;
+          document.getElementById('source-row').style.display = 'flex';
+        }
+      } catch {}
+    }
+
+    // non-pending states
+    if (e.status !== 'PENDING_REVIEW') {
+      actionsEl.innerHTML = '';
+      if (e.status === 'UPLOADED') {
+        setUploadSuccessState(e.uploaded_asset_id || '');
+        if (e.accept_notes) {
+          notesEl.textContent = e.accept_notes;
+          notesEl.classList.add('visible');
+        }
+      } else if (e.status === 'FAILED') {
+        actionsEl.className = 'actions single';
+        actionsEl.innerHTML = `<button class="btn-warn" id="btn-retry">↺ Retry upload</button>`;
+        document.getElementById('btn-retry').addEventListener('click', retry);
+        if (e.accept_notes) {
+          notesEl.textContent = e.accept_notes;
+          notesEl.classList.add('visible');
+        }
+      } else {
+        // REJECTED — allow reconsider
+        actionsEl.className = 'actions single';
+        actionsEl.innerHTML = `<button class="btn-accept" id="btn-reconsider">↑ Reconsider &amp; upload</button>`;
+        document.getElementById('btn-reconsider').addEventListener('click', accept);
+      }
+      return;
+    }
+
+    acceptBtn.disabled = false;
+    rejectBtn.disabled = false;
+  } catch(err) {
+    titleEl.textContent = 'Failed to load';
+  }
+}
+
+function refreshImage() {
+  const t = getToken();
+  if (t) {
+    fetch(`/api/generation/history/${taskId}/image`, {headers: {'Authorization': `Bearer ${t}`}})
+      .then(r => r.blob()).then(b => { imgEl.src = URL.createObjectURL(b); });
+  } else {
+    imgEl.src = `/api/generation/history/${taskId}/image`;
+  }
+}
+
+async function accept() {
+  acceptBtn && (acceptBtn.disabled = true);
+  rejectBtn && (rejectBtn.disabled = true);
+  const r = await fetch(`/api/generation/history/${taskId}/accept`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({create_album: true, album_name: null, album_id: null})
+  });
+  if (r.ok) {
+    const data = await r.json();
+    setStatus('Uploaded to Immich ✓', true);
+    setUploadSuccessState(data.uploaded_asset_id);
+  } else {
+    const d = await r.json().catch(() => ({}));
+    setStatus(d.detail || 'Accept failed', false);
+    acceptBtn && (acceptBtn.disabled = false);
+    rejectBtn && (rejectBtn.disabled = false);
+  }
+}
+
+async function retry() {
+  const btn = document.getElementById('btn-retry');
+  if (btn) btn.disabled = true;
+  const r = await fetch(`/api/generation/history/${taskId}/retry`, {method: 'POST', headers: headers()});
+  if (r.ok) {
+    const data = await r.json();
+    setStatus('Retry successful ✓', true);
+    setUploadSuccessState(data.uploaded_asset_id || currentEntry?.uploaded_asset_id || '');
+  } else {
+    const d = await r.json().catch(() => ({}));
+    setStatus(d.detail || 'Retry failed', false);
+    if (btn) btn.disabled = false;
+  }
+}
+
+tokenInput.addEventListener('change', () => { refreshImage(); load(); });
+acceptBtn.addEventListener('click', accept);
+rejectBtn.addEventListener('click', async () => {
+  acceptBtn.disabled = true; rejectBtn.disabled = true;
+  const r = await fetch(`/api/generation/history/${taskId}/reject`, {method: 'POST', headers: headers()});
+  if (r.ok) {
+    setStatus('Rejected', true);
+    actionsEl.className = 'actions single';
+    actionsEl.innerHTML = `<button class="btn-accept" id="btn-reconsider">↑ Reconsider &amp; upload</button>`;
+    document.getElementById('btn-reconsider').addEventListener('click', accept);
+    metaStatus.textContent = 'Rejected';
+    metaStatus.className = 'value rejected';
+  } else {
+    const d = await r.json().catch(() => ({}));
+    setStatus(d.detail || 'Reject failed', false);
+    acceptBtn.disabled = false; rejectBtn.disabled = false;
+  }
+});
+
+load().then(() => { if (!authRequired) refreshImage(); });
+
+const lightbox = document.getElementById('lightbox');
+const lbImg = document.getElementById('lb-img');
+document.getElementById('img-wrap').addEventListener('click', () => {
+  if (!currentEntry) return;
+  lbImg.src = imgEl.src;
+  renderExif(currentEntry, selectedExifData);
+  lightbox.classList.add('open');
+});
+document.getElementById('lb-close').addEventListener('click', () => lightbox.classList.remove('open'));
+lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
+document.getElementById('lb-content').addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+
+document.getElementById('lb-download').addEventListener('click', async (e) => {
+  e.preventDefault();
+  if (!currentEntry) return;
+  const btn = document.getElementById('lb-download');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Downloading...`;
+  try {
+    const t = getToken();
+    const headersList = t ? {'Authorization': `Bearer ${t}`} : {};
+    const res = await fetch(`/api/generation/history/${taskId}/image`, { headers: headersList });
+    if (!res.ok) throw new Error('Download failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${eTitle}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Failed to download image.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
+</script>
+</body>
+</html>

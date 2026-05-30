@@ -1,0 +1,262 @@
+import { useEffect } from 'react';
+import {
+  X,
+  Cpu,
+  Layers,
+  Info,
+  HardDrive,
+  Calendar,
+  MapPin,
+  ExternalLink,
+  Download
+} from 'lucide-react';
+import { type GenerationHistoryEntry } from '../../api/client';
+import { SecureImage } from '../../components/SecureImage';
+import { formatDateTime } from '../datetime.utils';
+
+// Format shutter speed decimal into a readable fraction
+function formatShutterSpeed(seconds: number | string | undefined | null): string {
+  if (seconds === undefined || seconds === null) return '';
+  const s = Number(seconds);
+  if (isNaN(s)) return String(seconds);
+  if (s >= 0.5) return `${s.toFixed(1)}s`;
+  const fraction = Math.round(1 / s);
+  return `1/${fraction}s`;
+}
+
+function formatFileSize(bytes: number | undefined | null): string {
+  if (bytes === undefined || bytes === null || isNaN(bytes)) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  const kib = bytes / 1024;
+  if (kib < 1024) return `${kib.toFixed(1)} KB`;
+  const mib = kib / 1024;
+  return `${mib.toFixed(1)} MB`;
+}
+
+interface ExifData {
+  make?: string | null;
+  model?: string | null;
+  lensModel?: string | null;
+  exposureTime?: number | string | null;
+  fNumber?: number | null;
+  iso?: number | null;
+  focalLength?: number | null;
+  fileSizeInByte?: number | null;
+  exifImageWidth?: number | null;
+  exifImageHeight?: number | null;
+  dateTimeOriginal?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+}
+
+interface LightboxModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  imageUrl: string;
+  entry: GenerationHistoryEntry;
+  exif: ExifData | null;
+}
+
+export function LightboxModal({
+  isOpen,
+  onClose,
+  imageUrl,
+  entry,
+  exif,
+}: LightboxModalProps) {
+  // Handle Escape key to close lightbox
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-4 backdrop-blur-xl animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex flex-col md:flex-row max-h-[92vh] max-w-[94vw] items-stretch justify-center bg-stone-950/80 border border-stone-800 rounded-2xl overflow-hidden shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Photo Canvas */}
+        <div className="relative flex items-center justify-center flex-1 bg-stone-950 max-h-[60vh] md:max-h-[85vh] p-2">
+          <SecureImage
+            src={imageUrl}
+            alt="Preview"
+            className="max-h-full max-w-full rounded-lg object-contain"
+          />
+        </div>
+
+        {/* Premium EXIF Details Overlay Panel */}
+        <div className="w-full md:w-80 shrink-0 bg-stone-900 p-5 flex flex-col justify-between text-stone-200 select-none">
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-1">
+                Image Metadata
+              </h4>
+              <h3 className="text-sm font-bold text-white leading-snug truncate">
+                {entry.title || 'Untitled Image'}
+              </h3>
+              {entry.summary && (
+                <p className="text-[11px] text-stone-400 leading-normal mt-1 max-h-16 overflow-y-auto pr-1">
+                  {entry.summary}
+                </p>
+              )}
+            </div>
+
+            <div className="h-px bg-stone-800" />
+
+            {/* EXIF Data Fields */}
+            {exif ? (
+              <div className="space-y-3.5">
+                {/* Camera Make & Model */}
+                {(exif.make || exif.model) && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <Cpu size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Camera</div>
+                      <div className="font-semibold text-white mt-0.5">
+                        {(() => {
+                          const make = exif.make || '';
+                          const model = exif.model || '';
+                          if (make && model) {
+                            return model.toLowerCase().includes(make.toLowerCase()) ? model : `${make} ${model}`;
+                          }
+                          return make || model;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lens Model */}
+                {exif.lensModel && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <Layers size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Lens</div>
+                      <div className="font-semibold text-white mt-0.5 truncate max-w-[220px]">
+                        {exif.lensModel}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Exposure Parameters (Shutter Speed, f-stop, ISO, Focal Length) */}
+                {(exif.exposureTime || exif.fNumber || exif.iso || exif.focalLength) && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <Info size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Settings</div>
+                      <div className="font-semibold text-stone-300 mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                        {exif.exposureTime && <span>{formatShutterSpeed(exif.exposureTime)}</span>}
+                        {exif.fNumber && <span>f/{exif.fNumber}</span>}
+                        {exif.iso && <span>ISO {exif.iso}</span>}
+                        {exif.focalLength && <span>{exif.focalLength}mm</span>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* File Info (Size & Resolution) */}
+                {(exif.fileSizeInByte || exif.exifImageWidth || exif.exifImageHeight) && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <HardDrive size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">File / Dimension</div>
+                      <div className="font-semibold text-stone-300 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                        {exif.fileSizeInByte && <span>{formatFileSize(exif.fileSizeInByte)}</span>}
+                        {exif.exifImageWidth && exif.exifImageHeight && (
+                          <span>{exif.exifImageWidth} × {exif.exifImageHeight}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Date Taken */}
+                {(exif.dateTimeOriginal || entry.created_at) && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <Calendar size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Captured</div>
+                      <div className="font-semibold text-stone-300 mt-0.5">
+                        {formatDateTime(exif.dateTimeOriginal || entry.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* GPS Coordinates & Location */}
+                {typeof exif.latitude === 'number' && typeof exif.longitude === 'number' && (
+                  <div className="flex items-start gap-2 text-xs">
+                    <MapPin size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Location</div>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${exif.latitude},${exif.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 mt-0.5 hover:underline"
+                      >
+                        <span>
+                          {(() => {
+                            const parts = [];
+                            if (exif.city) parts.push(exif.city);
+                            if (exif.state) parts.push(exif.state);
+                            if (exif.country) parts.push(exif.country);
+                            return parts.length > 0 ? parts.join(', ') : `${exif.latitude.toFixed(5)}, ${exif.longitude.toFixed(5)}`;
+                          })()}
+                        </span>
+                        <ExternalLink size={10} />
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-[10px] text-stone-500 text-center py-4 bg-stone-950/20 border border-stone-850/50 rounded-xl">
+                No EXIF metadata found in database.
+              </div>
+            )}
+          </div>
+
+          {/* Lightbox Footer Actions */}
+          <div className="pt-4 border-t border-stone-800 mt-4 md:mt-0">
+            <a
+              href={`/api/generation/history/${entry.task_id}/image`}
+              download
+              className="w-full inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-800 text-xs font-semibold text-white hover:bg-emerald-900 transition active:scale-95 shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Download size={14} />
+              Download Full-Res PNG
+            </a>
+          </div>
+        </div>
+
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black/55 text-white hover:bg-white hover:text-stone-900 shadow-md transition active:scale-90"
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}

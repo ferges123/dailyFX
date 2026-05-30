@@ -1,0 +1,48 @@
+[project]
+name = "dailyfx-backend"
+version = "0.1.0"
+description = "FastAPI backend for DailyFX for immich"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0,<0.116.0",
+    "uvicorn[standard]>=0.30.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "pydantic-settings>=2.4.0",
+    "httpx>=0.27.0",
+    "cryptography>=43.0.0",
+    "pillow>=11.0.0",
+    "pillow-heif>=0.20.0",
+    "pilgram>=2.0.0",
+    "pywebpush>=2.0.0",
+    "py-vapid>=1.9.0",
+    "opencv-python-headless>=4.8.0",
+    "numpy>=1.24.0",
+    "slowapi>=0.1.9",
+    "apprise>=1.9.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-timeout>=2.4.0",
+]
+lint = [
+    "ruff>=0.8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+timeout = 10
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["B008", "E402"]
+
+[tool.ruff.format]
+quote-style = "double"
