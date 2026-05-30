@@ -133,6 +133,30 @@ function AppShell() {
         </Routes>
       </main>
 
+      <footer className="mx-auto max-w-5xl px-4 pb-28 pt-4 text-center text-xs text-stone-400 md:pb-6 md:pt-8 border-t border-stone-200/50">
+        <p className="flex items-center justify-center gap-1.5 flex-wrap">
+          <span>DailyFX 0.0.1</span>
+          <span className="text-stone-300">•</span>
+          <a
+            href="https://github.com/ferges123/dailyFX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-emerald-800 hover:underline"
+          >
+            GitHub
+          </a>
+          <span className="text-stone-300">•</span>
+          <a
+            href="https://polyformproject.org/licenses/noncommercial/1.0.0/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-emerald-800 hover:underline"
+          >
+            PolyForm Noncommercial License 1.0.0
+          </a>
+        </p>
+      </footer>
+
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-stone-200 bg-white/90 px-2 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur-md md:hidden">
         <BottomNavLink to="/history" active={location.pathname === '/history'} label="History">
           <History size={20} />
