@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { SchedulesPage } from '../pages/Schedules';
 import * as client from '../api/client';
 
@@ -30,7 +30,12 @@ function renderSchedules() {
   return render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <SchedulesPage />
+        <Routes>
+          <Route path="/schedules" element={<SchedulesPage />} />
+          <Route path="/schedules/new" element={<SchedulesPage />} />
+          <Route path="/schedules/:scheduleId/edit" element={<SchedulesPage />} />
+          <Route path="*" element={<SchedulesPage />} />
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>,
   );
@@ -108,5 +113,46 @@ describe('SchedulesPage', () => {
 
     expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/schedules/new');
+  });
+
+  it('opens the edit form when an existing schedule is edited', async () => {
+    window.history.pushState({}, '', '/schedules');
+    vi.mocked(client.getSchedules).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Morning run',
+        enabled: true,
+        schedule_expr: 'daily@08:00',
+        filter_preset_id: 2,
+        effect_preset_id: 3,
+        notification_preset_ids: [4],
+        album_name: 'AI Photos',
+        ai_vision_provider: 'local',
+        ai_vision_model: 'qwen2.5-vl',
+        ai_image_provider: 'local',
+        ai_image_model: 'flux.1',
+        ai_prompt_enrichment: true,
+        last_run_at: null,
+        next_run_at: null,
+        last_tick_status: null,
+        last_tick_reason: null,
+        last_task_id: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        filter_preset_name: 'Default filter',
+        effect_preset_name: 'Default effect',
+        notification_preset_names: ['Phone'],
+      },
+    ]);
+    vi.mocked(client.getFilterPresets).mockResolvedValue([{ id: 2, name: 'Default filter', album_ids: [], person_filters: [], start_date: null, end_date: null, media_type: 'photo', created_at: '2026-05-30T04:00:00.000Z' }]);
+    vi.mocked(client.getEffectPresets).mockResolvedValue([{ id: 3, name: 'Default effect', groups: {}, created_at: '2026-05-30T04:00:00.000Z' }]);
+    vi.mocked(client.getNotificationPresets).mockResolvedValue([{ id: 4, name: 'Phone', provider: 'web', url: null, topic: null, has_token: false, token_masked: null, webhook_url: null, created_at: '2026-05-30T04:00:00.000Z' }]);
+
+    renderSchedules();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+
+    expect(await screen.findByText('Editing: Morning run')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Morning run')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/schedules/1/edit');
   });
 });

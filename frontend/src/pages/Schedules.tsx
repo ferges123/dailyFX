@@ -191,6 +191,13 @@ export function SchedulesPage() {
   const [sortBy, setSortBy] = useState<'next' | 'name' | 'recent'>('next');
   const [denseView, setDenseView] = useState(false);
 
+  function scrollFormIntoView() {
+    const scrollIntoView = formRef.current?.scrollIntoView;
+    if (typeof scrollIntoView === 'function') {
+      requestAnimationFrame(() => scrollIntoView.call(formRef.current, { behavior: 'smooth', block: 'start' }));
+    }
+  }
+
   const saveMutation = useMutation({
     mutationFn: () => {
       const schedule_expr = serializeAutomationSchedule({
@@ -268,16 +275,13 @@ export function SchedulesPage() {
     setIsNew(true);
     setError(null);
     navigate('/schedules/new');
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    scrollFormIntoView();
   }
 
   function openEdit(schedule: Schedule) {
-    setForm(scheduleToForm(schedule));
-    setEditing(schedule);
-    setIsNew(false);
+    setSelectedScheduleId(schedule.id);
     setError(null);
     navigate(`/schedules/${schedule.id}/edit`);
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   function closeForm() {
@@ -299,11 +303,15 @@ export function SchedulesPage() {
 
   const routeIsNew = location.pathname.endsWith('/new');
   const routeEditId = scheduleId ? Number(scheduleId) : null;
+  const showForm = isNew || editing !== null;
 
   useEffect(() => {
     if (routeIsNew) {
       if (!isNew) {
-        openNew();
+        setForm(emptyForm);
+        setEditing(null);
+        setIsNew(true);
+        setError(null);
       }
       return;
     }
@@ -332,14 +340,18 @@ export function SchedulesPage() {
   }, [editing, isNew, routeEditId, routeIsNew, schedules.data]);
 
   useEffect(() => {
+    if (showForm) {
+      scrollFormIntoView();
+    }
+  }, [showForm, editing?.id, isNew]);
+
+  useEffect(() => {
     if (routeIsNew || routeEditId) return;
     if (selectedScheduleId !== null) return;
     if (schedules.data?.length) {
       setSelectedScheduleId(schedules.data[0].id);
     }
   }, [routeEditId, routeIsNew, schedules.data, selectedScheduleId]);
-
-  const showForm = isNew || editing !== null;
 
   const validationIssues: string[] = [];
   if (!form.name.trim()) validationIssues.push('Schedule name is required.');
