@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
 import { SchedulesPage } from '../pages/Schedules';
 import * as client from '../api/client';
 
@@ -28,7 +29,9 @@ function renderSchedules() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <SchedulesPage />
+      <BrowserRouter>
+        <SchedulesPage />
+      </BrowserRouter>
     </QueryClientProvider>,
   );
 }
@@ -47,7 +50,7 @@ describe('SchedulesPage', () => {
     renderSchedules();
 
     expect(await screen.findByText('No schedules yet')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'New schedule' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'New schedule' })).toHaveLength(3);
   });
 
   it('renders schedule status and run metadata', async () => {
@@ -83,13 +86,27 @@ describe('SchedulesPage', () => {
 
     renderSchedules();
 
-    expect(await screen.findByText('Morning run')).toBeInTheDocument();
-    expect(screen.getByText('Next run')).toBeInTheDocument();
-    expect(screen.getByText('Last run')).toBeInTheDocument();
-    expect(screen.getByText('Last result')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Run now' })).toBeInTheDocument();
-    expect(screen.getByText('error · timeout')).toBeInTheDocument();
+    expect(await screen.findAllByText('Morning run')).toHaveLength(3);
+    expect(screen.getAllByText('Next run').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Last run').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Last result').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Run now' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('error · timeout').length).toBeGreaterThan(0);
+    expect(screen.getByText('Vision model')).toBeInTheDocument();
     expect(screen.getByText('Vision: local (qwen2.5-vl)')).toBeInTheDocument();
     expect(screen.getByText('Image: local (flux.1)')).toBeInTheDocument();
+  });
+
+  it('opens the create form when loaded on the new schedule route', async () => {
+    window.history.pushState({}, '', '/schedules/new');
+    vi.mocked(client.getSchedules).mockResolvedValue([]);
+    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+    vi.mocked(client.getEffectPresets).mockResolvedValue([]);
+    vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
+
+    renderSchedules();
+
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/schedules/new');
   });
 });

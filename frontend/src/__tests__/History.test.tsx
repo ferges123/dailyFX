@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 import { HistoryPage } from '../pages/History/HistoryPage';
 import * as client from '../api/client';
 
@@ -130,7 +131,8 @@ describe('HistoryPage', () => {
     vi.mocked(client.getImmichAssetExif).mockResolvedValue({});
   });
 
-  function renderHistory() {
+  function renderHistory(path = '/history') {
+    window.history.pushState({}, '', path);
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -140,7 +142,9 @@ describe('HistoryPage', () => {
     });
     return render(
       <QueryClientProvider client={queryClient}>
-        <HistoryPage />
+        <BrowserRouter>
+          <HistoryPage />
+        </BrowserRouter>
       </QueryClientProvider>
     );
   }
@@ -194,6 +198,18 @@ describe('HistoryPage', () => {
     expect(screen.getByText('#portrait')).toBeInTheDocument();
     expect(screen.getByText('#anime')).toBeInTheDocument();
     expect(screen.queryByText('"Beautiful sunset with orange filter"')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/history/man-2');
+  });
+
+  it('keeps a direct history detail route selected', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+
+    renderHistory('/history/man-2');
+
+    expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/history/man-2');
   });
 
   it('calls acceptGeneration when Accept button is clicked', async () => {

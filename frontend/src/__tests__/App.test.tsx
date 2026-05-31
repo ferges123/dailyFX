@@ -46,24 +46,24 @@ describe('App', () => {
 
   it('shows DailyFX for immich title after loading', async () => {
     renderApp();
-    expect(await screen.findByText('DailyFX for immich')).toBeInTheDocument();
+    expect(await screen.findAllByText('DailyFX for immich')).toHaveLength(2);
   });
 
   it('redirects from / to history', async () => {
     renderApp('/');
 
     expect(await screen.findByText('There are no generations stored in the history database yet.')).toBeInTheDocument();
-    expect(document.querySelector('header a[href="/history"]')).toHaveAttribute('aria-current', 'page');
+    expect(document.querySelector('a[href="/history"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/history');
   });
 
   it('changes route and active nav state when clicking navigation links', async () => {
     const { container } = renderApp('/history');
 
-    fireEvent.click(container.querySelector('header a[href="/schedules"]')!);
+    fireEvent.click(container.querySelector('a[href="/schedules"]')!);
 
-    expect(await screen.findByText('Automated generation schedules with preset configurations.')).toBeInTheDocument();
-    expect(container.querySelector('header a[href="/schedules"]')).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('heading', { name: 'Schedules' })).toBeInTheDocument();
+    expect(container.querySelector('a[href="/schedules"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/schedules');
   });
 
@@ -71,8 +71,22 @@ describe('App', () => {
     const { container } = renderApp('/presets/effects');
 
     expect(await screen.findByText('No effect presets yet')).toBeInTheDocument();
-    expect(container.querySelector('header a[href="/presets"]')).toHaveAttribute('aria-current', 'page');
+    expect(container.querySelector('a[href="/presets"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/presets/effects');
+  });
+
+  it('supports direct history detail routes', async () => {
+    renderApp('/history/man-1');
+
+    expect(await screen.findByText('No items found')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/history/man-1');
+  });
+
+  it('supports direct schedule creation routes', async () => {
+    renderApp('/schedules/new');
+
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/schedules/new');
   });
 
   it('shows a 404 page for unknown routes', async () => {

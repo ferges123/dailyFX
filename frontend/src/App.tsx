@@ -3,7 +3,6 @@ import { type ReactNode } from 'react';
 import {
   Bell,
   CalendarDays,
-  Filter,
   History,
   LogOut,
   Settings,
@@ -38,7 +37,10 @@ function AppShell() {
     return <LoginPage />;
   }
 
+  const isHistoryRoute = location.pathname.startsWith('/history');
+  const isSchedulesRoute = location.pathname.startsWith('/schedules');
   const isPresetsRoute = location.pathname.startsWith('/presets');
+  const isSettingsRoute = location.pathname.startsWith('/settings');
 
   function handleLogout() {
     setToken(null);
@@ -46,112 +48,136 @@ function AppShell() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="sticky top-0 z-20 border-b border-white/70 bg-[rgba(248,246,239,0.82)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-3 py-2 md:px-4 md:py-3">
+    <div className="app-shell md:grid md:min-h-screen md:grid-cols-[18rem_minmax(0,1fr)]">
+      <header className="sticky top-0 z-20 border-b border-white/70 bg-[rgba(248,246,239,0.82)] backdrop-blur-xl md:hidden">
+        <div className="mx-auto flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl md:rounded-2xl border border-emerald-900/10 bg-emerald-900 text-white shadow-[0_14px_28px_rgba(15,81,50,0.22)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-900/10 bg-emerald-900 text-white shadow-[0_14px_28px_rgba(15,81,50,0.22)]">
               <Sparkles className="h-4.5 w-4.5 md:h-[18px] md:w-[18px]" />
             </div>
             <div>
-              <h1 className="text-lg md:text-xl font-semibold leading-none text-stone-950">DailyFX for immich</h1>
-              <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-stone-500">Creative effect studio</p>
+              <h1 className="text-lg font-semibold leading-none text-stone-950">DailyFX for immich</h1>
+              <p className="mt-0.5 text-xs text-stone-500">Creative effect studio</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {authRequiredByBackend && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-white/80 text-stone-500 shadow-sm transition hover:border-stone-300 hover:text-red-600"
-                title="Log out"
-              >
-                <LogOut size={16} />
-              </button>
-            )}
-            <nav className="hidden items-center gap-2 md:flex">
-              <HeaderNavLink to="/history" icon={<History size={16} />}>
-                History
-              </HeaderNavLink>
-              <HeaderNavLink to="/schedules" icon={<CalendarDays size={16} />}>
-                Schedules
-              </HeaderNavLink>
-              <HeaderNavLink to="/presets" icon={<Sparkles size={16} />}>
-                Presets
-              </HeaderNavLink>
-              <HeaderNavLink to="/settings" icon={<Settings size={16} />}>
-                Settings
-              </HeaderNavLink>
-              {authRequiredByBackend && (
-                <>
-                  <div className="mx-2 h-6 w-px bg-stone-200" />
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-white/80 text-stone-500 shadow-sm transition hover:border-stone-300 hover:text-red-600"
-                    title="Log out"
-                  >
-                    <LogOut size={16} />
-                  </button>
-                </>
-              )}
-            </nav>
-          </div>
+          {authRequiredByBackend && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-white/80 text-stone-500 shadow-sm transition hover:border-stone-300 hover:text-red-600"
+              title="Log out"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-3 px-3 py-3 pb-24 md:gap-4 md:px-4 md:py-4 md:pb-6">
-        {/* Subnavigation is now handled contextually inside PresetsLayout for both desktop and mobile */}
+      <aside className="hidden border-r border-white/70 bg-[rgba(248,246,239,0.72)] px-4 py-5 backdrop-blur-xl md:flex md:flex-col md:sticky md:top-0 md:h-screen">
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-900/10 bg-emerald-900 text-white shadow-[0_14px_28px_rgba(15,81,50,0.22)]">
+            <Sparkles className="h-[18px] w-[18px]" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold leading-none text-stone-950">DailyFX for immich</h1>
+            <p className="mt-1 text-sm text-stone-500">Creative effect studio</p>
+          </div>
+        </div>
 
-        <Routes>
-          <Route path="/" element={<Navigate to="/history" replace />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/schedules" element={<SchedulesPage />} />
-          <Route path="/presets" element={<PresetsLayout />}>
-            <Route index element={<Navigate to="filters" replace />} />
-            <Route path="filters" element={<FilterPresetsPage />} />
-            <Route path="effects" element={<EffectPresetsPage />} />
-            <Route path="notifications" element={<NotificationPresetsPage />} />
-          </Route>
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route
-            path="*"
-            element={
-              <NotFoundPage />
-            }
-          />
-        </Routes>
-      </main>
+        <nav className="mt-8 grid gap-1.5">
+          <SidebarNavLink to="/history" active={isHistoryRoute} icon={<History size={17} />}>
+            History
+          </SidebarNavLink>
+          <SidebarNavLink to="/schedules" active={isSchedulesRoute} icon={<CalendarDays size={17} />}>
+            Schedules
+          </SidebarNavLink>
+          <SidebarNavLink to="/presets" active={isPresetsRoute} icon={<Sparkles size={17} />}>
+            Presets
+          </SidebarNavLink>
+          <SidebarNavLink to="/settings" active={isSettingsRoute} icon={<Settings size={17} />}>
+            Settings
+          </SidebarNavLink>
+        </nav>
 
-      <footer className="mx-auto max-w-5xl px-3 pb-24 pt-3 text-center text-xs text-stone-400 md:pb-6 md:pt-8">
-        <p className="flex items-center justify-center gap-1.5 flex-wrap">
-          <span>DailyFX 0.0.1</span>
-          <span className="text-stone-300">•</span>
-          <a
-            href="https://github.com/ferges123/dailyFX"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-emerald-800 hover:underline"
-          >
-            GitHub
-          </a>
-          <span className="text-stone-300">•</span>
-          <a
-            href="https://polyformproject.org/licenses/noncommercial/1.0.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-emerald-800 hover:underline"
-          >
-            PolyForm Noncommercial License 1.0.0
-          </a>
-        </p>
-      </footer>
+        <div className="mt-auto pt-6">
+          {authRequiredByBackend && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 text-sm font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-red-600"
+              title="Log out"
+            >
+              <LogOut size={16} />
+              Log out
+            </button>
+          )}
+          <div className="mt-6 rounded-2xl border border-stone-200/70 bg-white/65 px-3 py-3 text-xs text-stone-500">
+            <div className="flex items-center gap-1.5 font-semibold text-stone-700">
+              <Bell size={13} />
+              DailyFX 0.0.1
+            </div>
+            <p className="mt-1.5 leading-5">
+              GitHub and PolyForm links remain in the page footer.
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      <div className="min-w-0">
+        <main className="grid gap-3 px-3 py-3 pb-24 md:gap-4 md:px-5 md:py-5 md:pb-6">
+          <Routes>
+            <Route path="/" element={<Navigate to="/history" replace />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/history/:taskId" element={<HistoryPage />} />
+            <Route path="/schedules" element={<SchedulesPage />} />
+            <Route path="/schedules/new" element={<SchedulesPage />} />
+            <Route path="/schedules/:scheduleId/edit" element={<SchedulesPage />} />
+            <Route path="/presets" element={<PresetsLayout />}>
+              <Route index element={<Navigate to="filters" replace />} />
+              <Route path="filters" element={<FilterPresetsPage />} />
+              <Route path="effects" element={<EffectPresetsPage />} />
+              <Route path="notifications" element={<NotificationPresetsPage />} />
+            </Route>
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="*"
+              element={
+                <NotFoundPage />
+              }
+            />
+          </Routes>
+        </main>
+
+        <footer className="px-3 pb-24 pt-3 text-center text-xs text-stone-400 md:px-5 md:pb-6 md:pt-8">
+          <p className="flex items-center justify-center gap-1.5 flex-wrap">
+            <span>DailyFX 0.0.1</span>
+            <span className="text-stone-300">•</span>
+            <a
+              href="https://github.com/ferges123/dailyFX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-800 hover:underline"
+            >
+              GitHub
+            </a>
+            <span className="text-stone-300">•</span>
+            <a
+              href="https://polyformproject.org/licenses/noncommercial/1.0.0/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-800 hover:underline"
+            >
+              PolyForm Noncommercial License 1.0.0
+            </a>
+          </p>
+        </footer>
+      </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-white/70 bg-[rgba(248,246,239,0.88)] px-2 py-1.5 shadow-[0_-8px_30px_rgba(36,29,16,0.08)] backdrop-blur-xl md:hidden">
-        <BottomNavLink to="/history" active={location.pathname === '/history'} label="History">
+        <BottomNavLink to="/history" active={isHistoryRoute} label="History">
           <History size={18} />
         </BottomNavLink>
-        <BottomNavLink to="/schedules" active={location.pathname === '/schedules'} label="Schedules">
+        <BottomNavLink to="/schedules" active={isSchedulesRoute} label="Schedules">
           <CalendarDays size={18} />
         </BottomNavLink>
         <BottomNavLink to="/presets" active={isPresetsRoute} label="Presets">
@@ -175,25 +201,25 @@ export default function App() {
   );
 }
 
-function HeaderNavLink({
+function SidebarNavLink({
   to,
+  active,
   icon,
   children,
 }: {
   to: string;
+  active: boolean;
   icon: ReactNode;
   children: ReactNode;
 }) {
+  const activeClass = active
+    ? 'border-emerald-900/10 bg-emerald-800 text-white shadow-[0_10px_20px_rgba(15,81,50,0.18)]'
+    : 'border-transparent text-stone-700 hover:border-stone-200 hover:bg-white/70 hover:text-stone-900';
+
   return (
     <NavLink
       to={to}
-      className={({ isActive }) =>
-        `inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition ${
-          isActive
-            ? 'border border-emerald-900/10 bg-emerald-800 text-white shadow-[0_10px_20px_rgba(15,81,50,0.18)]'
-            : 'border border-transparent text-stone-700 hover:border-stone-200 hover:bg-white/70 hover:text-stone-900'
-        }`
-      }
+      className={`inline-flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${activeClass}`}
     >
       {icon}
       {children}

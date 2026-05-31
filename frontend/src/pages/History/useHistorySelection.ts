@@ -3,8 +3,12 @@ import { type GenerationHistoryEntry } from '../../api/client';
 
 const LAST_STARTED_TASK_ID_KEY = 'dailyfx_last_started_task_id';
 
-export function useHistorySelection(filteredHistoryItems: GenerationHistoryEntry[]) {
-  const [selectedHistoryTaskId, setSelectedHistoryTaskId] = useState<string | null>(null);
+export function useHistorySelection(
+  filteredHistoryItems: GenerationHistoryEntry[],
+  selectedHistoryTaskId: string | null,
+  setSelectedHistoryTaskId: (taskId: string | null) => void,
+  allowFallbackSelection = true,
+) {
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
 
   const selectedHistoryEntry = useMemo(
@@ -13,29 +17,27 @@ export function useHistorySelection(filteredHistoryItems: GenerationHistoryEntry
   );
 
   useEffect(() => {
-    const lastStartedTaskId = sessionStorage.getItem(LAST_STARTED_TASK_ID_KEY);
-    if (lastStartedTaskId) {
-      const found = filteredHistoryItems.find((item) => item.task_id === lastStartedTaskId);
-      if (found) {
-        setSelectedHistoryTaskId(lastStartedTaskId);
-        sessionStorage.removeItem(LAST_STARTED_TASK_ID_KEY);
-        return;
+    if (allowFallbackSelection && !selectedHistoryTaskId && filteredHistoryItems.length > 0) {
+      const lastStartedTaskId = sessionStorage.getItem(LAST_STARTED_TASK_ID_KEY);
+      if (lastStartedTaskId) {
+        const found = filteredHistoryItems.find((item) => item.task_id === lastStartedTaskId);
+        if (found) {
+          setSelectedHistoryTaskId(lastStartedTaskId);
+          sessionStorage.removeItem(LAST_STARTED_TASK_ID_KEY);
+          return;
+        }
       }
-    }
-    if (!selectedHistoryTaskId && filteredHistoryItems.length > 0) {
       setSelectedHistoryTaskId(filteredHistoryItems[0].task_id);
     }
-  }, [filteredHistoryItems, selectedHistoryTaskId]);
+  }, [allowFallbackSelection, filteredHistoryItems, selectedHistoryTaskId, setSelectedHistoryTaskId]);
 
   useEffect(() => {
     if (selectedHistoryTaskId && !filteredHistoryItems.some((item) => item.task_id === selectedHistoryTaskId)) {
-      setSelectedHistoryTaskId(filteredHistoryItems[0]?.task_id ?? null);
+      setSelectedHistoryTaskId(allowFallbackSelection ? (filteredHistoryItems[0]?.task_id ?? null) : null);
     }
-  }, [filteredHistoryItems, selectedHistoryTaskId]);
+  }, [allowFallbackSelection, filteredHistoryItems, selectedHistoryTaskId, setSelectedHistoryTaskId]);
 
   return {
-    selectedHistoryTaskId,
-    setSelectedHistoryTaskId,
     selectedHistoryEntry,
     mobileShowDetail,
     setMobileShowDetail,

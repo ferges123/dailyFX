@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RefreshCw,
@@ -18,6 +18,7 @@ import { SecureImage } from '../../components/SecureImage';
 import { InlineSpinner, ErrorBanner } from '../../components/ErrorUI';
 import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { UploadModal } from './UploadModal';
 import { LightboxModal } from './LightboxModal';
@@ -37,6 +38,8 @@ function shouldRetrySettingsQuery(failureCount: number, error: unknown) {
 }
 
 export function HistoryPage() {
+  const navigate = useNavigate();
+  const { taskId } = useParams<{ taskId?: string }>();
   const settings = useQuery({
     queryKey: ['settings'],
     queryFn: getSettings,
@@ -48,6 +51,7 @@ export function HistoryPage() {
   const historyListRef = useRef<HTMLDivElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedHistoryTaskId, setSelectedHistoryTaskId] = useState<string | null>(taskId ?? null);
 
   const {
     historySearch,
@@ -82,13 +86,15 @@ export function HistoryPage() {
     return [...list].sort((a, b) => a.album_name.localeCompare(b.album_name));
   }, [filterOptions.data]);
 
+  useEffect(() => {
+    setSelectedHistoryTaskId(taskId ?? null);
+  }, [taskId]);
+
   const {
-    selectedHistoryTaskId,
-    setSelectedHistoryTaskId,
     selectedHistoryEntry,
     mobileShowDetail,
     setMobileShowDetail,
-  } = useHistorySelection(filteredHistoryItems);
+  } = useHistorySelection(filteredHistoryItems, selectedHistoryTaskId, setSelectedHistoryTaskId, !taskId);
 
   const dbExif = useMemo(() => {
     if (!selectedHistoryEntry?.config_json) return null;
@@ -278,6 +284,7 @@ export function HistoryPage() {
                     type="button"
                     onClick={() => {
                       setSelectedHistoryTaskId(item.task_id);
+                      navigate(`/history/${item.task_id}`);
                       setMobileShowDetail(true);
                     }}
                     className={`group w-full flex gap-2.5 md:gap-3 rounded-xl border p-1.5 md:p-2 text-left transition-all duration-200 ${
@@ -380,7 +387,10 @@ export function HistoryPage() {
             selectedHistoryImmichUrl={selectedHistoryImmichUrl}
             sourceAssetImmichUrl={sourceAssetImmichUrl}
             mobileShowDetail={mobileShowDetail}
-            onBackToList={() => setMobileShowDetail(false)}
+            onBackToList={() => {
+              setMobileShowDetail(false);
+              navigate('/history');
+            }}
             onAccept={() => {
               if (selectedHistoryEntry) {
                 acceptHistoryMutation.mutate({
