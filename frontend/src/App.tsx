@@ -105,20 +105,39 @@ function AppShell() {
               type="button"
               onClick={handleLogout}
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 text-sm font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-red-600"
-              title="Log out"
-            >
-              <LogOut size={16} />
-              Log out
-            </button>
-          )}
+            title="Log out"
+          >
+            <LogOut size={16} />
+            Log out
+          </button>
+        )}
           <div className="mt-6 rounded-2xl border border-stone-200/70 bg-white/65 px-3 py-3 text-xs text-stone-500">
             <div className="flex items-center gap-1.5 font-semibold text-stone-700">
               <Bell size={13} />
               DailyFX 0.0.1
             </div>
             <p className="mt-1.5 leading-5">
-              GitHub and PolyForm links remain in the page footer.
+              GitHub and PolyForm links live here on the right.
             </p>
+            <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
+              <a
+                href="https://github.com/ferges123/dailyFX"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-emerald-800 hover:underline"
+              >
+                GitHub
+              </a>
+              <span className="text-stone-300">•</span>
+              <a
+                href="https://polyformproject.org/licenses/noncommercial/1.0.0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-emerald-800 hover:underline"
+              >
+                PolyForm Noncommercial License 1.0.0
+              </a>
+            </div>
           </div>
         </div>
       </aside>
@@ -148,29 +167,6 @@ function AppShell() {
           </Routes>
         </main>
 
-        <footer className="px-3 pb-24 pt-3 text-center text-xs text-stone-400 md:px-5 md:pb-6 md:pt-8">
-          <p className="flex items-center justify-center gap-1.5 flex-wrap">
-            <span>DailyFX 0.0.1</span>
-            <span className="text-stone-300">•</span>
-            <a
-              href="https://github.com/ferges123/dailyFX"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-emerald-800 hover:underline"
-            >
-              GitHub
-            </a>
-            <span className="text-stone-300">•</span>
-            <a
-              href="https://polyformproject.org/licenses/noncommercial/1.0.0/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-emerald-800 hover:underline"
-            >
-              PolyForm Noncommercial License 1.0.0
-            </a>
-          </p>
-        </footer>
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-white/70 bg-[rgba(248,246,239,0.88)] px-2 py-1.5 shadow-[0_-8px_30px_rgba(36,29,16,0.08)] backdrop-blur-xl md:hidden">

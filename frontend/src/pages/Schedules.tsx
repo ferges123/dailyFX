@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
@@ -171,6 +171,7 @@ export function SchedulesPage() {
   const location = useLocation();
   const { scheduleId } = useParams<{ scheduleId?: string }>();
   const qc = useQueryClient();
+  const formRef = useRef<HTMLDivElement | null>(null);
 
   const schedules = useQuery({ queryKey: ['schedules'], queryFn: getSchedules });
   const filterPresets = useQuery({ queryKey: ['filter-presets'], queryFn: getFilterPresets });
@@ -267,6 +268,7 @@ export function SchedulesPage() {
     setIsNew(true);
     setError(null);
     navigate('/schedules/new');
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   function openEdit(schedule: Schedule) {
@@ -275,6 +277,7 @@ export function SchedulesPage() {
     setIsNew(false);
     setError(null);
     navigate(`/schedules/${schedule.id}/edit`);
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   function closeForm() {
@@ -455,7 +458,7 @@ export function SchedulesPage() {
 
   return (
     <section className="grid gap-4">
-      <div className="app-panel grid gap-4 p-3 md:p-4">
+      <div ref={formRef} className="app-panel grid gap-4 p-3 md:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="grid gap-1">
             <h2 className="text-2xl font-semibold text-stone-950">Schedules</h2>
