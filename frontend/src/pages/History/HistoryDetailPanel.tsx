@@ -88,7 +88,7 @@ export function HistoryDetailPanel({
   if (!entry) {
     return (
       <div
-        className={`flex-1 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-250 bg-stone-50/30 text-stone-400 p-8 ${
+        className={`app-panel-soft flex-1 flex flex-col items-center justify-center border-2 border-dashed border-stone-200 text-stone-400 p-8 ${
           mobileShowDetail ? 'flex min-h-[20rem]' : 'hidden lg:flex'
         }`}
       >
@@ -103,7 +103,7 @@ export function HistoryDetailPanel({
 
   return (
     <div
-      className={`flex flex-col min-h-0 rounded-2xl border border-stone-200/70 bg-gradient-to-br from-white/90 to-stone-50/40 backdrop-blur-md shadow-sm p-4 overflow-y-auto lg:h-full ${
+      className={`app-panel flex flex-col min-h-0 overflow-y-auto p-3 md:p-4 lg:h-full ${
         mobileShowDetail ? 'flex' : 'hidden lg:flex'
       }`}
     >
@@ -111,25 +111,25 @@ export function HistoryDetailPanel({
       <button
         type="button"
         onClick={onBackToList}
-        className="lg:hidden inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 pb-3 border-b border-stone-200/50 self-start mb-4"
+        className="lg:hidden inline-flex items-center gap-1.5 self-start border-b border-stone-200/50 pb-2 md:pb-3 text-xs font-semibold text-stone-600 hover:text-stone-900"
       >
         <ArrowLeft size={14} />
         Back to list
       </button>
 
-      <div className="flex-1 space-y-2.5 lg:space-y-1.5">
+      <div className="flex-1 space-y-1.5 md:space-y-2.5">
         {/* Header Information */}
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-extrabold text-stone-900 text-xs leading-tight min-w-0 flex-1">
               {entry.title || 'Untitled Generation'}
             </h3>
-            <span className="shrink-0 rounded-full bg-stone-100 border border-stone-200/50 px-2 py-0.5 text-[8px] font-bold text-stone-600 uppercase tracking-wide">
+            <span className="app-chip shrink-0 px-2 py-0.5 text-[8px] uppercase tracking-wide">
               {entry.generation_type.replace(/_/g, ' ')}
             </span>
           </div>
           {entry.summary && (
-            <p className="text-[10px] text-stone-600 leading-normal italic bg-stone-50/50 p-1.5 rounded-lg border border-stone-100">
+            <p className="rounded-xl border border-stone-100 bg-stone-50/60 p-2 text-[10px] leading-normal italic text-stone-600">
               "{entry.summary}"
             </p>
           )}
@@ -142,7 +142,7 @@ export function HistoryDetailPanel({
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100/60 px-1.5 py-0.5 text-[8.5px] font-medium"
+                    className="rounded-full border border-emerald-100/60 bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-700"
                     >
                       #{tag}
                     </span>
@@ -161,7 +161,7 @@ export function HistoryDetailPanel({
                 href={sourceAssetImmichUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded bg-emerald-50 hover:bg-emerald-100 border border-emerald-250/50 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-800 transition"
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
               >
                 <ExternalLink size={10} />
                 View original in Immich
@@ -171,7 +171,7 @@ export function HistoryDetailPanel({
         </div>
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-3 gap-2 rounded-xl bg-stone-50/80 p-2 border border-stone-100/80 text-[9.5px]">
+        <div className="grid grid-cols-3 gap-1.5 md:gap-2 rounded-xl md:rounded-2xl border border-stone-100/80 bg-white/70 p-1.5 md:p-2 text-[9.5px]">
           <div>
             <span className="text-[7.5px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
               System Status
@@ -225,11 +225,11 @@ export function HistoryDetailPanel({
           </div>
         )}
         {entry.image_url ? (
-          <div className="relative group overflow-hidden rounded-xl border border-stone-200 bg-stone-100 shadow-xs max-w-full">
+          <div className="relative group max-w-full overflow-hidden rounded-xl md:rounded-2xl border border-stone-200 bg-stone-100 shadow-[0_12px_26px_rgba(36,29,16,0.06)]">
             <SecureImage
               src={`${entry.image_url}?thumbnail=true`}
               alt={entry.title}
-              className="w-full max-h-[320px] cursor-zoom-in object-contain mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.015]"
+              className="w-full max-h-[220px] md:max-h-[320px] cursor-zoom-in object-contain mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.015]"
               onClick={() => onOpenLightbox(entry.image_url ?? '')}
             />
             {/* Centered Zoom Icon Overlay */}
@@ -243,7 +243,7 @@ export function HistoryDetailPanel({
               <a
                 href={entry.image_url}
                 download
-                className="bg-stone-900/80 backdrop-blur-md border border-white/10 text-white p-1.5 rounded-lg hover:bg-stone-950 shadow-md active:scale-95 transition flex items-center justify-center pointer-events-auto"
+                className="pointer-events-auto flex items-center justify-center rounded-xl border border-white/10 bg-stone-900/80 p-1.5 text-white shadow-md transition hover:bg-stone-950 active:scale-95"
                 title="Download image"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -252,7 +252,7 @@ export function HistoryDetailPanel({
             </div>
           </div>
         ) : (
-          <div className="h-36 border border-dashed border-stone-200 bg-stone-50 rounded-xl flex flex-col items-center justify-center text-stone-400">
+          <div className="flex h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50 text-stone-400">
             <Layers size={20} className="mb-1.5" />
             <span className="text-[11px]">No preview image available</span>
           </div>

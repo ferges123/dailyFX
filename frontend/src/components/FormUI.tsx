@@ -14,10 +14,10 @@ export function SectionCard({
   className?: string;
 }) {
   return (
-    <section className={`grid gap-3 rounded-lg border border-stone-200 bg-white p-3.5 ${className}`}>
+    <section className={`grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
       <div className="grid gap-0.5">
         <div className="text-sm font-semibold text-stone-900">{title}</div>
-        {description && <p className="text-xs leading-5 text-stone-500">{description}</p>}
+        {description && <p className="text-sm leading-6 text-stone-500">{description}</p>}
       </div>
       {children}
     </section>
@@ -38,12 +38,12 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border border-dashed border-stone-200 bg-stone-50 px-4 py-6 text-center ${className}`}>
-      <div className="mx-auto flex w-fit items-center justify-center rounded-full bg-white p-2 text-stone-400 shadow-sm ring-1 ring-stone-200">
+    <div className={`rounded-xl md:rounded-2xl border border-dashed border-stone-200/90 bg-white/60 px-3 py-5 md:px-4 md:py-7 text-center shadow-[0_8px_24px_rgba(36,29,16,0.03)] backdrop-blur ${className}`}>
+      <div className="mx-auto flex w-fit items-center justify-center rounded-full bg-white p-2.5 text-stone-400 shadow-sm ring-1 ring-stone-200">
         {icon ?? <Inbox size={18} />}
       </div>
       <div className="mt-3 text-sm font-semibold text-stone-900">{title}</div>
-      <p className="mt-1 text-sm text-stone-500">{description}</p>
+      <p className="mt-1 text-sm leading-6 text-stone-500">{description}</p>
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );
@@ -59,7 +59,7 @@ export function InlineError({
   className?: string;
 }) {
   return (
-    <div className={`flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900 ${className}`}>
+    <div className={`flex items-start gap-1.5 md:gap-2 rounded-lg md:rounded-xl border border-rose-200/70 bg-rose-50/80 px-2.5 py-2 md:px-3 md:py-2.5 text-sm text-rose-950 shadow-[0_8px_20px_rgba(180,35,24,0.05)] ${className}`}>
       <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-500" />
       <div className="grid gap-0.5">
         <div className="font-semibold">{title}</div>
@@ -100,9 +100,9 @@ export function ProviderModelField({
   const modelDisabled = provider === 'none';
 
   return (
-    <div className={`grid gap-2 rounded-lg border border-stone-200 bg-white p-3 ${className}`}>
+    <div className={`grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
       <div className="grid gap-1">
-        <div className="text-xs font-semibold uppercase tracking-wide text-stone-500">{label}</div>
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">{label}</div>
         {providerHelp && <p className="text-xs leading-5 text-stone-500">{providerHelp}</p>}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

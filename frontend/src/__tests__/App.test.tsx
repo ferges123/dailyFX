@@ -71,7 +71,7 @@ describe('App', () => {
     const { container } = renderApp('/presets/effects');
 
     expect(await screen.findByText('No effect presets yet')).toBeInTheDocument();
-    expect(container.querySelector('header a[href="/presets/effects"]')).toHaveAttribute('aria-current', 'page');
+    expect(container.querySelector('header a[href="/presets"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/presets/effects');
   });
 

@@ -199,32 +199,32 @@ export function SchedulesPage() {
   }
 
   return (
-    <section className="grid gap-4">
-      <div className="rounded-lg border border-stone-200 bg-white p-4 grid gap-4">
-        <div className="flex items-start justify-between gap-2">
+    <section className="grid gap-3 md:gap-4">
+      <div className="app-panel grid gap-3 p-3 md:gap-4 md:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-stone-950">Schedules</h2>
             <p className="text-sm text-stone-500">Automated generation schedules with preset configurations.</p>
           </div>
           <button type="button" onClick={openNew}
-            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 shrink-0">
+            className="app-button-primary w-full px-3 py-1.5 text-sm sm:w-auto">
             <Plus size={14} /> New schedule
           </button>
         </div>
 
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
 
         {/* Form */}
         {showForm && (
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 grid gap-4">
-            <div className="flex items-start justify-between gap-3">
+          <div className="app-panel grid gap-3 p-3 md:gap-4 md:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="text-sm font-semibold text-stone-900">
                   {isNew ? 'New schedule' : `Editing: ${editing?.name}`}
                 </div>
-                <div className="text-xs text-stone-500">Required fields are marked with an asterisk.</div>
+                <div className="text-sm text-stone-500">Required fields are marked with an asterisk.</div>
               </div>
-              <div className="text-xs text-stone-500">
+              <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-500">
                 {describeAutomationSchedule({ mode: form.scheduleMode, days: form.scheduleDays, time: form.scheduleTime })}
               </div>
             </div>
@@ -240,7 +240,7 @@ export function SchedulesPage() {
               title="Basics"
               description="Choose the schedule name and target album."
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
                 <Field
                   label="Name"
                   required
@@ -266,8 +266,8 @@ export function SchedulesPage() {
               title="Schedule"
               description="Pick when the job runs and how much control you need."
             >
-              <div className="grid gap-3">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="grid gap-2.5 md:gap-3">
+                <div className="grid gap-1.5 md:gap-2 sm:flex sm:flex-wrap">
                   {automationScheduleModeOptions.map(opt => (
                     <button
                       key={opt.value}
@@ -276,7 +276,7 @@ export function SchedulesPage() {
                         const days = opt.value === 'weekdays' ? [0, 1, 2, 3, 4] : opt.value === 'weekends' ? [5, 6] : [];
                         setForm(f => ({ ...f, scheduleMode: opt.value, scheduleDays: days }));
                       }}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`rounded-full border px-3 py-2 text-xs font-medium transition-colors sm:py-1 ${
                         form.scheduleMode === opt.value
                           ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
                           : 'border-stone-300 bg-white text-stone-700 hover:border-emerald-300'
@@ -287,13 +287,13 @@ export function SchedulesPage() {
                   ))}
                 </div>
                 {form.scheduleMode === 'custom' && (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {weekdayOptions.map(d => (
                       <button
                         key={d.value}
                         type="button"
                         onClick={() => toggleDay(d.value)}
-                        className={`rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
+                        className={`rounded-full border px-2.5 py-2 text-xs font-medium transition-colors sm:py-1 ${
                           form.scheduleDays.includes(d.value)
                             ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
                             : 'border-stone-300 bg-white text-stone-600 hover:border-emerald-300'
@@ -304,7 +304,7 @@ export function SchedulesPage() {
                     ))}
                   </div>
                 )}
-                <div className="grid gap-3 sm:grid-cols-[140px_1fr] sm:items-end">
+                <div className="grid gap-2.5 md:gap-3 sm:grid-cols-[140px_1fr] sm:items-end">
                   <label className="grid gap-1 text-sm font-medium text-stone-800">
                     <span className="flex items-center gap-1">
                       <span>Time</span>
@@ -314,10 +314,10 @@ export function SchedulesPage() {
                       type="time"
                       value={form.scheduleTime}
                       onChange={e => setForm(f => ({ ...f, scheduleTime: e.target.value }))}
-                      className="h-9 w-full min-w-0 rounded-md border border-stone-300 bg-white px-3 text-sm outline-none focus:border-emerald-700"
+                      className="app-control h-9 w-full min-w-0"
                     />
                   </label>
-                  <div className="rounded-md bg-stone-100 px-3 py-2 text-xs leading-5 text-stone-600">
+                  <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">
                     {describeAutomationSchedule({ mode: form.scheduleMode, days: form.scheduleDays, time: form.scheduleTime })}
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export function SchedulesPage() {
               title="Presets"
               description="Link the filter, effect, and notification presets used by the run."
             >
-              <div className="grid gap-3 lg:grid-cols-3">
+              <div className="grid gap-2.5 md:gap-3 lg:grid-cols-3">
                 <SelectField label="Filter preset" value={String(form.filter_preset_id)} required className="text-xs" onChange={e => setForm(f => ({ ...f, filter_preset_id: e.target.value ? Number(e.target.value) : '' }))}>
                   <option value="">Select a filter preset</option>
                   {filterPresets.data?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -341,10 +341,10 @@ export function SchedulesPage() {
                   <div className="text-sm font-medium text-stone-800">
                     Notification presets <span className="text-rose-500">*</span>
                   </div>
-                  <div className="rounded-md border border-stone-300 bg-white p-2">
+                  <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
                     <div className="flex flex-wrap gap-1.5">
                       {notifPresets.data?.filter(p => form.notification_preset_ids.includes(p.id)).map(p => (
-                        <span key={p.id} className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800">
+                        <span key={p.id} className="app-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-stone-800">
                           {p.name}
                           <button
                             type="button"
@@ -368,7 +368,7 @@ export function SchedulesPage() {
                             setForm(f => ({ ...f, notification_preset_ids: [...f.notification_preset_ids, id] }));
                           }
                         }}
-                        className="h-9 rounded-md border border-stone-300 bg-white px-2 text-xs outline-none focus:border-emerald-700"
+                        className="app-control h-9 px-2 text-xs"
                       >
                         <option value="">Add notification preset</option>
                         {notifPresets.data
@@ -445,7 +445,7 @@ export function SchedulesPage() {
                   providerHelp="Set this only when you want a separate image-generation provider."
                   modelPlaceholder="e.g. your-local-model"
                 />
-                <label className={`flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-800 ${form.ai_vision_provider === 'none' || form.ai_image_provider === 'none' ? 'opacity-60' : ''}`}>
+                <label className={`flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-800 shadow-sm ${form.ai_vision_provider === 'none' || form.ai_image_provider === 'none' ? 'opacity-60' : ''}`}>
                   <input
                     type="checkbox"
                     checked={form.ai_prompt_enrichment}
@@ -465,19 +465,19 @@ export function SchedulesPage() {
               </div>
             </SectionCard>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => saveMutation.mutate()}
                 disabled={!canSave || saveMutation.isPending}
-                className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 w-full sm:w-auto"
+                className="app-button-primary flex-1 justify-center px-3 py-2 text-sm font-semibold disabled:opacity-50 sm:flex-none sm:w-auto"
               >
                 <Check size={14} /> Save
               </button>
               <button
                 type="button"
                 onClick={closeForm}
-                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 w-full sm:w-auto"
+                className="app-button-secondary flex-1 justify-center px-3 py-2 text-sm font-semibold sm:flex-none sm:w-auto"
               >
                 <X size={14} /> Cancel
               </button>
@@ -486,66 +486,66 @@ export function SchedulesPage() {
         )}
 
         {/* List */}
-        <div className="grid gap-3">
+        <div className="grid gap-2.5 md:gap-3">
           {schedules.data?.map(s => (
-            <div key={s.id} className={`rounded-xl border p-4 grid gap-3 ${scheduleEnabledClass(s.enabled)}`}>
+            <div key={s.id} className={`rounded-xl md:rounded-2xl border p-3 md:p-4 grid gap-2.5 md:gap-3 shadow-sm ${scheduleEnabledClass(s.enabled)}`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-stone-900">{s.name}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${s.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500'}`}>
+                    <span className={`app-chip px-2 py-0.5 text-[11px] font-medium ${s.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'text-stone-500'}`}>
                       {s.enabled ? 'enabled' : 'disabled'}
                     </span>
                     {statusBadge(s.last_tick_status)}
                   </div>
-                  <div className="mt-1 text-xs text-stone-500">
+                  <div className="mt-1 text-sm text-stone-500">
                     {describeAutomationSchedule(parseAutomationSchedule(s.schedule_expr))}
                     {' · '}Album: <span className="font-medium">{s.album_name}</span>
                   </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                    <div className="rounded-md bg-white/80 px-2.5 py-2 text-xs text-stone-600">
+                  <div className="mt-2 grid gap-1.5 md:gap-2 sm:grid-cols-3">
+                    <div className="rounded-xl border border-stone-200 bg-white/80 px-2.5 py-2 text-xs text-stone-600">
                       <div className="font-semibold text-stone-900">Next run</div>
                       <div className="mt-0.5">{s.next_run_at ? formatDateTime(s.next_run_at) : 'Not scheduled'}</div>
                     </div>
-                    <div className="rounded-md bg-white/80 px-2.5 py-2 text-xs text-stone-600">
+                    <div className="rounded-xl border border-stone-200 bg-white/80 px-2.5 py-2 text-xs text-stone-600">
                       <div className="font-semibold text-stone-900">Last run</div>
                       <div className="mt-0.5">{s.last_run_at ? formatDateTime(s.last_run_at) : 'No runs yet'}</div>
                     </div>
-                    <div className="rounded-md bg-white/80 px-2.5 py-2 text-xs text-stone-600">
+                    <div className="rounded-xl border border-stone-200 bg-white/80 px-2.5 py-2 text-xs text-stone-600">
                       <div className="font-semibold text-stone-900">Last result</div>
                       <div className="mt-0.5">{tickSummary(s.last_tick_status, s.last_tick_reason)}</div>
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-stone-500">
-                    {s.filter_preset_name && <span className="rounded-full bg-white/80 px-2 py-0.5">Filter: {s.filter_preset_name}</span>}
-                    {s.effect_preset_name && <span className="rounded-full bg-white/80 px-2 py-0.5">Effect: {s.effect_preset_name}</span>}
-                    {s.notification_preset_names && s.notification_preset_names.length > 0 && <span className="rounded-full bg-white/80 px-2 py-0.5">Notifications: {s.notification_preset_names.join(', ')}</span>}
-                    {s.ai_vision_provider !== 'none' && <span className="rounded-full bg-white/80 px-2 py-0.5">Vision: {s.ai_vision_provider} ({s.ai_vision_model})</span>}
-                    {s.ai_image_provider !== 'none' && <span className="rounded-full bg-white/80 px-2 py-0.5">Image: {s.ai_image_provider} ({s.ai_image_model})</span>}
-                    {s.ai_prompt_enrichment && <span className="rounded-full bg-white/80 px-2 py-0.5">Prompt enrichment on</span>}
+                  <div className="mt-2 flex flex-wrap gap-1 md:gap-1.5 text-[10px] md:text-[11px] text-stone-500">
+                    {s.filter_preset_name && <span className="app-chip px-2 py-0.5">Filter: {s.filter_preset_name}</span>}
+                    {s.effect_preset_name && <span className="app-chip px-2 py-0.5">Effect: {s.effect_preset_name}</span>}
+                    {s.notification_preset_names && s.notification_preset_names.length > 0 && <span className="app-chip px-2 py-0.5">Notifications: {s.notification_preset_names.join(', ')}</span>}
+                    {s.ai_vision_provider !== 'none' && <span className="app-chip px-2 py-0.5">Vision: {s.ai_vision_provider} ({s.ai_vision_model})</span>}
+                    {s.ai_image_provider !== 'none' && <span className="app-chip px-2 py-0.5">Image: {s.ai_image_provider} ({s.ai_image_model})</span>}
+                    {s.ai_prompt_enrichment && <span className="app-chip px-2 py-0.5">Prompt enrichment on</span>}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 sm:shrink-0 justify-start sm:justify-end">
+                <div className="flex flex-wrap gap-1.5 sm:shrink-0 sm:justify-end">
                   <button type="button" onClick={() => toggleMutation.mutate(s)}
                     disabled={toggleMutation.isPending}
                     title={s.enabled ? 'Disable' : 'Enable'}
-                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 ${s.enabled ? 'text-emerald-700 hover:bg-emerald-50 bg-emerald-50/70' : 'text-stone-500 hover:bg-stone-100 bg-white/70'}`}>
+                    className={`app-button-secondary items-center gap-1 px-2.5 py-1.5 text-xs font-medium disabled:opacity-50 ${s.enabled ? 'text-emerald-700' : 'text-stone-500'}`}>
                     {s.enabled ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                     {s.enabled ? 'On' : 'Off'}
                   </button>
                   <button type="button" onClick={() => runMutation.mutate(s.id)}
                     disabled={runningId === s.id}
                     title="Run now"
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 bg-white/70 disabled:opacity-50">
+                    className="app-button-secondary items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 disabled:opacity-50">
                     {runningId === s.id ? <RefreshCw size={12} className="animate-spin" /> : <Play size={12} />}
                     Run now
                   </button>
                   <button type="button" onClick={() => openEdit(s)}
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 bg-white/70">
+                    className="app-button-secondary items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-stone-500">
                     <Pencil size={12} /> Edit
                   </button>
                   <button type="button" onClick={() => { if (confirm(`Delete "${s.name}"?`)) deleteMutation.mutate(s.id); }}
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 bg-white/70">
+                    className="app-button-secondary items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-rose-700">
                     <Trash2 size={12} /> Delete
                   </button>
                 </div>
@@ -561,7 +561,7 @@ export function SchedulesPage() {
                 <button
                   type="button"
                   onClick={openNew}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+                  className="app-button-primary px-3 py-1.5 text-sm"
                 >
                   <Plus size={14} /> New schedule
                 </button>

@@ -190,7 +190,7 @@ export function HistoryPage() {
       )}
 
       {/* Search, Filters and Refresh Bar */}
-      <div className="flex flex-wrap gap-1.5 items-center rounded-xl border border-stone-200 bg-white p-1.5 shadow-xs">
+      <div className="app-panel flex flex-wrap items-center gap-1.5 p-1.5 md:p-2">
         <div className="relative flex-1 min-w-[200px]">
           <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-stone-400">
             <Search size={13} />
@@ -200,14 +200,14 @@ export function HistoryPage() {
             value={historySearch}
             onChange={(event) => setHistorySearch(event.target.value)}
             placeholder="Search history..."
-            className="h-8 w-full min-w-0 rounded-lg border border-stone-200 bg-stone-50 pl-8 pr-2.5 text-xs outline-hidden focus:border-emerald-700 focus:bg-white transition"
+            className="app-control app-control-muted h-8 pl-8 pr-2.5 text-xs"
           />
         </div>
         <div className="w-[150px] shrink-0">
           <select
             value={historyStatus}
             onChange={(event) => setHistoryStatus(event.target.value as HistoryStatusFilter)}
-            className="h-8 w-full min-w-0 rounded-lg border border-stone-200 bg-stone-50 px-2 text-xs outline-hidden focus:border-emerald-700 focus:bg-white transition cursor-pointer"
+            className="app-control app-control-muted h-8 cursor-pointer px-2 text-xs"
           >
             <option value="all">All statuses</option>
             <option value="generated">Pending review</option>
@@ -220,12 +220,12 @@ export function HistoryPage() {
           type="button"
           onClick={handleRefreshAll}
           title="Refresh history data"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition active:scale-95 cursor-pointer shrink-0"
+          className="app-button-secondary h-8 w-8 shrink-0 px-0"
         >
           <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
         </button>
         <div
-          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-semibold shrink-0 ${
+          className={`app-chip h-8 shrink-0 px-2.5 text-[10px] ${
             streamStatus === 'connected'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
               : streamStatus === 'reconnecting'
@@ -248,22 +248,22 @@ export function HistoryPage() {
       </div>
 
       {isLoading && filteredHistoryItems.length === 0 ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-12">
+        <div className="app-panel p-12">
           <InlineSpinner />
         </div>
       ) : isError ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <div className="app-panel p-6">
           <ErrorBanner title="Failed to load history" error={error} onRetry={() => refetchHistory()} />
         </div>
       ) : filteredHistoryItems.length > 0 ? (
         <div className="grid gap-4 lg:h-[42rem] lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
           {/* Left Panel: Cards List */}
           <div
-            className={`flex flex-col min-h-0 rounded-2xl border border-stone-200 bg-stone-50/60 p-2 ${
+            className={`flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 ${
               mobileShowDetail ? 'hidden lg:flex lg:h-full' : 'flex h-[38rem] lg:h-full'
             }`}
           >
-            <div ref={historyListRef} className="flex-1 overflow-y-auto space-y-1.5 pr-1.5 custom-scrollbar">
+            <div ref={historyListRef} className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar">
               {filteredHistoryItems.map((item) => {
                 const status = (item.status || '').toUpperCase();
                 const isRunning = status === 'RUNNING';
@@ -280,14 +280,14 @@ export function HistoryPage() {
                       setSelectedHistoryTaskId(item.task_id);
                       setMobileShowDetail(true);
                     }}
-                    className={`group w-full flex gap-3 rounded-xl border p-2 text-left transition-all duration-200 ${
+                    className={`group w-full flex gap-2.5 md:gap-3 rounded-xl border p-1.5 md:p-2 text-left transition-all duration-200 ${
                       selectedHistoryTaskId === item.task_id
                         ? 'border-emerald-500 bg-emerald-50/30 shadow-xs'
                         : 'border-stone-200 bg-white hover:border-emerald-500/30 hover:bg-stone-50/30'
                     }`}
                   >
                     {item.image_url ? (
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100">
+                      <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100">
                         <SecureImage
                           src={`${item.image_url}?thumbnail=true`}
                           alt={item.title}
@@ -295,7 +295,7 @@ export function HistoryPage() {
                         />
                       </div>
                     ) : (
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center">
+                      <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center">
                         <Layers size={16} className="text-stone-400" />
                       </div>
                     )}

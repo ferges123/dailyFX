@@ -65,7 +65,7 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
 
   if (loading || !blobUrl) {
     return (
-      <div className={`${props.className} animate-pulse bg-stone-100`} />
+      <div className={`${props.className} animate-pulse rounded-[inherit] bg-stone-100/90`} />
     );
   }
 

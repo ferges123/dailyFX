@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from '../pages/Settings';
@@ -73,5 +73,36 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Could not load settings')).toBeInTheDocument();
     expect(screen.getByText('Settings service temporarily unavailable')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('blocks save when settings validation fails', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.updateSettings).mockResolvedValue(mockSettings);
+
+    renderSettings();
+
+    fireEvent.change(await screen.findByLabelText('Immich URL'), {
+      target: { value: 'ftp://bad-url.example' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Fix the highlighted settings')).toBeInTheDocument();
+    expect(screen.getAllByText('Immich URL must be an absolute http:// or https:// URL.')).toHaveLength(2);
+    expect(vi.mocked(client.updateSettings)).not.toHaveBeenCalled();
+  });
+
+  it('blocks save when AI limits are out of range', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.updateSettings).mockResolvedValue(mockSettings);
+
+    renderSettings();
+
+    fireEvent.change(await screen.findByLabelText('Vision calls per hour'), {
+      target: { value: '0' },
+    });
+    await screen.findByDisplayValue('0');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(vi.mocked(client.updateSettings)).not.toHaveBeenCalled();
   });
 });

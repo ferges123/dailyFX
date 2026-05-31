@@ -4,9 +4,9 @@ export { EmptyState } from './FormUI';
 
 export function InlineSpinner({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex items-center justify-center gap-2 text-stone-500 py-4 ${className}`}>
+    <div className={`flex items-center justify-center gap-2 py-4 text-stone-500 ${className}`} role="status" aria-live="polite">
       <Loader2 size={16} className="animate-spin text-emerald-700" />
-      <span className="text-sm font-medium">Loading...</span>
+      <span className="text-sm font-medium">Loading…</span>
     </div>
   );
 }
@@ -24,7 +24,7 @@ export function RetryButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 border border-stone-300 py-1 px-3 text-xs font-semibold shadow-sm transition-colors ${className}`}
+      className={`app-button-secondary px-3 py-1.5 text-xs ${className}`}
     >
       <RotateCw size={12} />
       {label}
@@ -47,7 +47,7 @@ export function ErrorBanner({
   const message = typeof error === 'string' ? error : error.message;
 
   return (
-    <div className={`flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50/70 p-4 text-red-900 shadow-sm md:flex-row md:items-center md:justify-between ${className}`}>
+    <div className={`flex flex-col gap-3 rounded-2xl border border-rose-200/70 bg-rose-50/80 p-4 text-rose-950 shadow-[0_10px_24px_rgba(180,35,24,0.08)] backdrop-blur md:flex-row md:items-center md:justify-between ${className}`}>
       <div className="flex items-start gap-3">
         <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-600" />
         <div className="text-sm">
@@ -60,7 +60,7 @@ export function ErrorBanner({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-1.5 rounded border border-red-300 bg-white hover:bg-red-50 text-red-700 hover:text-red-900 py-1 px-3 text-xs font-semibold shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 hover:text-rose-900"
           >
             <RotateCw size={12} />
             Try again

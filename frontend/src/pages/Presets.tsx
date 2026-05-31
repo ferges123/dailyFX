@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, BellOff, Monitor, Plus, Trash2, Pencil, Check, X, Smartphone, Eye } from 'lucide-react';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
@@ -11,7 +11,7 @@ import {
   getVapidPublicKey, subscribeWebPush, unsubscribeWebPush, getPushSubscriptions, deletePushSubscription,
   formatNotificationProviders,
   splitNotificationProviders,
-  type FilterPreset, type EffectPreset, type NotificationPreset, type ImmichPersonFilter, type ImmichFilterOptions,
+  type FilterPreset, type EffectPreset, type NotificationPreset, type ImmichPersonFilter, type ImmichFilterOptions, type GenerationModuleInfo,
 } from '../api/client';
 import { Field, SelectField } from '../components/Field';
 import { MultiSelectPanel, PersonSelectPanel } from '../components/FilterPanels';
@@ -32,6 +32,398 @@ type FilterFormState = {
   end_date: string | null;
   media_type: string;
 };
+
+function PresetHeader({
+  count,
+  onCreate,
+  buttonLabel = 'New preset',
+}: {
+  count: number;
+  onCreate: () => void;
+  buttonLabel?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-sm text-stone-500">{count} preset(s)</span>
+      <button type="button" onClick={onCreate} className="app-button-primary px-3 py-1.5 text-sm">
+        <Plus size={14} /> {buttonLabel}
+      </button>
+    </div>
+  );
+}
+
+function PresetFormActions({
+  onSave,
+  onCancel,
+  canSave,
+  pending,
+  saveLabel = 'Save',
+}: {
+  onSave: () => void;
+  onCancel: () => void;
+  canSave: boolean;
+  pending: boolean;
+  saveLabel?: string;
+}) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={!canSave || pending}
+        className="app-button-primary flex-1 justify-center px-3 py-2 text-sm disabled:opacity-50 sm:flex-none sm:w-auto"
+      >
+        <Check size={14} /> {saveLabel}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="app-button-secondary flex-1 justify-center px-3 py-2 text-sm sm:flex-none sm:w-auto"
+      >
+        <X size={14} /> Cancel
+      </button>
+    </div>
+  );
+}
+
+function PresetActionRow({ children }: { children: ReactNode }) {
+  return <div className="flex flex-row flex-wrap gap-1.5 shrink-0 items-center">{children}</div>;
+}
+
+function FilterPresetCard({
+  preset,
+  albumNames,
+  personNames,
+  onEdit,
+  onDelete,
+}: {
+  preset: FilterPreset;
+  albumNames: Map<string, string>;
+  personNames: Map<string, string>;
+  onEdit: (preset: FilterPreset) => void;
+  onDelete: (id: number, name: string) => void;
+}) {
+  const albumsList = preset.album_ids
+    .map(id => ({ id, name: albumNames.get(id) ?? id }))
+    .slice(0, 5);
+  const peopleList = preset.person_filters
+    .map(pf => ({ id: pf.personId, name: personNames.get(pf.personId) ?? pf.personId }))
+    .slice(0, 5);
+  const tags: string[] = [];
+  if (preset.media_type && preset.media_type !== 'photo') tags.push(preset.media_type);
+  if (preset.start_date) tags.push(`from ${preset.start_date}`);
+  if (preset.end_date) tags.push(`to ${preset.end_date}`);
+
+  return (
+    <div className="grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 px-2.5 py-2.5 md:px-3 md:py-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+      <div className="min-w-0 grid gap-1.5 md:gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-stone-900 truncate">{preset.name}</span>
+          <span className="app-chip px-2 py-0.5 text-[10px]">
+            {albumsList.length} album{albumsList.length === 1 ? '' : 's'}
+          </span>
+          <span className="app-chip px-2 py-0.5 text-[10px]">
+            {peopleList.length} people
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {albumsList.map(item => (
+            <span key={item.id} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+              📁 {item.name}
+            </span>
+          ))}
+          {peopleList.map(item => (
+            <span key={item.id} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+              👤 {item.name}
+            </span>
+          ))}
+          {tags.map(t => (
+            <span key={t} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+      <PresetActionRow>
+        <button
+          type="button"
+          onClick={() => onEdit(preset)}
+          className="app-button-secondary px-2.5 py-1.5 text-xs"
+        >
+          <Pencil size={12} /> Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(preset.id, preset.name)}
+          className="app-button-secondary px-2.5 py-1.5 text-xs text-rose-700"
+        >
+          <Trash2 size={12} /> Delete
+        </button>
+      </PresetActionRow>
+    </div>
+  );
+}
+
+function NotificationPresetCard({
+  preset,
+  testResult,
+  testingId,
+  onTest,
+  onEdit,
+  onDelete,
+}: {
+  preset: NotificationPreset;
+  testResult: { id: number; msg: string; ok: boolean } | null;
+  testingId: number | null;
+  onTest: (id: number) => void;
+  onEdit: (preset: NotificationPreset) => void;
+  onDelete: (id: number, name: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 px-2.5 py-2.5 md:px-3 md:py-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 grid gap-1">
+        <div className="text-sm font-semibold text-stone-900">{preset.name}</div>
+        <div className="flex flex-wrap gap-1.5">
+          <span className="app-chip px-2 py-0.5 text-[11px]">
+            {formatNotificationProviders(preset.provider)}
+          </span>
+          {preset.has_token && (
+            <span className="app-chip border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
+              token set
+            </span>
+          )}
+        </div>
+      </div>
+      <PresetActionRow>
+        <button
+          type="button"
+          onClick={() => onTest(preset.id)}
+          disabled={testingId === preset.id}
+          className="app-button-secondary px-2.5 py-1.5 text-xs text-blue-700 disabled:opacity-50"
+        >
+          <Bell size={12} /> Test
+        </button>
+        {testResult?.id === preset.id && (
+          <span className={`text-xs ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{testResult.msg}</span>
+        )}
+        <button
+          type="button"
+          onClick={() => onEdit(preset)}
+          className="app-button-secondary px-2.5 py-1.5 text-xs"
+        >
+          <Pencil size={12} /> Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(preset.id, preset.name)}
+          className="app-button-secondary px-2.5 py-1.5 text-xs text-rose-700"
+        >
+          <Trash2 size={12} /> Delete
+        </button>
+      </PresetActionRow>
+    </div>
+  );
+}
+
+type EffectModuleLike = GenerationModuleInfo;
+
+type EffectGroupLike = {
+  enabled: boolean;
+  weight: number;
+  config: Record<string, unknown>;
+};
+
+type EffectExampleLike = {
+  image_url: string;
+  title: string;
+  summary: string;
+};
+
+function EffectPresetTableItem({
+  mod,
+  group,
+  exampleInfo,
+  isExpanded,
+  onTogglePreview,
+  onEnabledChange,
+  onWeightChange,
+  onConfigChange,
+}: {
+  mod: EffectModuleLike;
+  group: EffectGroupLike;
+  exampleInfo?: EffectExampleLike | null;
+  isExpanded: boolean;
+  onTogglePreview: () => void;
+  onEnabledChange: (enabled: boolean) => void;
+  onWeightChange: (weight: number) => void;
+  onConfigChange: (key: string, value: unknown) => void;
+}) {
+  return (
+    <Fragment>
+      <FilterRow
+        title={
+          <div className="grid gap-0.5">
+            <div className="flex items-center gap-1.5 font-semibold text-stone-800 text-sm leading-snug">
+              <span>{mod.label}</span>
+              {!!exampleInfo && (
+                <button
+                  type="button"
+                  onClick={onTogglePreview}
+                  title="Toggle preview image"
+                  className={`inline-flex items-center justify-center rounded-md p-1 transition-colors ${
+                    isExpanded ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'text-stone-400 hover:text-stone-600'
+                  }`}
+                >
+                  <Eye size={13} />
+                </button>
+              )}
+            </div>
+            <div className="text-stone-500 text-[11px] font-normal leading-normal">{mod.description}</div>
+          </div>
+        }
+        icon={null}
+        enabled={group.enabled}
+        weight={group.weight}
+        onEnabledChange={onEnabledChange}
+        onWeightChange={onWeightChange}
+        config={(mod.config_schema?.length ?? 0) > 0 ? (
+          <ModuleConfigEditor
+            module={mod}
+            config={group.config}
+            onChange={onConfigChange}
+          />
+        ) : null}
+      />
+      {isExpanded && exampleInfo && (
+        <tr className="bg-stone-50/30">
+          <td colSpan={4} className="border-t border-stone-200 px-3 py-3">
+            <div className="flex max-w-2xl flex-col items-start gap-4 rounded-2xl border border-stone-200 bg-white p-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] sm:flex-row">
+              <div className="shrink-0 max-w-full">
+                <img
+                  src={exampleInfo.image_url}
+                  alt={mod.label}
+                  className="w-full rounded-lg border border-stone-200 shadow-sm sm:w-64"
+                  loading="lazy"
+                />
+              </div>
+              <div className="grid gap-1 min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Example Result</div>
+                <div className="text-sm font-semibold text-stone-800 truncate">{exampleInfo.title}</div>
+                <div className="text-xs text-stone-600 leading-relaxed">{exampleInfo.summary}</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+}
+
+function EffectPresetMobileCard({
+  mod,
+  group,
+  exampleInfo,
+  isExpanded,
+  onTogglePreview,
+  onEnabledChange,
+  onWeightChange,
+  onConfigChange,
+}: {
+  mod: EffectModuleLike;
+  group: EffectGroupLike;
+  exampleInfo?: EffectExampleLike | null;
+  isExpanded: boolean;
+  onTogglePreview: () => void;
+  onEnabledChange: (enabled: boolean) => void;
+  onWeightChange: (weight: number) => void;
+  onConfigChange: (key: string, value: unknown) => void;
+}) {
+  return (
+    <div
+      className={`grid gap-2.5 rounded-xl md:rounded-2xl border p-2.5 md:p-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md transition ${
+        group.enabled ? 'border-emerald-200 bg-emerald-50/20' : 'border-stone-200/80 bg-white/90'
+      }`}
+    >
+      <div className="grid gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+              <span>{mod.label}</span>
+              <span className={`app-chip px-1.5 py-0.5 text-[9px] ${group.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : ''}`}>
+                {group.enabled ? 'On' : 'Off'}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] leading-snug text-stone-500">{mod.description}</div>
+          </div>
+          {!!exampleInfo && (
+            <button
+              type="button"
+              onClick={onTogglePreview}
+              className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                isExpanded
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-stone-200 bg-white text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              <Eye size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <label className="flex items-center gap-1.5 md:gap-2 rounded-xl border border-stone-200 bg-white/80 px-2 md:px-2.5 py-1 md:py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+            <input
+              type="checkbox"
+              checked={group.enabled}
+              onChange={(e) => onEnabledChange(e.target.checked)}
+              className="h-4 w-4 rounded border-stone-300 accent-emerald-700"
+            />
+            Enable
+          </label>
+          <label className="flex items-center gap-1.5 md:gap-2 rounded-xl border border-stone-200 bg-white/80 px-2 md:px-2.5 py-1 md:py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+            <span>Weight</span>
+            <input
+              type="number"
+              min={0}
+              value={group.weight}
+              onChange={(e) => onWeightChange(Number(e.target.value) || 0)}
+              className="app-control h-7 w-12 px-2 py-0.5 text-center text-xs"
+            />
+          </label>
+        </div>
+      </div>
+
+      {(mod.config_schema?.length ?? 0) > 0 && (
+        <div className="border-t border-stone-100 pt-1.5 text-xs">
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">Configuration</div>
+          <ModuleConfigEditor
+            module={mod}
+            config={group.config}
+            onChange={onConfigChange}
+          />
+        </div>
+      )}
+
+      {isExpanded && exampleInfo && (
+        <div className="border-t border-stone-100 pt-1.5">
+          <div className="flex flex-col gap-1.5 md:gap-2 rounded-xl border border-stone-200 bg-stone-50 p-2 md:p-2.5">
+            <img
+              src={exampleInfo.image_url}
+              alt={mod.label}
+              className="w-full rounded-xl border border-stone-200 shadow-sm"
+              loading="lazy"
+            />
+            <div className="min-w-0">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-stone-400">Example Result</div>
+              <div className="text-xs font-semibold text-stone-800">{exampleInfo.title}</div>
+              <div className="mt-0.5 text-[11px] leading-snug text-stone-600">{exampleInfo.summary}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FilterPresetsTab() {
   const qc = useQueryClient();
@@ -145,21 +537,15 @@ function FilterPresetsTab() {
         />
       )}
 
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-stone-500">{presets.data?.length ?? 0} preset(s)</span>
-        <button type="button" onClick={openNew}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
-          <Plus size={14} /> New preset
-        </button>
-      </div>
+      <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
       {error && <InlineError title="Could not save filter preset" message={error} />}
 
       {showForm && (
-        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 grid gap-4">
-          <div className="grid gap-1">
+        <div className="app-panel grid gap-3 p-3 md:gap-4 md:p-4">
+          <div className="grid gap-0.5 md:gap-1">
             <div className="text-sm font-semibold text-stone-900">{isNew ? 'New filter preset' : `Editing: ${editing?.name}`}</div>
-            <div className="text-xs text-stone-500">Keep the core criteria visible while you fine-tune albums and people.</div>
+            <div className="text-sm text-stone-500">Keep the core criteria visible while you fine-tune albums and people.</div>
           </div>
           {validationIssues.length > 0 && <InlineError title="Fix the highlighted fields" message={validationIssues.join(' ')} />}
 
@@ -185,8 +571,8 @@ function FilterPresetsTab() {
                   <option value="video">Videos</option>
                   <option value="all">All media</option>
                 </SelectField>
-                <div className="grid gap-1 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-500">
-                  <div className="font-medium text-stone-700">Date range</div>
+                <div className="grid gap-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-500">
+                  <div className="font-semibold uppercase tracking-[0.18em] text-stone-500">Date range</div>
                   <div>
                     {form.start_date && form.end_date
                       ? `${form.start_date} to ${form.end_date}`
@@ -255,105 +641,41 @@ function FilterPresetsTab() {
             />
           </SectionCard>
 
-          <div className="flex flex-col gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs text-stone-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs text-stone-500 sm:flex-row sm:items-center sm:justify-between">
             <span>{selectedAlbumCount} album(s) and {selectedPersonCount} people selected.</span>
             <span>Required fields are marked with an asterisk.</span>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => saveMutation.mutate()}
-              disabled={!canSave || saveMutation.isPending}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 w-full sm:w-auto"
-            >
-              <Check size={14} /> Save
-            </button>
-            <button
-              type="button"
-              onClick={closeForm}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 w-full sm:w-auto"
-            >
-              <X size={14} /> Cancel
-            </button>
-          </div>
+          <PresetFormActions
+            onSave={() => saveMutation.mutate()}
+            onCancel={closeForm}
+            canSave={canSave}
+            pending={saveMutation.isPending}
+          />
         </div>
       )}
 
       <div className="grid gap-2">
-        {presets.data?.map(p => {
-          const albumsList = p.album_ids
-            .map(id => ({
-              id,
-              name: options.isLoading ? '...' : (options.data?.albums.find(a => a.id === id)?.album_name ?? id)
-            }))
-            .slice(0, 5);
-          const peopleList = p.person_filters
-            .map(pf => ({
-              id: pf.personId,
-              name: options.isLoading ? '...' : (options.data?.people.find(pe => pe.id === pf.personId)?.name ?? pf.personId)
-            }))
-            .slice(0, 5);
-          const tags: string[] = [];
-          if (p.media_type && p.media_type !== 'photo') tags.push(p.media_type);
-          if (p.start_date) tags.push(`from ${p.start_date}`);
-          if (p.end_date) tags.push(`to ${p.end_date}`);
-
-          return (
-            <div key={p.id} className="grid gap-2 rounded-lg border border-stone-200 bg-white px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-              <div className="min-w-0 grid gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-stone-900 truncate">{p.name}</span>
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
-                    {albumsList.length} album{albumsList.length === 1 ? '' : 's'}
-                  </span>
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
-                    {peopleList.length} people
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {albumsList.map(item => (
-                    <span key={item.id} className="rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
-                      📁 {item.name}
-                    </span>
-                  ))}
-                  {peopleList.map(item => (
-                    <span key={item.id} className="rounded-full bg-purple-50 border border-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">
-                      👤 {item.name}
-                    </span>
-                  ))}
-                  {tags.map(t => (
-                    <span key={t} className="rounded-full bg-stone-100 border border-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-600">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => openEdit(p)}
-                  className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
-                >
-                  <Pencil size={12} /> Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id); }}
-                  className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 size={12} /> Delete
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        {(() => {
+          const albumNames = new Map((options.data?.albums ?? []).map(a => [a.id, a.album_name]));
+          const personNames = new Map((options.data?.people ?? []).map(p => [p.id, p.name]));
+          return presets.data?.map(p => (
+            <FilterPresetCard
+              key={p.id}
+              preset={p}
+              albumNames={albumNames}
+              personNames={personNames}
+              onEdit={openEdit}
+              onDelete={(id, name) => { if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id); }}
+            />
+          ));
+        })()}
         {presets.data?.length === 0 && (
           <EmptyState
             title="No filter presets yet"
             description="Create a filter preset to control which albums, people, and dates feed generation."
             action={(
-              <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
+              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
                 <Plus size={14} /> New preset
               </button>
             )}
@@ -447,28 +769,22 @@ function EffectPresetsTab() {
         />
       )}
 
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-stone-500">{presets.data?.length ?? 0} preset(s)</span>
-        <button type="button" onClick={openNew}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
-          <Plus size={14} /> New preset
-        </button>
-      </div>
+      <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
       {error && <InlineError title="Could not save effect preset" message={error} />}
 
       {showForm && (
-        <div className="rounded-md border border-stone-200 bg-stone-50 p-4 grid gap-3">
-          <div className="text-sm font-semibold text-stone-700">{isNew ? 'New effect preset' : `Editing: ${editing?.name}`}</div>
+        <div className="app-panel grid gap-2.5 p-3 md:gap-3 md:p-4">
+          <div className="text-sm font-semibold text-stone-900">{isNew ? 'New effect preset' : `Editing: ${editing?.name}`}</div>
           <Field label="Name" value={name} maxLength={255} onChange={e => setName(e.target.value)} />
           
           <div className="grid gap-2">
             {/* Sub-tabs for Local and AI Effects */}
-            <div className="flex gap-2 border-b border-stone-200 mb-2">
+            <div className="mb-1.5 flex gap-1.5 md:gap-2 border-b border-stone-200/70 pb-1.5 md:pb-2">
               <button
                 type="button"
                 onClick={() => setEffectTab('local')}
-                className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-all duration-200 ${
+                className={`flex items-center gap-2 rounded-t-xl px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-all duration-200 ${
                   effectTab === 'local'
                     ? 'border-emerald-600 text-emerald-700'
                     : 'border-transparent text-stone-500 hover:text-stone-800'
@@ -486,7 +802,7 @@ function EffectPresetsTab() {
               <button
                 type="button"
                 onClick={() => setEffectTab('ai')}
-                className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-all duration-200 ${
+                className={`flex items-center gap-2 rounded-t-xl px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-all duration-200 ${
                   effectTab === 'ai'
                     ? 'border-emerald-600 text-emerald-700'
                     : 'border-transparent text-stone-500 hover:text-stone-800'
@@ -504,10 +820,10 @@ function EffectPresetsTab() {
             </div>
 
             {/* Desktop View Table */}
-            <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto border border-stone-200 rounded-md shadow-sm">
+            <div className="hidden max-h-[500px] overflow-x-auto overflow-y-auto rounded-2xl border border-stone-200 bg-white/80 shadow-[0_8px_24px_rgba(36,29,16,0.04)] md:block">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-stone-200 bg-stone-100/70 text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+                  <tr className="border-b border-stone-200/80 bg-stone-100/70 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
                     <th className="py-2 px-3 font-semibold">Effect</th>
                     <th className="py-2 px-3 font-semibold w-16 text-center">Enable</th>
                     <th className="py-2 px-3 font-semibold w-20 text-center">Weight</th>
@@ -518,67 +834,19 @@ function EffectPresetsTab() {
                   {currentModules.map(mod => {
                     const group = groups[mod.name] ?? { enabled: false, weight: mod.default_weight, config: mod.default_config ?? {} };
                     const exampleInfo = examples.data?.find(ex => ex.module_name === mod.name);
-                    const hasExample = !!exampleInfo;
                     const isExpanded = !!expandedPreviews[mod.name];
-
                     return (
-                      <Fragment key={mod.name}>
-                        <FilterRow
-                          title={
-                            <div className="grid gap-0.5">
-                              <div className="flex items-center gap-1.5 font-semibold text-stone-800 text-sm leading-snug">
-                                <span>{mod.label}</span>
-                                {hasExample && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setExpandedPreviews(prev => ({ ...prev, [mod.name]: !prev[mod.name] }))}
-                                    title="Toggle preview image"
-                                    className={`inline-flex items-center justify-center p-1 rounded hover:bg-stone-100 transition-colors ${
-                                      isExpanded ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'text-stone-400 hover:text-stone-600'
-                                    }`}
-                                  >
-                                    <Eye size={13} />
-                                  </button>
-                                )}
-                              </div>
-                              <div className="text-stone-400 text-[11px] font-normal leading-normal">{mod.description}</div>
-                            </div>
-                          }
-                          icon={null}
-                          enabled={group.enabled}
-                          weight={group.weight}
-                          onEnabledChange={(enabled: boolean) => setGroups(g => ({ ...g, [mod.name]: { ...group, enabled } }))}
-                          onWeightChange={(weight: number) => setGroups(g => ({ ...g, [mod.name]: { ...group, weight } }))}
-                          config={mod.config_schema?.length > 0 ? (
-                            <ModuleConfigEditor
-                              module={mod}
-                              config={group.config as Record<string, unknown>}
-                              onChange={(key, value) => setGroups(g => ({ ...g, [mod.name]: { ...group, config: { ...group.config, [key]: value } } }))}
-                            />
-                          ) : null}
-                        />
-                        {isExpanded && exampleInfo && (
-                          <tr className="bg-stone-50/30">
-                            <td colSpan={4} className="py-3 px-3 border-t border-stone-200">
-                              <div className="flex flex-col sm:flex-row gap-4 items-start bg-white p-3 rounded-md border border-stone-200 shadow-sm max-w-2xl">
-                                <div className="shrink-0 max-w-full">
-                                  <img
-                                    src={exampleInfo.image_url}
-                                    alt={mod.label}
-                                    className="w-full sm:w-64 rounded border border-stone-200 shadow-sm"
-                                    loading="lazy"
-                                  />
-                                </div>
-                                <div className="grid gap-1 min-w-0">
-                                  <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">Example Result</div>
-                                  <div className="text-sm font-semibold text-stone-800 truncate">{exampleInfo.title}</div>
-                                  <div className="text-xs text-stone-600 leading-relaxed">{exampleInfo.summary}</div>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
+                      <EffectPresetTableItem
+                        key={mod.name}
+                        mod={mod}
+                        group={group}
+                        exampleInfo={exampleInfo}
+                        isExpanded={isExpanded}
+                        onTogglePreview={() => setExpandedPreviews(prev => ({ ...prev, [mod.name]: !prev[mod.name] }))}
+                        onEnabledChange={(enabled: boolean) => setGroups(g => ({ ...g, [mod.name]: { ...group, enabled } }))}
+                        onWeightChange={(weight: number) => setGroups(g => ({ ...g, [mod.name]: { ...group, weight } }))}
+                        onConfigChange={(key, value) => setGroups(g => ({ ...g, [mod.name]: { ...group, config: { ...group.config, [key]: value } } }))}
+                      />
                     );
                   })}
                 </tbody>
@@ -590,107 +858,31 @@ function EffectPresetsTab() {
               {currentModules.map(mod => {
                 const group = groups[mod.name] ?? { enabled: false, weight: mod.default_weight, config: mod.default_config ?? {} };
                 const exampleInfo = examples.data?.find(ex => ex.module_name === mod.name);
-                const hasExample = !!exampleInfo;
                 const isExpanded = !!expandedPreviews[mod.name];
 
                 return (
-                  <div
+                  <EffectPresetMobileCard
                     key={mod.name}
-                    className={`rounded-lg border p-3 grid gap-3.5 transition ${
-                      group.enabled ? 'border-emerald-250 bg-emerald-50/10' : 'border-stone-200 bg-white'
-                    }`}
-                  >
-                    {/* Top Row: Title, Enable Checkbox, Weight Input */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 font-bold text-stone-900 text-sm">
-                          <span>{mod.label}</span>
-                          {hasExample && (
-                            <button
-                              type="button"
-                              onClick={() => setExpandedPreviews(prev => ({ ...prev, [mod.name]: !prev[mod.name] }))}
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded hover:bg-stone-100 transition-colors ${
-                                isExpanded ? 'text-emerald-700 bg-emerald-50' : 'text-stone-400'
-                              }`}
-                            >
-                              <Eye size={14} />
-                            </button>
-                          )}
-                        </div>
-                        <div className="text-stone-500 text-[11px] leading-snug mt-0.5">{mod.description}</div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {/* Enable checkbox */}
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={group.enabled}
-                            onChange={(e) => setGroups(g => ({ ...g, [mod.name]: { ...group, enabled: e.target.checked } }))}
-                            className="h-4 w-4 accent-emerald-700 rounded border-stone-300"
-                          />
-                          <span className="text-[11px] font-semibold text-stone-500 uppercase">On</span>
-                        </label>
-                        {/* Weight Field */}
-                        <label className="flex items-center gap-1 text-[11px] font-medium text-stone-500">
-                          <span>Weight:</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={group.weight}
-                            onChange={(e) => setGroups(g => ({ ...g, [mod.name]: { ...group, weight: Number(e.target.value) || 0 } }))}
-                            className="w-10 rounded border border-stone-300 bg-white py-0.5 text-center text-xs outline-none focus:border-emerald-700"
-                          />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Middle: Configuration Schema Fields */}
-                    {mod.config_schema?.length > 0 && (
-                      <div className="border-t border-stone-100 pt-2 text-xs">
-                        <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Configuration</div>
-                        <ModuleConfigEditor
-                          module={mod}
-                          config={group.config as Record<string, unknown>}
-                          onChange={(key, value) => setGroups(g => ({ ...g, [mod.name]: { ...group, config: { ...group.config, [key]: value } } }))}
-                        />
-                      </div>
-                    )}
-
-                    {/* Bottom: Example Preview */}
-                    {isExpanded && exampleInfo && (
-                      <div className="border-t border-stone-100 pt-2">
-                        <div className="flex flex-col gap-2 bg-stone-50 p-2 rounded border border-stone-200">
-                          <img
-                            src={exampleInfo.image_url}
-                            alt={mod.label}
-                            className="w-full rounded border border-stone-200 shadow-sm"
-                            loading="lazy"
-                          />
-                          <div className="min-w-0">
-                            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wide">Example Result</div>
-                            <div className="text-xs font-semibold text-stone-800">{exampleInfo.title}</div>
-                            <div className="text-[11px] text-stone-600 leading-snug mt-0.5">{exampleInfo.summary}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    mod={mod}
+                    group={group}
+                    exampleInfo={exampleInfo}
+                    isExpanded={isExpanded}
+                    onTogglePreview={() => setExpandedPreviews(prev => ({ ...prev, [mod.name]: !prev[mod.name] }))}
+                    onEnabledChange={(enabled: boolean) => setGroups(g => ({ ...g, [mod.name]: { ...group, enabled } }))}
+                    onWeightChange={(weight: number) => setGroups(g => ({ ...g, [mod.name]: { ...group, weight } }))}
+                    onConfigChange={(key, value) => setGroups(g => ({ ...g, [mod.name]: { ...group, config: { ...group.config, [key]: value } } }))}
+                  />
                 );
               })}
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-2">
-            <button type="button" onClick={() => saveMutation.mutate()}
-              disabled={!name.trim() || saveMutation.isPending}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 w-full sm:w-auto">
-              <Check size={14} /> Save
-            </button>
-            <button type="button" onClick={closeForm}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 w-full sm:w-auto">
-              <X size={14} /> Cancel
-            </button>
-          </div>
+          <PresetFormActions
+            onSave={() => saveMutation.mutate()}
+            onCancel={closeForm}
+            canSave={!!name.trim()}
+            pending={saveMutation.isPending}
+          />
         </div>
       )}
 
@@ -702,34 +894,34 @@ function EffectPresetsTab() {
             return mod?.label ?? name.replace(/_/g, ' ');
           });
           return (
-            <div key={p.id} className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2.5 sm:py-2">
+            <div key={p.id} className="flex items-start justify-between gap-3 rounded-2xl border border-stone-200/80 bg-white/85 px-3 py-2.5 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:py-2">
               <div className="min-w-0 flex-1 grid gap-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-stone-850 truncate">{p.name}</span>
-                  <span className="shrink-0 inline-flex items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5">
+                  <span className="truncate text-sm font-semibold text-stone-900">{p.name}</span>
+                  <span className="app-chip shrink-0 px-1.5 py-0.5 text-[10px] text-emerald-800">
                     {enabledEntries.length} active
                   </span>
                 </div>
                 {enabledNames.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {enabledNames.map(label => (
-                      <span key={label} className="rounded-full bg-stone-100 border border-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-600">
+                      <span key={label} className="app-chip px-2 py-0.5 text-[10px]">
                         {label}
                       </span>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="flex gap-1 shrink-0">
+              <PresetActionRow>
                 <button type="button" onClick={() => openEdit(p)}
-                  className="inline-flex items-center gap-1 rounded px-2.5 py-1.5 sm:py-1 text-xs font-semibold text-stone-500 hover:bg-stone-100 bg-stone-50 sm:bg-transparent">
+                  className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 sm:bg-transparent sm:py-1">
                   <Pencil size={12} /> Edit
                 </button>
                 <button type="button" onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id); }}
-                  className="inline-flex items-center gap-1 rounded px-2.5 py-1.5 sm:py-1 text-xs font-semibold text-red-500 hover:bg-red-50 bg-red-50/30 sm:bg-transparent">
+                  className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 bg-rose-50/30 sm:bg-transparent sm:py-1">
                   <Trash2 size={12} /> Delete
                 </button>
-              </div>
+              </PresetActionRow>
             </div>
           );
         })}
@@ -738,7 +930,7 @@ function EffectPresetsTab() {
             title="No effect presets yet"
             description="Create an effect preset to choose which local and AI modules should run."
             action={(
-              <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
+              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
                 <Plus size={14} /> New preset
               </button>
             )}
@@ -798,6 +990,7 @@ function NotificationPresetsTab() {
     onSuccess: (data, id) => setTestResult({ id, msg: data.sent.join(', ') || data.errors.join(', '), ok: data.ok }),
     onError: (e: Error, id) => setTestResult({ id, msg: e.message, ok: false }),
   });
+  const testingId = testMutation.isPending ? (testMutation.variables ?? null) : null;
 
   function openNew() {
     setForm({ name: '', channels: ['web'], url: '', topic: '', token: '', webhook_url: '' });
@@ -885,21 +1078,15 @@ function NotificationPresetsTab() {
 
   return (
     <div className="grid gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-stone-500">{presets.data?.length ?? 0} preset(s)</span>
-        <button type="button" onClick={openNew}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
-          <Plus size={14} /> New preset
-        </button>
-      </div>
+      <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
       {error && <InlineError title="Could not save notification preset" message={error} />}
 
       {showForm && (
-        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 grid gap-4">
+        <div className="app-panel grid gap-4 p-4">
           <div className="grid gap-1">
             <div className="text-sm font-semibold text-stone-900">{isNew ? 'New notification preset' : `Editing: ${editing?.name}`}</div>
-            <div className="text-xs text-stone-500">Channels are stored as a single preset, but each one keeps its own connection details.</div>
+            <div className="text-sm text-stone-500">Channels are stored as a single preset, but each one keeps its own connection details.</div>
           </div>
 
           {validationIssues.length > 0 && <InlineError title="Fix the highlighted fields" message={validationIssues.join(' ')} />}
@@ -908,10 +1095,10 @@ function NotificationPresetsTab() {
             <div className="grid gap-3">
               <Field label="Name" required value={form.name} maxLength={255} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               <div className="grid gap-2">
-                <div className="text-sm font-medium text-stone-800">Channels <span className="text-rose-500">*</span></div>
+                <div className="text-sm font-semibold text-stone-800">Channels <span className="text-rose-500">*</span></div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {CHANNELS.map(ch => (
-                    <label key={ch} className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${form.channels.includes(ch) ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900' : 'border-stone-200 bg-white text-stone-700'}`}>
+                    <label key={ch} className={`flex items-start gap-2 rounded-2xl border px-3 py-2 text-sm transition-colors ${form.channels.includes(ch) ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900' : 'border-stone-200 bg-white text-stone-700'}`}>
                       <input
                         type="checkbox"
                         checked={form.channels.includes(ch)}
@@ -934,27 +1121,27 @@ function NotificationPresetsTab() {
           {hasWeb && (
             <SectionCard title="Web Push" description="Manage browser subscriptions for this preset.">
               <div className="grid gap-3">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <button type="button" onClick={handlePushToggle}
                     disabled={pushStatus === 'pending' || !('PushManager' in window)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50">
+                    className="app-button-secondary h-8 w-full px-3 text-xs disabled:opacity-50 sm:w-auto">
                     {pushStatus === 'subscribed' ? <BellOff size={12} /> : <Bell size={12} />}
                     {pushStatus === 'subscribed' ? 'Unsubscribe this browser' : pushStatus === 'pending' ? 'Wait…' : 'Subscribe this browser'}
                   </button>
                   {pushStatus === 'subscribed' && <span className="text-xs font-medium text-emerald-700">Subscribed</span>}
                 </div>
                 {subscriptions.data && subscriptions.data.subscriptions.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="grid gap-2">
                     {subscriptions.data.subscriptions.map(sub => {
                       const label = sub.device_label || sub.user_agent || 'Unknown browser';
                       const isMobile = /mobile|android|iphone|ipad/i.test(label);
                       return (
-                        <div key={sub.id} className="flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-2 py-1">
+                        <div key={sub.id} className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-2.5 py-2">
                           {isMobile ? <Smartphone size={14} className="shrink-0 text-stone-400" /> : <Monitor size={14} className="shrink-0 text-stone-400" />}
                           <span className="flex-1 truncate text-xs text-stone-700">{label}</span>
                           <button type="button" onClick={() => deleteSubMutation.mutate(sub.id)}
                             disabled={deleteSubMutation.isPending}
-                            className="shrink-0 text-stone-400 hover:text-red-600 disabled:opacity-50">
+                            className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50">
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -1020,62 +1207,33 @@ function NotificationPresetsTab() {
             </div>
           </SectionCard>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button type="button" onClick={() => saveMutation.mutate()}
-              disabled={!canSave || saveMutation.isPending}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 w-full sm:w-auto">
-              <Check size={14} /> Save
-            </button>
-            <button type="button" onClick={closeForm}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 w-full sm:w-auto">
-              <X size={14} /> Cancel
-            </button>
-          </div>
+          <PresetFormActions
+            onSave={() => saveMutation.mutate()}
+            onCancel={closeForm}
+            canSave={canSave}
+            pending={saveMutation.isPending}
+          />
         </div>
       )}
 
       <div className="grid gap-2">
         {presets.data?.map(p => (
-          <div key={p.id} className="flex flex-col gap-3 rounded-md border border-stone-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 grid gap-1">
-              <div className="text-sm font-semibold text-stone-900">{p.name}</div>
-              <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">
-                  {formatNotificationProviders(p.provider)}
-                </span>
-                {p.has_token && (
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                    token set
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5 shrink-0 items-center">
-              <button type="button" onClick={() => testMutation.mutate(p.id)}
-                disabled={testMutation.isPending}
-                className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50">
-                <Bell size={12} /> Test
-              </button>
-              {testResult?.id === p.id && (
-                <span className={`text-xs ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{testResult.msg}</span>
-              )}
-              <button type="button" onClick={() => openEdit(p)}
-                className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50">
-                <Pencil size={12} /> Edit
-              </button>
-              <button type="button" onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id); }}
-                className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
-                <Trash2 size={12} /> Delete
-              </button>
-            </div>
-          </div>
+          <NotificationPresetCard
+            key={p.id}
+            preset={p}
+            testResult={testResult}
+            testingId={testingId}
+            onTest={(id) => testMutation.mutate(id)}
+            onEdit={openEdit}
+            onDelete={(id, name) => { if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id); }}
+          />
         ))}
         {presets.data?.length === 0 && (
           <EmptyState
             title="No notification presets yet"
             description="Create a notification preset to wire one or more delivery channels into schedules."
             action={(
-              <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">
+              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
                 <Plus size={14} /> New preset
               </button>
             )}
@@ -1091,7 +1249,7 @@ function NotificationPresetsTab() {
 export function FilterPresetsPage() {
   return (
     <section className="grid gap-4">
-      <div className="rounded-lg border border-stone-200 bg-white p-4 grid gap-4">
+      <div className="app-panel grid gap-4 p-4">
         <FilterPresetsTab />
       </div>
     </section>
@@ -1101,7 +1259,7 @@ export function FilterPresetsPage() {
 export function EffectPresetsPage() {
   return (
     <section className="grid gap-4">
-      <div className="rounded-lg border border-stone-200 bg-white p-4 grid gap-4">
+      <div className="app-panel grid gap-4 p-4">
         <EffectPresetsTab />
       </div>
     </section>
@@ -1111,7 +1269,7 @@ export function EffectPresetsPage() {
 export function NotificationPresetsPage() {
   return (
     <section className="grid gap-4">
-      <div className="rounded-lg border border-stone-200 bg-white p-4 grid gap-4">
+      <div className="app-panel grid gap-4 p-4">
         <NotificationPresetsTab />
       </div>
     </section>
