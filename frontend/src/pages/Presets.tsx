@@ -894,7 +894,7 @@ function EffectPresetsTab() {
             return mod?.label ?? name.replace(/_/g, ' ');
           });
           return (
-            <div key={p.id} className="flex items-start justify-between gap-3 rounded-2xl border border-stone-200/80 bg-white/85 px-3 py-2.5 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:py-2">
+            <div key={p.id} className="flex flex-col gap-2.5 md:gap-3 rounded-2xl border border-stone-200/80 bg-white/85 px-3 py-2.5 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:py-2">
               <div className="min-w-0 flex-1 grid gap-1.5">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-semibold text-stone-900">{p.name}</span>

@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Download,
   Share2,
+  Check,
 } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
@@ -79,6 +80,7 @@ export function LightboxModal({
   exif,
 }: LightboxModalProps) {
   const [isSharing, setIsSharing] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
 
   // Handle Escape key to close lightbox
   useEffect(() => {
@@ -93,38 +95,57 @@ export function LightboxModal({
   }, [isOpen, onClose]);
 
   async function handleShare() {
-    if (
-      isSharing
-      || typeof navigator.share !== 'function'
-      || typeof navigator.canShare !== 'function'
-    ) {
-      return;
+    if (isSharing) return;
+
+    const shareUrl = `${window.location.origin}/api/generation/history/${entry.task_id}/image`;
+
+    if (typeof navigator.share === 'function') {
+      setIsSharing(true);
+      try {
+        const response = await fetch(`/api/generation/history/${entry.task_id}/image`);
+        if (!response.ok) throw new Error('Failed to fetch image');
+
+        const blob = await response.blob();
+        const file = new File([blob], makeSafeFileName(entry.title), {
+          type: blob.type || 'image/png',
+        });
+
+        if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
+          throw new Error('File sharing not supported by browser');
+        }
+
+        await navigator.share({
+          files: [file],
+          title: entry.title || 'DailyFX image',
+        });
+      } catch (error) {
+        console.warn('Native file share failed, trying URL fallback:', error);
+        try {
+          await navigator.share({
+            title: entry.title || 'DailyFX image',
+            url: shareUrl,
+          });
+        } catch (urlError) {
+          console.error('URL sharing failed:', urlError);
+          await fallbackCopyLink(shareUrl);
+        }
+      } finally {
+        setIsSharing(false);
+      }
+    } else {
+      await fallbackCopyLink(shareUrl);
     }
+  }
 
-    setIsSharing(true);
+  async function fallbackCopyLink(url: string) {
     try {
-      const response = await fetch(`/api/generation/history/${entry.task_id}/image`);
-      if (!response.ok) {
-        throw new Error('Could not load image for sharing.');
-      }
-
-      const blob = await response.blob();
-      const file = new File([blob], makeSafeFileName(entry.title), {
-        type: blob.type || 'image/png',
-      });
-
-      if (!navigator.canShare({ files: [file] })) {
-        throw new Error('This browser cannot share image files.');
-      }
-
-      await navigator.share({
-        files: [file],
-        title: entry.title || 'DailyFX image',
-      });
-    } catch (error) {
-      console.error('Failed to share image:', error);
-    } finally {
-      setIsSharing(false);
+      await navigator.clipboard.writeText(url);
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      setShareStatus('error');
+      setTimeout(() => setShareStatus('idle'), 2000);
     }
   }
 
@@ -291,12 +312,23 @@ export function LightboxModal({
                   e.stopPropagation();
                   void handleShare();
                 }}
-                disabled={isSharing || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function'}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-white shadow-lg transition hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isSharing}
+                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-white shadow-lg transition hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Share image"
-                title={typeof navigator.share === 'function' && typeof navigator.canShare === 'function' ? 'Share image' : 'Sharing is not supported in this browser'}
+                title={shareStatus === 'copied' ? 'Link copied!' : shareStatus === 'error' ? 'Failed to copy' : 'Share image'}
               >
-                <Share2 size={14} />
+                {shareStatus === 'copied' ? (
+                  <Check size={14} className="text-emerald-500" />
+                ) : shareStatus === 'error' ? (
+                  <X size={14} className="text-rose-500" />
+                ) : (
+                  <Share2 size={14} />
+                )}
+                {shareStatus === 'copied' && (
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-emerald-800 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">
+                    Copied!
+                  </span>
+                )}
               </button>
               <a
                 href={`/api/generation/history/${entry.task_id}/image`}
