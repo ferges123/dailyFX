@@ -109,7 +109,7 @@ class NotificationPresetCreate(BaseModel):
         normalized = ",".join(part.strip().lower() for part in value.split(",") if part.strip())
         if not normalized:
             return "web"
-        allowed = {"web", "ntfy", "gotify", "telegram", "homeassistant", "apprise", "discord"}
+        allowed = {"web", "ntfy", "gotify", "telegram", "homeassistant", "apprise", "discord", "slack"}
         invalid = [part for part in normalized.split(",") if part not in allowed]
         if invalid:
             raise ValueError(f"provider contains invalid value(s): {', '.join(invalid)}")

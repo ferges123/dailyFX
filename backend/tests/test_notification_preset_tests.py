@@ -18,21 +18,24 @@ def test_run_notification_preset_test_dispatches_providers(monkeypatch):
     monkeypatch.setattr("app.services.notifications.preset_tests.send_telegram_notification", fake_sender)
     monkeypatch.setattr("app.services.notifications.preset_tests.send_homeassistant_notification", fake_sender)
     monkeypatch.setattr("app.services.notifications.preset_tests.send_apprise_notification", fake_sender)
+    monkeypatch.setattr("app.services.notifications.preset_tests.send_discord_notification", fake_sender)
+    monkeypatch.setattr("app.services.notifications.preset_tests.send_slack_notification", fake_sender)
     monkeypatch.setattr("app.services.notifications.preset_tests.decrypt_secret", lambda value: "secret-token")
 
     row = SimpleNamespace(
         id=1,
-        provider="web,ntfy,gotify,telegram,homeassistant,apprise",
+        provider="web,ntfy,gotify,telegram,homeassistant,apprise,discord,slack",
         url="https://notify.example.test",
+        webhook_url="https://webhook.example.test",
         topic="-123456789",
         encrypted_token="encrypted-token",
     )
 
     results, errors = asyncio.run(run_notification_preset_test(row))
 
-    assert results == ["web", "ntfy", "gotify", "telegram", "homeassistant", "apprise"]
+    assert results == ["web", "ntfy", "gotify", "telegram", "homeassistant", "apprise", "discord", "slack"]
     assert errors == []
-    assert len(calls) == 6
+    assert len(calls) == 8
 
 
 def test_run_notification_preset_test_requires_providers():

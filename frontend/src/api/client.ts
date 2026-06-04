@@ -668,6 +668,8 @@ const NOTIFICATION_PROVIDER_LABELS: Record<string, string> = {
   telegram: 'Telegram',
   homeassistant: 'Home Assistant',
   apprise: 'Apprise',
+  discord: 'Discord',
+  slack: 'Slack',
 };
 
 export function splitNotificationProviders(provider: string) {

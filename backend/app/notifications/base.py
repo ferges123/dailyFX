@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal
 
-NotificationProviderName = Literal["web", "ntfy", "gotify", "telegram", "homeassistant", "apprise"]
+NotificationProviderName = Literal["web", "ntfy", "gotify", "telegram", "homeassistant", "apprise", "discord", "slack"]
 
 
 @dataclass(frozen=True)

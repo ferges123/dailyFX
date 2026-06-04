@@ -952,7 +952,7 @@ function NotificationPresetsTab() {
   const [form, setForm] = useState({ name: '', channels: ['web'] as string[], url: '', topic: '', token: '', webhook_url: '' });
   const [error, setError] = useState<string | null>(null);
 
-  const CHANNELS = ['web', 'ntfy', 'gotify', 'telegram', 'homeassistant', 'apprise', 'discord'] as const;
+  const CHANNELS = ['web', 'ntfy', 'gotify', 'telegram', 'homeassistant', 'apprise', 'discord', 'slack'] as const;
   const CHANNEL_LABELS: Record<(typeof CHANNELS)[number], string> = {
     web: 'Web Push',
     ntfy: 'ntfy',
@@ -961,6 +961,7 @@ function NotificationPresetsTab() {
     homeassistant: 'Home Assistant',
     apprise: 'Apprise',
     discord: 'Discord',
+    slack: 'Slack',
   };
 
   const saveMutation = useMutation({
@@ -1021,6 +1022,7 @@ function NotificationPresetsTab() {
   const hasHomeAssistant = form.channels.includes('homeassistant');
   const hasApprise = form.channels.includes('apprise');
   const hasDiscord = form.channels.includes('discord');
+  const hasSlack = form.channels.includes('slack');
   const needsUrl = hasNtfy || hasGotify || hasHomeAssistant || hasApprise;
   const validationIssues: string[] = [];
   if (!form.name.trim()) validationIssues.push('Preset name is required.');
@@ -1030,6 +1032,7 @@ function NotificationPresetsTab() {
   if (hasTelegram && !form.topic.trim()) validationIssues.push('Telegram chat ID is required.');
   if (hasHomeAssistant && !form.token.trim() && !editing?.token_masked) validationIssues.push('Home Assistant access token is required.');
   if (hasDiscord && !form.webhook_url.trim()) validationIssues.push('Discord Webhook URL is required.');
+  if (hasSlack && !form.webhook_url.trim()) validationIssues.push('Slack Webhook URL is required.');
   const canSave = validationIssues.length === 0;
 
 
@@ -1223,15 +1226,15 @@ function NotificationPresetsTab() {
               )}
               <Field
                 label="Webhook URL"
-                required={hasDiscord}
-                optional={!hasDiscord}
+                required={hasDiscord || hasSlack}
+                optional={!hasDiscord && !hasSlack}
                 type="url"
                 maxLength={2048}
                 value={form.webhook_url}
                 onChange={e => setForm(f => ({ ...f, webhook_url: e.target.value }))}
-                placeholder={hasDiscord ? "https://discord.com/api/webhooks/..." : "https://example.com/webhook"}
+                placeholder={hasDiscord ? "https://discord.com/api/webhooks/..." : hasSlack ? "https://hooks.slack.com/services/..." : "https://example.com/webhook"}
               />
-              {(hasNtfy || hasTelegram || hasHomeAssistant || hasDiscord) && (
+              {(hasNtfy || hasTelegram || hasHomeAssistant || hasDiscord || hasSlack) && (
                 <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 text-xs text-stone-600">
                   <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-500">
                     Provider tips
@@ -1255,6 +1258,11 @@ function NotificationPresetsTab() {
                     {hasDiscord && (
                       <p>
                         <span className="font-semibold text-stone-800">Discord:</span> messages are delivered directly to the configured channel webhook with image preview embeds when your DailyFX external URL is configured.
+                      </p>
+                    )}
+                    {hasSlack && (
+                      <p>
+                        <span className="font-semibold text-stone-800">Slack:</span> messages are delivered directly to the configured channel webhook using Slack's rich block kit, including image preview and review action buttons.
                       </p>
                     )}
                   </div>

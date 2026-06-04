@@ -5,6 +5,7 @@ import logging
 from app.notifications.client import (
     send_apprise_notification,
     send_discord_notification,
+    send_slack_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
@@ -110,6 +111,15 @@ async def send_generation_notification(notification_preset, title: str, summary:
                 )
             elif provider == "discord" and notification_preset.webhook_url:
                 await send_discord_notification(
+                    webhook_url=notification_preset.webhook_url,
+                    title=full_title,
+                    message=title,
+                    detail=summary,
+                    click_url=abs_app_url,
+                    image_url=abs_image_url,
+                )
+            elif provider == "slack" and notification_preset.webhook_url:
+                await send_slack_notification(
                     webhook_url=notification_preset.webhook_url,
                     title=full_title,
                     message=title,

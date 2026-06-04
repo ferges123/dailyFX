@@ -8,6 +8,7 @@ from app.api.routes_push import list_subscriptions
 from app.notifications.client import (
     send_apprise_notification,
     send_discord_notification,
+    send_slack_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
@@ -427,3 +428,31 @@ def test_send_discord_notification(monkeypatch):
     assert embed["description"] == "Holiday\n\nBeautiful collage"
     assert embed["url"] == "https://dailyfx.local/review"
     assert embed["image"]["url"] == "https://dailyfx.local/thumbnail.png"
+
+
+def test_send_slack_notification(monkeypatch):
+    fake_client = FakeAsyncClient(response=FakeResponse(json_body={"status": "ok"}))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: fake_client)
+
+    result = asyncio.run(
+        send_slack_notification(
+            webhook_url="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX",
+            title="Generation ready",
+            message="Holiday",
+            detail="Beautiful collage",
+            click_url="https://dailyfx.local/review",
+            image_url="https://dailyfx.local/thumbnail.png",
+        )
+    )
+
+    assert result.ok is True
+    assert result.provider == "slack"
+    assert fake_client.requests[0]["url"] == "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+    json_data = fake_client.requests[0]["json"]
+    assert "Generation ready" in json_data["text"]
+    assert len(json_data["blocks"]) == 4
+    assert json_data["blocks"][0]["text"]["text"] == "*Generation ready*\nHoliday"
+    assert json_data["blocks"][1]["text"]["text"] == "Beautiful collage"
+    assert json_data["blocks"][2]["image_url"] == "https://dailyfx.local/thumbnail.png"
+    assert json_data["blocks"][3]["elements"][0]["url"] == "https://dailyfx.local/review"
+

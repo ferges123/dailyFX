@@ -4,6 +4,7 @@ from app.models.notification_preset import NotificationPresetModel
 from app.notifications.client import (
     send_apprise_notification,
     send_discord_notification,
+    send_slack_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
@@ -93,6 +94,16 @@ async def run_notification_preset_test(row: NotificationPresetModel) -> tuple[li
                     errors.append("discord: Webhook URL not configured")
                     continue
                 await send_discord_notification(
+                    row.webhook_url,
+                    "Test notification",
+                    "dailyFX test",
+                    "This is a test from dailyFX.",
+                )
+            elif provider == "slack":
+                if not row.webhook_url:
+                    errors.append("slack: Webhook URL not configured")
+                    continue
+                await send_slack_notification(
                     row.webhook_url,
                     "Test notification",
                     "dailyFX test",
