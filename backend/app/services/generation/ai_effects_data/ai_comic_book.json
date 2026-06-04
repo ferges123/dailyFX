@@ -1,0 +1,8 @@
+{
+  "id": "ai_comic_book",
+  "title": "AI Comic Book",
+  "description": "Uses the default AI provider to turn a photo into a retro comic book illustration.",
+  "positive_prompt": "Transform the input photo into a classic 1960s American comic book illustration. Preserve the number of people, recognizable identity, key facial features, pose, camera angle, framing, main composition, outfit colors, and scene context. Use thick black ink outlines, bold colors, dramatic comic shading, subtle Ben-Day halftone dot patterns, dynamic contrast, and vintage printed-comic texture.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, dialog bubbles, speech bubbles, comic captions, text boxes, extra people, changed identity, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, unrelated objects, low quality, blurry, uncanny, over-smoothed skin",
+  "custom_prompt_placeholder": "e.g. Vintage pulp fiction style, bold ink..."
+}

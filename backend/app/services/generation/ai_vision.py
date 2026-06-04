@@ -645,7 +645,12 @@ async def _get_text_desc_local(
             raise AIVisionError(f"Local AI description failed: {exc}") from exc
 
 
-async def fuse_prompts(settings: SettingsModel, image_description: str, style_prompt: str) -> str:
+async def fuse_prompts(
+    settings: SettingsModel,
+    image_description: str,
+    style_prompt: str,
+    context_hint: str | None = None,
+) -> str:
     provider = getattr(settings, "default_ai_provider", "none") or "none"
     provider = provider.strip().lower()
     if provider == "none":
@@ -655,16 +660,19 @@ async def fuse_prompts(settings: SettingsModel, image_description: str, style_pr
     model = getattr(settings, "default_ai_model", "")
     model = (model or "").strip()
     
-    prompt = (
-        "You are an AI prompt expert. You are given an image description and a style prompt.\n"
-        "Your task is to rewrite the image description to match the style prompt, merging "
-        "them into a single, cohesive prompt for an image generation model.\n"
-        "Provide only the final prompt text. Do not include any explanations, introduction, "
-        "markdown code formatting, or quotation marks.\n\n"
-        f"Image description: {image_description}\n"
-        f"Style prompt: {style_prompt}\n\n"
-        "Fused Prompt:"
-    )
+    prompt_parts = [
+        "You are an AI prompt expert. You are given an image description and a style prompt.",
+        "Your task is to rewrite the image description to match the style prompt, merging them into a single, cohesive prompt for an image generation model.",
+        "Provide only the final prompt text. Do not include any explanations, introduction, markdown code formatting, or quotation marks.",
+    ]
+    if context_hint:
+        prompt_parts.append(f"Additional context: {context_hint}")
+    prompt_parts.extend([
+        f"Image description: {image_description}",
+        f"Style prompt: {style_prompt}",
+        "Fused Prompt:",
+    ])
+    prompt = "\n".join(prompt_parts)
     
     reserve_ai_usage(
         "vision",

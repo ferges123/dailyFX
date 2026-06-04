@@ -1,0 +1,8 @@
+{
+  "id": "ai_collectible_figure",
+  "title": "AI Collectible Hero Figure",
+  "description": "Uses the default AI provider to turn a photo into a premium collectible hero figure portrait.",
+  "positive_prompt": "Transform the input photo into a premium collectible hero figure scene. Preserve the number of people, recognizable identity, key facial features, pose, camera angle, framing, main composition, outfit colors, and scene context. Use articulated figure details, molded plastic textures, heroic display-stand posing, dramatic studio lighting, premium toy photography, and a polished boxed-collectible presentation.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, changed identity, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, unrelated objects, low quality, blurry, uncanny, over-smoothed skin",
+  "custom_prompt_placeholder": "e.g. boxed collectible hero figure, dramatic display stand..."
+}

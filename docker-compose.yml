@@ -8,25 +8,8 @@ services:
     ports:
       - "8438:8438"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8438/api/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request, os, time; urllib.request.urlopen('http://localhost:8438/api/health'); f='/data/scheduler.health'; assert os.path.exists(f) and time.time()-os.path.getmtime(f)<120"]
       interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
-  scheduler:
-    build: ./backend
-    restart: unless-stopped
-    command: python -m app.workers.scheduler
-    env_file: .env
-    volumes:
-      - ./data:/data
-    depends_on:
-      api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import os,time; f='/data/scheduler.health'; assert os.path.exists(f) and time.time()-os.path.getmtime(f)<120"]
-      interval: 60s
       timeout: 5s
       retries: 3
       start_period: 30s

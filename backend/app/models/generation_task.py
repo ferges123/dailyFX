@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Float, Integer, String, Text, func
+from sqlalchemy import Float, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base, UTCDateTime

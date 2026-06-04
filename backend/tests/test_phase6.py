@@ -1,7 +1,7 @@
 """Tests for: debug route, health/detailed, stats, input validation, DB backup, log rotation."""
 import asyncio
 import os
-import shutil
+import time
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -16,8 +16,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import SessionLocal, init_db
-from app.models.generation_history import GenerationHistoryModel
+from app.database import init_db
 
 init_db()
 client = TestClient(app)
@@ -64,10 +63,24 @@ def test_health_detailed_immich_not_configured():
     assert data["checks"]["immich"]["status"] in ("ok", "not_configured", "error")
 
 
+def test_health_detailed_scheduler_heartbeat_is_reported(tmp_path):
+    mock_settings = MagicMock()
+    mock_settings.data_dir = tmp_path
+    (tmp_path / "scheduler.health").write_text("ok")
+    now = time.time()
+    os.utime(tmp_path / "scheduler.health", (now, now))
+
+    with patch("app.api.routes_health.get_settings", return_value=mock_settings):
+        r = client.get("/api/health/detailed")
+
+    data = r.json()
+    assert data["checks"]["scheduler"]["status"] == "ok"
+    assert data["checks"]["scheduler"]["age_seconds"] >= 0
+
+
 
 def test_load_rgb_rejects_oversized_bytes():
     from app.services.generation.modules.common import load_rgb
-    import pytest
     big = b"x" * (51 * 1024 * 1024)
     try:
         load_rgb(big)
@@ -179,8 +192,22 @@ def test_webhook_skipped_when_no_url():
 # ── AI custom prompt ─────────────────────────────────────────────────────────
 
 def test_ai_anime_uses_custom_prompt_from_config():
-    from app.services.generation.modules.ai_anime import AIAnimeModule
+    from app.services.generation.ai_effects_builder import build_ai_module
+    from app.models.ai_effect import AIEffectModel
     from types import SimpleNamespace
+
+    anime_module = build_ai_module(
+        AIEffectModel(
+            id="ai_anime",
+            title="AI Anime",
+            description="anime description",
+            positive_prompt="default prompt",
+            negative_prompt="neg prompt",
+            custom_prompt_placeholder="custom prompt placeholder",
+            enabled=True,
+            source="builtin",
+        )
+    )
 
     captured = {}
 
@@ -201,13 +228,27 @@ def test_ai_anime_uses_custom_prompt_from_config():
     settings = MagicMock(ai_custom_prompt=None)
 
     with patch("app.services.generation.modules.ai_style_base.generate_ai_image", fake_generate):
-        asyncio.run(AIAnimeModule().run([asset], {"custom_prompt": "my custom"}, client, settings))
+        asyncio.run(anime_module.run([asset], {"custom_prompt": "my custom"}, client, settings))
 
     assert captured["prompt"] == "my custom"
 
 
 def test_ai_anime_falls_back_to_settings_prompt():
-    from app.services.generation.modules.ai_anime import AIAnimeModule
+    from app.services.generation.ai_effects_builder import build_ai_module
+    from app.models.ai_effect import AIEffectModel
+
+    anime_module = build_ai_module(
+        AIEffectModel(
+            id="ai_anime",
+            title="AI Anime",
+            description="anime description",
+            positive_prompt="default prompt",
+            negative_prompt="neg prompt",
+            custom_prompt_placeholder="custom prompt placeholder",
+            enabled=True,
+            source="builtin",
+        )
+    )
 
     captured = {}
 
@@ -229,6 +270,6 @@ def test_ai_anime_falls_back_to_settings_prompt():
     settings = MagicMock(ai_custom_prompt="settings level prompt")
 
     with patch("app.services.generation.modules.ai_style_base.generate_ai_image", fake_generate):
-        asyncio.run(AIAnimeModule().run([asset], {}, client, settings))
+        asyncio.run(anime_module.run([asset], {}, client, settings))
 
     assert captured["prompt"] == "settings level prompt"

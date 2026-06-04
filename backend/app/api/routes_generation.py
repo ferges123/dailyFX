@@ -23,9 +23,10 @@ from app.schemas.generation import (
 )
 from app.security import require_auth
 from app.services.generation.examples import ensure_example_preview, list_example_previews
+from app.services.generation.ai_effects import get_seed_hidden_map
 from app.services.generation.history import get_or_create_thumbnail
 from app.services.generation.history_api import build_generation_history_page
-from app.services.generation.modules import list_module_definitions
+from app.services.generation.modules import MODULES
 from app.services.generation.stream import (
     load_events_after,
     record_history_snapshot,
@@ -199,6 +200,7 @@ async def _apply_uploaded_asset_caption_and_tags(*, client, upload_asset_id: str
 
 @router.get("/modules", response_model=list[GenerationModuleResponse])
 async def list_generation_modules(_: None = Depends(require_auth)) -> list[GenerationModuleResponse]:
+    hidden_map = get_seed_hidden_map()
     return [
         GenerationModuleResponse(
             name=item.name,
@@ -208,7 +210,8 @@ async def list_generation_modules(_: None = Depends(require_auth)) -> list[Gener
             default_config=item.default_config or {},
             config_schema=item.config_schema or [],
         )
-        for item in list_module_definitions()
+        for item in MODULES.values()
+        if not (getattr(item, "source", None) == "builtin" and hidden_map.get(item.name, False))
     ]
 
 

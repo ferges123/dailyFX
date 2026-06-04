@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import random
 from datetime import datetime
-from io import BytesIO
 
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult

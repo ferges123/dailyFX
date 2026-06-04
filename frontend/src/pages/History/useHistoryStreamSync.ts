@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { type GenerationHistoryEntry, type GenerationHistoryPage } from '../../api/client';
-import { openGenerationStream, type GenerationStreamConnectionState, type GenerationStreamEvent } from '../../api/generationStream';
+import { openGenerationStream, type GenerationStreamConnectionState } from '../../api/generationStream';
 import { updateHistoryCacheForTask, updateHistoryCacheForUpsert } from './history.utils';
 
 interface UseHistoryStreamSyncParams {

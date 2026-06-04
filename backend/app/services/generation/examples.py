@@ -63,6 +63,8 @@ async def ensure_example_preview(module_name: str, settings: SettingsModel) -> E
     module = MODULES.get(module_name)
     if module is None:
         raise KeyError(module_name)
+    if not getattr(module, "show_example", True):
+        raise KeyError(module_name)
 
     source_asset_id = _example_source_asset_id()
     if not source_asset_id:
@@ -126,6 +128,8 @@ async def ensure_example_preview(module_name: str, settings: SettingsModel) -> E
 async def list_example_previews(settings: SettingsModel) -> list[GenerationExampleResponse]:
     previews: list[GenerationExampleResponse] = []
     for module in MODULES.values():
+        if not getattr(module, "show_example", True):
+            continue
         try:
             preview = await ensure_example_preview(module.name, settings)
         except Exception:

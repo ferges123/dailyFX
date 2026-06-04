@@ -152,7 +152,7 @@ Set up schedules in the **Schedules** tab:
 - Specific days of the week
 - With optional source filters (album, people, date range)
 
-The scheduler runs in a separate container. If automation is disabled, you can still trigger a selected schedule manually with the **Run now** button in the **Schedules** tab.
+The scheduler runs inside the backend container. If automation is disabled, you can still trigger a selected schedule manually with the **Run now** button in the **Schedules** tab.
 For a practical explanation of what happens after a schedule fires, see [docs/how-it-works.md](docs/how-it-works.md).
 
 ---
@@ -165,7 +165,7 @@ Notification channels can be configured in the **Notifications** tab (on desktop
 Subscribe from the browser on the Settings or Notifications page. Notifications include a preview of the generated image with a direct link to the review page.
 
 ### ntfy
-Set your ntfy server URL, topic name, and optional token.
+Set your ntfy server URL, topic name, and optional token. When `APP_EXTERNAL_URL` is configured, DailyFX also attaches the generated image and a click target back to the review page.
 
 ### Gotify
 Set your Gotify server URL and app token.
@@ -313,4 +313,3 @@ If you like this project and want to support its development, you can buy me a c
 
 * **Buy Me a Coffee:** [buymeacoffee.com/ferges](https://buymeacoffee.com/ferges)
 * **Ko-fi:** [ko-fi.com/ferges](https://ko-fi.com/ferges)
-

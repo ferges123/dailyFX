@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, ShieldCheck, Sparkles } from 'lucide-react';
+import { Database, RefreshCw, Save, Server, ShieldCheck, Sparkles, Wifi } from 'lucide-react';
 import { type Dispatch, type FormEvent, type ReactNode, type SetStateAction, useEffect, useState } from 'react';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import {
   ApiError,
+  getDetailedHealth,
   getSettings,
+  getHealth,
   type SettingsUpdate,
   testImmichConnection,
   testGeminiConnection,
@@ -16,6 +18,7 @@ import {
   updateSettings,
 } from '../api/client';
 import { Field } from '../components/Field';
+import { StatusTile } from '../components/StatusTile';
 
 const defaults: SettingsUpdate = {
   immich_url: '',
@@ -63,6 +66,33 @@ type SecretFieldConfig = {
 };
 
 type SecretFieldColumn = SecretFieldConfig[];
+
+type RuntimeCheckTone = 'neutral' | 'success' | 'warning' | 'danger';
+
+function runtimeTone(status: string | null | undefined): RuntimeCheckTone {
+  if (!status || status === 'checking') return 'neutral';
+  if (status === 'ok') return 'success';
+  if (status === 'not_configured' || status === 'key_missing' || status === 'missing') return 'warning';
+  return 'danger';
+}
+
+function runtimeLabel(status: string | null | undefined): string {
+  if (!status || status === 'checking') return 'Checking';
+  if (status === 'ok') return 'Healthy';
+  if (status === 'not_configured' || status === 'key_missing') return 'Not configured';
+  if (status === 'missing') return 'Missing';
+  if (status === 'stale') return 'Stale';
+  return 'Degraded';
+}
+
+function formatAge(seconds: number | null | undefined): string | null {
+  if (seconds == null) return null;
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(seconds / 3600);
+  return `${hours}h ago`;
+}
 
 function createConnectionTestHandlers(
   provider: string,
@@ -143,10 +173,10 @@ function TestableInputRow({
       <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
         <span>{label}</span>
       </span>
-      <div className="flex gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           type="password"
-          className={`app-control h-9 flex-1 min-w-0 text-xs ${error ? 'border-rose-300 focus:border-rose-500' : ''}`}
+          className={`app-control h-11 flex-1 min-w-0 text-xs ${error ? 'border-rose-300 focus:border-rose-500' : ''}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -160,7 +190,7 @@ function TestableInputRow({
 
 function SecretFieldGrid({ columns, onChange }: { columns: SecretFieldColumn[]; onChange: (key: keyof SettingsUpdate, value: string) => void }) {
   return (
-    <div className="grid gap-2.5 md:gap-4 md:grid-cols-2 items-start">
+    <div className="grid gap-2.5 md:grid-cols-2 md:gap-4 items-start">
       {columns.map((column, columnIndex) => (
         <div key={columnIndex} className="grid gap-2 md:gap-3">
           {column.map((item) => (
@@ -189,11 +219,24 @@ function shouldRetrySettingsQuery(failureCount: number, error: unknown) {
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
+  const health = useQuery({
+    queryKey: ['health'],
+    queryFn: getHealth,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const settings = useQuery({
     queryKey: ['settings'],
     queryFn: getSettings,
     retry: shouldRetrySettingsQuery,
     retryDelay: (attempt) => Math.min(150 * 2 ** attempt, 300),
+    refetchOnWindowFocus: false,
+  });
+  const runtimeHealth = useQuery({
+    queryKey: ['health-detailed'],
+    queryFn: getDetailedHealth,
+    retry: false,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
   const mutation = useMutation({
@@ -211,6 +254,7 @@ export function SettingsPage() {
   const [form, setForm] = useState<SettingsUpdate>(defaults);
   const [saved, setSaved] = useState<TestState>({ status: 'idle', message: null });
   const [validationErrors, setValidationErrors] = useState<SettingsFieldErrors>({});
+  const runtimeChecks = runtimeHealth.data?.checks;
 
   useEffect(() => {
     if (!settings.data) return;
@@ -283,10 +327,71 @@ export function SettingsPage() {
         </div>
       )}
 
+      <div className="app-panel grid gap-3 p-3 md:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-semibold text-stone-900">Runtime Status</div>
+            <div className="text-xs text-stone-500">Refreshed automatically every 30 seconds.</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              health.refetch();
+              runtimeHealth.refetch();
+            }}
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 px-3 text-xs font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-stone-900 sm:w-auto"
+          >
+            <RefreshCw size={14} />
+            Refresh
+          </button>
+        </div>
+        {runtimeHealth.isError || health.isError ? (
+          <ErrorBanner
+            error={(runtimeHealth.error as Error | string | null) ?? (health.error as Error | string | null)}
+            title="Could not load runtime status"
+            onRetry={() => {
+              health.refetch();
+              runtimeHealth.refetch();
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+            <StatusTile
+              icon={<Server size={14} />}
+              label="API"
+              value={health.isLoading ? 'Checking' : health.data?.status === 'ok' ? 'Healthy' : 'Degraded'}
+              detail={health.data?.version ? `v${health.data.version}` : null}
+              tone={health.isError ? 'danger' : health.isLoading ? 'neutral' : 'success'}
+            />
+            <StatusTile
+              icon={<RefreshCw size={14} />}
+              label="Scheduler"
+              value={runtimeLabel(runtimeChecks?.scheduler?.status)}
+              detail={formatAge(runtimeChecks?.scheduler?.age_seconds) ?? runtimeChecks?.scheduler?.detail ?? null}
+              tone={runtimeTone(runtimeChecks?.scheduler?.status)}
+            />
+            <StatusTile
+              icon={<Database size={14} />}
+              label="Database"
+              value={runtimeLabel(runtimeChecks?.database?.status)}
+              detail={runtimeChecks?.database?.detail ?? null}
+              tone={runtimeTone(runtimeChecks?.database?.status)}
+            />
+            <StatusTile
+              icon={<Wifi size={14} />}
+              label="Immich"
+              value={runtimeLabel(runtimeChecks?.immich?.status)}
+              detail={runtimeChecks?.immich?.version ? `v${runtimeChecks?.immich?.version}` : runtimeChecks?.immich?.detail ?? null}
+              tone={runtimeTone(runtimeChecks?.immich?.status)}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Immich Connection */}
       <div className="app-panel grid gap-2 p-3 md:p-4">
         <div className="text-sm font-semibold text-stone-900">Immich Connection</div>
-        <div className="flex flex-col md:flex-row gap-2.5 md:gap-3">
+        <div className="flex flex-col gap-2.5 md:flex-row md:gap-3">
           <div className="flex-1 flex flex-col gap-0.5 md:gap-1">
             <Field
               label="Immich URL"
@@ -436,22 +541,9 @@ export function SettingsPage() {
         )}
       </div>
 
-      {/* AI Custom Prompt */}
-      <div className="app-panel grid gap-2 p-3 md:p-4">
-        <div className="text-sm font-semibold text-stone-900">AI Custom Prompt</div>
-        <Field
-          label="Default AI prompt (for AI styles)"
-          value={form.ai_custom_prompt ?? ''}
-          maxLength={10000}
-          onChange={(e) => setValue('ai_custom_prompt', e.target.value || null)}
-          placeholder="Leave empty to use built-in prompt"
-          className="text-xs"
-        />
-      </div>
-
       {/* Debug Mode */}
       <div className="app-panel p-3 md:p-4">
-        <label className="flex items-center gap-1.5 md:gap-2 text-xs cursor-pointer">
+        <label className="flex items-start gap-1.5 md:items-center md:gap-2 text-xs cursor-pointer">
           <input type="checkbox" checked={form.debug_mode} onChange={(e) => setValue('debug_mode', e.target.checked)} className="rounded border-stone-300" />
           <div>
             <span className="font-medium">Debug mode</span>
@@ -466,8 +558,8 @@ export function SettingsPage() {
       </div>
 
       {/* Save */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="submit" className="app-button-primary h-9 px-4 disabled:opacity-60 disabled:hover:bg-emerald-700" disabled={mutation.isPending}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <button type="submit" className="app-button-primary h-9 w-full justify-center px-4 disabled:opacity-60 disabled:hover:bg-emerald-700 sm:w-auto" disabled={mutation.isPending}>
           <Save size={14} />
           Save
         </button>
@@ -480,7 +572,7 @@ export function SettingsPage() {
 
 function TestButton({ icon, label, pending, onClick }: { icon: ReactNode; label: string; pending: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} disabled={pending} className="app-button-secondary h-9 px-3 text-xs disabled:opacity-60 shrink-0">
+    <button type="button" onClick={onClick} disabled={pending} className="app-button-secondary h-11 w-[84px] shrink-0 justify-center px-3 text-xs disabled:opacity-60">
       {icon}
       {label}
     </button>

@@ -196,8 +196,8 @@ export function HistoryPage() {
       )}
 
       {/* Search, Filters and Refresh Bar */}
-      <div className="app-panel flex flex-wrap items-center gap-1.5 p-1.5 md:p-2">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="app-panel grid gap-2 p-2 md:flex md:flex-wrap md:items-center md:gap-1.5 md:p-2">
+        <div className="relative w-full min-w-0 md:flex-1">
           <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-stone-400">
             <Search size={13} />
           </span>
@@ -209,7 +209,7 @@ export function HistoryPage() {
             className="app-control app-control-muted h-8 pl-8 pr-2.5 text-xs"
           />
         </div>
-        <div className="w-[150px] shrink-0">
+        <div className="w-full md:w-[150px] md:shrink-0">
           <select
             value={historyStatus}
             onChange={(event) => setHistoryStatus(event.target.value as HistoryStatusFilter)}
@@ -222,16 +222,18 @@ export function HistoryPage() {
             <option value="rejected">Rejected items</option>
           </select>
         </div>
-        <button
-          type="button"
-          onClick={handleRefreshAll}
-          title="Refresh history data"
-          className="app-button-secondary h-8 w-8 shrink-0 px-0"
-        >
-          <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
-        </button>
-        <div
-          className={`app-chip h-8 shrink-0 px-2.5 text-[10px] ${
+        <div className="flex w-full gap-2 md:w-auto md:items-center md:gap-1.5">
+          <button
+            type="button"
+            onClick={handleRefreshAll}
+            title="Refresh history data"
+            className="app-button-secondary h-8 w-full px-3 text-xs md:w-8 md:px-0"
+          >
+            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+            <span className="md:hidden">Refresh</span>
+          </button>
+          <div
+            className={`flex h-8 w-full items-center justify-center gap-1.5 rounded-full border px-2.5 text-[10px] md:w-auto ${
             streamStatus === 'connected'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
               : streamStatus === 'reconnecting'
@@ -239,17 +241,18 @@ export function HistoryPage() {
               : 'border-stone-200 bg-stone-50 text-stone-500'
           }`}
           title="History stream connection"
-        >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              streamStatus === 'connected'
-                ? 'bg-emerald-500'
-                : streamStatus === 'reconnecting'
-                ? 'bg-amber-500'
-                : 'bg-stone-400'
-            }`}
-          />
-          {streamStatus === 'connected' ? 'Live' : streamStatus === 'reconnecting' ? 'Reconnecting' : 'Disconnected'}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                streamStatus === 'connected'
+                  ? 'bg-emerald-500'
+                  : streamStatus === 'reconnecting'
+                  ? 'bg-amber-500'
+                  : 'bg-stone-400'
+              }`}
+            />
+            {streamStatus === 'connected' ? 'Live' : streamStatus === 'reconnecting' ? 'Reconnecting' : 'Disconnected'}
+          </div>
         </div>
       </div>
 

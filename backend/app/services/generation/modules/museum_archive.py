@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import random
-from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +9,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 from app.models.settings import SettingsModel
 from app.services.generation.ai_budget import AIUsageLimitExceededError
-from app.services.generation.ai_vision import AIVisionError, analyze_image
+from app.services.generation.ai_vision import analyze_image
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.modules.common import apply_vignette, get_font, load_rgb, save_png
 from app.services.generation.people_context import load_people_context

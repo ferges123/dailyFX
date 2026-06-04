@@ -308,6 +308,7 @@ async def generate_ai_image(
     provider: str | None = None,
     model: str | None = None,
     context_hint: str | None = None,
+    prompt_enrichment_context_hint: str | None = None,
 ) -> AIImageResult:
     if provider is None:
         provider = _resolve_provider(settings)
@@ -317,14 +318,15 @@ async def generate_ai_image(
     if context_hint:
         base_prompt = f"{context_hint}\n\n{base_prompt}"
     
-    if getattr(settings, "ai_prompt_enrichment", False) and getattr(settings, "default_ai_provider", "none") != "none":
+    if getattr(settings, "ai_prompt_enrichment", False) is True and getattr(settings, "default_ai_provider", "none") != "none":
         try:
             from app.services.generation.ai_vision import describe_image, fuse_prompts
             debug_log("AI prompt enrichment started", original_prompt=prompt)
-            desc = await describe_image(settings, image_bytes, context_hint=context_hint)
+            enrichment_context = prompt_enrichment_context_hint or context_hint
+            desc = await describe_image(settings, image_bytes, context_hint=enrichment_context)
             if desc:
                 debug_log("AI vision image description generated", description=desc)
-                fused = await fuse_prompts(settings, desc, base_prompt)
+                fused = await fuse_prompts(settings, desc, base_prompt, context_hint=enrichment_context)
                 if fused:
                     debug_log("AI prompt enrichment complete", original_prompt=prompt, fused_prompt=fused)
                     base_prompt = fused

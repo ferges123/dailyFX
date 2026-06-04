@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { HelpCircle } from 'lucide-react';
 import type { GenerationModuleConfigField, GenerationModuleInfo } from '../api/client';
 import { MODULE_PRESETS, type ModulePreset } from '../pages/automation.types';
 
@@ -35,7 +36,17 @@ export function ModuleConfigEditor({ module, config, onChange }: {
   module: GenerationModuleInfo; config: Record<string, unknown>; onChange: (key: string, value: unknown) => void;
 }) {
   const schema: GenerationModuleConfigField[] = module.config_schema ?? [];
-  if (schema.length === 0) return <span className="text-xs text-stone-500">{module.description}</span>;
+  if (schema.length === 0) {
+    return (
+      <span
+        title={module.description}
+        aria-label={module.description}
+        className="inline-flex items-center text-stone-400 transition hover:text-stone-600"
+      >
+        <HelpCircle size={12} />
+      </span>
+    );
+  }
 
   const presets = MODULE_PRESETS[module.name] ?? [];
 

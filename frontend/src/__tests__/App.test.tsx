@@ -8,6 +8,14 @@ vi.mock('../api/client', async (importOriginal) => {
   return {
     ...actual,
     getHealth: () => Promise.resolve({ status: 'ok', version: '0.1.0', auth_enabled: false }),
+    getDetailedHealth: () => Promise.resolve({
+      status: 'ok',
+      checks: {
+        scheduler: { status: 'ok', age_seconds: 12 },
+        database: { status: 'ok' },
+        immich: { status: 'not_configured' },
+      },
+    }),
     getSettings: () => Promise.resolve({}),
     getGenerationHistory: () => Promise.resolve({ items: [], total: 0, latest_event_id: 0 }),
     getFilterPresets: () => Promise.resolve([]),

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   X,
   Cpu,
@@ -8,7 +8,8 @@ import {
   Calendar,
   MapPin,
   ExternalLink,
-  Download
+  Download,
+  Share2,
 } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
@@ -31,6 +32,16 @@ function formatFileSize(bytes: number | undefined | null): string {
   if (kib < 1024) return `${kib.toFixed(1)} KB`;
   const mib = kib / 1024;
   return `${mib.toFixed(1)} MB`;
+}
+
+function makeSafeFileName(title: string | null | undefined) {
+  const base = (title || 'dailyfx-image')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${base || 'dailyfx-image'}.png`;
 }
 
 interface ExifData {
@@ -67,6 +78,8 @@ export function LightboxModal({
   entry,
   exif,
 }: LightboxModalProps) {
+  const [isSharing, setIsSharing] = useState(false);
+
   // Handle Escape key to close lightbox
   useEffect(() => {
     if (!isOpen) return;
@@ -79,19 +92,55 @@ export function LightboxModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  async function handleShare() {
+    if (
+      isSharing
+      || typeof navigator.share !== 'function'
+      || typeof navigator.canShare !== 'function'
+    ) {
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      const response = await fetch(`/api/generation/history/${entry.task_id}/image`);
+      if (!response.ok) {
+        throw new Error('Could not load image for sharing.');
+      }
+
+      const blob = await response.blob();
+      const file = new File([blob], makeSafeFileName(entry.title), {
+        type: blob.type || 'image/png',
+      });
+
+      if (!navigator.canShare({ files: [file] })) {
+        throw new Error('This browser cannot share image files.');
+      }
+
+      await navigator.share({
+        files: [file],
+        title: entry.title || 'DailyFX image',
+      });
+    } catch (error) {
+      console.error('Failed to share image:', error);
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-4 backdrop-blur-xl animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/98 p-3 md:items-center md:p-4 backdrop-blur-xl animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col md:flex-row max-h-[92vh] max-w-[94vw] items-stretch justify-center bg-stone-950/80 border border-stone-800 rounded-2xl overflow-hidden shadow-2xl animate-scale-in"
+        className="relative flex w-full max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-2xl border border-stone-800 bg-stone-950/80 shadow-2xl animate-scale-in md:max-h-[92vh] md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Photo Canvas */}
-        <div className="relative flex items-center justify-center flex-1 bg-stone-950 max-h-[60vh] md:max-h-[85vh] p-2">
+        <div className="relative flex max-h-[52vh] flex-1 items-center justify-center bg-stone-950 p-2 md:max-h-[85vh]">
           <SecureImage
             src={imageUrl}
             alt="Preview"
@@ -100,7 +149,7 @@ export function LightboxModal({
         </div>
 
         {/* Premium EXIF Details Overlay Panel */}
-        <div className="w-full md:w-80 shrink-0 bg-stone-900 p-5 flex flex-col justify-between text-stone-200 select-none">
+        <div className="flex max-h-[48vh] min-h-0 w-full shrink-0 flex-col overflow-y-auto bg-stone-900 p-4 text-stone-200 select-none md:max-h-[92vh] md:w-80 md:p-5">
           <div className="space-y-4">
             <div>
               <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-1">
@@ -234,16 +283,31 @@ export function LightboxModal({
           </div>
 
           {/* Lightbox Footer Actions */}
-          <div className="pt-4 border-t border-stone-800 mt-4 md:mt-0">
-            <a
-              href={`/api/generation/history/${entry.task_id}/image`}
-              download
-              className="w-full inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-800 text-xs font-semibold text-white hover:bg-emerald-900 transition active:scale-95 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Download size={14} />
-              Download Full-Res PNG
-            </a>
+          <div className="sticky bottom-0 mt-4 border-t border-stone-800 bg-stone-900 pt-4 md:mt-0">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleShare();
+                }}
+                disabled={isSharing || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function'}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-white shadow-lg transition hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Share image"
+                title={typeof navigator.share === 'function' && typeof navigator.canShare === 'function' ? 'Share image' : 'Sharing is not supported in this browser'}
+              >
+                <Share2 size={14} />
+              </button>
+              <a
+                href={`/api/generation/history/${entry.task_id}/image`}
+                download
+                className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-800 text-xs font-semibold text-white shadow-lg transition hover:bg-emerald-900 active:scale-95"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Download size={14} />
+                Download Full-Res PNG
+              </a>
+            </div>
           </div>
         </div>
 

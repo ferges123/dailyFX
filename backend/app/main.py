@@ -1,8 +1,7 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -15,6 +14,7 @@ from app.api.routes_settings import router as settings_router
 from app.api.routes_push import router as push_router
 from app.api.routes_debug import router as debug_router
 from app.api.routes_presets import router as presets_router
+from app.api.routes_ai_effects import router as ai_effects_router
 from app.api.routes_schedules import router as schedules_router
 from app.config import get_settings
 from app.database import init_db
@@ -63,4 +63,5 @@ app.include_router(generation_router)
 app.include_router(push_router)
 app.include_router(debug_router)
 app.include_router(presets_router)
+app.include_router(ai_effects_router)
 app.include_router(schedules_router)

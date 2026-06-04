@@ -43,9 +43,9 @@ function PresetHeader({
   buttonLabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-stone-500">{count} preset(s)</span>
-      <button type="button" onClick={onCreate} className="app-button-primary px-3 py-1.5 text-sm">
+      <button type="button" onClick={onCreate} className="app-button-primary w-full justify-center px-3 py-2 text-sm sm:w-auto sm:py-1.5">
         <Plus size={14} /> {buttonLabel}
       </button>
     </div>
@@ -66,19 +66,19 @@ function PresetFormActions({
   saveLabel?: string;
 }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row">
       <button
         type="button"
         onClick={onSave}
         disabled={!canSave || pending}
-        className="app-button-primary flex-1 justify-center px-3 py-2 text-sm disabled:opacity-50 sm:flex-none sm:w-auto"
+        className="app-button-primary w-full justify-center px-3 py-2 text-sm disabled:opacity-50 sm:w-auto"
       >
         <Check size={14} /> {saveLabel}
       </button>
       <button
         type="button"
         onClick={onCancel}
-        className="app-button-secondary flex-1 justify-center px-3 py-2 text-sm sm:flex-none sm:w-auto"
+        className="app-button-secondary w-full justify-center px-3 py-2 text-sm sm:w-auto"
       >
         <X size={14} /> Cancel
       </button>
@@ -87,7 +87,7 @@ function PresetFormActions({
 }
 
 function PresetActionRow({ children }: { children: ReactNode }) {
-  return <div className="flex flex-row flex-wrap gap-1.5 shrink-0 items-center">{children}</div>;
+  return <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-1.5 sm:shrink-0 sm:items-center">{children}</div>;
 }
 
 function FilterPresetCard({
@@ -148,14 +148,14 @@ function FilterPresetCard({
         <button
           type="button"
           onClick={() => onEdit(preset)}
-          className="app-button-secondary px-2.5 py-1.5 text-xs"
+          className="app-button-secondary w-full justify-center px-2.5 py-1.5 text-xs sm:w-auto"
         >
           <Pencil size={12} /> Edit
         </button>
         <button
           type="button"
           onClick={() => onDelete(preset.id, preset.name)}
-          className="app-button-secondary px-2.5 py-1.5 text-xs text-rose-700"
+          className="app-button-secondary w-full justify-center px-2.5 py-1.5 text-xs text-rose-700 sm:w-auto"
         >
           <Trash2 size={12} /> Delete
         </button>
@@ -199,24 +199,24 @@ function NotificationPresetCard({
           type="button"
           onClick={() => onTest(preset.id)}
           disabled={testingId === preset.id}
-          className="app-button-secondary px-2.5 py-1.5 text-xs text-blue-700 disabled:opacity-50"
+          className="app-button-secondary w-full justify-center px-2.5 py-1.5 text-xs text-blue-700 disabled:opacity-50 sm:w-auto"
         >
           <Bell size={12} /> Test
         </button>
         {testResult?.id === preset.id && (
-          <span className={`text-xs ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{testResult.msg}</span>
+          <span className={`w-full text-xs sm:w-auto ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{testResult.msg}</span>
         )}
         <button
           type="button"
           onClick={() => onEdit(preset)}
-          className="app-button-secondary px-2.5 py-1.5 text-xs"
+          className="app-button-secondary w-full justify-center px-2.5 py-1.5 text-xs sm:w-auto"
         >
           <Pencil size={12} /> Edit
         </button>
         <button
           type="button"
           onClick={() => onDelete(preset.id, preset.name)}
-          className="app-button-secondary px-2.5 py-1.5 text-xs text-rose-700"
+          className="app-button-secondary w-full justify-center px-2.5 py-1.5 text-xs text-rose-700 sm:w-auto"
         >
           <Trash2 size={12} /> Delete
         </button>
@@ -278,7 +278,7 @@ function EffectPresetTableItem({
                 </button>
               )}
             </div>
-            <div className="text-stone-500 text-[11px] font-normal leading-normal">{mod.description}</div>
+            <div className="text-[11px] font-normal leading-normal text-stone-500">{mod.description}</div>
           </div>
         }
         icon={null}
@@ -345,20 +345,20 @@ function EffectPresetMobileCard({
       }`}
     >
       <div className="grid gap-2">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
-              <span>{mod.label}</span>
-              <span className={`app-chip px-1.5 py-0.5 text-[9px] ${group.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : ''}`}>
-                {group.enabled ? 'On' : 'Off'}
-              </span>
-            </div>
-            <div className="mt-0.5 text-[11px] leading-snug text-stone-500">{mod.description}</div>
-          </div>
-          {!!exampleInfo && (
-            <button
-              type="button"
-              onClick={onTogglePreview}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+                  <span>{mod.label}</span>
+                  <span className={`app-chip px-1.5 py-0.5 text-[9px] ${group.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : ''}`}>
+                    {group.enabled ? 'On' : 'Off'}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] leading-snug text-stone-500">{mod.description}</div>
+              </div>
+              {!!exampleInfo && (
+                <button
+                  type="button"
+                  onClick={onTogglePreview}
               className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border transition-colors ${
                 isExpanded
                   ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -780,14 +780,14 @@ function EffectPresetsTab() {
           
           <div className="grid gap-2">
             {/* Sub-tabs for Local and AI Effects */}
-            <div className="mb-1.5 flex gap-1.5 md:gap-2 border-b border-stone-200/70 pb-1.5 md:pb-2">
+            <div className="grid gap-2 border-b border-stone-200/70 pb-2 sm:flex sm:gap-1.5 sm:pb-2">
               <button
                 type="button"
                 onClick={() => setEffectTab('local')}
-                className={`flex items-center gap-2 rounded-t-xl px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-all duration-200 ${
+                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all duration-200 sm:w-auto sm:rounded-t-xl sm:border-x-0 sm:border-b-2 sm:-mb-px ${
                   effectTab === 'local'
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 sm:border-emerald-600 sm:bg-transparent'
+                    : 'border-stone-200 bg-white text-stone-500 hover:text-stone-800 sm:border-transparent sm:bg-transparent'
                 }`}
               >
                 <span>Local Effects</span>
@@ -802,10 +802,10 @@ function EffectPresetsTab() {
               <button
                 type="button"
                 onClick={() => setEffectTab('ai')}
-                className={`flex items-center gap-2 rounded-t-xl px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-all duration-200 ${
+                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all duration-200 sm:w-auto sm:rounded-t-xl sm:border-x-0 sm:border-b-2 sm:-mb-px ${
                   effectTab === 'ai'
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 sm:border-emerald-600 sm:bg-transparent'
+                    : 'border-stone-200 bg-white text-stone-500 hover:text-stone-800 sm:border-transparent sm:bg-transparent'
                 }`}
               >
                 <span>AI Effects</span>
@@ -880,14 +880,14 @@ function EffectPresetsTab() {
           <PresetFormActions
             onSave={() => saveMutation.mutate()}
             onCancel={closeForm}
-            canSave={!!name.trim()}
+            canSave={canSave}
             pending={saveMutation.isPending}
           />
         </div>
       )}
 
-      <div className="grid gap-2">
-        {presets.data?.map(p => {
+            <div className="grid gap-2">
+                {presets.data?.map(p => {
           const enabledEntries = Object.entries(p.groups).filter(([, g]) => g.enabled);
           const enabledNames = enabledEntries.map(([name]) => {
             const mod = modules.data?.find(m => m.name === name);
@@ -914,11 +914,11 @@ function EffectPresetsTab() {
               </div>
               <PresetActionRow>
                 <button type="button" onClick={() => openEdit(p)}
-                  className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 sm:bg-transparent sm:py-1">
+                  className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 sm:w-auto sm:bg-transparent sm:py-1">
                   <Pencil size={12} /> Edit
                 </button>
                 <button type="button" onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id); }}
-                  className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 bg-rose-50/30 sm:bg-transparent sm:py-1">
+                  className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 bg-rose-50/30 sm:w-auto sm:bg-transparent sm:py-1">
                   <Trash2 size={12} /> Delete
                 </button>
               </PresetActionRow>
@@ -1084,7 +1084,7 @@ function NotificationPresetsTab() {
 
       {showForm && (
         <div className="app-panel grid gap-4 p-4">
-          <div className="grid gap-1">
+          <div className="grid gap-0.5 md:gap-1">
             <div className="text-sm font-semibold text-stone-900">{isNew ? 'New notification preset' : `Editing: ${editing?.name}`}</div>
             <div className="text-sm text-stone-500">Channels are stored as a single preset, but each one keeps its own connection details.</div>
           </div>
@@ -1164,14 +1164,37 @@ function NotificationPresetsTab() {
                   value={form.url}
                   onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
                   placeholder={hasApprise ? 'tgram://bot_token/chat_id, mailto://user:pass@gmail.com' : hasHomeAssistant ? 'http://homeassistant.local:8123' : 'https://ntfy.sh'}
-                  hint={hasApprise ? 'Required for Apprise.' : hasHomeAssistant ? 'Required for the Home Assistant notify service.' : 'Required for the selected provider(s).'}
+                  hint={
+                    hasApprise
+                      ? 'Required for Apprise.'
+                      : hasHomeAssistant
+                        ? 'Use the Home Assistant base URL, including port if needed.'
+                        : hasNtfy
+                          ? 'Use your ntfy server URL, such as https://ntfy.sh or your self-hosted instance.'
+                          : 'Required for the selected provider(s).'
+                  }
                 />
               )}
               {hasNtfy && (
-                <Field label="Topic" required value={form.topic} maxLength={255} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} />
+                <Field
+                  label="Topic"
+                  required
+                  value={form.topic}
+                  maxLength={255}
+                  onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
+                  hint="The ntfy topic name. Add a token only if the topic is protected."
+                />
               )}
               {hasTelegram && (
-                <Field label="Telegram Chat ID" required value={form.topic} maxLength={255} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="-10012345678 or @channelname" />
+                <Field
+                  label="Telegram Chat ID"
+                  required
+                  value={form.topic}
+                  maxLength={255}
+                  onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
+                  placeholder="-10012345678 or @channelname"
+                  hint="Use the chat ID for a private chat or group, or an @channelname for a channel."
+                />
               )}
               {hasHomeAssistant && (
                 <Field
@@ -1181,7 +1204,7 @@ function NotificationPresetsTab() {
                   maxLength={255}
                   onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
                   placeholder="e.g. notify or mobile_app_phone"
-                  hint="Leave blank to use the default notify service."
+                  hint="Leave blank to use the default notify service. Use persistent_notification for a sidebar notice."
                 />
               )}
               {(hasNtfy || hasGotify || hasTelegram || hasHomeAssistant) && (
@@ -1204,6 +1227,30 @@ function NotificationPresetsTab() {
                 onChange={e => setForm(f => ({ ...f, webhook_url: e.target.value }))}
                 placeholder="https://example.com/webhook"
               />
+              {(hasNtfy || hasTelegram || hasHomeAssistant) && (
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 text-xs text-stone-600">
+                  <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-500">
+                    Provider tips
+                  </div>
+                  <div className="grid gap-1.5 leading-relaxed">
+                    {hasNtfy && (
+                      <p>
+                        <span className="font-semibold text-stone-800">ntfy:</span> messages include a click target and image attachment when your DailyFX external URL is configured, so the phone notification can open the review page and preview the image.
+                      </p>
+                    )}
+                    {hasTelegram && (
+                      <p>
+                        <span className="font-semibold text-stone-800">Telegram:</span> the bot sends the image directly with Accept / Reject buttons, so the chat ID and bot token are the only required values.
+                      </p>
+                    )}
+                    {hasHomeAssistant && (
+                      <p>
+                        <span className="font-semibold text-stone-800">Home Assistant:</span> use a long-lived access token and a notify service such as <code className="rounded bg-white px-1 py-0.5 text-[11px] text-stone-700">mobile_app_phone</code> or <code className="rounded bg-white px-1 py-0.5 text-[11px] text-stone-700">persistent_notification</code>.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </SectionCard>
 

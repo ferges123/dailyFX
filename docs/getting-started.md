@@ -61,7 +61,7 @@ Enter the token from `APP_ACCESS_TOKEN` if your instance uses protected access.
 ## Common Problems
 - No connection to Immich: check the URL and API key entered in the **Settings** tab.
 - Login does not work: make sure the browser token matches `APP_ACCESS_TOKEN` in `.env`.
-- No schedules run: check that the scheduler container is running.
+- No schedules run: check that the backend container is running.
 - Images do not load: confirm the backend is reachable and the browser is allowed to access it.
 
 ## Where To Read More

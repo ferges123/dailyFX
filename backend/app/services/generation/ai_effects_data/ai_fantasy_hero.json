@@ -1,0 +1,8 @@
+{
+  "id": "ai_fantasy_hero",
+  "title": "AI Fantasy Hero",
+  "description": "Uses the default AI provider to turn a photo into an epic fantasy portrait.",
+  "positive_prompt": "Transform the input photo into an epic fantasy hero portrait. Preserve the number of people, recognizable identity, key facial features, pose, camera angle, framing, main composition, outfit colors, and scene context. Add dramatic armor or robes, cinematic lighting, mythic atmosphere, subtle magical energy, rich painterly detail, heroic styling, and an elegant fantasy-art finish.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, changed identity, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, unrelated objects, low quality, blurry, uncanny, over-smoothed skin",
+  "custom_prompt_placeholder": "e.g. Dark epic fantasy, glowing magic..."
+}

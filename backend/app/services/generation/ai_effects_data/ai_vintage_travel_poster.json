@@ -1,0 +1,8 @@
+{
+  "id": "ai_vintage_travel_poster",
+  "title": "AI Vintage Travel Poster",
+  "description": "Uses the default AI provider to turn a photo into a retro travel poster.",
+  "positive_prompt": "Transform the input photo into a retro vintage travel poster with bold shapes, simplified forms, a warm mid-century color palette, subtle print texture, and polished poster design. Preserve the subject's identity as closely as possible: keep the same number of people, facial structure, eyes, nose, mouth placement, hairstyle silhouette, pose, camera angle, framing, clothing colors, and scene context. The result should feel like the same real people reimagined as an original travel-poster illustration, not as different people.",
+  "negative_prompt": "low contrast, photorealistic, changed identity, extra people, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, text, captions, logos, watermarks, blurry, low quality, cluttered layout, unreadable typography, anime, comic book",
+  "custom_prompt_placeholder": "e.g. mid-century poster art, bold shapes, sun-faded colors..."
+}

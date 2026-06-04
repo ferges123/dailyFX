@@ -4,7 +4,7 @@ DailyFX is split into a small set of layers so the API contract, generation flow
 
 ## High-Level Flow
 
-1. The frontend or scheduler selects a schedule and builds a generation task.
+1. The frontend or background scheduler loop selects a schedule and builds a generation task.
 2. The API validates the request, stores task state, and hands off work to the worker flow.
 3. The generation pipeline selects a module, fetches assets from Immich, and runs the effect.
 4. Optional AI Vision runs on the source asset and, for `ai_*` modules, again on the final image.
@@ -29,7 +29,7 @@ DailyFX is split into a small set of layers so the API contract, generation flow
 - `app/services/notifications/`
   - Holds preset-specific notification test helpers.
 - `app/workers/`
-  - Runs scheduled jobs and queued manual tasks.
+  - Runs the background scheduler loop and queued manual tasks.
 
 ## Contract Boundary
 
@@ -84,4 +84,3 @@ The repository uses two main kinds of backend tests:
 - flow tests that verify orchestration, state transitions, and error handling.
 
 The contract tests live under `backend/tests/contracts/` and are documented there.
-

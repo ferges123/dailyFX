@@ -57,7 +57,9 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     notification_token,
                     full_title,
                     title,
-                    detail,
+                    summary,
+                    click_url=abs_app_url,
+                    image_url=abs_image_url,
                 )
             elif provider == "gotify" and notification_url:
                 await send_gotify_notification(notification_url, notification_token or "", full_title, title, detail)

@@ -65,6 +65,8 @@ def test_send_ntfy_notification_posts_to_topic(monkeypatch):
             title="Collage ready",
             message="Holiday",
             detail="/api/generation/results/task-123/image",
+            click_url="https://dailyfx.example.test/review/task-123",
+            image_url="https://dailyfx.example.test/api/generation/review/task-123/thumbnail",
         )
     )
 
@@ -72,6 +74,8 @@ def test_send_ntfy_notification_posts_to_topic(monkeypatch):
     assert result.provider == "ntfy"
     assert fake_client.requests[0]["url"] == "https://ntfy.example.test/collage"
     assert fake_client.requests[0]["headers"]["Authorization"] == "Bearer secret-token"
+    assert fake_client.requests[0]["headers"]["Click"] == "https://dailyfx.example.test/review/task-123"
+    assert fake_client.requests[0]["headers"]["Attach"] == "https://dailyfx.example.test/api/generation/review/task-123/thumbnail"
     assert "Holiday" in fake_client.requests[0]["content"]
     assert result.detail == "https://ntfy.example.test/collage (ntfy-message-1)"
 
@@ -392,5 +396,4 @@ def test_send_apprise_notification(monkeypatch):
     assert result.ok is True
     assert result.provider == "apprise"
     assert "Sent to 2 Apprise" in result.detail
-
 

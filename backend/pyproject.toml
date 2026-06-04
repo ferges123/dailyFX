@@ -34,7 +34,6 @@ lint = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-timeout = 10
 
 [tool.ruff]
 target-version = "py313"

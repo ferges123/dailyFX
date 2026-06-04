@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import httpx
-from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.notification_preset import NotificationPresetModel

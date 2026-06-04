@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import { HelpCircle } from 'lucide-react';
 
 type FieldProps = {
   label: string;
@@ -14,6 +15,11 @@ export function Field({ label, hint, icon, error, required, optional, className 
     <label className="grid gap-1.5 text-sm font-medium text-stone-800">
       <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
         <span>{label}</span>
+        {hint && typeof hint === 'string' ? (
+          <span title={hint} aria-label={hint} className="inline-flex items-center text-stone-400 transition hover:text-stone-600">
+            <HelpCircle size={12} />
+          </span>
+        ) : null}
         {required && <span className="text-rose-500">*</span>}
         {optional && !required && <span className="text-xs font-medium text-stone-400">optional</span>}
       </span>
@@ -25,7 +31,7 @@ export function Field({ label, hint, icon, error, required, optional, className 
         />
       </div>
       {error ? <span className="text-xs font-normal leading-5 text-rose-600">{error}</span> : null}
-      {hint ? <span className="text-xs font-normal leading-5 text-stone-500">{hint}</span> : null}
+      {hint && typeof hint !== 'string' ? <span className="text-xs font-normal leading-5 text-stone-500">{hint}</span> : null}
     </label>
   );
 }

@@ -16,6 +16,23 @@ import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { formatDateTime } from '../datetime.utils';
 
+interface VisionState {
+  attempted?: boolean;
+  succeeded?: boolean;
+}
+
+interface TaskTraceItem {
+  stage?: string;
+  message?: string;
+  progress?: number | null;
+  timestamp?: string;
+  status?: string;
+  step?: string;
+  details?: {
+    elapsed_seconds?: number;
+  };
+}
+
 interface HistoryDetailPanelProps {
   entry: GenerationHistoryEntry | null;
   selectedHistoryImmichUrl: string | null;
@@ -61,13 +78,13 @@ export function HistoryDetailPanel({
     if (!entry?.config_json) return null;
     try {
       const config = JSON.parse(entry.config_json);
-      return Array.isArray(config.task_trace) ? config.task_trace : null;
+      return Array.isArray(config.task_trace) ? (config.task_trace as TaskTraceItem[]) : null;
     } catch {
       return null;
     }
   })();
 
-  const formatVisionState = (vision: any) => {
+  const formatVisionState = (vision: VisionState | null | undefined) => {
     if (!vision) return 'unknown';
     if (!vision.attempted) return 'not used';
     return vision.succeeded ? 'succeeded' : 'failed';
@@ -83,6 +100,16 @@ export function HistoryDetailPanel({
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `+${minutes}m ${String(seconds).padStart(2, '0')}s`;
+  };
+
+  const formatDuration = (seconds: number | null | undefined) => {
+    if (seconds == null) return null;
+    const totalSeconds = Math.max(0, Math.round(Number(seconds)));
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    if (minutes && secs) return `${minutes} min ${secs} sec`;
+    if (minutes) return `${minutes} min`;
+    return `${secs} sec`;
   };
 
   if (!entry) {
@@ -391,6 +418,30 @@ export function HistoryDetailPanel({
                         ))}
                       </div>
                     )}
+                    {metadataProvenance.prompt_enrichment_context && (
+                      <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 p-2 text-[9px] text-emerald-950">
+                        <div className="flex items-center gap-1.5 text-[7.5px] font-bold uppercase tracking-[0.12em] text-emerald-700 mb-1">
+                          <Layers size={11} />
+                          Prompt enrichment
+                        </div>
+                        <div className="space-y-1">
+                          {metadataProvenance.prompt_enrichment_context.album_name && (
+                            <div><span className="font-semibold text-emerald-800">Album:</span> {metadataProvenance.prompt_enrichment_context.album_name}</div>
+                          )}
+                          {Array.isArray(metadataProvenance.prompt_enrichment_context.people_names) && metadataProvenance.prompt_enrichment_context.people_names.length > 0 && (
+                            <div><span className="font-semibold text-emerald-800">People:</span> {metadataProvenance.prompt_enrichment_context.people_names.join(', ')}</div>
+                          )}
+                          {metadataProvenance.prompt_enrichment_context.exif_summary && (
+                            <div><span className="font-semibold text-emerald-800">EXIF:</span> {metadataProvenance.prompt_enrichment_context.exif_summary}</div>
+                          )}
+                          {metadataProvenance.prompt_enrichment_context.context_hint && (
+                            <div className="rounded-md border border-emerald-200/70 bg-white/70 p-2 text-[8.5px] leading-relaxed text-emerald-950 whitespace-pre-line">
+                              {metadataProvenance.prompt_enrichment_context.context_hint}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -402,7 +453,7 @@ export function HistoryDetailPanel({
                     Task timeline
                   </div>
                   <div className="space-y-1.5">
-                    {taskTrace.map((item: any, index: number) => (
+                    {taskTrace.map((item: TaskTraceItem, index: number) => (
                       <div key={`${item.stage || 'stage'}-${index}`} className="rounded-md border border-stone-100/70 bg-stone-50/60 p-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -415,6 +466,11 @@ export function HistoryDetailPanel({
                             {item.progress !== null && item.progress !== undefined && (
                               <div className="text-[7.5px] font-semibold text-stone-500">
                                 {Math.round(Number(item.progress) * 100)}%
+                              </div>
+                            )}
+                            {item.details?.elapsed_seconds !== undefined && (
+                              <div className="text-[7px] font-medium text-stone-400">
+                                {formatDuration(item.details.elapsed_seconds)}
                               </div>
                             )}
                             {formatElapsed(taskTrace[index - 1]?.timestamp, item.timestamp) && (

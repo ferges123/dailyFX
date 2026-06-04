@@ -72,9 +72,11 @@ def init_db() -> None:
     import app.models  # noqa: F401
     from alembic import command
     from alembic.config import Config
+    from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 
     _ensure_engine()
     alembic_cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "app" / "migrations"))
 
     command.upgrade(alembic_cfg, "head")
+    bootstrap_builtin_ai_effects()

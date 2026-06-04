@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 import time
 from dataclasses import dataclass
 from collections.abc import Callable
@@ -20,6 +19,8 @@ from app.immich.models import ImmichSearchFilters
 from app.utils.debug_logger import debug_log, set_debug_mode
 
 logger = logging.getLogger(__name__)
+
+_ALBUM_NAME_SENTINEL = object()
 
 FINAL_AI_VISION_PROMPT = (
     "Analyze this final generated image. Describe what is actually visible in the image itself, "
@@ -103,6 +104,18 @@ def _trace_stage(
         progress=progress,
         details=details,
     )
+
+
+def _format_duration(seconds: float | int | None) -> str | None:
+    if seconds is None:
+        return None
+    total_seconds = max(0, int(round(float(seconds))))
+    minutes, secs = divmod(total_seconds, 60)
+    if minutes and secs:
+        return f"{minutes} min {secs} sec"
+    if minutes:
+        return f"{minutes} min"
+    return f"{secs} sec"
 
 
 def _validate_module_config(module, config: dict) -> None:
@@ -202,14 +215,19 @@ def _select_generation_module(effects_config: dict) -> GenerationModuleSelection
     from app.services.generation import engine as engine_module
 
     groups_config = _merge_module_defaults(effects_config)
-    active_groups = [(name, data) for name, data in groups_config.items() if data.get("enabled", False)]
+    modules = getattr(engine_module, "MODULES", {}) or {}
+    active_groups = []
+    for name, data in groups_config.items():
+        if data.get("enabled", False):
+            mod = modules.get(name)
+            if mod is not None and getattr(mod, "enabled", True):
+                active_groups.append((name, data))
     debug_log("Active modules", active=[f"{n}(w={d['weight']})" for n, d in active_groups], total_in_preset=len(effects_config))
     if not active_groups:
         return None
 
     weights = [data.get("weight", 1) for _, data in active_groups]
     group_name, group_config = engine_module.random.choices(active_groups, weights=weights, k=1)[0]
-    modules = getattr(engine_module, "MODULES", {}) or {}
     module = modules.get(group_name)
     if module is None:
         raise ValueError(f"Unknown generation group: {group_name}")
@@ -362,6 +380,7 @@ async def _persist_generation_outputs(
     album_name: str | None,
     notification_presets: list,
     webhook_url: str | None,
+    pipeline_start_time: float,
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
 ) -> dict:
@@ -391,14 +410,17 @@ async def _persist_generation_outputs(
     debug_log("History entry saved", task_id=task_id, status="PENDING_REVIEW", generation_type=result.generation_type, album_name=album_name, ai_title=artifacts.ai_title, tags_count=len(artifacts.ai_tags))
 
     _task_update(status="succeeded", step="succeeded", progress=1.0, error=None)
+    total_elapsed = max(0.0, time.time() - pipeline_start_time)
+    duration_label = _format_duration(total_elapsed)
     _trace_stage(
         db,
         task_id,
         stage="completed",
-        message="Generation completed successfully",
+        message=f"Generation completed successfully in {duration_label}" if duration_label else "Generation completed successfully",
         step="succeeded",
         status="succeeded",
         progress=1.0,
+        details={"elapsed_seconds": round(total_elapsed, 2), "generation_type": result.generation_type},
     )
     await engine_module._dispatch_generation_outputs(
         notification_presets=notification_presets,
@@ -559,6 +581,27 @@ async def _build_generation_artifacts(
         elif isinstance(getattr(source_asset, "people", None), list) and getattr(source_asset, "people", None):
             metadata_provenance["people_context"]["attempted"] = True
 
+        prompt_enrichment_context = result.config.get("prompt_enrichment_context") if isinstance(result.config, dict) else None
+        if isinstance(prompt_enrichment_context, dict) and prompt_enrichment_context.get("context_hint"):
+            metadata_provenance["prompt_enrichment_context"] = prompt_enrichment_context
+            _trace_stage(
+                db,
+                task_id,
+                stage="prompt_enrichment_context",
+                message="AI prompt enrichment context assembled",
+                step="analyzing_image",
+                status="running",
+                progress=0.54,
+                details=prompt_enrichment_context,
+            )
+            debug_log(
+                "Prompt enrichment context stored in history",
+                task_id=task_id,
+                album_name=prompt_enrichment_context.get("album_name"),
+                people_names=prompt_enrichment_context.get("people_names"),
+                exif_summary=prompt_enrichment_context.get("exif_summary"),
+            )
+
         if settings.default_ai_provider != "none":
             try:
                 await _apply_source_vision(
@@ -679,6 +722,7 @@ async def run_generation_pipeline(
 ) -> dict | None:
     source = "MANUAL" if force else "AUTOMATION"
     logger.info(f"🔵 run_generation_cycle START - task_id={task_id}, source={source}")
+    pipeline_start_time = time.time()
 
     _resolve_schedule_ai_settings(db, settings, schedule_id)
     set_debug_mode(settings.debug_mode)
@@ -825,19 +869,32 @@ async def run_generation_pipeline(
 
     output_path, image_url = _generation_output_paths(task_id)
 
+    original_album_name = getattr(settings, "_generation_album_name", _ALBUM_NAME_SENTINEL)
+    if album_name is not None:
+        setattr(settings, "_generation_album_name", album_name)
+    elif hasattr(settings, "_generation_album_name"):
+        delattr(settings, "_generation_album_name")
+
     try:
-        result = await _run_selected_module(
-            db=db,
-            module=module,
-            group_name=selected_group_name,
-            group_config=group_config,
-            page_items=page_items,
-            client=client,
-            settings=settings,
-            task_id=task_id,
-            _task_update=_task_update,
-            _progress=_progress,
-        )
+        try:
+            result = await _run_selected_module(
+                db=db,
+                module=module,
+                group_name=selected_group_name,
+                group_config=group_config,
+                page_items=page_items,
+                client=client,
+                settings=settings,
+                task_id=task_id,
+                _task_update=_task_update,
+                _progress=_progress,
+            )
+        finally:
+            if original_album_name is _ALBUM_NAME_SENTINEL:
+                if hasattr(settings, "_generation_album_name"):
+                    delattr(settings, "_generation_album_name")
+            else:
+                setattr(settings, "_generation_album_name", original_album_name)
 
         source_asset, people_context = await _resolve_generation_source_context(
             page=page,
@@ -871,6 +928,7 @@ async def run_generation_pipeline(
             album_name=album_name,
             notification_presets=notification_presets,
             webhook_url=webhook_url,
+            pipeline_start_time=pipeline_start_time,
             _task_update=_task_update,
             _progress=_progress,
         )

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, Inbox } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Inbox } from 'lucide-react';
 import { Field, SelectField } from './Field';
 
 export function SectionCard({
@@ -15,9 +15,13 @@ export function SectionCard({
 }) {
   return (
     <section className={`grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
-      <div className="grid gap-0.5">
+      <div className="flex items-center gap-1.5">
         <div className="text-sm font-semibold text-stone-900">{title}</div>
-        {description && <p className="text-sm leading-6 text-stone-500">{description}</p>}
+        {description ? (
+          <span title={description} aria-label={description} className="inline-flex items-center text-stone-400 transition hover:text-stone-600">
+            <HelpCircle size={14} />
+          </span>
+        ) : null}
       </div>
       {children}
     </section>
@@ -101,9 +105,13 @@ export function ProviderModelField({
 
   return (
     <div className={`grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
-      <div className="grid gap-1">
+      <div className="flex items-center gap-1.5">
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">{label}</div>
-        {providerHelp && <p className="text-xs leading-5 text-stone-500">{providerHelp}</p>}
+        {providerHelp ? (
+          <span title={providerHelp} aria-label={providerHelp} className="inline-flex items-center text-stone-400 transition hover:text-stone-600">
+            <HelpCircle size={12} />
+          </span>
+        ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Provider" value={provider} onChange={(e) => onProviderChange(e.target.value)}>

@@ -17,19 +17,16 @@ This guide is for people who want to run DailyFX on their own network with Immic
 ```mermaid
 flowchart LR
   U[User Browser] -->|HTTP :8439| W[frontend / nginx]
-  W -->|/api/* proxy| A[backend API :8438]
+  W -->|/api/* proxy| A["backend API (runs API & Scheduler) :8438"]
   A --> I[Immich]
   A --> D[(data/app.db)]
   A --> R[(data/results/)]
-  S[scheduler container] --> A
-  S --> D
-  S --> R
 ```
 
 - The browser talks to the frontend on port `8439`.
 - The frontend proxies API requests to the backend on port `8438`.
 - The backend reads and writes persistent state under `data/`.
-- The scheduler runs as a separate container so automated runs keep working even if the UI is not open.
+- The scheduler runs in the background of the backend container so automated runs keep working even if the UI is not open.
 
 ## Initial Setup
 1. Clone the repository.
@@ -54,6 +51,8 @@ The bundled `.env.example` is already tuned for Docker-based self-hosting: `APP_
 ```bash
 docker compose up --build -d
 ```
+
+On startup, the backend runs a preflight check that validates the loaded configuration and verifies that the data directory and SQLite path are writable before the API and scheduler begin.
 
 The default ports are:
 - `8439` for the web UI
@@ -81,8 +80,8 @@ docker compose up --build -d
 If you want to rebuild only specific services:
 
 ```bash
-docker compose build api scheduler web
-docker compose up -d api scheduler web
+docker compose build api web
+docker compose up -d api web
 ```
 
 ## Backups
@@ -97,9 +96,10 @@ docker compose up -d api scheduler web
 - Restrict `CORS_ORIGINS` to trusted origins when using a custom domain
 
 ## Troubleshooting
+- If the backend exits immediately, check the logs for the preflight error; it will name the invalid setting or unwritable path.
 - If the UI cannot reach Immich, re-check the URL and API key in **Settings**, then rerun the connection test.
 - If login loops, confirm the browser token matches `APP_ACCESS_TOKEN` in `.env`.
-- If schedules do not run, check that the `scheduler` container is healthy and the schedule is enabled.
+- If schedules do not run, check that the `api` container is healthy and the schedule is enabled.
 - If timestamps look wrong, adjust `TZ` in `.env` and restart the stack.
 - For a user-oriented overview of the workflow, see [How It Works](how-it-works.md).
 - For API details, see [docs/api.md](api.md).

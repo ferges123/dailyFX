@@ -425,20 +425,28 @@ def test_ai_module_tags_injection(tmp_path):
             patch(
                 "app.services.generation.engine.MODULES",
                 {
-                    "ai_fantasy_hero": MagicMock(
-                        label="AI Fantasy Hero",
-                        run=AsyncMock(
-                            return_value=MagicMock(
-                                image_bytes=_fake_image_bytes(),
-                                generation_type="ai_fantasy_hero",
-                                provider="openai",
-                                model="gpt-image-1",
-                                config={},
-                                source_asset_ids=["asset-1"],
-                                title="Hero Title",
-                                summary="Hero Summary",
-                            )
-                        ),
+                "ai_fantasy_hero": MagicMock(
+                    label="AI Fantasy Hero",
+                    run=AsyncMock(
+                        return_value=MagicMock(
+                            image_bytes=_fake_image_bytes(),
+                            generation_type="ai_fantasy_hero",
+                            provider="openai",
+                            model="gpt-image-1",
+                            config={
+                                "prompt_enrichment_context": {
+                                    "album_name": "Vacation Album",
+                                    "people_names": ["Alice"],
+                                    "people_prompt_hint": "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.",
+                                    "exif_summary": "Camera: Sony A7; Exposure: ISO 400",
+                                    "context_hint": "Album: Vacation Album\nDetected people: Alice\nImmich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.\nEXIF: Camera: Sony A7; Exposure: ISO 400",
+                                }
+                            },
+                            source_asset_ids=["asset-1"],
+                            title="Hero Title",
+                            summary="Hero Summary",
+                        )
+                    ),
                     )
                 },
             ),
@@ -488,7 +496,15 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
                 generation_type="ai_anime",
                 provider="openai",
                 model="gpt-image-1",
-                config={},
+                config={
+                    "prompt_enrichment_context": {
+                        "album_name": "Vacation Album",
+                        "people_names": ["Alice"],
+                        "people_prompt_hint": "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.",
+                        "exif_summary": "Camera: Sony A7; Exposure: ISO 400",
+                        "context_hint": "Album: Vacation Album\nDetected people: Alice\nImmich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.\nEXIF: Camera: Sony A7; Exposure: ISO 400",
+                    }
+                },
                 source_asset_ids=["asset-1"],
                 title="Module Title",
                 summary="Module Summary",
@@ -565,6 +581,8 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
         assert provenance["final_vision"]["succeeded"] is True
         assert provenance["source_vision"]["succeeded"] is True
         assert provenance["tag_injections"] == ["AI", "Anime"]
+        assert provenance["prompt_enrichment_context"]["album_name"] == "Vacation Album"
+        assert any(item.get("stage") == "prompt_enrichment_context" for item in config["task_trace"])
         assert entry.provider == "openai"
         assert entry.model == "gpt-image-1"
     finally:

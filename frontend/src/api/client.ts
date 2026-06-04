@@ -15,6 +15,25 @@ export type Settings = {
   local_ai_api_key_masked: string | null;
 };
 
+export type HealthCheckStatus = {
+  status: string;
+  detail?: string | null;
+  age_seconds?: number | null;
+  version?: string | null;
+  user?: string | null;
+  provider?: string | null;
+  http?: number | null;
+  server_url?: string | null;
+  user_email?: string | null;
+  user_id?: string | null;
+  server_version?: string | null;
+};
+
+export type DetailedHealth = {
+  status: string;
+  checks: Record<string, HealthCheckStatus>;
+};
+
 export type SettingsUpdate = Omit<
   Settings,
   | 'immich_api_key_masked'
@@ -198,6 +217,10 @@ export function getHealth() {
   return request<{ status: string; version: string; auth_enabled: boolean }>('/api/health');
 }
 
+export function getDetailedHealth() {
+  return request<DetailedHealth>('/api/health/detailed');
+}
+
 export function getSettings() {
   return request<Settings>('/api/settings');
 }
@@ -263,18 +286,6 @@ export function getGenerationExamples() {
   return request<GenerationExampleInfo[]>('/api/generation/examples');
 }
 
-export function getImmichAssets(filters: ImmichAssetSearchFilters) {
-  const params = new URLSearchParams();
-  params.set('media_type', filters.mediaType);
-  if (filters.startDate) params.set('start_date', filters.startDate);
-  if (filters.endDate) params.set('end_date', filters.endDate);
-  filters.albumIds.forEach((albumId) => params.append('album_ids', albumId));
-  filters.personFilters.forEach((filter) => {
-    params.append('person_ids', filter.personId);
-    params.append('person_modes', filter.mode);
-  });
-  return request<ImmichAssetPage>(`/api/immich/assets?${params.toString()}`);
-}
 
 export function getImmichAssetThumbnailUrl(assetId: string, size = 'preview') {
   return getApiUrl(`/api/immich/assets/${assetId}/thumbnail?size=${size}`);
@@ -344,20 +355,6 @@ export type GenerationAcceptRequest = {
   album_id: string | null;
 };
 
-export type GenerationTaskStatus = {
-  task_id: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
-  step: string | null;
-  progress: number | null;
-  done: boolean;
-  error: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export function getGenerationTaskStatus(taskId: string) {
-  return request<GenerationTaskStatus>(`/api/generation/task/${taskId}/status`);
-}
 
 export type GenerationHistoryPage = {
   items: GenerationHistoryEntry[];
@@ -499,6 +496,58 @@ export type EffectPreset = {
   created_at: string;
 };
 
+export type AIEffect = {
+  id: string;
+  title: string;
+  description: string | null;
+  display_group: string | null;
+  positive_prompt: string;
+  negative_prompt: string | null;
+  custom_prompt_placeholder: string | null;
+  enabled: boolean;
+  source: 'builtin' | 'custom' | 'imported';
+  hidden: boolean;
+  builtin_hash: string | null;
+  latest_builtin_hash: string | null;
+  user_modified_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AIEffectUpsert = {
+  id: string;
+  title: string;
+  description: string | null;
+  display_group: string | null;
+  positive_prompt: string;
+  negative_prompt: string | null;
+  custom_prompt_placeholder: string | null;
+  enabled: boolean;
+};
+
+export type AIEffectImportItem = AIEffectUpsert & {
+  source?: 'builtin' | 'custom' | 'imported' | null;
+};
+
+export type AIEffectImportRequest = {
+  schema_version: number;
+  overwrite_existing: boolean;
+  effects: AIEffectImportItem[];
+};
+
+export type AIEffectImportResult = {
+  added: string[];
+  updated: string[];
+  skipped: string[];
+  conflicts: string[];
+  invalid: string[];
+};
+
+export type AIEffectExport = {
+  schema_version: number;
+  effects: AIEffect[];
+};
+
 export type NotificationPreset = {
   id: number;
   name: string;
@@ -553,6 +602,53 @@ export const updateEffectPreset = (id: number, body: Omit<EffectPreset, 'id' | '
   request<EffectPreset>(`/api/presets/effects/${id}`, { method: 'PUT', body: JSON.stringify(body) });
 export const deleteEffectPreset = (id: number) =>
   request<void>(`/api/presets/effects/${id}`, { method: 'DELETE' });
+
+export function getAIEffects() {
+  return request<AIEffect[]>('/api/ai-effects');
+}
+
+export function createAIEffect(body: AIEffectUpsert) {
+  return request<AIEffect>('/api/ai-effects', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateAIEffect(id: string, body: AIEffectUpsert) {
+  return request<AIEffect>(`/api/ai-effects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteAIEffect(id: string) {
+  return request<AIEffect>(`/api/ai-effects/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function resetAIEffect(id: string) {
+  return request<AIEffect>(`/api/ai-effects/${id}/reset`, {
+    method: 'POST',
+  });
+}
+
+export function duplicateAIEffect(id: string) {
+  return request<AIEffect>(`/api/ai-effects/${id}/duplicate`, {
+    method: 'POST',
+  });
+}
+
+export function importAIEffects(body: AIEffectImportRequest) {
+  return request<AIEffectImportResult>('/api/ai-effects/import', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function exportAIEffects() {
+  return request<AIEffectExport>('/api/ai-effects/export');
+}
 
 // Notification presets
 export const getNotificationPresets = () => request<NotificationPreset[]>('/api/presets/notifications');

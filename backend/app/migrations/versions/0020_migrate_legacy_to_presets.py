@@ -5,7 +5,6 @@ Revises: 0019_create_preset_and_schedule_tables
 Create Date: 2026-05-25
 """
 from alembic import op
-import sqlalchemy as sa
 from sqlalchemy.sql import text
 
 revision = '0020_migrate_legacy_to_presets'

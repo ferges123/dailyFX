@@ -21,10 +21,13 @@ import {
 import HistoryPage from './pages/History/HistoryPage';
 import { SettingsPage } from './pages/Settings';
 import { FilterPresetsPage, EffectPresetsPage, NotificationPresetsPage } from './pages/Presets';
+import { AIEffectsPage } from './pages/AIEffects';
 import { SchedulesPage } from './pages/Schedules';
 import { LoginPage } from './pages/Login';
 import { getHealth } from './api/client';
 import { AuthProvider, useAuth } from './api/AuthContext';
+
+const GITHUB_URL = 'https://github.com/ferges123/dailyFX';
 
 function AppShell() {
   const { isAuthenticated, setToken } = useAuth();
@@ -105,30 +108,24 @@ function AppShell() {
               type="button"
               onClick={handleLogout}
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 text-sm font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-red-600"
-            title="Log out"
-          >
-            <LogOut size={16} />
-            Log out
-          </button>
-        )}
+              title="Log out"
+            >
+              <LogOut size={16} />
+              Log out
+            </button>
+          )}
           <div className="mt-6 rounded-2xl border border-stone-200/70 bg-white/65 px-3 py-3 text-xs text-stone-500">
-            <div className="flex items-center gap-1.5 font-semibold text-stone-700">
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 font-semibold text-stone-700 transition hover:text-emerald-800"
+              title="Open DailyFX on GitHub"
+            >
               <Bell size={13} />
               DailyFX 0.0.1
-            </div>
-            <p className="mt-1.5 leading-5">
-              GitHub and PolyForm links live here on the right.
-            </p>
+            </a>
             <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
-              <a
-                href="https://github.com/ferges123/dailyFX"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-emerald-800 hover:underline"
-              >
-                GitHub
-              </a>
-              <span className="text-stone-300">•</span>
               <a
                 href="https://polyformproject.org/licenses/noncommercial/1.0.0/"
                 target="_blank"
@@ -155,6 +152,7 @@ function AppShell() {
               <Route index element={<Navigate to="filters" replace />} />
               <Route path="filters" element={<FilterPresetsPage />} />
               <Route path="effects" element={<EffectPresetsPage />} />
+              <Route path="ai-effects" element={<AIEffectsPage />} />
               <Route path="notifications" element={<NotificationPresetsPage />} />
             </Route>
             <Route path="/settings" element={<SettingsPage />} />
@@ -254,6 +252,9 @@ function PresetsLayout() {
         </PresetSubnavLink>
         <PresetSubnavLink to="/presets/effects" active={location.pathname === '/presets/effects'}>
           Effects
+        </PresetSubnavLink>
+        <PresetSubnavLink to="/presets/ai-effects" active={location.pathname === '/presets/ai-effects'}>
+          AI Effects
         </PresetSubnavLink>
         <PresetSubnavLink to="/presets/notifications" active={location.pathname === '/presets/notifications'}>
           Notifications

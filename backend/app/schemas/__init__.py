@@ -9,6 +9,15 @@ from .generation import (
     GenerationHistoryResponse,
     GenerationAcceptRequest,
 )
+from .ai_effects import (
+    AIEffectCreate,
+    AIEffectExportRequest,
+    AIEffectImportItem,
+    AIEffectImportRequest,
+    AIEffectImportResult,
+    AIEffectResponse,
+    AIEffectUpdate,
+)
 from .presets import (
     FilterPresetCreate,
     FilterPresetResponse,
@@ -31,6 +40,13 @@ __all__ = [
     "GenerationHistoryCreate",
     "GenerationHistoryResponse",
     "GenerationAcceptRequest",
+    "AIEffectCreate",
+    "AIEffectUpdate",
+    "AIEffectResponse",
+    "AIEffectImportItem",
+    "AIEffectImportRequest",
+    "AIEffectImportResult",
+    "AIEffectExportRequest",
     "FilterPresetCreate",
     "FilterPresetResponse",
     "EffectPresetCreate",

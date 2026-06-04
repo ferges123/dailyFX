@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 
-from PIL import Image, ImageChops, ImageEnhance, ImageFilter
+from PIL import Image, ImageChops, ImageEnhance
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult

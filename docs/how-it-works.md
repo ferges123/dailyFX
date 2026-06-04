@@ -40,7 +40,7 @@ flowchart LR
 
 ## What Happens During A Run
 
-- The scheduler starts the task or you trigger a selected schedule manually.
+- The background scheduler loop starts the task or you trigger a selected schedule manually.
 - DailyFX searches Immich for matching assets.
 - A generation module runs and produces the output image.
 - Optional AI Vision can create or refine titles, summaries, and tags.
@@ -51,7 +51,7 @@ flowchart LR
 ## What You Usually Need To Check
 
 - No schedule runs:
-  - confirm the scheduler container is running,
+  - confirm the backend container is running,
   - confirm the schedule is enabled,
   - confirm the filter preset still matches assets in Immich.
 - A result looks wrong:
@@ -69,7 +69,7 @@ Use this as the quick daily loop:
 1. Open **History** and see whether recent runs completed normally.
 2. If a run finished, check whether the preview looks worth uploading.
 3. If something looks off, inspect the trace before changing settings.
-4. If multiple runs fail, check the schedule, Immich connection, and scheduler container.
+4. If multiple runs fail, check the schedule, Immich connection, and backend container.
 5. Use **Reject** when the result is not useful, or **Accept** when you want it uploaded to Immich.
 
 ## Related Docs

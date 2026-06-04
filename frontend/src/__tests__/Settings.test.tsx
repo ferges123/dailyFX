@@ -8,6 +8,8 @@ vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>();
   return {
     ...actual,
+    getHealth: vi.fn(),
+    getDetailedHealth: vi.fn(),
     getSettings: vi.fn(),
     updateSettings: vi.fn(),
     testImmichConnection: vi.fn(),
@@ -37,6 +39,16 @@ const mockSettings = {
   local_ai_api_key_masked: null,
 };
 
+const mockHealth = { status: 'ok', version: '0.1.0', auth_enabled: false };
+const mockDetailedHealth = {
+  status: 'ok',
+  checks: {
+    scheduler: { status: 'ok', age_seconds: 15 },
+    database: { status: 'ok' },
+    immich: { status: 'not_configured' },
+  },
+};
+
 function renderSettings() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -55,10 +67,13 @@ function renderSettings() {
 
 describe('SettingsPage', () => {
   it('loads settings and renders the form', async () => {
+    vi.mocked(client.getHealth).mockResolvedValue(mockHealth);
+    vi.mocked(client.getDetailedHealth).mockResolvedValue(mockDetailedHealth);
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
 
     renderSettings();
 
+    expect(await screen.findByText('Runtime Status')).toBeInTheDocument();
     expect(await screen.findByText('Immich Connection')).toBeInTheDocument();
     expect(screen.getByDisplayValue('http://immich-server')).toBeInTheDocument();
     expect(screen.getByDisplayValue('http://local-ai:11434/v1')).toBeInTheDocument();
@@ -66,6 +81,8 @@ describe('SettingsPage', () => {
   });
 
   it('shows a retryable error when the settings fetch fails initially', async () => {
+    vi.mocked(client.getHealth).mockResolvedValue(mockHealth);
+    vi.mocked(client.getDetailedHealth).mockResolvedValue(mockDetailedHealth);
     vi.mocked(client.getSettings).mockRejectedValue(new client.ApiError(503, 'Settings service temporarily unavailable'));
 
     renderSettings();
@@ -76,6 +93,8 @@ describe('SettingsPage', () => {
   });
 
   it('blocks save when settings validation fails', async () => {
+    vi.mocked(client.getHealth).mockResolvedValue(mockHealth);
+    vi.mocked(client.getDetailedHealth).mockResolvedValue(mockDetailedHealth);
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.updateSettings).mockResolvedValue(mockSettings);
 
@@ -92,6 +111,8 @@ describe('SettingsPage', () => {
   });
 
   it('blocks save when AI limits are out of range', async () => {
+    vi.mocked(client.getHealth).mockResolvedValue(mockHealth);
+    vi.mocked(client.getDetailedHealth).mockResolvedValue(mockDetailedHealth);
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.updateSettings).mockResolvedValue(mockSettings);
 

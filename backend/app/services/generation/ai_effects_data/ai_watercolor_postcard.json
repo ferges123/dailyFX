@@ -1,0 +1,8 @@
+{
+  "id": "ai_watercolor_postcard",
+  "title": "AI Watercolor Postcard",
+  "description": "Uses the default AI provider to turn a photo into a soft watercolor postcard illustration.",
+  "positive_prompt": "Transform the input photo into a delicate watercolor postcard illustration with soft washes, paper texture, gentle brush bleeding, warm hand-painted color transitions, and a charming travel-postcard feel. Preserve the subject's identity as closely as possible: keep the same number of people, facial structure, eyes, nose, mouth placement, hairstyle silhouette, pose, camera angle, framing, clothing colors, and scene context. The result should feel like the same real people reimagined as a hand-painted postcard, not as different people.",
+  "negative_prompt": "hard edges, hyperrealistic, plastic skin, changed identity, extra people, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, text, captions, logos, watermarks, blurry, low quality, muddy colors, heavy ink, comic book, anime",
+  "custom_prompt_placeholder": "e.g. soft watercolor wash, hand-painted travel postcard..."
+}

@@ -1,6 +1,5 @@
 """Unit tests for OpenCV-enhanced modules."""
 import numpy as np
-from PIL import Image
 
 from app.services.generation.modules.bokeh_blur import _detect_face_center, _create_depth_mask
 from app.services.generation.modules.vintage_film import _apply_film_curve

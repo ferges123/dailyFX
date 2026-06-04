@@ -1,0 +1,8 @@
+{
+  "id": "ai_film_noir_portrait",
+  "title": "AI Film Noir Portrait",
+  "description": "Uses the default AI provider to turn a photo into a dramatic noir portrait.",
+  "positive_prompt": "Transform the input photo into a cinematic film noir portrait with dramatic shadows, high-contrast black-and-white toning, moody detective atmosphere, and elegant vintage composition. Preserve the subject's identity as closely as possible: keep the same number of people, facial structure, eyes, nose, mouth placement, hairstyle silhouette, pose, camera angle, framing, clothing cues, and scene context. The result should feel like the same real people reimagined as a classic noir still, not as different people.",
+  "negative_prompt": "low contrast, washed out, color, color tint, changed identity, extra people, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, text, captions, logos, watermarks, blurry, low quality, cartoon, comic, anime, oversaturated",
+  "custom_prompt_placeholder": "e.g. smoky detective lighting, high contrast black and white..."
+}

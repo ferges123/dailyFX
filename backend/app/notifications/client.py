@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 import httpx
 
@@ -87,6 +87,8 @@ async def send_ntfy_notification(
     title: str,
     message: str,
     detail: str | None = None,
+    click_url: str | None = None,
+    image_url: str | None = None,
 ) -> NotificationTestResult:
     if not topic.strip():
         raise ValueError("ntfy topic is required")
@@ -96,6 +98,10 @@ async def send_ntfy_notification(
         "Content-Type": "text/plain; charset=utf-8",
         "Title": title,
     }
+    if click_url:
+        headers["Click"] = click_url
+    if image_url:
+        headers["Attach"] = image_url
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
@@ -366,5 +372,4 @@ async def send_apprise_notification(
         message=message,
         detail=f"Sent to {len(urls)} Apprise destination(s)",
     )
-
 
