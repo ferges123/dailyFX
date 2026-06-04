@@ -51,7 +51,7 @@ export function ModuleConfigEditor({ module, config, onChange }: {
   const presets = MODULE_PRESETS[module.name] ?? [];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="grid grid-cols-1 gap-2.5 w-full sm:flex sm:flex-wrap sm:items-center sm:gap-2">
       {presets.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {presets.map((preset: ModulePreset) => {
@@ -74,22 +74,22 @@ export function ModuleConfigEditor({ module, config, onChange }: {
         if (field.type === 'number') {
           const numericValue = typeof value === 'number' ? value : Number(field.default ?? field.min ?? 0);
           return (
-            <label key={field.key} className="flex items-center gap-1.5 text-xs">
-              <span className="text-stone-500">{field.label}</span>
+            <label key={field.key} className="flex items-center justify-between gap-2 text-xs w-full sm:inline-flex sm:w-auto sm:justify-start sm:gap-1.5">
+              <span className="text-stone-500 font-medium sm:font-normal">{field.label}</span>
               <input type="number" min={field.min ?? undefined} max={field.max ?? undefined} step={field.step ?? 1}
                 value={Number.isFinite(numericValue) ? numericValue : 0}
                 onChange={(e) => { const v = Number(e.target.value); onChange(field.key, Number.isFinite(v) ? v : field.default ?? 0); }}
-                className="h-7 w-20 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700" />
+                className="h-7 w-20 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700 text-right sm:text-left" />
             </label>
           );
         }
         if (field.type === 'select') {
           const currentValue = typeof value === 'string' ? value : String(field.default ?? '');
           return (
-            <label key={field.key} className="flex items-center gap-1.5 text-xs">
-              <span className="text-stone-500">{field.label}</span>
+            <label key={field.key} className="flex items-center justify-between gap-2 text-xs w-full sm:inline-flex sm:w-auto sm:justify-start sm:gap-1.5">
+              <span className="text-stone-500 font-medium sm:font-normal">{field.label}</span>
               <select value={currentValue} onChange={(e) => onChange(field.key, e.target.value)}
-                className="h-7 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700">
+                className="h-7 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700 text-right sm:text-left">
                 {(field.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
@@ -99,27 +99,30 @@ export function ModuleConfigEditor({ module, config, onChange }: {
           const selected = Array.isArray(value) ? value.filter((e): e is string => typeof e === 'string')
             : Array.isArray(field.default) ? field.default.filter((e): e is string => typeof e === 'string') : [];
           return (
-            <div key={field.key} className="flex flex-wrap gap-1">
-              {(field.options ?? []).map((o) => {
-                const checked = selected.includes(o.value);
-                return (
-                  <label key={o.value} className={`inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${checked ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-stone-200 bg-white text-stone-700'}`}>
-                    <input type="checkbox" checked={checked} className="h-3 w-3 accent-emerald-700"
-                      onChange={(e) => onChange(field.key, e.target.checked ? [...selected, o.value] : selected.filter((x) => x !== o.value))} />
-                    <span>{o.label}</span>
-                  </label>
-                );
-              })}
+            <div key={field.key} className="flex flex-col gap-1.5 w-full mt-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 sm:hidden">{field.label}</span>
+              <div className="flex flex-wrap gap-1">
+                {(field.options ?? []).map((o) => {
+                  const checked = selected.includes(o.value);
+                  return (
+                    <label key={o.value} className={`inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${checked ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-stone-200 bg-white text-stone-700'}`}>
+                      <input type="checkbox" checked={checked} className="h-3 w-3 accent-emerald-700"
+                        onChange={(e) => onChange(field.key, e.target.checked ? [...selected, o.value] : selected.filter((x) => x !== o.value))} />
+                      <span>{o.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           );
         }
         const currentValue = typeof value === 'string' ? value : String(field.default ?? '');
         return (
-          <label key={field.key} className="flex items-center gap-1.5 text-xs">
-            <span className="text-stone-500">{field.label}</span>
+          <label key={field.key} className="flex items-center justify-between gap-2 text-xs w-full sm:inline-flex sm:w-auto sm:justify-start sm:gap-1.5">
+            <span className="text-stone-500 font-medium sm:font-normal">{field.label}</span>
             <input type="text" value={currentValue} placeholder={field.placeholder ?? ''}
               onChange={(e) => onChange(field.key, e.target.value)}
-              className="h-7 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700" />
+              className="h-7 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700 text-right sm:text-left" />
           </label>
         );
       })}
