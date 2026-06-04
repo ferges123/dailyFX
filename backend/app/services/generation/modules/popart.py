@@ -9,16 +9,16 @@ from app.services.generation.modules.common import add_grain
 
 # Enhanced vivid colour pairs (dark, light)
 _PALETTE_POOL = [
-    ((255, 40, 80),   (255, 240, 100)),   # Red-Yellow
-    ((0, 180, 255),   (255, 80, 200)),    # Blue-Pink
-    ((80, 255, 120),  (80, 0, 180)),      # Green-Purple
-    ((255, 140, 0),   (0, 220, 220)),     # Orange-Cyan
-    ((200, 0, 255),   (255, 255, 80)),    # Purple-Yellow
-    ((0, 240, 180),   (255, 30, 100)),    # Cyan-Red
-    ((255, 80, 0),    (0, 80, 255)),      # Orange-Blue
-    ((180, 255, 0),   (180, 0, 200)),     # Lime-Purple
-    ((255, 20, 180),  (20, 255, 200)),    # Magenta-Cyan
-    ((0, 60, 255),    (255, 200, 0)),     # Blue-Gold
+    ((255, 40, 80), (255, 240, 100)),  # Red-Yellow
+    ((0, 180, 255), (255, 80, 200)),  # Blue-Pink
+    ((80, 255, 120), (80, 0, 180)),  # Green-Purple
+    ((255, 140, 0), (0, 220, 220)),  # Orange-Cyan
+    ((200, 0, 255), (255, 255, 80)),  # Purple-Yellow
+    ((0, 240, 180), (255, 30, 100)),  # Cyan-Red
+    ((255, 80, 0), (0, 80, 255)),  # Orange-Blue
+    ((180, 255, 0), (180, 0, 200)),  # Lime-Purple
+    ((255, 20, 180), (20, 255, 200)),  # Magenta-Cyan
+    ((0, 60, 255), (255, 200, 0)),  # Blue-Gold
 ]
 
 
@@ -74,7 +74,7 @@ def _build_popart(image_bytes: bytes, base_contrast: float, border: int) -> byte
     src = Image.open(BytesIO(image_bytes)).convert("RGB")
     tile_w, tile_h = 600, 600
     src = ImageOps.fit(src, (tile_w, tile_h))
-    
+
     # Enhanced preprocessing
     src = ImageEnhance.Sharpness(src).enhance(1.3)
     src = src.filter(ImageFilter.UnsharpMask(radius=1, percent=120))
@@ -88,7 +88,7 @@ def _build_popart(image_bytes: bytes, base_contrast: float, border: int) -> byte
     canvas_w = tile_w * 2 + border
     canvas_h = tile_h * 2 + border
     collage = Image.new("RGB", (canvas_w, canvas_h), "#000000")
-    
+
     for i, tile in enumerate(tiles):
         x = (i % 2) * (tile_w + border)
         y = (i // 2) * (tile_h + border)
@@ -104,12 +104,12 @@ def _popart_tile(img: Image.Image, dark: tuple, light: tuple, contrast: float) -
     gray = ImageOps.autocontrast(gray, cutoff=3)
     gray = ImageEnhance.Contrast(gray).enhance(contrast)
     gray = ImageEnhance.Sharpness(gray).enhance(2.0)
-    
+
     # Posterize for bold graphic look
     gray = ImageOps.posterize(gray, 4)
-    
+
     toned = ImageOps.colorize(gray, black=dark, white=light)
     toned = ImageEnhance.Color(toned).enhance(1.2)
     toned = add_grain(toned, strength=0.03, blur=0.0)
-    
+
     return toned

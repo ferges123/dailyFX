@@ -37,8 +37,7 @@ class RunNowSearchFiltersPayload(BaseModel):
         return ImmichSearchFilters(
             album_ids=self.album_ids or None,
             person_filters=[
-                ImmichPersonFilter(person_id=item.person_id, mode=item.mode)
-                for item in self.person_filters
+                ImmichPersonFilter(person_id=item.person_id, mode=item.mode) for item in self.person_filters
             ],
             taken_after=parse_date(self.taken_after),
             taken_before=parse_date(self.taken_before),
@@ -50,8 +49,7 @@ class RunNowSearchFiltersPayload(BaseModel):
         return cls(
             album_ids=filters.album_ids or None,
             person_filters=[
-                RunNowPersonFilterPayload(person_id=item.person_id, mode=item.mode)
-                for item in filters.person_filters
+                RunNowPersonFilterPayload(person_id=item.person_id, mode=item.mode) for item in filters.person_filters
             ],
             taken_after=filters.taken_after.isoformat() if filters.taken_after else None,
             taken_before=filters.taken_before.isoformat() if filters.taken_before else None,

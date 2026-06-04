@@ -54,7 +54,7 @@ class PolaroidModule:
 def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, style: str) -> bytes:
     # 1. Base Dimensions - preserve aspect ratio of source
     canvas_w = 1400
-    border_side = 100   # left/right margin inside canvas
+    border_side = 100  # left/right margin inside canvas
     photo_w = canvas_w - 2 * border_side
 
     src_w, src_h = source.size
@@ -66,7 +66,7 @@ def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, s
 
     # 2. Image Prep - style-dependent (crop to exact photo_w × photo_h)
     photo = ImageOps.fit(source, (photo_w, photo_h), centering=(0.5, 0.45))
-    
+
     if style == "vintage":
         # Vintage: warmer, faded, more grain
         photo = ImageEnhance.Color(photo).enhance(0.85)
@@ -87,33 +87,33 @@ def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, s
         canvas = Image.new("RGB", (canvas_w, canvas_h), (242, 238, 228))  # Aged cream
     else:
         canvas = Image.new("RGB", (canvas_w, canvas_h), (248, 246, 242))  # Off-white
-    
+
     draw = ImageDraw.Draw(canvas)
 
     # 4. Placement & Shadow
     photo_x = (canvas_w - photo_w) // 2
     photo_y = 100
-    
+
     # Soft deep shadow
     _draw_shadow(canvas, (photo_x - 15, photo_y + 15), (photo_w + 30, photo_h + 30))
     canvas.paste(photo, (photo_x, photo_y))
 
     # 5. Typography - ADAPTIVE SCALING (V6)
     # Adjust font size based on caption length to prevent overflow
-    base_size_factor = 0.035 # Reduced further from 0.045
+    base_size_factor = 0.035  # Reduced further from 0.045
     if len(caption) > 20:
         base_size_factor = 0.030
     if len(caption) > 30:
         base_size_factor = 0.025
-        
+
     size_main = int(canvas_h * base_size_factor)
-    size_date = int(canvas_h * 0.012) # Reduced from 0.016
-    
+    size_date = int(canvas_h * 0.012)  # Reduced from 0.016
+
     font_main = get_font("PlayfairDisplay-Medium", size_main)
     font_date = get_font("Inter-Regular", size_date)
 
     date_label = _format_date(created_at)
-    
+
     # Text colors - style-dependent
     if style == "vintage":
         text_color = (60, 50, 40)
@@ -121,24 +121,30 @@ def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, s
     else:
         text_color = (35, 32, 28)
         date_color = (120, 110, 100)
-    
+
     # Position text with balanced margin
     text_y = photo_y + photo_h + int(canvas_h * 0.06)
-    
+
     # Truncate caption if still too long after scaling
     display_caption = caption[:40] + "..." if len(caption) > 40 else caption
-    
+
     # Draw Text (Title) - Use explicit anchor for positioning
     draw.text((photo_x + int(canvas_w * 0.05), text_y), display_caption, fill=text_color, font=font_main, anchor="lt")
-    
+
     # Measure title to place date accurately below it
     m_bbox = draw.textbbox((photo_x + int(canvas_w * 0.05), text_y), display_caption, font=font_main, anchor="lt")
     main_bottom = m_bbox[3]
-    
+
     # Draw Date (with explicit gap relative to main text bottom)
     if date_label:
         date_gap = int(size_main * 0.4)
-        draw.text((photo_x + int(canvas_w * 0.05), main_bottom + date_gap), date_label, fill=date_color, font=font_date, anchor="lt")
+        draw.text(
+            (photo_x + int(canvas_w * 0.05), main_bottom + date_gap),
+            date_label,
+            fill=date_color,
+            font=font_date,
+            anchor="lt",
+        )
 
     # 6. Final Texture (Subtle paper fiber) - stronger for vintage
     texture = Image.effect_noise((canvas_w, canvas_h), 10).convert("L")
@@ -156,7 +162,7 @@ def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, s
 
 def _draw_shadow(canvas: Image.Image, offset: tuple[int, int], size: tuple[int, int]) -> None:
     shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    layer = Image.new("RGBA", size, (10, 10, 10, 80)) # Lighter, larger blur
+    layer = Image.new("RGBA", size, (10, 10, 10, 80))  # Lighter, larger blur
     shadow.paste(layer, offset)
     shadow = shadow.filter(ImageFilter.GaussianBlur(radius=40))
     canvas.paste(shadow.convert("RGB"), (0, 0), shadow.split()[-1])

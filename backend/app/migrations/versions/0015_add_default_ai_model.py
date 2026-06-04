@@ -5,8 +5,8 @@ Revises: 0014_add_automation_tick_and_accept_notes
 Create Date: 2026-05-20 00:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0015_add_default_ai_model"
 down_revision = "0014_add_automation_tick_and_accept_notes"

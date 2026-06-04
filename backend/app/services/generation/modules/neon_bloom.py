@@ -43,7 +43,7 @@ class NeonBloomModule:
         dark, light = select_palette(config)
         bloom_radius = max(6, min(16, int(config.get("bloom_radius", 10) or 10)))
         intensity = max(1.2, min(1.6, float(config.get("intensity", 1.4) or 1.4)))
-        
+
         # Enhanced base
         base = ImageOps.autocontrast(source, cutoff=2)
         base = ImageEnhance.Color(base).enhance(intensity)
@@ -53,18 +53,18 @@ class NeonBloomModule:
         # Multi-layer bloom for richness
         glow1 = base.filter(ImageFilter.GaussianBlur(radius=bloom_radius))
         glow1 = ImageEnhance.Brightness(glow1).enhance(1.4)
-        
+
         glow2 = base.filter(ImageFilter.GaussianBlur(radius=bloom_radius // 2))
         glow2 = ImageEnhance.Brightness(glow2).enhance(1.2)
-        
+
         # Combine blooms
         bloom = apply_screen(base, glow1)
         bloom = apply_screen(bloom, glow2)
-        
+
         # Subtle color tint
         tint = ImageOps.colorize(ImageOps.grayscale(bloom), black=dark, white=light)
         result = Image.blend(bloom, tint, 0.15)
-        
+
         # Final polish
         result = ImageEnhance.Contrast(result).enhance(1.1)
         result = ImageEnhance.Sharpness(result).enhance(1.15)

@@ -33,6 +33,7 @@ def _validate_presets(body: ScheduleCreate, db: Session) -> None:
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
+
 @router.get("", response_model=list[ScheduleResponse])
 def list_schedules(db: Session = Depends(get_db), _: None = Depends(require_auth)):
     rows = db.query(ScheduleModel).order_by(ScheduleModel.name).all()
@@ -42,14 +43,12 @@ def list_schedules(db: Session = Depends(get_db), _: None = Depends(require_auth
 @router.post("", response_model=ScheduleResponse, status_code=201)
 def create_schedule(body: ScheduleCreate, db: Session = Depends(get_db), _: None = Depends(require_auth)):
     _validate_presets(body, db)
-    
+
     # Resolve and validate notification presets
     notifs = []
     if body.notification_preset_ids:
         notifs = (
-            db.query(NotificationPresetModel)
-            .filter(NotificationPresetModel.id.in_(body.notification_preset_ids))
-            .all()
+            db.query(NotificationPresetModel).filter(NotificationPresetModel.id.in_(body.notification_preset_ids)).all()
         )
         if len(notifs) != len(body.notification_preset_ids):
             raise HTTPException(status_code=404, detail="One or more notification presets not found")
@@ -87,14 +86,12 @@ def update_schedule(
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
     _validate_presets(body, db)
-    
+
     # Resolve and validate notification presets
     notifs = []
     if body.notification_preset_ids:
         notifs = (
-            db.query(NotificationPresetModel)
-            .filter(NotificationPresetModel.id.in_(body.notification_preset_ids))
-            .all()
+            db.query(NotificationPresetModel).filter(NotificationPresetModel.id.in_(body.notification_preset_ids)).all()
         )
         if len(notifs) != len(body.notification_preset_ids):
             raise HTTPException(status_code=404, detail="One or more notification presets not found")
@@ -129,6 +126,7 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), _: None = D
 
 
 # ── Run Now ───────────────────────────────────────────────────────────────────
+
 
 @router.post("/{schedule_id}/run-now", response_model=ScheduleRunNowResponse)
 async def trigger_schedule_now(

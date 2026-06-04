@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app.models.generation_task import GenerationTaskModel
 from app.services.generation.stream import record_task_snapshot
 
-
 FINAL_TASK_STATUSES = {"succeeded", "failed", "cancelled"}
 
 
@@ -75,4 +74,3 @@ def update_task(
     db.refresh(row)
     record_task_snapshot(db, row)
     return row
-

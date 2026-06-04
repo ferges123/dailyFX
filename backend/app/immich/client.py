@@ -137,7 +137,9 @@ class ImmichClient:
         params: dict[str, Any] | None = None,
     ) -> Any:
         try:
-            response = await client.get(path, headers=self._headers(json_type=True), params=params, follow_redirects=True)
+            response = await client.get(
+                path, headers=self._headers(json_type=True), params=params, follow_redirects=True
+            )
         except httpx.TimeoutException as exc:
             raise ImmichConnectionError("Timed out while connecting to Immich") from exc
         except httpx.RequestError as exc:
@@ -168,7 +170,9 @@ class ImmichClient:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         try:
-            response = await client.post(path, headers=self._headers(json_type=True), json=payload, follow_redirects=True)
+            response = await client.post(
+                path, headers=self._headers(json_type=True), json=payload, follow_redirects=True
+            )
         except httpx.TimeoutException as exc:
             raise ImmichConnectionError("Timed out while connecting to Immich") from exc
         except httpx.RequestError as exc:
@@ -226,8 +230,7 @@ class ImmichClient:
             [
                 person
                 for item in raw_people
-                if isinstance(item, dict)
-                and (person := ImmichClient._coerce_person_summary(item)) is not None
+                if isinstance(item, dict) and (person := ImmichClient._coerce_person_summary(item)) is not None
             ]
             if isinstance(raw_people, list)
             else []
@@ -433,8 +436,7 @@ class ImmichClient:
         return [
             summary
             for item in payload
-            if isinstance(item, dict)
-            and (summary := self._coerce_album_summary(item)) is not None
+            if isinstance(item, dict) and (summary := self._coerce_album_summary(item)) is not None
         ]
 
     async def create_album(
@@ -504,8 +506,7 @@ class ImmichClient:
         return [
             summary
             for item in raw_tags
-            if isinstance(item, dict)
-            and (summary := self._coerce_tag_summary(item)) is not None
+            if isinstance(item, dict) and (summary := self._coerce_tag_summary(item)) is not None
         ]
 
     async def ensure_tag(self, tag_name: str) -> ImmichTagSummary:
@@ -635,8 +636,7 @@ class ImmichClient:
                 page_people = [
                     summary
                     for item in raw_people
-                    if isinstance(item, dict)
-                    and (summary := self._coerce_person_summary(item)) is not None
+                    if isinstance(item, dict) and (summary := self._coerce_person_summary(item)) is not None
                 ]
                 if not page_people:
                     break
@@ -782,28 +782,16 @@ class ImmichClient:
         obligatory_ids = {item.person_id for item in person_filters if item.mode == "obligatory"}
         optional_ids = {item.person_id for item in person_filters if item.mode == "optional"}
 
-        filtered_items = [
-            item for item in items if not any(person.id in excluded_ids for person in item.people)
-        ]
+        filtered_items = [item for item in items if not any(person.id in excluded_ids for person in item.people)]
         if obligatory_ids:
             filtered_items = [
-                item
-                for item in filtered_items
-                if obligatory_ids.issubset({person.id for person in item.people})
+                item for item in filtered_items if obligatory_ids.issubset({person.id for person in item.people})
             ]
             if optional_ids:
-                return [
-                    item
-                    for item in filtered_items
-                    if any(person.id in optional_ids for person in item.people)
-                ]
+                return [item for item in filtered_items if any(person.id in optional_ids for person in item.people)]
             return filtered_items
         if optional_ids:
-            return [
-                item
-                for item in filtered_items
-                if any(person.id in optional_ids for person in item.people)
-            ]
+            return [item for item in filtered_items if any(person.id in optional_ids for person in item.people)]
         return filtered_items
 
     @staticmethod
@@ -816,7 +804,9 @@ class ImmichClient:
     async def get_asset_data(self, asset_id: str) -> bytes:
         """Download the original asset content."""
         # Use a longer timeout for full file downloads
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=httpx.Timeout(60.0, connect=10.0), follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            base_url=self.api_base_url, timeout=httpx.Timeout(60.0, connect=10.0), follow_redirects=True
+        ) as client:
             # Try multiple download endpoints. Immich has used different paths across versions.
             for endpoint in (
                 f"/asset/download/{asset_id}",
@@ -847,7 +837,9 @@ class ImmichClient:
                             logger.debug("Endpoint %s not found for asset %s", endpoint, asset_id)
                             break
                         else:
-                            logger.warning("Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint)
+                            logger.warning(
+                                "Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint
+                            )
                             break
                     except Exception as exc:
                         logger.warning("Error downloading from %s: %s", endpoint, exc)
@@ -856,7 +848,9 @@ class ImmichClient:
                             continue
                         break
 
-            raise ImmichUnexpectedResponseError(f"Could not download original asset data for {asset_id} after trying multiple endpoints")
+            raise ImmichUnexpectedResponseError(
+                f"Could not download original asset data for {asset_id} after trying multiple endpoints"
+            )
 
         # Fallback: use preview thumbnail (e.g. for external library assets where /original returns empty)
         try:
@@ -868,16 +862,20 @@ class ImmichClient:
         except Exception as exc:
             logger.warning("Thumbnail fallback also failed for %s: %s", asset_id, exc)
 
-        raise ImmichUnexpectedResponseError(f"Could not download original asset data for {asset_id} after trying multiple endpoints")
+        raise ImmichUnexpectedResponseError(
+            f"Could not download original asset data for {asset_id} after trying multiple endpoints"
+        )
 
-    async def update_asset(self, asset_id: str, description: str | None = None, is_favorite: bool | None = None) -> None:
+    async def update_asset(
+        self, asset_id: str, description: str | None = None, is_favorite: bool | None = None
+    ) -> None:
         """Update asset metadata (description, favorite status)."""
         payload: dict[str, Any] = {}
         if description is not None:
             payload["description"] = description
         if is_favorite is not None:
             payload["isFavorite"] = is_favorite
-            
+
         if not payload:
             return
 
@@ -899,9 +897,9 @@ class ImmichClient:
             # 2. /thumbnail/{id} (legacy/alternate)
             # 3. /asset/thumbnail/{id} (another variant seen in some versions)
             for path_pattern in (
-                f"/assets/{asset_id}/thumbnail", 
+                f"/assets/{asset_id}/thumbnail",
                 f"/thumbnail/{asset_id}",
-                f"/asset/thumbnail/{asset_id}"
+                f"/asset/thumbnail/{asset_id}",
             ):
                 try:
                     url = f"{self.api_base_url}{path_pattern}"
@@ -914,25 +912,26 @@ class ImmichClient:
                     if response.status_code == 404:
                         logger.debug("Immich thumbnail 404: %s", path_pattern)
                         continue
-                    
+
                     self._handle_response_errors(response, f"Immich thumbnail endpoint ({path_pattern}) failed")
                     return response.content, response.headers.get("content-type")
                 except Exception as exc:
                     logger.debug("Immich thumbnail error for %s: %s", path_pattern, exc)
                     last_error = exc
                     continue
-            
+
             # If all thumbnail attempts fail, try to download original and resize it as a last resort
             logger.warning("All thumbnail endpoints failed for asset %s, falling back to original data", asset_id)
             try:
                 original_bytes = await self.get_asset_data(asset_id)
                 if not original_bytes:
                     raise ValueError("Downloaded original asset data is empty")
-                
+
                 # Quick resize using PIL to mimic a thumbnail
-                from PIL import Image
                 from io import BytesIO
-                
+
+                from PIL import Image
+
                 img = Image.open(BytesIO(original_bytes))
                 img.thumbnail((1024, 1024))
                 if img.mode != "RGB":

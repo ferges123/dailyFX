@@ -5,8 +5,8 @@ Revises: 0006_add_person_filter_strategy
 Create Date: 2026-05-13 16:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0007_add_asset_source_mode"
 down_revision = "0006_add_person_filter_strategy"

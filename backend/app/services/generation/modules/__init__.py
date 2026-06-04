@@ -23,7 +23,6 @@ from app.services.generation.modules.popart import PopArtModule
 from app.services.generation.modules.prism_split import PrismSplitModule
 from app.services.generation.modules.vintage_film import VintageFilmModule
 
-
 LOCAL_MODULE_CLASSES = [
     MuseumArchiveModule,
     BokehBlurModule,
@@ -46,6 +45,8 @@ LOCAL_MODULE_CLASSES = [
     CartoonModule,
     HDRModule,
 ]
+
+
 class GenerationModuleRegistry:
     def __init__(self) -> None:
         self._modules: dict[str, object] | None = None

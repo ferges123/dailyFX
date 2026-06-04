@@ -133,7 +133,9 @@ def _coerce_person_name(value: Any) -> str | None:
     return None
 
 
-def _coerce_face_context(item: Any, person_id: str | None = None, person_name: str | None = None) -> PeopleFaceContext | None:
+def _coerce_face_context(
+    item: Any, person_id: str | None = None, person_name: str | None = None
+) -> PeopleFaceContext | None:
     face_id = _coerce_person_name(_get_first(item, "id", "faceId"))
     image_width = _coerce_int(_get_first(item, "imageWidth", "image_width"))
     image_height = _coerce_int(_get_first(item, "imageHeight", "image_height"))

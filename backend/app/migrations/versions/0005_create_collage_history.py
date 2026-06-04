@@ -5,8 +5,8 @@ Revises: 0004_add_collage_image_mode
 Create Date: 2026-05-13 12:10:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0005_create_collage_history"
 down_revision = "0004_add_collage_image_mode"
@@ -37,8 +37,12 @@ def upgrade() -> None:
         sa.Column("album_created", sa.Boolean(), nullable=False, server_default=sa.text("0")),
         sa.Column("album_updated", sa.Boolean(), nullable=False, server_default=sa.text("0")),
         sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
     )
     op.create_index("ix_collage_history_task_id", "collage_history", ["task_id"], unique=True)
 

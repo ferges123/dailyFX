@@ -4,8 +4,9 @@ Revision ID: 0004_add_collage_image_mode
 Revises: 0003_add_gemini_output_size
 Create Date: 2026-05-13
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0004_add_collage_image_mode"
 down_revision = "0003_add_gemini_output_size"

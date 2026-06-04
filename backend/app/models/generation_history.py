@@ -24,7 +24,7 @@ class GenerationHistoryModel(Base):
     config_json: Mapped[str] = mapped_column(Text, nullable=False)
     tags_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of tag strings
     task_step: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    
+
     uploaded_asset_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     upload_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     album_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -33,7 +33,7 @@ class GenerationHistoryModel(Base):
     album_updated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     accept_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     accepted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
-    
+
     schedule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())

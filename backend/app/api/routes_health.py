@@ -117,8 +117,6 @@ async def health_detailed(db: Session = Depends(get_db), _: None = Depends(requi
         checks["ai"] = {"status": "error", "detail": str(e)}
 
     overall = (
-        "ok"
-        if all(v["status"] in ("ok", "not_configured", "key_missing") for v in checks.values())
-        else "degraded"
+        "ok" if all(v["status"] in ("ok", "not_configured", "key_missing") for v in checks.values()) else "degraded"
     )
     return {"status": overall, "checks": checks}

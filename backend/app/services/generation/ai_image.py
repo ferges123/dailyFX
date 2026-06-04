@@ -317,10 +317,14 @@ async def generate_ai_image(
     base_prompt = prompt
     if context_hint:
         base_prompt = f"{context_hint}\n\n{base_prompt}"
-    
-    if getattr(settings, "ai_prompt_enrichment", False) is True and getattr(settings, "default_ai_provider", "none") != "none":
+
+    if (
+        getattr(settings, "ai_prompt_enrichment", False) is True
+        and getattr(settings, "default_ai_provider", "none") != "none"
+    ):
         try:
             from app.services.generation.ai_vision import describe_image, fuse_prompts
+
             debug_log("AI prompt enrichment started", original_prompt=prompt)
             enrichment_context = prompt_enrichment_context_hint or context_hint
             desc = await describe_image(settings, image_bytes, context_hint=enrichment_context)
@@ -332,16 +336,16 @@ async def generate_ai_image(
                     base_prompt = fused
         except Exception as exc:
             debug_log("AI prompt enrichment failed, falling back to original prompt", error=str(exc))
-    
+
     if negative_prompt:
         base_prompt = f"{base_prompt}\nNegative prompt: {negative_prompt}"
-    
+
     api_key = _decrypt_provider_key(settings, provider)
-    
+
     if model is None:
         model = _resolve_model(settings, provider)
     encoded_image_bytes, mime_type = encode_image_for_provider(image_bytes, provider)
-    
+
     reserve_ai_usage(
         "image",
         limit=getattr(settings, "ai_image_hourly_limit", 10),
@@ -459,7 +463,7 @@ async def _generate_with_openrouter(api_key: str, image_bytes: bytes, prompt: st
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "https://github.com/YOUR_USERNAME/DailyFX-for-immich",
-        "X-Title": "dailyFX"
+        "X-Title": "dailyFX",
     }
     payload = {
         "model": model,
@@ -468,14 +472,11 @@ async def _generate_with_openrouter(api_key: str, image_bytes: bytes, prompt: st
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime_type};base64,{b64_image}"}
-                    }
-                ]
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_image}"}},
+                ],
             }
         ],
-        "modalities": ["image", "text"]
+        "modalities": ["image", "text"],
     }
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
@@ -492,7 +493,7 @@ async def _generate_with_openrouter(api_key: str, image_bytes: bytes, prompt: st
             if "," in b64_data:
                 b64_data = b64_data.split(",")[1]
             return base64.b64decode(b64_data)
-        
+
         content = message.get("content")
         if isinstance(content, list):
             for part in content:

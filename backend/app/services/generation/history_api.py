@@ -37,4 +37,3 @@ def build_generation_history_page(
         total=total,
         latest_event_id=get_latest_event_id(db),
     )
-

@@ -77,7 +77,7 @@ async def list_assets(
                 taken_after=start_date,
                 taken_before=end_date,
                 media_type=media_type,
-            )
+            ),
         )
     except ImmichConfigurationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

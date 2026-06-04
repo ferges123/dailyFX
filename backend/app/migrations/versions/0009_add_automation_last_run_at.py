@@ -5,10 +5,9 @@ Revises: cf1791cf9d4b
 Create Date: 2026-05-14 00:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
-
 
 revision = "0009_add_automation_last_run_at"
 down_revision = "cf1791cf9d4b"

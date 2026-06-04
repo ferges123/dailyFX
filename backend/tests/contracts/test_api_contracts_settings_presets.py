@@ -54,7 +54,7 @@ def test_settings_contract():
             "ai_vision_hourly_limit": 25,
             "ai_image_hourly_limit": 7,
             "debug_mode": True,
-            "favorite_albums_json": "[\"albums-a\", \"albums-b\"]",
+            "favorite_albums_json": '["albums-a", "albums-b"]',
             "ai_custom_prompt": "Focus on faces",
             "immich_api_key_masked": "imm...1234",
             "openai_api_key_masked": "sk-...9876",

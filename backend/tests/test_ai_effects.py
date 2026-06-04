@@ -1,13 +1,13 @@
-from datetime import datetime, timezone
 import asyncio
 import importlib
 import sys
+from datetime import datetime, timezone
 
-from _contract_helpers import configure_contract_test_db
-from sqlalchemy.exc import IntegrityError
 import pytest
+from _contract_helpers import configure_contract_test_db
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 from app.api import routes_ai_effects as ai_effects_routes
 from app.api import routes_generation as generation_routes
@@ -23,13 +23,13 @@ from app.api.routes_ai_effects import (
 from app.api.routes_generation import list_generation_modules
 from app.database import SessionLocal, init_db
 from app.models.ai_effect import AIEffectModel
-from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
+from app.schemas.ai_effects import AIEffectCreate, AIEffectImportItem, AIEffectImportRequest, AIEffectUpdate
+from app.security import require_auth
+from app.services.generation import ai_effects_seed as seed_module
 from app.services.generation.ai_effects import get_seed_dir, load_seed_manifest
 from app.services.generation.ai_effects_seed import AIEffectManifest, load_seed_effects
-from app.services.generation import ai_effects_seed as seed_module
+from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 from app.services.generation.modules import MODULES
-from app.security import require_auth
-from app.schemas.ai_effects import AIEffectCreate, AIEffectImportItem, AIEffectImportRequest, AIEffectUpdate
 
 test_db = configure_contract_test_db("ai_effects")
 

@@ -63,14 +63,21 @@ class MuseumArchiveModule:
         )
 
         try:
-            vision = await analyze_image(settings, image_bytes, prompt=vision_prompt, context_hint=people_context.prompt_hint if people_context else None)
+            vision = await analyze_image(
+                settings,
+                image_bytes,
+                prompt=vision_prompt,
+                context_hint=people_context.prompt_hint if people_context else None,
+            )
             display_title = vision.title
             summary = vision.summary
         except AIUsageLimitExceededError:
             raise
         except Exception as exc:
             logger.warning("museum_archive: AI Vision failed, using filename fallback: %s", exc)
-            display_title = (asset.original_file_name or asset.id).split(".")[0].replace("_", " ").replace("-", " ").title()
+            display_title = (
+                (asset.original_file_name or asset.id).split(".")[0].replace("_", " ").replace("-", " ").title()
+            )
             summary = f"Art gallery presentation of a photo from {location}."
 
         framed = _build_museum_frame(source, f"{location} — {date_str}", display_title, frame_style)
@@ -97,7 +104,7 @@ def _build_museum_frame(source: Image.Image, info_line: str, filename: str, fram
     photo = ImageEnhance.Color(photo).enhance(1.05)
     photo = ImageEnhance.Contrast(photo).enhance(1.1)
     photo = apply_vignette(photo, strength=0.2)
-    
+
     # Style-dependent border
     if frame_style == "minimal":
         border_width = 1
@@ -108,7 +115,7 @@ def _build_museum_frame(source: Image.Image, info_line: str, filename: str, fram
     else:  # classic
         border_width = max(2, int(target_size[0] * 0.002))
         border_color = (40, 40, 40)
-    
+
     photo_with_border = ImageOps.expand(photo, border=border_width, fill=border_color)
     pw, ph = photo_with_border.size
 
@@ -128,16 +135,16 @@ def _build_museum_frame(source: Image.Image, info_line: str, filename: str, fram
         margin_side = int(pw * 0.12)
         margin_bottom = int(ph * 0.35)
         canvas_color = (245, 243, 235)
-    
+
     canvas_w = pw + (margin_side * 2)
     canvas_h = ph + margin_top + margin_bottom
-    
+
     canvas = Image.new("RGB", (canvas_w, canvas_h), canvas_color)
     draw = ImageDraw.Draw(canvas)
-    
+
     # 3. Placement
     canvas.paste(photo_with_border, (margin_side, margin_top))
-    
+
     # 4. Typography - Style-dependent
     if frame_style == "minimal":
         size_title = int(canvas_h * 0.020)
@@ -148,37 +155,42 @@ def _build_museum_frame(source: Image.Image, info_line: str, filename: str, fram
     else:  # classic
         size_title = int(canvas_h * 0.025)
         size_info = int(canvas_h * 0.010)
-    
+
     font_title = get_font("PlayfairDisplay-Medium", size_title)
     font_info = get_font("Inter-Regular", size_info)
-    
+
     # Draw Title - mt anchor (Middle Top)
     title_text = filename
     title_y = ph + margin_top + int(margin_bottom * 0.25)
     draw.text((canvas_w // 2, title_y), title_text, fill=(30, 30, 30), font=font_title, anchor="mt")
-    
+
     # Measure Title Bounding Box to safely place info line below it
     t_bbox = draw.textbbox((canvas_w // 2, title_y), title_text, font=font_title, anchor="mt")
     actual_title_bottom = t_bbox[3]
-    
+
     # Draw Info Line - Position relative to the actual bottom of the title
-    info_y = actual_title_bottom + int(canvas_h * 0.04) # 4% height gap
+    info_y = actual_title_bottom + int(canvas_h * 0.04)  # 4% height gap
     draw.text((canvas_w // 2, info_y), info_line, fill=(100, 100, 95), font=font_info, anchor="mt")
-    
+
     # 5. Fine details - style-dependent
     if frame_style != "minimal":
         bevel = max(1, int(canvas_w * 0.005))
         bevel_color = (220, 218, 210) if frame_style == "classic" else (200, 200, 200)
-        draw.rectangle((margin_side-bevel, margin_top-bevel, canvas_w-margin_side+bevel, ph+margin_top+bevel), 
-                      outline=bevel_color, width=1)
+        draw.rectangle(
+            (margin_side - bevel, margin_top - bevel, canvas_w - margin_side + bevel, ph + margin_top + bevel),
+            outline=bevel_color,
+            width=1,
+        )
 
     return save_png(canvas)
 
 
 def _format_date(created_at: str | None) -> str:
-    if not isinstance(created_at, str): return "N/A"
+    if not isinstance(created_at, str):
+        return "N/A"
     try:
         from datetime import datetime
+
         dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
         return dt.strftime("%Y")
     except:

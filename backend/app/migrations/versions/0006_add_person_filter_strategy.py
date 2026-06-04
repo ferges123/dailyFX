@@ -5,8 +5,8 @@ Revises: 0005_create_collage_history
 Create Date: 2026-05-13 15:40:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0006_add_person_filter_strategy"
 down_revision = "0005_create_collage_history"

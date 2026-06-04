@@ -32,19 +32,19 @@ class DuotoneModule:
         base = load_rgb(image_bytes)
         dark, light = select_palette(config)
         contrast = max(1.0, min(2.0, float(config.get("contrast", 1.4) or 1.4)))
-        
+
         # Enhanced grayscale conversion
         gray = ImageOps.grayscale(base)
         gray = ImageEnhance.Contrast(gray).enhance(contrast)
         gray = gray.filter(ImageFilter.UnsharpMask(radius=1.5, percent=150))
-        
+
         # Apply duotone with midtones
         toned = ImageOps.colorize(gray, black=dark, white=light)
-        
+
         # Add richness with color enhancement
         toned = ImageEnhance.Color(toned).enhance(1.15)
         toned = ImageEnhance.Sharpness(toned).enhance(1.25)
-        
+
         # Subtle grain and vignette for depth
         toned = add_grain(toned, strength=0.08, blur=0.15)
         toned = apply_vignette(toned, strength=0.35)

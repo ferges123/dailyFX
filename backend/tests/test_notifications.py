@@ -7,6 +7,7 @@ from _contract_helpers import configure_contract_test_db
 from app.api.routes_push import list_subscriptions
 from app.notifications.client import (
     send_apprise_notification,
+    send_discord_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
@@ -75,7 +76,10 @@ def test_send_ntfy_notification_posts_to_topic(monkeypatch):
     assert fake_client.requests[0]["url"] == "https://ntfy.example.test/collage"
     assert fake_client.requests[0]["headers"]["Authorization"] == "Bearer secret-token"
     assert fake_client.requests[0]["headers"]["Click"] == "https://dailyfx.example.test/review/task-123"
-    assert fake_client.requests[0]["headers"]["Attach"] == "https://dailyfx.example.test/api/generation/review/task-123/thumbnail"
+    assert (
+        fake_client.requests[0]["headers"]["Attach"]
+        == "https://dailyfx.example.test/api/generation/review/task-123/thumbnail"
+    )
     assert "Holiday" in fake_client.requests[0]["content"]
     assert result.detail == "https://ntfy.example.test/collage (ntfy-message-1)"
 
@@ -176,14 +180,16 @@ class FakeTelegramAsyncClient:
         return False
 
     async def post(self, url, content=None, headers=None, json=None, files=None, data=None):
-        self.requests.append({
-            "url": url,
-            "content": content,
-            "headers": headers,
-            "json": json,
-            "files": files,
-            "data": data,
-        })
+        self.requests.append(
+            {
+                "url": url,
+                "content": content,
+                "headers": headers,
+                "json": json,
+                "files": files,
+                "data": data,
+            }
+        )
         return self.response
 
 
@@ -235,8 +241,9 @@ def test_send_telegram_notification_photo_and_buttons(monkeypatch):
     assert req["data"]["chat_id"] == "chat9876"
     assert "AI Gen with Photo" in req["data"]["caption"]
     assert req["files"]["photo"][1] == b"fake-png-bytes"
-    
+
     import json
+
     reply_markup = json.loads(req["data"]["reply_markup"])
     buttons = reply_markup["inline_keyboard"][0]
     assert buttons[0]["text"] == "✅ Accept & Upload"
@@ -276,6 +283,7 @@ def test_telegram_bot_callback_handling(monkeypatch):
         # Mock calls
         # Mock accept_generation
         accepted_tasks = []
+
         async def mock_accept(t_id, req, db, _):
             accepted_tasks.append(t_id)
             row = db.query(GenerationHistoryModel).filter_by(task_id=t_id).first()
@@ -291,12 +299,7 @@ def test_telegram_bot_callback_handling(monkeypatch):
         callback_query = {
             "id": "cb123",
             "data": f"accept:{task_id}",
-            "message": {
-                "chat": {"id": 999},
-                "message_id": 888,
-                "caption": "Bokeh Blur Photo",
-                "photo": []
-            }
+            "message": {"chat": {"id": 999}, "message_id": 888, "caption": "Bokeh Blur Photo", "photo": []},
         }
 
         # Run callback handler
@@ -304,7 +307,7 @@ def test_telegram_bot_callback_handling(monkeypatch):
 
         # Assertions
         assert task_id in accepted_tasks
-        
+
         # Verify status in database was updated to UPLOADED
         db.expire_all()
         updated_row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
@@ -381,6 +384,7 @@ def test_send_apprise_notification(monkeypatch):
             return True
 
     import apprise
+
     monkeypatch.setattr(apprise, "Apprise", FakeApprise)
 
     result = asyncio.run(
@@ -397,3 +401,29 @@ def test_send_apprise_notification(monkeypatch):
     assert result.provider == "apprise"
     assert "Sent to 2 Apprise" in result.detail
 
+
+def test_send_discord_notification(monkeypatch):
+    fake_client = FakeAsyncClient(response=FakeResponse(json_body={"status": "ok"}))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: fake_client)
+
+    result = asyncio.run(
+        send_discord_notification(
+            webhook_url="https://discord.com/api/webhooks/123/abc",
+            title="Generation ready",
+            message="Holiday",
+            detail="Beautiful collage",
+            click_url="https://dailyfx.local/review",
+            image_url="https://dailyfx.local/thumbnail.png",
+        )
+    )
+
+    assert result.ok is True
+    assert result.provider == "discord"
+    assert fake_client.requests[0]["url"] == "https://discord.com/api/webhooks/123/abc"
+    json_data = fake_client.requests[0]["json"]
+    assert len(json_data["embeds"]) == 1
+    embed = json_data["embeds"][0]
+    assert embed["title"] == "Generation ready"
+    assert embed["description"] == "Holiday\n\nBeautiful collage"
+    assert embed["url"] == "https://dailyfx.local/review"
+    assert embed["image"]["url"] == "https://dailyfx.local/thumbnail.png"

@@ -1,4 +1,5 @@
 """Debug logging utility for detailed troubleshooting."""
+
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -78,6 +79,5 @@ def debug_log(message: str, **kwargs):
         std_message = f"[{task_id}] {std_message}"
     if kwargs:
         std_message += " | " + " | ".join(f"{k}={v}" for k, v in kwargs.items())
-    
-    logger.info(f"DEBUG: {std_message}")
 
+    logger.info(f"DEBUG: {std_message}")

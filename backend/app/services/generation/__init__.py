@@ -1,3 +1,3 @@
-from .instafilter import apply_instafilter, AVAILABLE_FILTERS
+from .instafilter import AVAILABLE_FILTERS, apply_instafilter
 
 __all__ = ["apply_instafilter", "AVAILABLE_FILTERS"]

@@ -72,23 +72,23 @@ def _pick_styles(config: dict) -> list[str]:
 def _build_collage(image_bytes: bytes, styles: list[str], canvas_size: tuple[int, int], border: int) -> bytes:
     w, h = canvas_size
     tw, th = max(1, (w - border) // 2), max(1, (h - border) // 2)
-    
+
     # Dark background for borders
     collage = Image.new("RGB", (tw * 2 + border, th * 2 + border), "#0a0a0a")
-    
+
     for i, style in enumerate(styles[:4]):
         filtered, _ = apply_instafilter(image_bytes, filter_name=style)
         tile = Image.open(BytesIO(filtered)).convert("RGB")
         tile = ImageOps.fit(tile, (tw, th), centering=(0.5, 0.5))
-        
+
         # Subtle enhancement per tile
         tile = ImageEnhance.Sharpness(tile).enhance(1.1)
         tile = add_grain(tile, strength=0.02, blur=0.0)
-        
+
         x = (i % 2) * (tw + border)
         y = (i // 2) * (th + border)
         collage.paste(tile, (x, y))
-    
+
     out = BytesIO()
     collage.save(out, format="PNG", optimize=True)
     return out.getvalue()

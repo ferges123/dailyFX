@@ -1,11 +1,11 @@
-from collections.abc import Generator
 import datetime
+from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.types import TypeDecorator, DateTime
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.types import DateTime, TypeDecorator
 
 from app.config import get_settings
 
@@ -50,9 +50,7 @@ def _ensure_engine() -> Engine:
 
     engine = create_engine(
         database_url,
-        connect_args={"check_same_thread": False}
-        if database_url.startswith("sqlite")
-        else {},
+        connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {},
     )
     SessionLocal.configure(bind=engine)
     _current_database_url = database_url
@@ -69,9 +67,10 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    import app.models  # noqa: F401
     from alembic import command
     from alembic.config import Config
+
+    import app.models  # noqa: F401
     from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 
     _ensure_engine()

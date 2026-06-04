@@ -4,6 +4,7 @@ Revision ID: 0016_drop_person_filter_strategy
 Revises: 1fcc0b6b1f18
 Create Date: 2026-05-22
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -4,6 +4,7 @@ Revision ID: 0021_drop_legacy_automation_fields
 Revises: 0020_migrate_legacy_to_presets
 Create Date: 2026-05-25
 """
+
 import sqlalchemy as sa
 from alembic import op
 

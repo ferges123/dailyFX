@@ -1,10 +1,11 @@
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.immich.client import ImmichClient
 from app.immich.errors import ImmichConfigurationError
 from app.immich.models import ImmichAlbumSummary, ImmichAssetPage, ImmichPersonSummary, ImmichSearchFilters
 from app.models.settings import SettingsModel
 from app.security import decrypt_secret
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 
 def get_or_create_settings(db: Session) -> SettingsModel:

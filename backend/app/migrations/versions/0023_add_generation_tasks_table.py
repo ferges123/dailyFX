@@ -5,9 +5,8 @@ Revises: 0022_drop_filter_preset_sample_count
 Create Date: 2026-05-26 00:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0023_add_generation_tasks_table"
 down_revision = "0022_drop_filter_preset_sample_count"

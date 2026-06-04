@@ -1,9 +1,10 @@
 """Tests for utility modules."""
+
 from datetime import date
 
 from app.utils.date_utils import parse_date
-from app.utils.url_utils import normalize_base_url, normalize_api_url
 from app.utils.query_params import query_date
+from app.utils.url_utils import normalize_api_url, normalize_base_url
 
 
 class TestDateUtils:
@@ -63,18 +64,24 @@ class TestDebugLogger:
     """Tests for debug_logger module."""
 
     def test_debug_log_disabled(self):
-        from app.utils import debug_logger
         from unittest.mock import patch
+
+        from app.utils import debug_logger
+
         debug_logger.set_debug_mode(False)
         with patch("app.utils.debug_logger.logger") as mock_logger:
             debug_logger.debug_log("test message", task_id="task-123", key="val")
             mock_logger.info.assert_not_called()
 
     def test_debug_log_enabled(self, tmp_path):
-        from app.utils import debug_logger
         from unittest.mock import patch
-        with patch("app.utils.debug_logger.Path", return_value=tmp_path), \
-             patch("app.utils.debug_logger.logger") as mock_logger:
+
+        from app.utils import debug_logger
+
+        with (
+            patch("app.utils.debug_logger.Path", return_value=tmp_path),
+            patch("app.utils.debug_logger.logger") as mock_logger,
+        ):
             debug_logger.set_debug_mode(True)
             mock_logger.reset_mock()
             try:
@@ -82,4 +89,3 @@ class TestDebugLogger:
                 mock_logger.info.assert_called_once_with("DEBUG: [task-123] test message | key=val")
             finally:
                 debug_logger.set_debug_mode(False)
-

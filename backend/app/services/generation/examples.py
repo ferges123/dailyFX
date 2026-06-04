@@ -99,7 +99,9 @@ async def ensure_example_preview(module_name: str, settings: SettingsModel) -> E
     state = random.getstate()
     random.seed(seed)
     try:
-        result = await module.run([asset], EXAMPLE_PRESET_CONFIGS.get(module_name, module.default_config or {}), preview_client, settings)
+        result = await module.run(
+            [asset], EXAMPLE_PRESET_CONFIGS.get(module_name, module.default_config or {}), preview_client, settings
+        )
     finally:
         random.setstate(state)
 

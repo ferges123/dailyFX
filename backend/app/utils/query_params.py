@@ -1,6 +1,5 @@
-from typing import Any
 from datetime import date
-
+from typing import Any
 
 
 def query_date(value: Any) -> date | None:

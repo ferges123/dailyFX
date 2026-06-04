@@ -3,19 +3,18 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.immich.models import ImmichExifInfo, ImmichSearchFilters
 from app.models.settings import SettingsModel
 from app.services.generation.ai_budget import AIUsageLimitExceededError
 from app.services.generation.exif_embedder import embed_exif_metadata
 from app.services.generation.history import append_history_trace, history_status_for_task_status, upsert_history_entry
 from app.services.generation.people_context import load_people_context
 from app.services.generation.tasks import update_task
-from app.immich.models import ImmichExifInfo
-from app.immich.models import ImmichSearchFilters
 from app.utils.debug_logger import debug_log, set_debug_mode
 
 logger = logging.getLogger(__name__)
@@ -182,7 +181,7 @@ def _resolve_schedule_ai_settings(db: Session, settings: SettingsModel, schedule
         if schedule_id:
             schedule = db.get(ScheduleModel, schedule_id)
         if not schedule:
-            schedule = db.query(ScheduleModel).filter(ScheduleModel.enabled == True).first()
+            schedule = db.query(ScheduleModel).filter(ScheduleModel.enabled).first()
             if not schedule:
                 schedule = db.query(ScheduleModel).first()
 
@@ -222,7 +221,11 @@ def _select_generation_module(effects_config: dict) -> GenerationModuleSelection
             mod = modules.get(name)
             if mod is not None and getattr(mod, "enabled", True):
                 active_groups.append((name, data))
-    debug_log("Active modules", active=[f"{n}(w={d['weight']})" for n, d in active_groups], total_in_preset=len(effects_config))
+    debug_log(
+        "Active modules",
+        active=[f"{n}(w={d['weight']})" for n, d in active_groups],
+        total_in_preset=len(effects_config),
+    )
     if not active_groups:
         return None
 
@@ -267,13 +270,22 @@ def _select_page_items(
 ) -> list:
     page_items = page.items
     if selected_asset_ids:
-        selected_id_set = {asset_id for asset_id in selected_asset_ids if isinstance(asset_id, str) and asset_id.strip()}
+        selected_id_set = {
+            asset_id for asset_id in selected_asset_ids if isinstance(asset_id, str) and asset_id.strip()
+        }
         if selected_id_set:
             filtered_items = [item for item in page.items if item.id in selected_id_set]
             if filtered_items:
-                debug_log("Filtered to selected assets", task_id=task_id, selected=list(selected_id_set), matched=len(filtered_items))
+                debug_log(
+                    "Filtered to selected assets",
+                    task_id=task_id,
+                    selected=list(selected_id_set),
+                    matched=len(filtered_items),
+                )
                 return filtered_items
-            debug_log("Skipping: selected assets not in search results", task_id=task_id, selected=list(selected_id_set))
+            debug_log(
+                "Skipping: selected assets not in search results", task_id=task_id, selected=list(selected_id_set)
+            )
             logger.warning("No selected assets matched the current search results.")
             _task_update(status="failed", step="failed", error="No selected assets matched the current search results")
             return []
@@ -300,7 +312,9 @@ def _select_generation_page_items(
     task_id: str,
     _task_update: Callable[..., None],
 ) -> list | None:
-    page_items = _select_page_items(page=page, selected_asset_ids=selected_asset_ids, task_id=task_id, _task_update=_task_update)
+    page_items = _select_page_items(
+        page=page, selected_asset_ids=selected_asset_ids, task_id=task_id, _task_update=_task_update
+    )
     if not page_items:
         return None
     return page_items
@@ -318,7 +332,13 @@ async def _resolve_generation_source_context(
     source_asset_id = result.source_asset_ids[0] if result.source_asset_ids else None
     if source_asset_id:
         source_asset = next((a for a in page.items if a.id == source_asset_id), None)
-        debug_log("Source asset", task_id=task_id, asset_id=source_asset_id, filename=getattr(source_asset, "original_file_name", None), created_at=getattr(source_asset, "created_at", None))
+        debug_log(
+            "Source asset",
+            task_id=task_id,
+            asset_id=source_asset_id,
+            filename=getattr(source_asset, "original_file_name", None),
+            created_at=getattr(source_asset, "created_at", None),
+        )
         people_context = await load_people_context(client, source_asset) if source_asset is not None else None
     return source_asset, people_context
 
@@ -350,11 +370,25 @@ async def _run_selected_module(
     _task_update(step="applying_effect", progress=0.25)
     _progress(f"Applying effect: {module.label}…")
 
-    debug_log("Starting module execution", task_id=task_id, module=group_name, config=group_config.get("config", {}), assets_count=len(page_items))
+    debug_log(
+        "Starting module execution",
+        task_id=task_id,
+        module=group_name,
+        config=group_config.get("config", {}),
+        assets_count=len(page_items),
+    )
     start_time = time.time()
     result = await module.run(page_items, group_config.get("config", {}), client, settings)
     elapsed = time.time() - start_time
-    debug_log("Module execution completed", task_id=task_id, module=group_name, elapsed_seconds=f"{elapsed:.2f}", result_size=len(result.image_bytes) if result.image_bytes else 0, source_asset_ids=result.source_asset_ids, title=result.title)
+    debug_log(
+        "Module execution completed",
+        task_id=task_id,
+        module=group_name,
+        elapsed_seconds=f"{elapsed:.2f}",
+        result_size=len(result.image_bytes) if result.image_bytes else 0,
+        source_asset_ids=result.source_asset_ids,
+        title=result.title,
+    )
     _trace_stage(
         db,
         task_id,
@@ -407,7 +441,15 @@ async def _persist_generation_outputs(
         schedule_id=schedule_id,
         album_name=album_name,
     )
-    debug_log("History entry saved", task_id=task_id, status="PENDING_REVIEW", generation_type=result.generation_type, album_name=album_name, ai_title=artifacts.ai_title, tags_count=len(artifacts.ai_tags))
+    debug_log(
+        "History entry saved",
+        task_id=task_id,
+        status="PENDING_REVIEW",
+        generation_type=result.generation_type,
+        album_name=album_name,
+        ai_title=artifacts.ai_title,
+        tags_count=len(artifacts.ai_tags),
+    )
 
     _task_update(status="succeeded", step="succeeded", progress=1.0, error=None)
     total_elapsed = max(0.0, time.time() - pipeline_start_time)
@@ -416,7 +458,9 @@ async def _persist_generation_outputs(
         db,
         task_id,
         stage="completed",
-        message=f"Generation completed successfully in {duration_label}" if duration_label else "Generation completed successfully",
+        message=f"Generation completed successfully in {duration_label}"
+        if duration_label
+        else "Generation completed successfully",
         step="succeeded",
         status="succeeded",
         progress=1.0,
@@ -463,7 +507,12 @@ async def _apply_source_vision(
     )
     _task_update(step="analyzing_image", progress=0.55)
     _progress("Analyzing image with AI…")
-    debug_log("Starting AI vision analysis", task_id=task_id, provider=settings.default_ai_provider, model=settings.default_ai_model)
+    debug_log(
+        "Starting AI vision analysis",
+        task_id=task_id,
+        provider=settings.default_ai_provider,
+        model=settings.default_ai_model,
+    )
     t0 = time.time()
     original_bytes = await client.get_asset_data(source_asset_id)
     ai_analysis = await engine_module.analyze_image(
@@ -489,7 +538,7 @@ async def _apply_source_vision(
     debug_log(
         "AI vision completed",
         task_id=task_id,
-        elapsed_seconds=f"{time.time()-t0:.2f}",
+        elapsed_seconds=f"{time.time() - t0:.2f}",
         title=state["ai_title"],
         tags=state["ai_tags"],
         tokens=state["ai_token_count"],
@@ -524,7 +573,12 @@ async def _apply_final_vision(
     )
     _task_update(step="analyzing_final_image", progress=0.7)
     _progress("Analyzing final image with AI…")
-    debug_log("Starting final AI vision analysis", task_id=task_id, provider=settings.default_ai_provider, model=settings.default_ai_model)
+    debug_log(
+        "Starting final AI vision analysis",
+        task_id=task_id,
+        provider=settings.default_ai_provider,
+        model=settings.default_ai_model,
+    )
     t1 = time.time()
     final_ai_analysis = await engine_module.analyze_image(settings, result.image_bytes, prompt=FINAL_AI_VISION_PROMPT)
     state["ai_title"] = final_ai_analysis.title
@@ -581,7 +635,9 @@ async def _build_generation_artifacts(
         elif isinstance(getattr(source_asset, "people", None), list) and getattr(source_asset, "people", None):
             metadata_provenance["people_context"]["attempted"] = True
 
-        prompt_enrichment_context = result.config.get("prompt_enrichment_context") if isinstance(result.config, dict) else None
+        prompt_enrichment_context = (
+            result.config.get("prompt_enrichment_context") if isinstance(result.config, dict) else None
+        )
         if isinstance(prompt_enrichment_context, dict) and prompt_enrichment_context.get("context_hint"):
             metadata_provenance["prompt_enrichment_context"] = prompt_enrichment_context
             _trace_stage(
@@ -676,7 +732,15 @@ async def _build_generation_artifacts(
             progress=0.8,
         )
         state["exif_info"] = await client.get_asset_exif(source_asset_id)
-        debug_log("EXIF data received", task_id=task_id, make=state["exif_info"].get("make"), model=state["exif_info"].get("model"), lat=state["exif_info"].get("latitude"), lon=state["exif_info"].get("longitude"), taken=state["exif_info"].get("dateTimeOriginal"))
+        debug_log(
+            "EXIF data received",
+            task_id=task_id,
+            make=state["exif_info"].get("make"),
+            model=state["exif_info"].get("model"),
+            lat=state["exif_info"].get("latitude"),
+            lon=state["exif_info"].get("longitude"),
+            taken=state["exif_info"].get("dateTimeOriginal"),
+        )
         _progress("Embedding metadata…")
         final_bytes = embed_exif_metadata(result.image_bytes, source_asset, state["ai_title"], state["exif_info"])
     else:
@@ -731,7 +795,9 @@ async def run_generation_pipeline(
     current_progress = 0.0
     selected_group_name = source.lower()
 
-    def _task_update(*, status: str | None = None, step: str | None = None, progress: float | None = None, error: str | None = None) -> None:
+    def _task_update(
+        *, status: str | None = None, step: str | None = None, progress: float | None = None, error: str | None = None
+    ) -> None:
         nonlocal current_step, current_progress
         if step is not None:
             current_step = step
@@ -763,7 +829,9 @@ async def run_generation_pipeline(
         schedule_id=schedule_id,
         album_name=album_name,
     )
-    _trace_stage(db, task_id, stage="start", message="Generation started", step="running", status="running", progress=0.0)
+    _trace_stage(
+        db, task_id, stage="start", message="Generation started", step="running", status="running", progress=0.0
+    )
     debug_log(
         "Generation cycle started",
         task_id=task_id,
@@ -845,7 +913,9 @@ async def run_generation_pipeline(
         _task_update(status="failed", step="failed", error="No assets found for the given automation filter")
         return None
 
-    debug_log("Random asset selected", task_id=task_id, count=len(page.items), asset_ids=[a.id for a in page.items[:10]])
+    debug_log(
+        "Random asset selected", task_id=task_id, count=len(page.items), asset_ids=[a.id for a in page.items[:10]]
+    )
     logger.info(f"📸 Selected random asset, running module {selected_group_name} (task_id={task_id})")
 
     page_items = _select_generation_page_items(
@@ -871,7 +941,7 @@ async def run_generation_pipeline(
 
     original_album_name = getattr(settings, "_generation_album_name", _ALBUM_NAME_SENTINEL)
     if album_name is not None:
-        setattr(settings, "_generation_album_name", album_name)
+        settings._generation_album_name = album_name
     elif hasattr(settings, "_generation_album_name"):
         delattr(settings, "_generation_album_name")
 
@@ -894,7 +964,7 @@ async def run_generation_pipeline(
                 if hasattr(settings, "_generation_album_name"):
                     delattr(settings, "_generation_album_name")
             else:
-                setattr(settings, "_generation_album_name", original_album_name)
+                settings._generation_album_name = original_album_name
 
         source_asset, people_context = await _resolve_generation_source_context(
             page=page,

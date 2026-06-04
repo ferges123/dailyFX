@@ -5,9 +5,8 @@ Revises: 0024_add_ai_usage_limits
 Create Date: 2026-05-27 00:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0025_add_generation_stream_events"
 down_revision = "0024_add_ai_usage_limits"

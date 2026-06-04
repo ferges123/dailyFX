@@ -5,8 +5,8 @@ Revises: 0029_add_ai_prompt_enrichment_to_schedules, merge_83bcfa66727a_and_f5a6
 Create Date: 2026-06-01
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0030_add_ai_effects_table"
 down_revision = ("0029_add_ai_prompt_enrichment_to_schedules", "merge_83bcfa66727a_and_f5a6b7c8d9e0")

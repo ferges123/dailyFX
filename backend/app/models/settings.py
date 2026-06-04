@@ -19,7 +19,7 @@ class SettingsModel(Base):
     encrypted_xiaomi_api_key: Mapped[str | None] = mapped_column(String, nullable=True)
     encrypted_local_ai_api_key: Mapped[str | None] = mapped_column(String, nullable=True)
     local_ai_base_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    
+
     # Transient fields for generation pipeline backward compatibility (no database columns)
     default_ai_provider: str = "none"
     default_ai_model: str = "gpt-image-1"

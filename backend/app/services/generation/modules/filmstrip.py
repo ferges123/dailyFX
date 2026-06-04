@@ -13,7 +13,7 @@ PHOTO_H = 520
 GAP = 40
 TOP_MARGIN = 40
 FRAMES = 3
-SIDE_MARGIN = (FILM_W - PHOTO_W) // 2   # 150px each side
+SIDE_MARGIN = (FILM_W - PHOTO_W) // 2  # 150px each side
 SIDE_W = SIDE_MARGIN
 ACCENT = (255, 140, 140)
 BG = (30, 31, 36)
@@ -25,7 +25,7 @@ TICK_COUNT = 3
 TICK_W = 24
 TRI_TOP = 56
 TRI_H = 22
-TEXT_ZONE_TOP_OFFSET = TRI_TOP + TRI_H + 16   # text starts here
+TEXT_ZONE_TOP_OFFSET = TRI_TOP + TRI_H + 16  # text starts here
 TEXT_BOTTOM_MARGIN = 10
 FONT_SIZE = 14
 
@@ -33,8 +33,8 @@ FONT_SIZE = 14
 # frame 1 (middle): full
 # frame 2 (bottom): show top 62% — crop bottom 38%
 FRAME_CROP: dict[int, tuple[float, float]] = {
-    0: (0.45, 1.0),   # (crop_from, crop_to) as fractions of PHOTO_H
-    2: (0.0,  0.62),
+    0: (0.45, 1.0),  # (crop_from, crop_to) as fractions of PHOTO_H
+    2: (0.0, 0.62),
 }
 
 
@@ -85,6 +85,7 @@ def _parse_datetime(created_at: str | None) -> tuple[str, str]:
         return ("", "")
     try:
         from datetime import datetime
+
         dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
         return dt.strftime("%d %b %Y").upper(), dt.strftime("%H:%M")
     except ValueError:
@@ -109,7 +110,7 @@ def _build_filmstrip(image_bytes: bytes, date_label: str, time_label: str, frame
     # Style-dependent background
     bg_color = (30, 31, 36) if frame_style == "classic" else (20, 22, 28)
     accent_color = (255, 140, 140) if frame_style == "classic" else (100, 180, 255)
-    
+
     film = Image.new("RGB", (FILM_W, film_h), bg_color)
     draw = ImageDraw.Draw(film)
 
@@ -118,6 +119,7 @@ def _build_filmstrip(image_bytes: bytes, date_label: str, time_label: str, frame
         font_small = font
     except Exception:
         from PIL import ImageFont
+
         font = font_small = ImageFont.load_default()
 
     y = TOP_MARGIN
@@ -145,7 +147,18 @@ def _build_filmstrip(image_bytes: bytes, date_label: str, time_label: str, frame
     return out.getvalue()
 
 
-def _draw_side(draw, font, font_small, x_base: int, y: int, fh: int, right: bool, date_label: str, time_label: str, accent_color: tuple):
+def _draw_side(
+    draw,
+    font,
+    font_small,
+    x_base: int,
+    y: int,
+    fh: int,
+    right: bool,
+    date_label: str,
+    time_label: str,
+    accent_color: tuple,
+):
     cx = x_base + SIDE_W // 2
 
     # tick marks

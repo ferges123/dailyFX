@@ -1,11 +1,12 @@
 """EXIF metadata embedding for generated images."""
+
 from fractions import Fraction
 from io import BytesIO
+
 from PIL import Image
 from PIL.TiffImagePlugin import IFDRational
 
 from app.immich.models import ImmichExifInfo
-
 
 # EXIF tags
 TAG_IMAGE_DESCRIPTION = 0x010E
@@ -47,17 +48,13 @@ def _embed_camera_info(exif, exif_info: ImmichExifInfo) -> None:
 
 def _embed_exposure_info(exif, exif_info: ImmichExifInfo) -> None:
     """Embed exposure settings (f-number, shutter speed, focal length, ISO)."""
-    for tag, key in [
-        (TAG_F_NUMBER, "fNumber"),
-        (TAG_EXPOSURE_TIME, "exposureTime"),
-        (TAG_FOCAL_LENGTH, "focalLength")
-    ]:
+    for tag, key in [(TAG_F_NUMBER, "fNumber"), (TAG_EXPOSURE_TIME, "exposureTime"), (TAG_FOCAL_LENGTH, "focalLength")]:
         if (v := exif_info.get(key)) is not None:
             try:
                 exif[tag] = float(v)
             except (TypeError, ValueError):
                 pass
-    
+
     if (iso := exif_info.get("iso")) is not None:
         try:
             exif[TAG_ISO] = int(iso)
@@ -70,7 +67,7 @@ def _embed_gps_info(exif, exif_info: ImmichExifInfo) -> None:
     lat, lon = exif_info.get("latitude"), exif_info.get("longitude")
     if lat is None or lon is None:
         return
-    
+
     try:
         lat, lon = float(lat), float(lon)
         gps = exif.get_ifd(TAG_GPS_IFD)
@@ -85,19 +82,19 @@ def _embed_gps_info(exif, exif_info: ImmichExifInfo) -> None:
 def embed_exif_metadata(image_bytes: bytes, asset, description: str, exif_info: ImmichExifInfo) -> bytes:
     """
     Embed EXIF metadata from source asset into generated image.
-    
+
     Args:
         image_bytes: Generated image bytes
         asset: Source Immich asset (for datetime)
         description: Image description to embed
         exif_info: EXIF data from Immich API
-    
+
     Returns:
         Image bytes with embedded EXIF metadata
     """
     img = Image.open(BytesIO(image_bytes)).convert("RGB")
     exif = img.getexif()
-    
+
     # Basic metadata
     exif[TAG_SOFTWARE] = "dailyFX"
     exif[TAG_IMAGE_DESCRIPTION] = description

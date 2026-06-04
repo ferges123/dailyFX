@@ -20,4 +20,3 @@ class ImmichConnectionError(ImmichError):
 
 class ImmichUnexpectedResponseError(ImmichError):
     pass
-

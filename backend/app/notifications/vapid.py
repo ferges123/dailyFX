@@ -1,4 +1,5 @@
 """VAPID key management and Web Push delivery."""
+
 from __future__ import annotations
 
 import base64
@@ -13,7 +14,6 @@ from app.models.push import PushSubscriptionModel, VapidKeyModel
 logger = logging.getLogger(__name__)
 
 
-
 def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
@@ -23,8 +23,13 @@ def get_or_create_vapid_keys(db: Session) -> VapidKeyModel:
     if row:
         return row
 
+    from cryptography.hazmat.primitives.serialization import (  # type: ignore
+        Encoding,
+        NoEncryption,
+        PrivateFormat,
+        PublicFormat,
+    )
     from py_vapid import Vapid  # type: ignore
-    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption  # type: ignore
 
     v = Vapid()
     v.generate_keys()
@@ -83,9 +88,12 @@ def delete_subscription(db: Session, endpoint: str) -> None:
     db.commit()
 
 
-async def send_push_to_all(db: Session, title: str, body: str, url: str | None = None, image: str | None = None) -> None:
-    from pywebpush import webpush, WebPushException  # type: ignore
+async def send_push_to_all(
+    db: Session, title: str, body: str, url: str | None = None, image: str | None = None
+) -> None:
     import asyncio
+
+    from pywebpush import WebPushException, webpush  # type: ignore
 
     keys = get_or_create_vapid_keys(db)
     subscriptions = db.query(PushSubscriptionModel).all()
@@ -97,7 +105,7 @@ async def send_push_to_all(db: Session, title: str, body: str, url: str | None =
         payload_data["url"] = url
     if image:
         payload_data["image"] = image
-    
+
     payload = json.dumps(payload_data)
 
     # Pre-unpack SQLAlchemy models to prevent cross-thread session access issues
@@ -139,4 +147,3 @@ async def send_push_to_all(db: Session, title: str, body: str, url: str | None =
     if stale:
         db.query(PushSubscriptionModel).filter(PushSubscriptionModel.id.in_(stale)).delete(synchronize_session=False)
         db.commit()
-

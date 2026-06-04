@@ -5,8 +5,8 @@ Revises: 0030_add_ai_effects_table
 Create Date: 2026-06-01
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0031_add_ai_effect_display_group"
 down_revision = "0030_add_ai_effects_table"

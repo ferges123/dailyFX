@@ -210,9 +210,13 @@ async def _perform_tick(session: Session, now: datetime | None = None) -> dict[s
 
     # 1. Check for queued manual/ad-hoc tasks first
     from app.models.generation_task import GenerationTaskModel
-    queued_task = session.query(GenerationTaskModel).filter(
-        GenerationTaskModel.status == "queued"
-    ).order_by(GenerationTaskModel.created_at.asc()).first()
+
+    queued_task = (
+        session.query(GenerationTaskModel)
+        .filter(GenerationTaskModel.status == "queued")
+        .order_by(GenerationTaskModel.created_at.asc())
+        .first()
+    )
 
     if queued_task:
         logger.info("Found queued manual task: %s", queued_task.task_id)
@@ -257,6 +261,7 @@ async def _perform_tick(session: Session, now: datetime | None = None) -> dict[s
         schedule.last_tick_status = "started"
         schedule.last_tick_reason = "generation queued"
         import uuid
+
         task_id = f"auto-s{schedule.id}-{uuid.uuid4().hex[:8]}"
         schedule.last_task_id = task_id
         schedule.next_run_at = _compute_next_run(schedule.schedule_expr, current, current)
@@ -310,8 +315,10 @@ def main() -> None:
     logger.info("Automation scheduler started (poll interval: %ss)", POLL_INTERVAL_SECONDS)
     # Migrations are run by the api container; scheduler only needs the engine ready.
     from app.database import _ensure_engine
+
     _ensure_engine()
     import app.models  # noqa: F401 — register models with Base
+
     asyncio.run(_async_main())
 
 
@@ -322,6 +329,7 @@ async def _async_main() -> None:
     from app.database import SessionLocal
     from app.models.generation_history import GenerationHistoryModel
     from app.workers.telegram_bot import start_telegram_bot_listener
+
     session = SessionLocal()
     try:
         stuck_tasks = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").all()
@@ -344,7 +352,6 @@ async def _async_main() -> None:
     results_dir = _get_settings().data_dir / "results"
     tick_count = 0
     while True:
-
         try:
             outcome = await run_scheduler_tick_async()
             logger.info("Scheduler tick outcome: %s", outcome)
@@ -367,6 +374,7 @@ def _backup_database() -> None:
         import shutil
 
         from app.config import get_settings as _get_settings
+
         data_dir = _get_settings().data_dir
         src = data_dir / "app.db"
         if not src.exists():
@@ -390,20 +398,25 @@ def _cleanup_old_results(results_dir) -> None:
 
         from app.database import SessionLocal
         from app.models.generation_history import GenerationHistoryModel
+
         session = SessionLocal()
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
             # 1. Delete REJECTED entries older than 7 days (and their files)
-            old_rejected = session.query(GenerationHistoryModel)\
+            old_rejected = (
+                session.query(GenerationHistoryModel)
                 .filter(
                     GenerationHistoryModel.status == "REJECTED",
                     GenerationHistoryModel.created_at < cutoff,
-                ).all()
+                )
+                .all()
+            )
             if old_rejected:
                 for row in old_rejected:
                     if row.output_path:
                         from pathlib import Path as _Path
+
                         _Path(row.output_path).unlink(missing_ok=True)
                     session.delete(row)
                 session.commit()
@@ -411,22 +424,26 @@ def _cleanup_old_results(results_dir) -> None:
 
             # 2. Keep 50 most recent non-REJECTED entries
             keep_ids = [
-                row.id for row in session.query(GenerationHistoryModel.id)
+                row.id
+                for row in session.query(GenerationHistoryModel.id)
                 .filter(GenerationHistoryModel.status != "REJECTED")
                 .order_by(GenerationHistoryModel.id.desc())
                 .limit(50)
                 .all()
             ]
-            old_rows = session.query(GenerationHistoryModel.task_id)\
+            old_rows = (
+                session.query(GenerationHistoryModel.task_id)
                 .filter(
                     GenerationHistoryModel.status != "REJECTED",
                     GenerationHistoryModel.id.notin_(keep_ids) if keep_ids else True,
-                ).all()
+                )
+                .all()
+            )
             old_task_ids = {row.task_id for row in old_rows}
             if old_task_ids:
-                session.query(GenerationHistoryModel)\
-                    .filter(GenerationHistoryModel.task_id.in_(old_task_ids))\
-                    .delete(synchronize_session=False)
+                session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id.in_(old_task_ids)).delete(
+                    synchronize_session=False
+                )
                 session.commit()
                 logger.info("Pruned %d old history entries", len(old_task_ids))
                 for task_id in old_task_ids:

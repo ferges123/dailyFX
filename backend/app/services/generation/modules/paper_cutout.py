@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from io import BytesIO
 import random
+from io import BytesIO
 
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
@@ -50,16 +50,18 @@ class PaperCutoutModule:
         )
 
 
-def _build_paper_cutout(source: Image.Image, dark: tuple[int, int, int], light: tuple[int, int, int], style: str) -> bytes:
+def _build_paper_cutout(
+    source: Image.Image, dark: tuple[int, int, int], light: tuple[int, int, int], style: str
+) -> bytes:
     size = (1200, 900)
     fitted = ImageOps.fit(source, size, centering=(0.5, 0.45))
-    
+
     # Enhanced posterization with more levels
     poster = ImageOps.posterize(fitted, 5)
     poster = ImageEnhance.Color(poster).enhance(1.2)
     poster = ImageEnhance.Contrast(poster).enhance(1.3)
     poster = ImageEnhance.Sharpness(poster).enhance(1.2)
-    
+
     if style == "textured":
         poster = add_grain(poster, strength=0.06, blur=0.0)
 
@@ -71,20 +73,20 @@ def _build_paper_cutout(source: Image.Image, dark: tuple[int, int, int], light: 
 
     # Rich textured paper background
     paper = Image.new("RGB", size, light)
-    
+
     if style == "textured":
         # Multiple texture layers for depth
         texture1 = Image.effect_noise(size, 15).convert("L")
         texture2 = Image.effect_noise(size, 25).convert("L")
         texture1 = ImageOps.autocontrast(texture1)
         texture2 = ImageOps.autocontrast(texture2)
-        
+
         texture_rgb1 = Image.merge("RGB", (texture1, texture1, texture1))
         texture_rgb2 = Image.merge("RGB", (texture2, texture2, texture2))
-        
+
         paper = Image.blend(paper, texture_rgb1, 0.12)
         paper = Image.blend(paper, texture_rgb2, 0.06)
-        
+
         # Add subtle color variation
         tint = Image.new("RGB", size, tuple(int(c * 0.95) for c in light))
         paper = Image.blend(paper, tint, 0.15)
@@ -94,7 +96,7 @@ def _build_paper_cutout(source: Image.Image, dark: tuple[int, int, int], light: 
     shadow1 = Image.new("RGB", size, tuple(int(c * 0.4) for c in dark))
     shadow1 = ImageChops.offset(shadow1, 22, 22)
     paper = Image.composite(shadow1, paper, shadow_mask.point(lambda value: int(value * 0.45)))
-    
+
     # Closer shadow for definition
     shadow2 = Image.new("RGB", size, tuple(int(c * 0.6) for c in dark))
     shadow2 = ImageChops.offset(shadow2, 8, 8)
@@ -104,7 +106,7 @@ def _build_paper_cutout(source: Image.Image, dark: tuple[int, int, int], light: 
     clipped = Image.new("RGB", size, light)
     clipped.paste(poster, (0, 0), mask)
     paper = Image.composite(clipped, paper, mask)
-    
+
     # Enhance final result
     paper = ImageOps.autocontrast(paper, cutoff=1)
     paper = ImageEnhance.Sharpness(paper).enhance(1.15)

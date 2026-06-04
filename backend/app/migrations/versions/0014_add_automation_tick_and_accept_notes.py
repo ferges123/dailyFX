@@ -5,8 +5,8 @@ Revises: 0013_add_push_subscription_metadata
 Create Date: 2026-05-20
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
 
 revision = "0014_add_automation_tick_and_accept_notes"

@@ -4,8 +4,9 @@ Revision ID: 0002_add_notification_fields
 Revises: 0001_create_settings
 Create Date: 2026-05-12
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0002_add_notification_fields"
 down_revision = "0001_create_settings"
@@ -21,4 +22,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("settings", "notification_topic")
     op.drop_column("settings", "notification_url")
-

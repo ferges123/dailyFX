@@ -46,7 +46,7 @@ class LightLeakModule:
         source = load_rgb(image_bytes)
         intensity = max(0.2, min(0.5, float(config.get("intensity", 0.35) or 0.35)))
         color_mode = config.get("color", "warm")
-        
+
         # Faded film look
         faded = ImageEnhance.Contrast(source).enhance(0.88)
         faded = ImageEnhance.Color(faded).enhance(1.15)
@@ -63,13 +63,15 @@ class LightLeakModule:
         else:  # warm
             overlay = Image.new("RGB", (width, height), (255, 180, 100))
             accent = Image.new("RGB", (width, height), (255, 100, 40))
-        
+
         # Build leak with screen blend
         leak = Image.new("RGB", (width, height), (0, 0, 0))
         leak = ImageChops.screen(leak, overlay)
         leak = ImageChops.screen(leak, accent)
         leak = leak.filter(ImageFilter.GaussianBlur(radius=max(width, height) * 0.15))
-        leak = ImageChops.offset(leak, random.randint(-width // 10, width // 10), random.randint(-height // 12, height // 12))
+        leak = ImageChops.offset(
+            leak, random.randint(-width // 10, width // 10), random.randint(-height // 12, height // 12)
+        )
 
         # Blend with intensity control
         combined = Image.blend(faded, leak, intensity)

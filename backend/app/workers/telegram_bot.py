@@ -1,11 +1,12 @@
 import asyncio
 import logging
+
 import httpx
 
-from app.database import SessionLocal
-from app.models.notification_preset import NotificationPresetModel
-from app.models.generation_history import GenerationHistoryModel
 from app.api.routes_generation import accept_generation, reject_generation
+from app.database import SessionLocal
+from app.models.generation_history import GenerationHistoryModel
+from app.models.notification_preset import NotificationPresetModel
 from app.schemas.generation import GenerationAcceptRequest
 from app.security import decrypt_secret
 
@@ -49,7 +50,7 @@ async def start_telegram_bot_listener():
                             active_polls[token].result()
                         except Exception as e:
                             logger.error("Telegram polling task for ...%s failed: %s", token[-6:], e)
-                    
+
                     logger.info("Starting Telegram Bot polling task for token ending in ...%s", token[-6:])
                     active_polls[token] = asyncio.create_task(_poll_bot_updates(token))
 
@@ -102,7 +103,7 @@ async def _handle_callback_query(client: httpx.AsyncClient, token: str, callback
     callback_id = callback_query["id"]
     data = callback_query.get("data", "")
     message = callback_query.get("message")
-    
+
     if not message or not data:
         return
 
@@ -146,7 +147,7 @@ async def _handle_callback_query(client: httpx.AsyncClient, token: str, callback
             # Run acceptance API logic directly
             await accept_generation(task_id, GenerationAcceptRequest(), db=db, _=None)
             await _edit_message_status(client, token, chat_id, message_id, message, "✅ Accepted & Uploaded to Immich")
-            
+
         elif action == "reject":
             await _answer_callback(client, token, callback_id, "Rejecting image...")
             # Run rejection API logic directly
@@ -170,18 +171,22 @@ async def _answer_callback(client: httpx.AsyncClient, token: str, callback_id: s
         logger.warning("Failed to answer callback query: %s", e)
 
 
-async def _edit_message_status(client: httpx.AsyncClient, token: str, chat_id: int, message_id: int, message: dict, status_text: str):
+async def _edit_message_status(
+    client: httpx.AsyncClient, token: str, chat_id: int, message_id: int, message: dict, status_text: str
+):
     """Updates the message description to show final status and removes inline buttons."""
     caption = message.get("caption") or message.get("text") or ""
-    
+
     # Strip any old status footer to avoid stacking them
     lines = caption.split("\n")
-    cleaned_lines = [line for line in lines if not any(status in line for status in ("Status: ", "✅", "❌", "⏳", "⚠️"))]
+    cleaned_lines = [
+        line for line in lines if not any(status in line for status in ("Status: ", "✅", "❌", "⏳", "⚠️"))
+    ]
     new_caption = "\n".join(cleaned_lines).strip()
-    
+
     # Append new status
     new_caption += f"\n\n<b>Status:</b> {status_text}"
-    
+
     try:
         # Check if it was a photo or text message
         if "photo" in message:
@@ -191,7 +196,7 @@ async def _edit_message_status(client: httpx.AsyncClient, token: str, chat_id: i
                 "message_id": message_id,
                 "caption": new_caption,
                 "parse_mode": "HTML",
-                "reply_markup": {"inline_keyboard": []}  # removes the keyboard
+                "reply_markup": {"inline_keyboard": []},  # removes the keyboard
             }
         else:
             url = f"https://api.telegram.org/bot{token}/editMessageText"
@@ -200,14 +205,16 @@ async def _edit_message_status(client: httpx.AsyncClient, token: str, chat_id: i
                 "message_id": message_id,
                 "text": new_caption,
                 "parse_mode": "HTML",
-                "reply_markup": {"inline_keyboard": []}
+                "reply_markup": {"inline_keyboard": []},
             }
-            
+
         await client.post(url, json=payload)
     except Exception as e:
         logger.warning("Failed to update Telegram message caption: %s", e)
 
 
-async def _edit_markup_to_error(client: httpx.AsyncClient, token: str, chat_id: int, message_id: int, message: dict, error_msg: str):
+async def _edit_markup_to_error(
+    client: httpx.AsyncClient, token: str, chat_id: int, message_id: int, message: dict, error_msg: str
+):
     """Removes keyboard buttons and appends error message."""
     await _edit_message_status(client, token, chat_id, message_id, message, f"⚠️ Error ({error_msg})")

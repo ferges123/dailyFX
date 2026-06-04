@@ -267,5 +267,11 @@ def import_ai_effects(
 @router.get("/export", response_model=AIEffectExportRequest)
 def export_ai_effects(db: Session = Depends(get_db), _: None = Depends(require_auth)):
     rows = db.query(AIEffectModel).all()
-    rows.sort(key=lambda row: (0 if row.source == "builtin" else 1 if row.source == "custom" else 2, row.title.lower(), row.id))
+    rows.sort(
+        key=lambda row: (
+            0 if row.source == "builtin" else 1 if row.source == "custom" else 2,
+            row.title.lower(),
+            row.id,
+        )
+    )
     return AIEffectExportRequest(schema_version=1, effects=[_row_to_response(row) for row in rows])

@@ -1,4 +1,3 @@
-
 import pytest
 from _contract_helpers import configure_contract_test_db
 

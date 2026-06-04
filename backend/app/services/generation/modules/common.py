@@ -52,9 +52,7 @@ def select_palette(config: dict[str, Any] | None = None) -> tuple[tuple[int, int
         isinstance(palette, list)
         and len(palette) == 2
         and all(
-            isinstance(item, list)
-            and len(item) == 3
-            and all(isinstance(channel, int) for channel in item)
+            isinstance(item, list) and len(item) == 3 and all(isinstance(channel, int) for channel in item)
             for item in palette
         )
     ):
@@ -93,7 +91,7 @@ def get_font(name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFo
     # We want app/static/fonts/
     base_path = Path(__file__).resolve().parent.parent.parent.parent
     font_path = base_path / "static" / "fonts" / f"{name}.ttf"
-    
+
     # Try the requested font
     try:
         if font_path.exists():

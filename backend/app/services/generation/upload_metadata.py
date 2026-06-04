@@ -8,7 +8,9 @@ from app.immich.models import ImmichUploadMetadata
 from app.models.generation_history import GenerationHistoryModel
 
 
-def build_immich_upload_metadata(*, row: GenerationHistoryModel, task_id: str, image_path: Path) -> ImmichUploadMetadata:
+def build_immich_upload_metadata(
+    *, row: GenerationHistoryModel, task_id: str, image_path: Path
+) -> ImmichUploadMetadata:
     stat = image_path.stat()
     fallback_ts = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z")
     config = json.loads(row.config_json or "{}")

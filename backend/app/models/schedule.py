@@ -1,16 +1,21 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, func, Table, Column
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, UTCDateTime
 
+if TYPE_CHECKING:
+    from app.models.notification_preset import NotificationPresetModel
 
 schedule_notification_preset_association = Table(
     "schedule_notification_presets",
     Base.metadata,
     Column("schedule_id", Integer, ForeignKey("schedules.id", ondelete="CASCADE"), primary_key=True),
-    Column("notification_preset_id", Integer, ForeignKey("notification_presets.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "notification_preset_id", Integer, ForeignKey("notification_presets.id", ondelete="CASCADE"), primary_key=True
+    ),
 )
 
 
@@ -23,13 +28,13 @@ class ScheduleModel(Base):
     schedule_expr: Mapped[str] = mapped_column(String(100), nullable=False, default="weekly")
     filter_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("filter_presets.id"), nullable=False)
     effect_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("effect_presets.id"), nullable=False)
-    
+
     notification_presets: Mapped[list["NotificationPresetModel"]] = relationship(
         "NotificationPresetModel",
         secondary=schedule_notification_preset_association,
         backref="schedules",
     )
-    
+
     album_name: Mapped[str] = mapped_column(String(255), nullable=False, default="AI Photos")
     ai_vision_provider: Mapped[str] = mapped_column(String(50), nullable=False, default="none")
     ai_vision_model: Mapped[str] = mapped_column(String(100), nullable=False, default="gpt-4o-mini")

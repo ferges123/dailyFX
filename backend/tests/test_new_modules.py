@@ -1,4 +1,5 @@
 """Tests for new OpenCV effect modules: pencil_sketch, cartoon, hdr."""
+
 import asyncio
 import os
 from io import BytesIO
@@ -13,9 +14,9 @@ test_db = Path("/tmp/test_new_modules.db")
 test_db.unlink(missing_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 
-from app.services.generation.modules.pencil_sketch import PencilSketchModule
 from app.services.generation.modules.cartoon import CartoonModule
 from app.services.generation.modules.hdr import HDRModule
+from app.services.generation.modules.pencil_sketch import PencilSketchModule
 
 
 def _img_bytes(w=120, h=90) -> bytes:
@@ -80,6 +81,7 @@ def test_hdr_mantiuk():
     # Mantiuk requires non-uniform image (assertion on dot product)
     buf = BytesIO()
     import numpy as np
+
     arr = np.random.randint(0, 255, (90, 120, 3), dtype=np.uint8)
     Image.fromarray(arr).save(buf, format="PNG")
     result = asyncio.run(HDRModule().run([_asset()], {"algorithm": "mantiuk"}, _client(buf.getvalue()), MagicMock()))
@@ -89,4 +91,3 @@ def test_hdr_mantiuk():
 def test_hdr_invalid_algorithm_falls_back():
     result = asyncio.run(HDRModule().run([_asset()], {"algorithm": "unknown"}, _client(_img_bytes()), MagicMock()))
     assert _is_png(result.image_bytes)
-

@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.models.generation_history import GenerationHistoryModel
 from app.services.generation.stream import record_history_snapshot
-
 
 _PLACEHOLDER_VALUES: dict[str, Any] = {
     "generation_type": "manual",
@@ -98,7 +97,7 @@ def append_history_trace(
 
 def get_or_create_thumbnail(original_path: Path, max_size: int = 400) -> Path:
     from PIL import Image
-    
+
     thumb_path = original_path.with_suffix(original_path.suffix + f".thumb_{max_size}.jpg")
     if thumb_path.exists():
         try:

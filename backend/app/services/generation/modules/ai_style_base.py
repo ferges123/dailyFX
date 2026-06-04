@@ -42,7 +42,11 @@ class AIStyleBaseModule:
         return self.label[3:] if self.label.startswith("AI ") else self.label
 
     def _prompt_for_config(self, config: dict, settings: SettingsModel) -> str:
-        return (config.get("custom_prompt") or "").strip() or (settings.ai_custom_prompt or "").strip() or self.default_prompt
+        return (
+            (config.get("custom_prompt") or "").strip()
+            or (settings.ai_custom_prompt or "").strip()
+            or self.default_prompt
+        )
 
     def _summary_for_result(self, provider: str) -> str:
         style_name = self._style_name().lower()

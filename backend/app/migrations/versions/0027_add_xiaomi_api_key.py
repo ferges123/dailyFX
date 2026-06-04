@@ -5,9 +5,8 @@ Revises: 0026_merge_generation_stream_heads
 Create Date: 2026-05-27 14:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0027_add_xiaomi_api_key"
 down_revision = "0026_merge_generation_stream_heads"

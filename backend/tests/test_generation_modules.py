@@ -1,5 +1,5 @@
-import os
 import asyncio
+import os
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,8 +13,8 @@ test_db = Path("/tmp/immich_ai_creator_test_generation_modules.db")
 test_db.unlink(missing_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 
-from app.services.generation.ai_effects_builder import build_ai_module
 from app.models.ai_effect import AIEffectModel
+from app.services.generation.ai_effects_builder import build_ai_module
 from app.services.generation.ai_image import generate_ai_image
 from app.services.generation.modules.cyanotype import CyanotypeModule
 from app.services.generation.modules.paper_cutout import PaperCutoutModule
@@ -155,12 +155,16 @@ def test_ai_helper_uses_selected_model():
         captured["model"] = model
         return _fake_image_bytes()
 
-    with patch("app.services.generation.ai_image.reserve_ai_usage", lambda *args, **kwargs: None), patch(
-        "app.services.generation.ai_image._decrypt_provider_key",
-        return_value="api-key",
-    ), patch(
-        "app.services.generation.ai_image._generate_with_openai",
-        fake_openai,
+    with (
+        patch("app.services.generation.ai_image.reserve_ai_usage", lambda *args, **kwargs: None),
+        patch(
+            "app.services.generation.ai_image._decrypt_provider_key",
+            return_value="api-key",
+        ),
+        patch(
+            "app.services.generation.ai_image._generate_with_openai",
+            fake_openai,
+        ),
     ):
         result = asyncio.run(generate_ai_image(settings, image_bytes, "prompt"))
 
@@ -175,12 +179,16 @@ def test_ai_helper_uses_selected_model():
         captured["model"] = model
         return _fake_image_bytes()
 
-    with patch("app.services.generation.ai_image.reserve_ai_usage", lambda *args, **kwargs: None), patch(
-        "app.services.generation.ai_image._decrypt_provider_key",
-        return_value="api-key",
-    ), patch(
-        "app.services.generation.ai_image._generate_with_gemini",
-        fake_gemini,
+    with (
+        patch("app.services.generation.ai_image.reserve_ai_usage", lambda *args, **kwargs: None),
+        patch(
+            "app.services.generation.ai_image._decrypt_provider_key",
+            return_value="api-key",
+        ),
+        patch(
+            "app.services.generation.ai_image._generate_with_gemini",
+            fake_gemini,
+        ),
     ):
         result = asyncio.run(generate_ai_image(settings, image_bytes, "prompt"))
 
@@ -208,20 +216,26 @@ def test_generate_ai_image_with_prompt_enrichment():
     mock_describe = AsyncMock(return_value="a lovely cat sleeping")
     mock_fuse = AsyncMock(return_value="lovely cat sleeping, digital art, high quality")
 
-    with patch("app.services.generation.ai_image.reserve_ai_usage", lambda *args, **kwargs: None), patch(
-        "app.services.generation.ai_image._decrypt_provider_key",
-        return_value="api-key",
-    ), patch(
-        "app.services.generation.ai_vision.describe_image",
-        mock_describe,
-    ), patch(
-        "app.services.generation.ai_vision.fuse_prompts",
-        mock_fuse,
-    ), patch(
-        "app.services.generation.ai_image._generate_with_openai",
-        fake_openai,
+    with (
+        patch("app.services.generation.ai_image.reserve_ai_usage", lambda *args, **kwargs: None),
+        patch(
+            "app.services.generation.ai_image._decrypt_provider_key",
+            return_value="api-key",
+        ),
+        patch(
+            "app.services.generation.ai_vision.describe_image",
+            mock_describe,
+        ),
+        patch(
+            "app.services.generation.ai_vision.fuse_prompts",
+            mock_fuse,
+        ),
+        patch(
+            "app.services.generation.ai_image._generate_with_openai",
+            fake_openai,
+        ),
     ):
-        result = asyncio.run(generate_ai_image(settings, image_bytes, "digital art"))
+        asyncio.run(generate_ai_image(settings, image_bytes, "digital art"))
 
     assert captured["prompt"] == "lovely cat sleeping, digital art, high quality"
     mock_describe.assert_called_once_with(settings, image_bytes, context_hint=None)
@@ -254,7 +268,9 @@ def test_ai_modules_forward_people_context_to_generation():
         }
     )
     settings = MagicMock(default_ai_provider="openai")
-    asset = SimpleNamespace(id="asset-1", original_file_name="photo.jpg", people=[SimpleNamespace(id="person-1", name="Alice")])
+    asset = SimpleNamespace(
+        id="asset-1", original_file_name="photo.jpg", people=[SimpleNamespace(id="person-1", name="Alice")]
+    )
     ai_result = SimpleNamespace(image_bytes=_fake_image_bytes(), provider="openai", model="gpt-image-1")
     captured: dict[str, object] = {}
 
@@ -267,7 +283,10 @@ def test_ai_modules_forward_people_context_to_generation():
         result = asyncio.run(_create_mock_ai_module("ai_anime").run([asset], {}, client, settings))
 
     assert result.generation_type == "ai_anime"
-    assert captured["context_hint"] == "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left."
+    assert (
+        captured["context_hint"]
+        == "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left."
+    )
     assert "people_context" in result.config
     assert result.config["people_context"]["names"] == ["Alice"]
 
@@ -300,7 +319,9 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
     )
     settings = MagicMock(default_ai_provider="openai", ai_prompt_enrichment=True)
     settings._generation_album_name = "Vacation Album"
-    asset = SimpleNamespace(id="asset-1", original_file_name="photo.jpg", people=[SimpleNamespace(id="person-1", name="Alice")])
+    asset = SimpleNamespace(
+        id="asset-1", original_file_name="photo.jpg", people=[SimpleNamespace(id="person-1", name="Alice")]
+    )
     ai_result = SimpleNamespace(image_bytes=_fake_image_bytes(), provider="openai", model="gpt-image-1")
     captured: dict[str, object] = {}
 
@@ -313,7 +334,10 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
         result = asyncio.run(_create_mock_ai_module("ai_anime").run([asset], {}, client, settings))
 
     assert result.generation_type == "ai_anime"
-    assert captured["context_hint"] == "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left."
+    assert (
+        captured["context_hint"]
+        == "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left."
+    )
     assert captured["prompt_enrichment_context_hint"] == (
         "Album: Vacation Album\n"
         "Detected people: Alice\n"

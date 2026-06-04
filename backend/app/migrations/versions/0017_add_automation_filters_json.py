@@ -4,6 +4,7 @@ Revision ID: 0017_add_automation_filters_json
 Revises: 0016_drop_person_filter_strategy
 Create Date: 2026-05-22
 """
+
 import sqlalchemy as sa
 from alembic import op
 

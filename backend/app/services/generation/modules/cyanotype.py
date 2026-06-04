@@ -49,12 +49,12 @@ class CyanotypeModule:
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
-        
+
         tone = config.get("tone", "classic")
         if tone not in _BLUE_TONES:
             tone = "classic"
         texture = max(0.05, min(0.2, float(config.get("texture", 0.12) or 0.12)))
-        
+
         result = _apply_cyanotype(source, tone, texture)
 
         return GenerationResult(
@@ -74,19 +74,19 @@ def _apply_cyanotype(img: Image.Image, tone: str, texture: float) -> Image.Image
     gray = ImageOps.autocontrast(gray, cutoff=2)
     gray = ImageEnhance.Contrast(gray).enhance(1.3)
     gray = ImageEnhance.Sharpness(gray).enhance(1.2)
-    
+
     # Apply blue tone
     black, white = _BLUE_TONES[tone]
     tint = ImageOps.colorize(gray, black=black, white=white)
     tint = ImageEnhance.Color(tint).enhance(1.2)
-    
+
     # Multi-layer paper texture
     tint = add_grain(tint, strength=texture * 0.6, blur=0.15)
     tint = _add_paper_texture(tint, strength=texture * 0.4)
-    
+
     # Vignette for aged look
     tint = apply_vignette(tint, strength=0.35)
-    
+
     return tint
 
 
@@ -95,9 +95,10 @@ def _add_paper_texture(img: Image.Image, strength: float) -> Image.Image:
     w, h = img.size
     texture = Image.new("L", (w, h), 128)
     draw = ImageDraw.Draw(texture)
-    
+
     # Random fiber lines
     import random
+
     for _ in range(int(w * h * 0.0002)):
         x = random.randint(0, w - 1)
         y = random.randint(0, h - 1)
@@ -107,6 +108,6 @@ def _add_paper_texture(img: Image.Image, strength: float) -> Image.Image:
             draw.line([(x, y), (x + length, y)], fill=random.randint(120, 136), width=1)
         elif angle == 90:
             draw.line([(x, y), (x, y + length)], fill=random.randint(120, 136), width=1)
-    
+
     texture = texture.filter(ImageFilter.GaussianBlur(0.5))
     return Image.blend(img, Image.merge("RGB", [texture] * 3), strength)

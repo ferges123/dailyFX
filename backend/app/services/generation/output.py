@@ -4,6 +4,7 @@ import logging
 
 from app.notifications.client import (
     send_apprise_notification,
+    send_discord_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
@@ -96,6 +97,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                 )
             elif provider == "apprise" and notification_url:
                 from pathlib import Path as _Path
+
                 image_path = _Path(engine_module.get_settings().data_dir) / "results" / f"{task_id}.png"
                 img_str = str(image_path) if image_path.exists() else None
 
@@ -105,6 +107,15 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     message=title,
                     detail=detail,
                     image_path=img_str,
+                )
+            elif provider == "discord" and notification_preset.webhook_url:
+                await send_discord_notification(
+                    webhook_url=notification_preset.webhook_url,
+                    title=full_title,
+                    message=title,
+                    detail=summary,
+                    click_url=abs_app_url,
+                    image_url=abs_image_url,
                 )
         except Exception as e:
             logger.warning(f"Failed to send {provider} notification: {e}")

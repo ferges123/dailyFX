@@ -25,6 +25,7 @@ GEMINI_VISION_MODEL = "gemini-2.5-flash"
 XIAOMI_VISION_MODEL = "mimo-v2.5"
 XIAOMI_API_BASE_URL = "https://api.xiaomimimo.com/v1"
 
+
 @dataclass(frozen=True)
 class AIVisionResult:
     title: str
@@ -35,10 +36,12 @@ class AIVisionResult:
     model: str | None = None
 
     def __post_init__(self):
-        object.__setattr__(self, 'tags', self.tags or [])
+        object.__setattr__(self, "tags", self.tags or [])
+
 
 class AIVisionError(RuntimeError):
     pass
+
 
 def _normalize_image_for_vision(image_bytes: bytes) -> str:
     """Resize image to reasonable size for vision processing and return as b64 string."""
@@ -47,10 +50,11 @@ def _normalize_image_for_vision(image_bytes: bytes) -> str:
     img.thumbnail((1024, 1024))
     if img.mode != "RGB":
         img = img.convert("RGB")
-    
+
     buffered = BytesIO()
     img.save(buffered, format="JPEG", quality=85)
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
 
 def _decrypt_provider_key(settings: SettingsModel, provider: str) -> str | None:
     if provider == "openai":
@@ -71,13 +75,15 @@ def _decrypt_provider_key(settings: SettingsModel, provider: str) -> str | None:
         raise AIVisionError(f"{provider.title()} API key is not configured")
     return api_key
 
+
 DEFAULT_VISION_PROMPT = (
     "Analyze this image. Return a JSON object with three fields: "
     "'title' (a short, creative 3-5 word title), "
     "'summary' (one concise sentence describing the photo), and "
-    "'tags' (a list of 3-6 descriptive keyword strings, e.g. [\"sunset\", \"beach\", \"family\"]). "
+    '\'tags\' (a list of 3-6 descriptive keyword strings, e.g. ["sunset", "beach", "family"]). '
     "Do not use markdown formatting like ```json, just return the raw JSON object."
 )
+
 
 async def analyze_image(
     settings: SettingsModel,
@@ -95,11 +101,11 @@ async def analyze_image(
 
     api_key = _decrypt_provider_key(settings, provider)
     b64_image = _normalize_image_for_vision(image_bytes)
-    
+
     if model is None:
         model = getattr(settings, "default_ai_model", "")
     model = (model or "").strip()
-    
+
     prompt = prompt or DEFAULT_VISION_PROMPT
     if context_hint:
         prompt = f"{context_hint}\n\n{prompt}"
@@ -123,6 +129,7 @@ async def analyze_image(
 
     raise AIVisionError(f"Unsupported AI provider: {provider}")
 
+
 async def _analyze_with_openai(
     api_key: str,
     b64_image: str,
@@ -130,10 +137,7 @@ async def _analyze_with_openai(
     model: str = OPENAI_VISION_MODEL,
 ) -> AIVisionResult:
     url = "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     payload = {
         "model": model,
         "messages": [
@@ -141,15 +145,12 @@ async def _analyze_with_openai(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}
-                    }
-                ]
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}},
+                ],
             }
         ],
         "max_tokens": 300,
-        "response_format": {"type": "json_object"}
+        "response_format": {"type": "json_object"},
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -157,21 +158,22 @@ async def _analyze_with_openai(
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
-            
+
             content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)
-            
+
             return AIVisionResult(
                 title=parsed.get("title", "Untitled"),
                 summary=parsed.get("summary", ""),
                 tags=[t for t in parsed.get("tags", []) if isinstance(t, str)],
                 token_count=data.get("usage", {}).get("total_tokens"),
                 provider="openai",
-                model=model
+                model=model,
             )
         except Exception as exc:
             logger.error("OpenAI vision error: %s", exc)
             raise AIVisionError(f"OpenAI analysis failed: {exc}") from exc
+
 
 async def _analyze_with_gemini(
     api_key: str,
@@ -184,19 +186,9 @@ async def _analyze_with_gemini(
         "Content-Type": "application/json",
         "x-goog-api-key": api_key,
     }
-    
+
     payload = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": b64_image
-                    }
-                }
-            ]
-        }]
+        "contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": b64_image}}]}]
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -206,20 +198,20 @@ async def _analyze_with_gemini(
                 logger.error("Gemini API Error (%d): %s", response.status_code, response.text[:1000])
             response.raise_for_status()
             data = response.json()
-            
+
             # Gemini response structure is a bit more nested
             text_response = data["candidates"][0]["content"]["parts"][0]["text"]
             # Sometimes Gemini adds markdown code blocks even when asked not to
             clean_text = text_response.strip().replace("```json", "").replace("```", "").strip()
             parsed = json.loads(clean_text)
-            
+
             return AIVisionResult(
                 title=parsed.get("title", "Untitled"),
                 summary=parsed.get("summary", ""),
                 tags=[t for t in parsed.get("tags", []) if isinstance(t, str)],
                 token_count=None,
                 provider="gemini",
-                model=model
+                model=model,
             )
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code if exc.response is not None else "unknown"
@@ -261,7 +253,7 @@ async def _analyze_with_openrouter(
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "https://github.com/YOUR_USERNAME/DailyFX-for-immich",
-        "X-Title": "dailyFX"
+        "X-Title": "dailyFX",
     }
     payload = {
         "model": model,
@@ -270,15 +262,12 @@ async def _analyze_with_openrouter(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}
-                    }
-                ]
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}},
+                ],
             }
         ],
         "max_tokens": 300,
-        "response_format": {"type": "json_object"}
+        "response_format": {"type": "json_object"},
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -286,17 +275,17 @@ async def _analyze_with_openrouter(
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
-            
+
             content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)
-            
+
             return AIVisionResult(
                 title=parsed.get("title", "Untitled"),
                 summary=parsed.get("summary", ""),
                 tags=[t for t in parsed.get("tags", []) if isinstance(t, str)],
                 token_count=data.get("usage", {}).get("total_tokens"),
                 provider="openrouter",
-                model=model
+                model=model,
             )
         except Exception as exc:
             logger.error("OpenRouter vision error: %s", exc)
@@ -417,10 +406,10 @@ async def describe_image(settings: SettingsModel, image_bytes: bytes, context_hi
 
     api_key = _decrypt_provider_key(settings, provider)
     b64_image = _normalize_image_for_vision(image_bytes)
-    
+
     model = getattr(settings, "default_ai_model", "")
     model = (model or "").strip()
-    
+
     prompt = (
         "Describe what you see in this image in detail. Focus on the main subject, "
         "background, lighting, objects, colors, and layout. Keep the description under 100 words, "
@@ -428,7 +417,7 @@ async def describe_image(settings: SettingsModel, image_bytes: bytes, context_hi
     )
     if context_hint:
         prompt = f"{context_hint}\n\n{prompt}"
-    
+
     reserve_ai_usage(
         "vision",
         limit=getattr(settings, "ai_vision_hourly_limit", 30),
@@ -457,10 +446,7 @@ async def _get_text_desc_openai(
     model: str,
 ) -> str:
     url = "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     payload = {
         "model": model,
         "messages": [
@@ -468,14 +454,11 @@ async def _get_text_desc_openai(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}
-                    }
-                ]
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}},
+                ],
             }
         ],
-        "max_tokens": 300
+        "max_tokens": 300,
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
@@ -500,17 +483,7 @@ async def _get_text_desc_gemini(
         "x-goog-api-key": api_key,
     }
     payload = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": b64_image
-                    }
-                }
-            ]
-        }]
+        "contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": b64_image}}]}]
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
@@ -534,7 +507,7 @@ async def _get_text_desc_openrouter(
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "https://github.com/YOUR_USERNAME/DailyFX-for-immich",
-        "X-Title": "dailyFX"
+        "X-Title": "dailyFX",
     }
     payload = {
         "model": model,
@@ -543,14 +516,11 @@ async def _get_text_desc_openrouter(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}
-                    }
-                ]
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}},
+                ],
             }
         ],
-        "max_tokens": 300
+        "max_tokens": 300,
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
@@ -659,7 +629,7 @@ async def fuse_prompts(
     api_key = _decrypt_provider_key(settings, provider)
     model = getattr(settings, "default_ai_model", "")
     model = (model or "").strip()
-    
+
     prompt_parts = [
         "You are an AI prompt expert. You are given an image description and a style prompt.",
         "Your task is to rewrite the image description to match the style prompt, merging them into a single, cohesive prompt for an image generation model.",
@@ -667,13 +637,15 @@ async def fuse_prompts(
     ]
     if context_hint:
         prompt_parts.append(f"Additional context: {context_hint}")
-    prompt_parts.extend([
-        f"Image description: {image_description}",
-        f"Style prompt: {style_prompt}",
-        "Fused Prompt:",
-    ])
+    prompt_parts.extend(
+        [
+            f"Image description: {image_description}",
+            f"Style prompt: {style_prompt}",
+            "Fused Prompt:",
+        ]
+    )
     prompt = "\n".join(prompt_parts)
-    
+
     reserve_ai_usage(
         "vision",
         limit=getattr(settings, "ai_vision_hourly_limit", 30),
@@ -697,17 +669,8 @@ async def fuse_prompts(
 
 async def _fuse_openai(api_key: str, prompt: str, model: str) -> str:
     url = "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 300
-    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+    payload = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": 300}
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
@@ -725,13 +688,7 @@ async def _fuse_gemini(api_key: str, prompt: str, model: str) -> str:
         "Content-Type": "application/json",
         "x-goog-api-key": api_key,
     }
-    payload = {
-        "contents": [{
-            "parts": [
-                {"text": prompt}
-            ]
-        }]
-    }
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
@@ -749,15 +706,9 @@ async def _fuse_openrouter(api_key: str, prompt: str, model: str) -> str:
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "https://github.com/YOUR_USERNAME/DailyFX-for-immich",
-        "X-Title": "dailyFX"
+        "X-Title": "dailyFX",
     }
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 300
-    }
+    payload = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": 300}
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
@@ -777,9 +728,7 @@ async def _fuse_xiaomi(api_key: str, prompt: str, model: str) -> str:
     }
     payload = {
         "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "max_completion_tokens": 300,
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -806,9 +755,7 @@ async def _fuse_local(settings: SettingsModel, api_key: str | None, prompt: str,
         headers["Authorization"] = f"Bearer {api_key}"
     payload = {
         "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 300,
     }
     async with httpx.AsyncClient(timeout=30.0) as client:

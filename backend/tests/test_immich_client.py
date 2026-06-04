@@ -14,6 +14,7 @@ from app.immich.models import ImmichAssetSummary, ImmichPersonSummary, ImmichUpl
 
 def test_normalizes_api_url() -> None:
     from app.utils.url_utils import normalize_api_url
+
     assert normalize_api_url("https://photos.example.com") == "https://photos.example.com/api"
     assert normalize_api_url("https://photos.example.com/api") == "https://photos.example.com/api"
 
@@ -71,9 +72,7 @@ def test_connection_accepts_album_probe_when_user_probe_is_rejected(monkeypatch)
 
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
 
-    result = asyncio.run(
-        ImmichClient("https://photos.example.com", "secret-key").test_connection()
-    )
+    result = asyncio.run(ImmichClient("https://photos.example.com", "secret-key").test_connection())
 
     assert result.ok is True
     assert result.server_version == "1.2.3"
@@ -649,9 +648,7 @@ def test_tag_assets_uses_put_tag_assets_endpoint(monkeypatch: pytest.MonkeyPatch
         return original_async_client(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
-    asyncio.run(
-        ImmichClient("https://photos.example.com", "secret-key").tag_assets("tag-1", ["asset-1"])
-    )
+    asyncio.run(ImmichClient("https://photos.example.com", "secret-key").tag_assets("tag-1", ["asset-1"]))
 
     assert seen_requests == [
         {

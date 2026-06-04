@@ -49,21 +49,21 @@ class PrismSplitModule:
         # Enhanced preprocessing
         source = ImageEnhance.Contrast(source).enhance(1.2)
         source = ImageEnhance.Color(source).enhance(1.15)
-        
+
         # More dramatic RGB channel shifts
         r, g, b = source.split()
-        r = ImageChops.offset(r, random.randint(shift//2, shift), random.randint(-shift//4, shift//4))
-        g = ImageChops.offset(g, random.randint(-shift//3, shift//3), 0)
-        b = ImageChops.offset(b, random.randint(-shift, -shift//2), random.randint(-shift//4, shift//4))
-        
+        r = ImageChops.offset(r, random.randint(shift // 2, shift), random.randint(-shift // 4, shift // 4))
+        g = ImageChops.offset(g, random.randint(-shift // 3, shift // 3), 0)
+        b = ImageChops.offset(b, random.randint(-shift, -shift // 2), random.randint(-shift // 4, shift // 4))
+
         merged = Image.merge("RGB", (r, g, b))
-        
+
         if style == "bold":
             # High contrast, vibrant colors
             merged = ImageEnhance.Color(merged).enhance(1.3)
             merged = ImageEnhance.Contrast(merged).enhance(1.35)
             merged = ImageEnhance.Sharpness(merged).enhance(1.5)
-            
+
             # Add edge glow
             edges = merged.filter(ImageFilter.FIND_EDGES)
             edges = ImageEnhance.Brightness(edges).enhance(0.3)
