@@ -854,7 +854,7 @@ function EffectPresetsTab() {
             </div>
 
             {/* Mobile View Cards */}
-            <div className="md:hidden grid gap-3 max-h-[500px] overflow-y-auto p-0.5">
+            <div className="md:hidden grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 max-h-[500px] overflow-y-auto p-0.5">
               {currentModules.map(mod => {
                 const group = groups[mod.name] ?? { enabled: false, weight: mod.default_weight, config: mod.default_config ?? {} };
                 const exampleInfo = examples.data?.find(ex => ex.module_name === mod.name);
