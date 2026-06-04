@@ -86,6 +86,7 @@ export function createDefaultModificationGroups(): ModificationGroupsConfig {
     polaroid: { enabled: false, weight: 1, config: {} },
     prism_split: { enabled: true, weight: 2, config: { shift: 14 } },
     paper_cutout: { enabled: true, weight: 2, config: {} },
+    aerochrome: { enabled: true, weight: 2, config: { red_hue: 170, foliage_sensitivity: 20, saturation_boost: 1.3, sky_cyan_shift: '1' } },
     ai_caricature: { enabled: true, weight: 1, config: {} },
     ai_anime: { enabled: true, weight: 1, config: {} },
   };

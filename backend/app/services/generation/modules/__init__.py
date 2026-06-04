@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.schemas.generation import GenerationModuleResponse
+from app.services.generation.modules.aerochrome import AerochromeModule
 from app.services.generation.modules.base import ModuleDefinition
 from app.services.generation.modules.bokeh_blur import BokehBlurModule
 from app.services.generation.modules.cartoon import CartoonModule
@@ -44,6 +45,7 @@ LOCAL_MODULE_CLASSES = [
     PencilSketchModule,
     CartoonModule,
     HDRModule,
+    AerochromeModule,
 ]
 
 

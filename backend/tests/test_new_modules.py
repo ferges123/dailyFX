@@ -14,6 +14,7 @@ test_db = Path("/tmp/test_new_modules.db")
 test_db.unlink(missing_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 
+from app.services.generation.modules.aerochrome import AerochromeModule
 from app.services.generation.modules.cartoon import CartoonModule
 from app.services.generation.modules.hdr import HDRModule
 from app.services.generation.modules.pencil_sketch import PencilSketchModule
@@ -90,4 +91,22 @@ def test_hdr_mantiuk():
 
 def test_hdr_invalid_algorithm_falls_back():
     result = asyncio.run(HDRModule().run([_asset()], {"algorithm": "unknown"}, _client(_img_bytes()), MagicMock()))
+    assert _is_png(result.image_bytes)
+
+
+def test_aerochrome_default():
+    result = asyncio.run(AerochromeModule().run([_asset()], {}, _client(_img_bytes()), MagicMock()))
+    assert result.generation_type == "aerochrome"
+    assert _is_png(result.image_bytes)
+
+
+def test_aerochrome_custom_params():
+    config = {
+        "red_hue": 150,
+        "foliage_sensitivity": 15,
+        "saturation_boost": 1.5,
+        "sky_cyan_shift": 0,
+    }
+    result = asyncio.run(AerochromeModule().run([_asset()], config, _client(_img_bytes()), MagicMock()))
+    assert result.generation_type == "aerochrome"
     assert _is_png(result.image_bytes)

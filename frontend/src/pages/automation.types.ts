@@ -107,6 +107,16 @@ export const fallbackModules: GenerationModuleInfo[] = [
   { name: 'polaroid', label: 'Polaroid', description: 'Instant-film frame with a warm fade and caption strip.', default_weight: 1, default_config: {}, config_schema: [] },
   { name: 'prism_split', label: 'Prism Split', description: 'Chromatic split with diagonal glare and crisp contrast.', default_weight: 2, default_config: { shift: 14 }, config_schema: [{ key: 'shift', label: 'Shift', type: 'number', description: 'Maximum chromatic offset in pixels.', min: 3, max: 32, step: 1, default: 14 }] },
   { name: 'paper_cutout', label: 'Paper Cutout', description: 'Posterized cutout on a textured paper backdrop.', default_weight: 2, default_config: {}, config_schema: [] },
+  {
+    name: 'aerochrome', label: 'Kodak Aerochrome', description: 'Infrared film simulation turning green foliage into vivid red/pink, with cool teal skies.',
+    default_weight: 2, default_config: { red_hue: 170, foliage_sensitivity: 20, saturation_boost: 1.3, sky_cyan_shift: '1' },
+    config_schema: [
+      { key: 'red_hue', label: 'Red/Pink Hue', type: 'number', description: 'Foliage hue target (140 = Pink, 170 = Crimson, 180 = Deep Red).', min: 140, max: 180, step: 5, default: 170 },
+      { key: 'foliage_sensitivity', label: 'Green Sensitivity', type: 'number', description: 'Foliage detection range (10 = narrow, 30 = wide).', min: 10, max: 30, step: 2, default: 20 },
+      { key: 'saturation_boost', label: 'Vibrancy Boost', type: 'number', description: 'Red foliage saturation multiplier.', min: 1.0, max: 1.8, step: 0.1, default: 1.3 },
+      { key: 'sky_cyan_shift', label: 'Teal Skies', type: 'select', description: 'Shift blue skies towards a cool retro cyan/teal.', options: [{ label: 'Enabled', value: '1' }, { label: 'Disabled', value: '0' }], default: '1' }
+    ]
+  },
   { name: 'ai_caricature', label: 'AI Caricature', description: 'Uses the default AI provider to turn a photo into a caricature.', default_weight: 1, default_config: {}, config_schema: [] },
   { name: 'ai_anime', label: 'AI Anime', description: 'Uses the default AI provider to turn a photo into anime-style art.', default_weight: 1, default_config: {}, config_schema: [] },
   { name: 'ai_cinematic_3d_toy', label: 'AI Cinematic 3D Toy', description: 'Uses the default AI provider to turn a photo into a polished cinematic 3D toy-style portrait.', default_weight: 1, default_config: {}, config_schema: [] },
