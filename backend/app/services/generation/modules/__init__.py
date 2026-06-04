@@ -23,8 +23,10 @@ from app.services.generation.modules.polaroid import PolaroidModule
 from app.services.generation.modules.popart import PopArtModule
 from app.services.generation.modules.prism_split import PrismSplitModule
 from app.services.generation.modules.vintage_film import VintageFilmModule
+from app.services.generation.modules.instaweather import InstaWeatherModule
 
 LOCAL_MODULE_CLASSES = [
+    InstaWeatherModule,
     MuseumArchiveModule,
     BokehBlurModule,
     VintageFilmModule,
