@@ -178,6 +178,43 @@ async def reverse_geocode(lat: float, lon: float) -> str | None:
     return None
 
 
+def get_fallback_weather(lat: float, month: int) -> dict:
+    """Simulate realistic weather conditions based on latitude and month as fallback."""
+    abs_lat = abs(lat)
+    is_northern = lat >= 0
+
+    if is_northern:
+        season_month = month
+    else:
+        season_month = (month + 6) % 12 or 12
+
+    # Equator is warm year-round (~28C), poles are cold (~-15C base)
+    equator_factor = (90 - abs_lat) / 90.0
+    base_temp = -15 + 43 * equator_factor
+
+    # Seasonal variation amplitude (larger at higher latitudes)
+    amplitude = 15 * (abs_lat / 90.0)
+
+    import math
+    seasonal_variation = amplitude * math.sin(math.pi * (season_month - 4) / 6)
+    temp_c = base_temp + seasonal_variation
+
+    if temp_c < 0:
+        code = 71  # Snow
+    elif temp_c < 10:
+        code = 3   # Cloudy
+    elif seasonal_variation < -5:
+        code = 61  # Rain
+    else:
+        code = 0   # Clear
+
+    return {
+        "temp_c": round(temp_c, 1),
+        "weather_code": code,
+        "simulated": True,
+    }
+
+
 class InstaWeatherModule:
     name = "instaweather"
     label = "InstaWeather"
@@ -248,10 +285,13 @@ class InstaWeatherModule:
                 lon_f = float(lon)
                 # Fetch geocode first
                 location = await reverse_geocode(lat_f, lon_f)
+                if not location:
+                    location = f"{abs(lat_f):.2f}°{'N' if lat_f >= 0 else 'S'}, {abs(lon_f):.2f}°{'E' if lon_f >= 0 else 'W'}"
                 # Fetch weather
                 weather_info = await fetch_weather(lat_f, lon_f, dt)
-                if weather_info:
-                    mode = "instaweather"
+                if not weather_info:
+                    weather_info = get_fallback_weather(lat_f, dt.month)
+                mode = "instaweather"
             except Exception as e:
                 logger.warning("Metadata fetch failed for InstaWeather: %s", e)
 
@@ -387,17 +427,20 @@ def _draw_graphics_overlay(
     width, height = img.size
     scale = min(width, height) / 1000.0
 
-    # Fonts loading
+    # Draw card inset and thin white border frame
+    margin_inset = int(15 * scale)
+    
+    # Fonts loading with larger sizes
     font_name = "Inter-Regular" if font_style == "classic" else "PlayfairDisplay-Medium"
-    title_size = max(14, int(20 * scale))
-    subtitle_size = max(11, int(14 * scale))
-    meta_size = max(9, int(11 * scale))
+    title_size = max(24, int(30 * scale))
+    subtitle_size = max(16, int(20 * scale))
+    meta_size = max(12, int(15 * scale))
 
     font_title = get_font(font_name, title_size)
     font_sub = get_font("Inter-Regular", subtitle_size)
     font_meta = get_font("Inter-Regular", meta_size)
 
-    # Resolve labels
+    # Resolve labels - Headline is weather details (with icon & temp)
     if mode == "instaweather" and weather_info:
         temp_val = weather_info["temp_c"]
         if units == "fahrenheit":
@@ -407,8 +450,8 @@ def _draw_graphics_overlay(
             temp_str = f"{int(temp_val)}°C"
 
         w_desc, w_emoji = map_wmo_code(weather_info["weather_code"])
-        line1 = location or "Nearby"
-        line2 = f"{w_emoji} {w_desc} • {temp_str}"
+        line1 = f"{w_emoji} {temp_str} • {w_desc}"
+        line2 = location or "Nearby"
     else:
         month = dt.month if dt else 6
         season, season_icon = calculate_season_and_icon(month)
@@ -425,16 +468,16 @@ def _draw_graphics_overlay(
     w2, h2 = get_text_size(line2, font_sub, temp_draw)
     w3, h3 = get_text_size(line3, font_meta, temp_draw) if line3 else (0, 0)
 
-    card_padding = int(14 * scale)
-    line_spacing = int(5 * scale)
+    card_padding = int(16 * scale)
+    line_spacing = int(6 * scale)
 
     card_width = max(w1, w2, w3) + card_padding * 2
-    card_width = min(card_width, int(width * 0.5))  # Limit to 50% width
+    card_width = min(card_width, int(width * 0.65))  # Limit to 65% width
 
     card_height = h1 + h2 + (h3 + line_spacing if line3 else 0) + line_spacing + card_padding * 2
 
-    # Placement coordinates
-    margin = int(40 * scale)
+    # Placement coordinates nested inside the white inset border
+    margin = margin_inset + int(15 * scale)
 
     if layout_position == "bottom_left":
         x = margin
@@ -456,13 +499,20 @@ def _draw_graphics_overlay(
     overlay_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay_layer)
 
+    # Inset border card outline
+    draw.rectangle(
+        [margin_inset, margin_inset, width - margin_inset, height - margin_inset],
+        outline=(255, 255, 255, 240),
+        width=max(1, int(2.5 * scale))
+    )
+
     card_box = [x, y, x + card_width, y + card_height]
-    card_radius = int(10 * scale)
+    card_radius = int(12 * scale)
 
     # Dark translucent container
-    draw.rounded_rectangle(card_box, radius=card_radius, fill=(24, 24, 27, 140))
-    # Border outline
-    draw.rounded_rectangle(card_box, radius=card_radius, outline=(255, 255, 255, 35), width=1)
+    draw.rounded_rectangle(card_box, radius=card_radius, fill=(24, 24, 27, 150))
+    # Border outline for card itself
+    draw.rounded_rectangle(card_box, radius=card_radius, outline=(255, 255, 255, 45), width=1)
 
     curr_y = y + card_padding
 
