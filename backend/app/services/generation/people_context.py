@@ -93,6 +93,35 @@ class PeopleContext:
             "has_faces": self.has_faces,
         }
 
+    def anonymized_prompt_hint(self) -> str:
+        if not self.names and not self.faces:
+            return ""
+
+        name_map = {}
+        for i, name in enumerate(self.names):
+            name_map[name] = f"person {i+1}"
+        for face in self.faces:
+            if face.person_name and face.person_name not in name_map:
+                name_map[face.person_name] = f"person {len(name_map) + 1}"
+
+        name_hint = ""
+        if self.names:
+            head = [name_map[name] for name in self.names[:5]]
+            suffix = f", and {len(self.names) - len(head)} more" if len(self.names) > len(head) else ""
+            name_hint = f"Immich identified these people in the source photo: {', '.join(head)}{suffix}."
+
+        face_bits: list[str] = []
+        for face in self.faces[:5]:
+            label = face.position_label()
+            mapped_name = name_map.get(face.person_name) if face.person_name else None
+            if mapped_name and label:
+                face_bits.append(f"{mapped_name} is in the {label}")
+            elif mapped_name:
+                face_bits.append(mapped_name)
+        face_hint = f" Face positions: {'; '.join(face_bits)}." if face_bits else ""
+
+        return f"{name_hint}{face_hint}".strip()
+
 
 def _get_attr(source: Any, key: str, default: Any = None) -> Any:
     if isinstance(source, dict):
