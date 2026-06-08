@@ -339,7 +339,7 @@ export function SettingsPage() {
               health.refetch();
               runtimeHealth.refetch();
             }}
-            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 px-3 text-xs font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-stone-900 sm:w-auto"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 px-3 text-xs font-semibold text-stone-600 shadow-xs transition hover:border-stone-300 hover:text-stone-900 sm:w-auto"
           >
             <RefreshCw size={14} />
             Refresh
@@ -544,7 +544,7 @@ export function SettingsPage() {
       {/* Debug Mode */}
       <div className="app-panel p-3 md:p-4">
         <label className="flex items-start gap-1.5 md:items-center md:gap-2 text-xs cursor-pointer">
-          <input type="checkbox" checked={form.debug_mode} onChange={(e) => setValue('debug_mode', e.target.checked)} className="rounded border-stone-300" />
+          <input type="checkbox" checked={form.debug_mode} onChange={(e) => setValue('debug_mode', e.target.checked)} className="rounded-sm border-stone-300" />
           <div>
             <span className="font-medium">Debug mode</span>
             <span className="text-stone-600">
@@ -565,6 +565,11 @@ export function SettingsPage() {
         </button>
         {saved.status === 'success' && <span className="text-xs text-emerald-700">{saved.message}</span>}
         {saved.status === 'error' && <span className="text-xs text-red-700">{saved.message}</span>}
+      </div>
+
+      {/* Version Footer for Mobile */}
+      <div className="mt-6 border-t border-stone-200/50 pt-4 text-center text-[10px] text-stone-400 md:hidden">
+        DailyFX 0.1.0 · PolyForm Noncommercial License 1.0.0
       </div>
     </form>
   );

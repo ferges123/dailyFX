@@ -67,7 +67,7 @@ function AppShell() {
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-white/80 text-stone-500 shadow-sm transition hover:border-stone-300 hover:text-red-600"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-white/80 text-stone-500 shadow-xs transition hover:border-stone-300 hover:text-red-600"
               title="Log out"
             >
               <LogOut size={16} />
@@ -107,7 +107,7 @@ function AppShell() {
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 text-sm font-semibold text-stone-600 shadow-sm transition hover:border-stone-300 hover:text-red-600"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/80 text-sm font-semibold text-stone-600 shadow-xs transition hover:border-stone-300 hover:text-red-600"
               title="Log out"
             >
               <LogOut size={16} />
@@ -123,7 +123,7 @@ function AppShell() {
               title="Open DailyFX on GitHub"
             >
               <Bell size={13} />
-              DailyFX 0.0.1
+              DailyFX 0.1.0
             </a>
             <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
               <a
@@ -234,7 +234,7 @@ function PresetSubnavLink({
     <Link
       to={to}
       className={`flex-1 rounded-[0.8rem] py-1.5 text-center text-xs font-semibold transition-all ${
-        active ? 'bg-white text-emerald-950 shadow-sm' : 'text-stone-600 hover:text-stone-900'
+        active ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
       }`}
     >
       {children}
@@ -285,7 +285,7 @@ function BottomNavLink({
     >
       <div
         className={`flex h-5 w-9 items-center justify-center rounded-full transition-colors ${
-          active ? 'bg-emerald-100 text-emerald-800 shadow-sm' : 'text-stone-500'
+          active ? 'bg-emerald-100 text-emerald-800 shadow-xs' : 'text-stone-500'
         }`}
       >
         {children}

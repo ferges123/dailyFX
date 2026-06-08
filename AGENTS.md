@@ -34,3 +34,8 @@
 - Keep secrets in `.env`; never commit API keys, tokens, or generated database files.
 - `APP_SECRET_KEY`, `IMMICH_URL`, and `IMMICH_API_KEY` are required for a working local setup.
 - Treat `data/` as persistent runtime state.
+
+## Versioning & Release Rules
+- Always use standard Semantic Versioning (SemVer) with three segments: `MAJOR.MINOR.PATCH` (e.g. `0.1.0` is standard and preferred over non-standard `0.01` or `0.0.1` when introducing new features).
+- The version must be bumped (following SemVer) whenever code changes are made and a new Docker image is built.
+- Maintain the version string in `frontend/package.json`, `frontend/src/App.tsx` (desktop sidebar), and `frontend/src/pages/Settings.tsx` (mobile footer).
