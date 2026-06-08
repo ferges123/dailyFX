@@ -182,6 +182,9 @@ class AIStyleBaseModule:
                         exif_summary=anonymized_enrichment["exif_summary"],
                         context_hint=enrichment_context_hint,
                     )
+                    if enrichment_context:
+                        enrichment_context["context_hint"] = anonymized_enrichment["context_hint"]
+                        enrichment_context["people_prompt_hint"] = anonymized_enrichment["people_prompt_hint"]
             try:
                 result = await generate_ai_image(
                     settings,

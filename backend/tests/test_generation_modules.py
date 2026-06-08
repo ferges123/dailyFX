@@ -347,6 +347,8 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
     assert result.config["prompt_enrichment_context"]["album_name"] == "Vacation Album"
     # Ensure original names are stored in config
     assert result.config["prompt_enrichment_context"]["people_names"] == ["Alice"]
+    assert "Alice" not in result.config["prompt_enrichment_context"]["context_hint"]
+    assert "person 1" in result.config["prompt_enrichment_context"]["context_hint"]
     client.get_asset_exif.assert_awaited_once_with("asset-1")
 
 
