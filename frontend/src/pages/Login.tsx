@@ -15,7 +15,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-6 md:p-8 shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-6 md:p-8 shadow-xs">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
             <Lock size={24} />
@@ -35,7 +35,7 @@ export function LoginPage() {
               value={inputToken}
               onChange={(e) => setInputToken(e.target.value)}
               placeholder="Enter your token"
-              className="mt-1 block w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2 text-stone-900 focus:border-emerald-500 focus:ring-emerald-500 outline-none transition-colors"
+              className="mt-1 block w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2 text-stone-900 focus:border-emerald-500 focus:ring-emerald-500 outline-hidden transition-colors"
               required
             />
           </div>

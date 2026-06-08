@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.schemas.generation import GenerationModuleResponse
 from app.services.generation.modules.aerochrome import AerochromeModule
+from app.services.generation.modules.apple_weather import AppleWeatherModule
 from app.services.generation.modules.base import ModuleDefinition
 from app.services.generation.modules.bokeh_blur import BokehBlurModule
 from app.services.generation.modules.cartoon import CartoonModule
@@ -26,6 +27,7 @@ from app.services.generation.modules.vintage_film import VintageFilmModule
 from app.services.generation.modules.instaweather import InstaWeatherModule
 
 LOCAL_MODULE_CLASSES = [
+    AppleWeatherModule,
     InstaWeatherModule,
     MuseumArchiveModule,
     BokehBlurModule,

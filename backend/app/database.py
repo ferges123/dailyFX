@@ -48,13 +48,31 @@ def _ensure_engine() -> Engine:
     if engine is not None:
         engine.dispose()
 
+    connect_args = {}
+    if database_url.startswith("sqlite"):
+        connect_args = {
+            "check_same_thread": False,
+            "timeout": 30,
+        }
+
     engine = create_engine(
         database_url,
-        connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {},
+        connect_args=connect_args,
     )
+
+    if database_url.startswith("sqlite"):
+        from sqlalchemy import event
+        @event.listens_for(engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+
     SessionLocal.configure(bind=engine)
     _current_database_url = database_url
     return engine
+
 
 
 def get_db() -> Generator[Session, None, None]:

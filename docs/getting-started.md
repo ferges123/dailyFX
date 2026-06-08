@@ -34,7 +34,7 @@ docker compose up --build -d
 - Open **Settings** to enter your Immich connection details (URL & API Key) and test the connection.
 - Open **Filters**, **Effects**, and **Notifications** tabs (under **Presets** on mobile) to configure your choices.
 - Open **Schedules** if you want automatic generation.
-- Open **History** to review and accept/reject generated images.
+- Open **History** to review and accept/reject generated images. Manual **Run now** requests appear there immediately as `Queued`, then switch to `Running` when the worker starts them.
 
 ## First Day Checklist
 - Configure Immich in **Settings** and confirm the connection test succeeds.
@@ -43,6 +43,17 @@ docker compose up --build -d
 - Open **History** and decide whether to accept or reject the result.
 - If you use notifications, confirm the result arrives in the channel you expect.
 
+## Notification Channels
+DailyFX notification presets can target one or more comma-separated channels:
+- Web Push
+- ntfy
+- Gotify
+- Telegram Bot
+- Home Assistant
+- Slack
+- Discord
+- Apprise
+
 ## Optional AI Features
 If you want AI-powered effects, enter your API keys for your preferred AI provider in the **Settings** tab. DailyFX supports:
 - OpenAI
@@ -50,6 +61,9 @@ If you want AI-powered effects, enter your API keys for your preferred AI provid
 - OpenRouter
 - BytePlus
 - Xiaomi
+For official key setup links, see [API documentation](api.md#ai-provider-key-setup).
+
+For BytePlus AI Image, use the [BytePlus Model Management console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/openManagement) to choose a ModelArk image model. Some models include a free tier or free trial quota, visible in the model details and pricing.
 
 If you do not set them, the non-AI effects still work.
 

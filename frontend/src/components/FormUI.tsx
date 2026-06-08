@@ -42,8 +42,8 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl md:rounded-2xl border border-dashed border-stone-200/90 bg-white/60 px-3 py-5 md:px-4 md:py-7 text-center shadow-[0_8px_24px_rgba(36,29,16,0.03)] backdrop-blur ${className}`}>
-      <div className="mx-auto flex w-fit items-center justify-center rounded-full bg-white p-2.5 text-stone-400 shadow-sm ring-1 ring-stone-200">
+    <div className={`rounded-xl md:rounded-2xl border border-dashed border-stone-200/90 bg-white/60 px-3 py-5 md:px-4 md:py-7 text-center shadow-[0_8px_24px_rgba(36,29,16,0.03)] backdrop-blur-sm ${className}`}>
+      <div className="mx-auto flex w-fit items-center justify-center rounded-full bg-white p-2.5 text-stone-400 shadow-xs ring-1 ring-stone-200">
         {icon ?? <Inbox size={18} />}
       </div>
       <div className="mt-3 text-sm font-semibold text-stone-900">{title}</div>

@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.models.effect_preset import EffectPresetModel
 from app.models.filter_preset import FilterPresetModel
-from app.models.generation_history import GenerationHistoryModel
 from app.models.generation_task import GenerationTaskModel
 from app.models.notification_preset import NotificationPresetModel
 from app.models.schedule import ScheduleModel
@@ -26,13 +25,6 @@ from app.services.immich import build_immich_client, get_or_create_settings
 
 
 async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRunNowResponse:
-    active_task = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").first()
-    if active_task:
-        raise HTTPException(
-            status_code=409,
-            detail="A generation task is already running. Please wait for it to finish.",
-        )
-
     row = db.get(ScheduleModel, schedule_id)
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -56,6 +48,7 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
     ensure_task(db, task_id, status="queued", step="queued", progress=0.0)
 
     try:
+        # Preview happens before enqueueing so invalid filters fail fast.
         await preview_run_now_assets(
             client=client,
             filters=run_context.filters,
@@ -75,6 +68,19 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
 
     payload_json = run_context.to_run_now_task_payload().to_json()
     update_task(db, task_id, status="queued", step="queued", progress=0.0, payload_json=payload_json)
+    upsert_history_entry(
+        db,
+        task_id,
+        generation_type="schedule_run",
+        status="QUEUED",
+        title=f"Queued: {row.name}",
+        summary="Waiting for the worker to start this scheduled run.",
+        source_asset_ids="[]",
+        config_json=payload_json,
+        task_step="queued",
+        schedule_id=schedule_id,
+        album_name=row.album_name,
+    )
     return ScheduleRunNowResponse(message="Generation triggered", task_id=task_id)
 
 

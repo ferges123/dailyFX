@@ -28,7 +28,7 @@ export function MultiSelectPanel({ label, searchValue, onSearchChange, options, 
         icon={<Search size={16} />}
       />
       <div className="flex-1 min-h-0 rounded-lg border border-stone-200 bg-stone-50 p-2">
-        <div className="grid h-full max-h-[20rem] gap-1 overflow-y-auto">
+        <div className="grid h-full max-h-80 gap-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-full items-center justify-center py-12">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-emerald-700" />
@@ -72,7 +72,7 @@ export function PersonSelectPanel({ label, searchValue, onSearchChange, options,
         icon={<Search size={16} />}
       />
       <div className="flex-1 min-h-0 rounded-lg border border-stone-200 bg-stone-50 p-2">
-        <div className="grid h-full max-h-[20rem] gap-1 overflow-y-auto">
+        <div className="grid h-full max-h-80 gap-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-full items-center justify-center py-12">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-emerald-700" />
@@ -88,7 +88,7 @@ export function PersonSelectPanel({ label, searchValue, onSearchChange, options,
                 </label>
                 <span className="min-w-0 truncate">{o.label}</span>
                 <select value={mode} onChange={(e) => onModeChange(o.id, e.target.value as PersonFilterMode)}
-                  className="h-7 rounded-md border border-stone-300 bg-white px-2 text-xs outline-none focus:border-emerald-700">
+                  className="h-7 rounded-md border border-stone-300 bg-white px-2 text-xs outline-hidden focus:border-emerald-700">
                   <option value="optional">optional</option>
                   <option value="obligatory">obligatory</option>
                   <option value="exclude">exclude</option>

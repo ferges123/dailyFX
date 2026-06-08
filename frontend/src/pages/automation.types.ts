@@ -96,6 +96,14 @@ export const fallbackModules: GenerationModuleInfo[] = [
     default_weight: 2, default_config: { styles: ['random'] },
     config_schema: [{ key: 'styles', label: 'Allowed filters', type: 'multiselect', description: 'Choose which filters may be picked at run time.', options: createFilterOptions(instagramFilterValues) }],
   },
+  {
+    name: 'apple_weather', label: 'Apple Weather', description: 'Apple-style weather card with frosted glass and clean typography.',
+    default_weight: 2, default_config: { units: 'celsius', protect_faces: 'true' },
+    config_schema: [
+      { key: 'units', label: 'Temperature Unit', type: 'select', description: 'Units to show temperature.', options: [{ label: 'Celsius (°C)', value: 'celsius' }, { label: 'Fahrenheit (°F)', value: 'fahrenheit' }], default: 'celsius' },
+      { key: 'protect_faces', label: 'Face protection', type: 'select', description: 'Shift the card to avoid detected faces.', options: [{ label: 'Enabled', value: 'true' }, { label: 'Disabled', value: 'false' }], default: 'true' },
+    ],
+  },
   { name: 'filmstrip', label: 'Filmstrip', description: 'Retro filmstrip layout with date and time labels.', default_weight: 1, default_config: {}, config_schema: [] },
   { name: 'popart', label: 'Pop Art', description: 'Four-tile pop-art collage with vivid color palettes.', default_weight: 1, default_config: {}, config_schema: [] },
   { name: 'duotone', label: 'Duotone', description: 'High-contrast duotone grading with grain and vignette.', default_weight: 2, default_config: {}, config_schema: [] },

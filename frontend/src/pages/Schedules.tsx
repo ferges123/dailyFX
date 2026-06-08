@@ -73,8 +73,20 @@ const emptyForm: FormState = {
   ai_prompt_enrichment: false,
 };
 
+function normalizeModelSelection(provider: string, model: string, options: { value: string }[], freeTextProviders: string[]) {
+  if (provider === 'none' || freeTextProviders.includes(provider)) {
+    return model;
+  }
+  if (options.some((opt) => opt.value === model)) {
+    return model;
+  }
+  return options[0]?.value ?? model;
+}
+
 function scheduleToForm(schedule: Schedule): FormState {
   const parsed = parseAutomationSchedule(schedule.schedule_expr);
+  const aiVisionProvider = schedule.ai_vision_provider ?? 'none';
+  const aiImageProvider = schedule.ai_image_provider ?? 'none';
   return {
     name: schedule.name,
     enabled: schedule.enabled,
@@ -85,10 +97,20 @@ function scheduleToForm(schedule: Schedule): FormState {
     effect_preset_id: schedule.effect_preset_id,
     notification_preset_ids: schedule.notification_preset_ids ?? [],
     album_name: schedule.album_name,
-    ai_vision_provider: schedule.ai_vision_provider ?? 'none',
-    ai_vision_model: schedule.ai_vision_model ?? 'gpt-4o-mini',
-    ai_image_provider: schedule.ai_image_provider ?? 'none',
-    ai_image_model: schedule.ai_image_model ?? 'gpt-image-1',
+    ai_vision_provider: aiVisionProvider,
+    ai_vision_model: normalizeModelSelection(
+      aiVisionProvider,
+      schedule.ai_vision_model ?? 'gpt-4o-mini',
+      getVisionModelOptions(aiVisionProvider),
+      ['openrouter', 'local'],
+    ),
+    ai_image_provider: aiImageProvider,
+    ai_image_model: normalizeModelSelection(
+      aiImageProvider,
+      schedule.ai_image_model ?? 'gpt-image-1',
+      getImageModelOptions(aiImageProvider),
+      ['openrouter', 'byteplus', 'local'],
+    ),
     ai_prompt_enrichment: schedule.ai_prompt_enrichment ?? false,
   };
 }
@@ -461,7 +483,7 @@ export function SchedulesPage() {
           </button>
         </div>
 
-        <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
           <ScheduleSummaryCard
             title="Active schedules"
             value={String(activeCount)}
@@ -529,7 +551,7 @@ export function SchedulesPage() {
                       setSelectedScheduleId(schedule.id);
                     }
                   }}
-                  className={`group w-full cursor-pointer rounded-2xl border p-2.5 text-left shadow-sm transition ${scheduleEnabledClass(schedule.enabled)} ${
+                  className={`group w-full cursor-pointer rounded-2xl border p-2.5 text-left shadow-xs transition ${scheduleEnabledClass(schedule.enabled)} ${
                     isSelected ? 'ring-2 ring-emerald-500/30' : 'hover:border-emerald-500/30'
                   } md:p-3`}
                 >
@@ -838,7 +860,7 @@ export function SchedulesPage() {
                         <div className="text-sm font-medium text-stone-800">
                           Notification presets <span className="text-rose-500">*</span>
                         </div>
-                        <div className="rounded-2xl border border-stone-200 bg-white p-2.5 shadow-sm">
+                        <div className="rounded-2xl border border-stone-200 bg-white p-2.5 shadow-xs">
                           <div className="flex flex-wrap gap-1">
                             {notifPresets.data
                               ?.filter((preset) => form.notification_preset_ids.includes(preset.id))
@@ -858,7 +880,7 @@ export function SchedulesPage() {
                                         ),
                                       }))
                                     }
-                                    className="rounded-sm p-0.5 text-stone-400 hover:text-stone-700"
+                                    className="rounded-xs p-0.5 text-stone-400 hover:text-stone-700"
                                   >
                                     <X size={10} />
                                   </button>
@@ -971,7 +993,7 @@ export function SchedulesPage() {
                         modelPlaceholder="e.g. your-local-model"
                       />
                       <label
-                        className={`flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1.5 text-sm font-medium text-stone-800 shadow-sm ${
+                        className={`flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1.5 text-sm font-medium text-stone-800 shadow-xs ${
                           form.ai_vision_provider === 'none' || form.ai_image_provider === 'none' ? 'opacity-60' : ''
                         }`}
                       >
@@ -982,7 +1004,7 @@ export function SchedulesPage() {
                             setForm((current) => ({ ...current, ai_prompt_enrichment: event.target.checked }))
                           }
                           disabled={form.ai_vision_provider === 'none' || form.ai_image_provider === 'none'}
-                          className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                          className="h-4 w-4 rounded-sm border-stone-300 text-emerald-600 focus:ring-emerald-500"
                         />
                         <div className="grid gap-0.5">
                           <span>AI prompt enrichment</span>
@@ -1086,7 +1108,7 @@ function ScheduleDetailPanel({
 }) {
   if (!schedule) {
     return (
-      <div className="app-panel-soft flex min-h-[24rem] flex-col items-center justify-center gap-3 border-dashed border-stone-200 p-6 text-center text-stone-500">
+      <div className="app-panel-soft flex min-h-96 flex-col items-center justify-center gap-3 border-dashed border-stone-200 p-6 text-center text-stone-500">
         <CalendarDays size={34} className="text-stone-300" />
         <div className="grid gap-1">
           <h3 className="text-base font-semibold text-stone-900">Select a schedule</h3>
@@ -1122,7 +1144,7 @@ function ScheduleDetailPanel({
           type="button"
           onClick={onToggle}
           disabled={togglePending}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 shadow-xs transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
         >
           {schedule.enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
           {schedule.enabled ? 'On' : 'Off'}

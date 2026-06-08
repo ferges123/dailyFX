@@ -325,7 +325,7 @@ export type GenerationHistoryEntry = {
   id: number;
   task_id: string;
   generation_type: string;
-  status: 'RUNNING' | 'PENDING_REVIEW' | 'UPLOADED' | 'REJECTED' | 'FAILED' | string;
+  status: 'QUEUED' | 'RUNNING' | 'PENDING_REVIEW' | 'UPLOADED' | 'REJECTED' | 'FAILED' | string;
   title: string;
   summary: string;
   source_asset_ids: string;

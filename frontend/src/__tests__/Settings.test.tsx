@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { SettingsPage } from '../pages/Settings';
+import { SettingsPage, XIAOMI_VISION_MODELS } from '../pages/Settings';
 import * as client from '../api/client';
 
 vi.mock('../api/client', async (importOriginal) => {
@@ -125,5 +125,9 @@ describe('SettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(vi.mocked(client.updateSettings)).not.toHaveBeenCalled();
+  });
+
+  it('only offers Xiaomi vision models that support image input', () => {
+    expect(XIAOMI_VISION_MODELS.map((option) => option.value)).toEqual(['mimo-v2.5']);
   });
 });

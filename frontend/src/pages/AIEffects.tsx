@@ -446,7 +446,7 @@ export function AIEffectsPage() {
                   value={form.positive_prompt}
                   onChange={(e) => setForm((f) => ({ ...f, positive_prompt: e.target.value }))}
                   rows={7}
-                  className="app-control min-h-[10rem] resize-y px-3 py-2 text-sm"
+                  className="app-control min-h-40 resize-y px-3 py-2 text-sm"
                   placeholder="Describe the exact transformation the model should apply."
                 />
               </label>
@@ -458,7 +458,7 @@ export function AIEffectsPage() {
                   value={form.negative_prompt ?? ''}
                   onChange={(e) => setForm((f) => ({ ...f, negative_prompt: e.target.value }))}
                   rows={5}
-                  className="app-control min-h-[8rem] resize-y px-3 py-2 text-sm"
+                  className="app-control min-h-32 resize-y px-3 py-2 text-sm"
                   placeholder="Things to avoid."
                 />
               </label>

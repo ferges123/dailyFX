@@ -19,11 +19,11 @@ export function FilterRow({
       </td>
       <td className="py-2.5 px-3 align-top text-center">
         <input type="checkbox" checked={enabled} onChange={(e) => onEnabledChange(e.target.checked)}
-          className="h-4 w-4 accent-emerald-700 cursor-pointer rounded border-stone-300 text-emerald-600 focus:ring-emerald-500" />
+          className="h-4 w-4 accent-emerald-700 cursor-pointer rounded-sm border-stone-300 text-emerald-600 focus:ring-emerald-500" />
       </td>
       <td className="py-2.5 px-3 align-top text-center">
         <input type="number" min={0} value={weight} onChange={(e) => onWeightChange(Number(e.target.value) || 0)}
-          className="w-12 rounded border border-stone-300 bg-white px-1.5 py-0.5 text-xs text-center outline-none focus:border-emerald-700" />
+          className="w-12 rounded-sm border border-stone-300 bg-white px-1.5 py-0.5 text-xs text-center outline-hidden focus:border-emerald-700" />
       </td>
       <td className="py-2.5 px-3 align-top">
         <div className="text-xs text-stone-600">{config}</div>
@@ -79,7 +79,7 @@ export function ModuleConfigEditor({ module, config, onChange }: {
               <input type="number" min={field.min ?? undefined} max={field.max ?? undefined} step={field.step ?? 1}
                 value={Number.isFinite(numericValue) ? numericValue : 0}
                 onChange={(e) => { const v = Number(e.target.value); onChange(field.key, Number.isFinite(v) ? v : field.default ?? 0); }}
-                className="h-7 w-20 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700 text-right sm:text-left" />
+                className="h-7 w-20 rounded-sm border border-stone-300 bg-white px-2 text-sm outline-hidden focus:border-emerald-700 text-right sm:text-left" />
             </label>
           );
         }
@@ -89,7 +89,7 @@ export function ModuleConfigEditor({ module, config, onChange }: {
             <label key={field.key} className="flex items-center justify-between gap-2 text-xs w-full sm:inline-flex sm:w-auto sm:justify-start sm:gap-1.5">
               <span className="text-stone-500 font-medium sm:font-normal">{field.label}</span>
               <select value={currentValue} onChange={(e) => onChange(field.key, e.target.value)}
-                className="h-7 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700 text-right sm:text-left">
+                className="h-7 rounded-sm border border-stone-300 bg-white px-2 text-sm outline-hidden focus:border-emerald-700 text-right sm:text-left">
                 {(field.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
@@ -122,7 +122,7 @@ export function ModuleConfigEditor({ module, config, onChange }: {
             <span className="text-stone-500 font-medium sm:font-normal">{field.label}</span>
             <input type="text" value={currentValue} placeholder={field.placeholder ?? ''}
               onChange={(e) => onChange(field.key, e.target.value)}
-              className="h-7 rounded border border-stone-300 bg-white px-2 text-sm outline-none focus:border-emerald-700 text-right sm:text-left" />
+              className="h-7 rounded-sm border border-stone-300 bg-white px-2 text-sm outline-hidden focus:border-emerald-700 text-right sm:text-left" />
           </label>
         );
       })}

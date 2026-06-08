@@ -47,7 +47,7 @@ export function ErrorBanner({
   const message = typeof error === 'string' ? error : error.message;
 
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border border-rose-200/70 bg-rose-50/80 p-4 text-rose-950 shadow-[0_10px_24px_rgba(180,35,24,0.08)] backdrop-blur md:flex-row md:items-center md:justify-between ${className}`}>
+    <div className={`flex flex-col gap-3 rounded-2xl border border-rose-200/70 bg-rose-50/80 p-4 text-rose-950 shadow-[0_10px_24px_rgba(180,35,24,0.08)] backdrop-blur-sm md:flex-row md:items-center md:justify-between ${className}`}>
       <div className="flex items-start gap-3">
         <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-600" />
         <div className="text-sm">
@@ -60,7 +60,7 @@ export function ErrorBanner({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 hover:text-rose-900"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-xs transition hover:bg-rose-50 hover:text-rose-900"
           >
             <RotateCw size={12} />
             Try again

@@ -1,4 +1,5 @@
 .env
+.agent/
 .venv/
 __pycache__/
 .pytest_cache/
@@ -24,4 +25,3 @@ data/backups/*
 data/scheduler.health
 !data/results/.gitkeep
 docs/plans/
-

@@ -25,7 +25,7 @@ class GenerationModuleConfigField(BaseModel):
 class GenerationHistoryBase(BaseModel):
     task_id: str
     generation_type: str
-    status: Literal["RUNNING", "PENDING_REVIEW", "UPLOADED", "REJECTED", "FAILED"] = "PENDING_REVIEW"
+    status: Literal["QUEUED", "RUNNING", "PENDING_REVIEW", "UPLOADED", "REJECTED", "FAILED"] = "PENDING_REVIEW"
     title: str
     summary: str
     source_asset_ids: str

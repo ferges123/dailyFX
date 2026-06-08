@@ -593,7 +593,6 @@ export const GEMINI_VISION_MODELS = [
 ];
 export const XIAOMI_VISION_MODELS = [
   { label: 'mimo-v2.5', value: 'mimo-v2.5' },
-  { label: 'mimo-v2.5-pro', value: 'mimo-v2.5-pro' },
 ];
 export function getVisionModelOptions(provider: string) {
   if (provider === 'openai') return OPENAI_VISION_MODELS;

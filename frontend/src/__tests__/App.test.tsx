@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import App from '../App';
@@ -68,7 +68,9 @@ describe('App', () => {
   it('changes route and active nav state when clicking navigation links', async () => {
     const { container } = renderApp('/history');
 
-    fireEvent.click(container.querySelector('a[href="/schedules"]')!);
+    await act(async () => {
+      fireEvent.click(container.querySelector('a[href="/schedules"]')!);
+    });
 
     expect(await screen.findByRole('heading', { name: 'Schedules' })).toBeInTheDocument();
     expect(container.querySelector('a[href="/schedules"]')).toHaveAttribute('aria-current', 'page');

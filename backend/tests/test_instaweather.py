@@ -12,17 +12,17 @@ from app.services.generation.modules.instaweather import (
 
 
 def test_map_wmo_code():
-    assert map_wmo_code(0) == ("Clear sky", "☀️")
-    assert map_wmo_code(3) == ("Cloudy", "☁️")
-    assert map_wmo_code(95) == ("Thunderstorm", "⛈️")
-    assert map_wmo_code(999) == ("Clear", "☀️")
+    assert map_wmo_code(0) == ("Clear sky", "☀")
+    assert map_wmo_code(3) == ("Cloudy", "☁")
+    assert map_wmo_code(95) == ("Thunderstorm", "⚡")
+    assert map_wmo_code(999) == ("Clear", "☀")
 
 
 def test_calculate_season_and_icon():
-    assert calculate_season_and_icon(3) == ("Spring", "🌸")
-    assert calculate_season_and_icon(6) == ("Summer", "☀️")
-    assert calculate_season_and_icon(10) == ("Autumn", "🍁")
-    assert calculate_season_and_icon(12) == ("Winter", "❄️")
+    assert calculate_season_and_icon(3) == ("Spring", "❀")
+    assert calculate_season_and_icon(6) == ("Summer", "☀")
+    assert calculate_season_and_icon(10) == ("Autumn", "❧")
+    assert calculate_season_and_icon(12) == ("Winter", "❄")
 
 
 def test_parse_date():
@@ -67,7 +67,8 @@ def test_instaweather_module_run_time_mode():
     res = asyncio.run(module.run([DummyAsset()], {}, client, settings))
 
     assert res.generation_type == "instaweather"
-    assert res.config["mode"] == "instatime"
+    assert res.config["mode"] == "instaweather"
+    assert "Warsaw" not in res.summary
     assert len(res.image_bytes) > 0
 
 
@@ -101,4 +102,3 @@ def test_instaweather_module_run_weather_mode(monkeypatch):
     assert res.config["mode"] == "instaweather"
     assert "Piaseczno" in res.summary
     assert "22°C" in res.summary
-

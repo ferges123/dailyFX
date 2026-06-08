@@ -24,6 +24,7 @@ OPENAI_VISION_MODEL = "gpt-4o-mini"
 GEMINI_VISION_MODEL = "gemini-2.5-flash"
 XIAOMI_VISION_MODEL = "mimo-v2.5"
 XIAOMI_API_BASE_URL = "https://api.xiaomimimo.com/v1"
+XIAOMI_IMAGE_MODELS = {"mimo-v2.5"}
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,15 @@ def _decrypt_provider_key(settings: SettingsModel, provider: str) -> str | None:
     return api_key
 
 
+def _validate_xiaomi_image_model(model: str) -> None:
+    if model in XIAOMI_IMAGE_MODELS:
+        return
+    allowed_models = ", ".join(sorted(XIAOMI_IMAGE_MODELS))
+    raise AIVisionError(
+        f"Xiaomi MiMo image analysis supports only {allowed_models}; model '{model}' is not supported for image input."
+    )
+
+
 DEFAULT_VISION_PROMPT = (
     "Analyze this image. Return a JSON object with three fields: "
     "'title' (a short, creative 3-5 word title), "
@@ -114,22 +124,47 @@ async def analyze_image(
             "(e.g., 'a man', 'a woman', 'a child', 'a person', or 'they') based on what is visible in the photo."
         )
         prompt = f"{context_hint}\n\n{prompt}{constraint_note}"
-    reserve_ai_usage(
-        "vision",
-        limit=getattr(settings, "ai_vision_hourly_limit", 30),
-        provider=provider,
-        model=model or None,
-    )
-
     if provider == "openai":
+        reserve_ai_usage(
+            "vision",
+            limit=getattr(settings, "ai_vision_hourly_limit", 30),
+            provider=provider,
+            model=model or None,
+        )
         return await _analyze_with_openai(api_key, b64_image, prompt, model or OPENAI_VISION_MODEL)
     elif provider == "gemini":
+        reserve_ai_usage(
+            "vision",
+            limit=getattr(settings, "ai_vision_hourly_limit", 30),
+            provider=provider,
+            model=model or None,
+        )
         return await _analyze_with_gemini(api_key, b64_image, prompt, model or GEMINI_VISION_MODEL)
     elif provider == "openrouter":
+        reserve_ai_usage(
+            "vision",
+            limit=getattr(settings, "ai_vision_hourly_limit", 30),
+            provider=provider,
+            model=model or None,
+        )
         return await _analyze_with_openrouter(api_key, b64_image, prompt, model or "google/gemini-2.5-flash")
     elif provider == "xiaomi":
-        return await _analyze_with_xiaomi(api_key, b64_image, prompt, model or XIAOMI_VISION_MODEL)
+        xiaomi_model = model or XIAOMI_VISION_MODEL
+        _validate_xiaomi_image_model(xiaomi_model)
+        reserve_ai_usage(
+            "vision",
+            limit=getattr(settings, "ai_vision_hourly_limit", 30),
+            provider=provider,
+            model=xiaomi_model,
+        )
+        return await _analyze_with_xiaomi(api_key, b64_image, prompt, xiaomi_model)
     elif provider == "local":
+        reserve_ai_usage(
+            "vision",
+            limit=getattr(settings, "ai_vision_hourly_limit", 30),
+            provider=provider,
+            model=model or None,
+        )
         return await _analyze_with_local(settings, api_key, b64_image, prompt, model or "")
 
     raise AIVisionError(f"Unsupported AI provider: {provider}")
@@ -303,6 +338,7 @@ async def _analyze_with_xiaomi(
     prompt: str,
     model: str = XIAOMI_VISION_MODEL,
 ) -> AIVisionResult:
+    _validate_xiaomi_image_model(model)
     url = f"{XIAOMI_API_BASE_URL}/chat/completions"
     headers = {
         "Content-Type": "application/json",
@@ -544,6 +580,7 @@ async def _get_text_desc_xiaomi(
     prompt: str,
     model: str,
 ) -> str:
+    _validate_xiaomi_image_model(model)
     url = f"{XIAOMI_API_BASE_URL}/chat/completions"
     headers = {
         "Content-Type": "application/json",

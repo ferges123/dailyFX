@@ -63,6 +63,7 @@ Once an effect is generated, you are notified through your preferred channel, wh
 - Filter by Immich album, person, date range, media type
 - Schedules: daily, specific days, time of day
 - Optional AI vision analysis (via OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi) for titles and captions; for `ai_*` effects, the final generated image is analyzed again so the stored title, summary, and tags match the result you actually review. See `docs/api.md` for the metadata pipeline, including `metadata_provenance`, `people_context`, and `task_trace`.
+For API-key setup links, see [docs/api.md](docs/api.md#ai-provider-key-setup).
 
 ---
 
@@ -153,6 +154,7 @@ Set up schedules in the **Schedules** tab:
 - With optional source filters (album, people, date range)
 
 The scheduler runs inside the backend container. If automation is disabled, you can still trigger a selected schedule manually with the **Run now** button in the **Schedules** tab.
+Manual `Run now` requests are added to History immediately as `Queued`, then switch to `Running` when the worker starts processing them.
 For a practical explanation of what happens after a schedule fires, see [docs/how-it-works.md](docs/how-it-works.md).
 
 ---

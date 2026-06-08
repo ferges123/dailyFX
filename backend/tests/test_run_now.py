@@ -1,13 +1,14 @@
 import asyncio
+from types import SimpleNamespace
 
-import pytest
 from _contract_helpers import configure_contract_test_db, make_effect_preset_row
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks
 
 from app.api.routes_schedules import trigger_schedule_now
 from app.database import SessionLocal, init_db
 from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
+from app.models.generation_task import GenerationTaskModel
 from app.models.schedule import ScheduleModel
 
 test_db = configure_contract_test_db("run_now")
@@ -18,7 +19,7 @@ def _setup_run_now_db():
     db = SessionLocal()
     fp = FilterPresetModel(name="test-fp", album_ids_json="[]", person_filters_json="[]", media_type="photo")
     db.add(fp)
-    ep = make_effect_preset_row(name="test-ep", groups_json="[]")
+    ep = make_effect_preset_row(name="test-ep", groups_json="{}")
     db.add(ep)
     db.commit()
 
@@ -34,10 +35,10 @@ def _setup_run_now_db():
     return db, schedule
 
 
-def test_trigger_schedule_now_concurrency_lock():
+def test_trigger_schedule_now_enqueues_even_when_a_generation_is_running(monkeypatch):
     db, schedule = _setup_run_now_db()
     try:
-        # 1. Simulate an active running task in DB
+        # Simulate an active running task in DB. This should not block queueing another run-now request.
         running_task = GenerationHistoryModel(
             task_id="active-task-123",
             status="RUNNING",
@@ -50,33 +51,46 @@ def test_trigger_schedule_now_concurrency_lock():
         db.add(running_task)
         db.commit()
 
-        # 2. Try to call trigger_schedule_now and verify it raises 409
+        monkeypatch.setattr(
+            "app.services.generation.task_flow.get_or_create_settings",
+            lambda _db: SimpleNamespace(),
+        )
+        monkeypatch.setattr(
+            "app.services.generation.task_flow.build_immich_client",
+            lambda _settings: SimpleNamespace(),
+        )
+
+        async def fake_preview_run_now_assets(**_kwargs):
+            return SimpleNamespace(items=[object()])
+
+        monkeypatch.setattr("app.services.generation.task_flow.preview_run_now_assets", fake_preview_run_now_assets)
+
         bg_tasks = BackgroundTasks()
 
-        async def run_failing():
-            await trigger_schedule_now(schedule_id=schedule.id, background_tasks=bg_tasks, db=db)
+        async def run_once():
+            return await trigger_schedule_now(schedule_id=schedule.id, background_tasks=bg_tasks, db=db)
 
-        with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(run_failing())
+        first = asyncio.run(run_once())
+        second = asyncio.run(run_once())
 
-        assert exc_info.value.status_code == 409
-        assert "already running" in exc_info.value.detail
+        assert first.task_id != second.task_id
+        assert first.task_id.startswith("man-")
+        assert second.task_id.startswith("man-")
 
-        # 3. Mark task as COMPLETED and verify it doesn't raise 409 anymore
-        running_task.status = "COMPLETED"
-        db.commit()
+        queued_history = (
+            db.query(GenerationHistoryModel)
+            .filter(GenerationHistoryModel.status == "QUEUED")
+            .order_by(GenerationHistoryModel.created_at.asc())
+            .all()
+        )
+        assert len(queued_history) == 2
+        assert [entry.task_id for entry in queued_history] == [first.task_id, second.task_id]
+        assert all(entry.title.startswith("Queued:") for entry in queued_history)
 
-        async def run_succeeding():
-            # This should not throw 409. It may still fail on Immich config/connectivity, which is expected.
-            await trigger_schedule_now(schedule_id=schedule.id, background_tasks=bg_tasks, db=db)
-
-        try:
-            asyncio.run(run_succeeding())
-        except HTTPException as e:
-            assert e.status_code != 409
-        except Exception:
-            # Bypassing configuration or connection errors since Immich client is not configured
-            pass
+        queued_tasks = db.query(GenerationTaskModel).order_by(GenerationTaskModel.created_at.asc()).all()
+        assert len(queued_tasks) == 2
+        assert [task.status for task in queued_tasks] == ["queued", "queued"]
+        assert [task.task_id for task in queued_tasks] == [first.task_id, second.task_id]
 
     finally:
         db.close()

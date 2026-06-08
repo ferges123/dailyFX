@@ -265,16 +265,17 @@ export function HistoryPage() {
           <ErrorBanner title="Failed to load history" error={error} onRetry={() => refetchHistory()} />
         </div>
       ) : filteredHistoryItems.length > 0 ? (
-        <div className="grid gap-4 lg:h-[42rem] lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
+        <div className="grid gap-4 lg:h-168 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
           {/* Left Panel: Cards List */}
           <div
             className={`flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 ${
-              mobileShowDetail ? 'hidden lg:flex lg:h-full' : 'flex h-[38rem] lg:h-full'
+              mobileShowDetail ? 'hidden lg:flex lg:h-full' : 'flex h-152 lg:h-full'
             }`}
           >
             <div ref={historyListRef} className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar">
               {filteredHistoryItems.map((item) => {
                 const status = (item.status || '').toUpperCase();
+                const isQueued = status === 'QUEUED';
                 const isRunning = status === 'RUNNING';
                 const isUploaded = status === 'UPLOADED' || Boolean(item.accepted_at);
                 const isRejected = status === 'REJECTED';
@@ -292,7 +293,7 @@ export function HistoryPage() {
                     }}
                     className={`group w-full flex gap-2.5 md:gap-3 rounded-xl border p-1.5 md:p-2 text-left transition-all duration-200 ${
                       selectedHistoryTaskId === item.task_id
-                        ? 'border-emerald-500 bg-emerald-50/30 shadow-xs'
+                        ? 'border-emerald-500 bg-emerald-50/30 shadow-2xs'
                         : 'border-stone-200 bg-white hover:border-emerald-500/30 hover:bg-stone-50/30'
                     }`}
                   >
@@ -330,6 +331,8 @@ export function HistoryPage() {
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                               : isRunning
                               ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                              : isQueued
+                              ? 'bg-amber-50 text-amber-700 border border-amber-100'
                               : isRejected
                               ? 'bg-stone-100 text-stone-600 border border-stone-200'
                               : isFailed
@@ -343,6 +346,8 @@ export function HistoryPage() {
                                 ? 'bg-emerald-500'
                                 : isRunning
                                 ? 'bg-blue-500'
+                                : isQueued
+                                ? 'bg-amber-500'
                                 : isRejected
                                 ? 'bg-stone-400'
                                 : isFailed
@@ -350,7 +355,17 @@ export function HistoryPage() {
                                 : 'bg-amber-500'
                             }`}
                           />
-                          {isUploaded ? 'Uploaded' : isRunning ? 'Running' : isRejected ? 'Rejected' : isFailed ? 'Failed' : 'Pending'}
+                          {isUploaded
+                            ? 'Uploaded'
+                            : isRunning
+                            ? 'Running'
+                            : isQueued
+                            ? 'Queued'
+                            : isRejected
+                            ? 'Rejected'
+                            : isFailed
+                            ? 'Failed'
+                            : 'Pending'}
                         </span>
                         <span className="text-stone-400 font-medium">
                           {item.created_at ? formatDateTime(item.created_at) : ''}

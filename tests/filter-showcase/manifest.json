@@ -89,6 +89,18 @@
     "config": {}
   },
   {
+    "type": "module",
+    "name": "apple_weather",
+    "path": "modules/apple_weather.png",
+    "config": {}
+  },
+  {
+    "type": "module",
+    "name": "instaweather",
+    "path": "modules/instaweather.png",
+    "config": {}
+  },
+  {
     "type": "instafilter",
     "name": "_1977",
     "path": "instafilters/_1977.png"

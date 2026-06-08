@@ -94,6 +94,20 @@ AI provider and model selection now live on schedules, not in the global setting
 
 Updates application settings. API keys are stored encrypted. Sending an empty string clears a key.
 
+### AI provider key setup
+
+Use these official vendor docs to create or manage the AI keys DailyFX accepts in the UI:
+
+- [OpenAI API keys](https://platform.openai.com/docs/quickstart)
+- [Google AI Studio / Gemini API key](https://ai.google.dev/gemini-api/docs/api-key)
+- [OpenRouter API keys](https://openrouter.ai/docs/api-keys)
+- [BytePlus access keys](https://docs.byteplus.com/api/docs/byteplus-platform/docs-managing-keys)
+- [Xiaomi Cloud-ML quick start](https://docs.api.xiaomi.com/en/cloud-ml/usage/quickstart.html)
+
+For BytePlus AI Image generation, review the available ModelArk models in the
+[BytePlus Model Management console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/openManagement).
+Some image models expose a free tier or free trial quota there; check the model details and pricing before selecting a model in DailyFX.
+
 ### Connection tests
 
 Requires authentication:
@@ -171,7 +185,16 @@ Effect presets store a `groups` object that maps generation module names to enab
 - `DELETE /api/presets/notifications/{preset_id}`
 - `POST /api/presets/notifications/{preset_id}/test`
 
-Notification presets accept a comma-separated `provider` list such as `web`, `ntfy`, `gotify`, `telegram`, and `homeassistant`.
+Notification presets accept a comma-separated `provider` list. Supported channels are:
+
+- `web` for browser Web Push subscriptions
+- `ntfy` for ntfy topics
+- `gotify` for Gotify app notifications
+- `telegram` for Telegram Bot messages
+- `homeassistant` for Home Assistant notifications
+- `slack` for Slack incoming webhooks
+- `discord` for Discord webhooks
+- `apprise` for Apprise URLs
 
 The response masks secret values and exposes flags such as `has_token`, `token_masked`, and `webhook_url`.
 
@@ -196,7 +219,7 @@ Schedules combine:
 - album name
 - optional AI vision/image provider settings
 
-`POST /api/schedules/{schedule_id}/run-now` triggers a selected schedule immediately and returns JSON with `message` and `task_id`.
+`POST /api/schedules/{schedule_id}/run-now` triggers a selected schedule immediately and returns JSON with `message` and `task_id`. The backend creates a queued history entry right away so the manual run is visible in `GET /api/generation/history` before the worker starts it.
 
 ---
 
@@ -238,6 +261,15 @@ The AI metadata flow is easiest to understand as a sequence:
 4. It generates the output image with the selected module.
 5. If the module is `ai_*`, it runs Vision again on the generated image.
 6. It embeds EXIF, writes the history entry, and stores a `config_json` payload with provenance and trace data.
+
+### History statuses
+
+`GET /api/generation/history` returns `GenerationHistoryResponse` items. The `status` field can now include:
+
+- `QUEUED` for manual schedule runs waiting for the worker
+- `RUNNING` for active generation work
+- `PENDING_REVIEW` for completed generations awaiting user action
+- `UPLOADED`, `REJECTED`, or `FAILED` for finalized outcomes
 
 `people_context` is a hint, not a hard requirement. It can improve source Vision and prompt enrichment when Immich knows people in the source asset, but the pipeline still works when no names or face positions are available.
 

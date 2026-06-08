@@ -14,7 +14,11 @@ from app.database import SessionLocal
 from app.services.generation.engine import run_generation_cycle
 from app.services.generation.schedule_runs import build_scheduled_run_context
 from app.services.generation.task_flow import run_queued_generation_task
+from app.services.generation.tasks import ensure_task
+from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.immich import get_or_create_settings
+
+_running_task_ids: set[str] = set()
 
 logger = logging.getLogger(__name__)
 
@@ -196,30 +200,18 @@ def should_run_automation(schedule: str, last_run_at: datetime | None, now: date
     return last.isocalendar()[:2] < current.isocalendar()[:2]
 
 
-async def _perform_tick(session: Session, now: datetime | None = None) -> dict[str, object]:
-    """Core tick logic — iterates over all enabled schedules."""
-    from app.models.effect_preset import EffectPresetModel
-    from app.models.filter_preset import FilterPresetModel
-    from app.models.schedule import ScheduleModel
+async def _run_queued_task_in_background(task_id: str) -> None:
+    _running_task_ids.add(task_id)
+    logger.info("Starting background task: %s", task_id)
+    session = SessionLocal()
+    try:
+        settings = get_or_create_settings(session)
+        from app.models.generation_task import GenerationTaskModel
+        queued_task = session.get(GenerationTaskModel, task_id)
+        if not queued_task:
+            logger.warning("Queued background task %s not found in database", task_id)
+            return
 
-    current = now or _local_now()
-    if current.tzinfo is None:
-        current = current.replace(tzinfo=_local_now().tzinfo)
-
-    settings = get_or_create_settings(session)
-
-    # 1. Check for queued manual/ad-hoc tasks first
-    from app.models.generation_task import GenerationTaskModel
-
-    queued_task = (
-        session.query(GenerationTaskModel)
-        .filter(GenerationTaskModel.status == "queued")
-        .order_by(GenerationTaskModel.created_at.asc())
-        .first()
-    )
-
-    if queued_task:
-        logger.info("Found queued manual task: %s", queued_task.task_id)
         result = await run_queued_generation_task(
             session,
             settings,
@@ -227,67 +219,184 @@ async def _perform_tick(session: Session, now: datetime | None = None) -> dict[s
             run_generation_cycle_fn=run_generation_cycle,
         )
         if result["status"] == "failed":
-            logger.warning("Queued manual task %s failed: %s", queued_task.task_id, result.get("error"))
-        return result
+            logger.warning("Background task %s failed: %s", task_id, result.get("error"))
 
-    schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True)).all()
+        if task_id.startswith("auto-s"):
+            payload = parse_run_now_task_payload(queued_task.payload_json)
+            if payload.schedule_id:
+                from app.models.schedule import ScheduleModel
+                schedule = session.get(ScheduleModel, payload.schedule_id)
+                if schedule:
+                    if result["status"] == "completed":
+                        schedule.last_tick_status = "completed"
+                        schedule.last_tick_reason = "generation completed"
+                    else:
+                        schedule.last_tick_status = "error"
+                        schedule.last_tick_reason = str(result.get("error") or "generation failed")
+                    session.add(schedule)
+                    session.commit()
+    except Exception as exc:
+        logger.exception("Exception in background task execution %s: %s", task_id, exc)
+    finally:
+        session.close()
+        _running_task_ids.discard(task_id)
+        logger.info("Background task finished and cleaned up: %s. Current running count: %d", task_id, len(_running_task_ids))
 
-    if not schedules:
-        return {"status": "skipped", "reason": "no enabled schedules"}
 
-    results = []
-    for schedule in schedules:
-        if not should_run_automation(schedule.schedule_expr, schedule.last_run_at, current):
-            results.append({"schedule_id": schedule.id, "status": "not_due"})
-            continue
+async def _perform_tick(session: Session, now: datetime | None = None, async_mode: bool = True) -> dict[str, object]:
+    """Core tick logic — iterates over all enabled schedules."""
+    from app.models.effect_preset import EffectPresetModel
+    from app.models.filter_preset import FilterPresetModel
+    from app.models.schedule import ScheduleModel
+    from app.models.generation_task import GenerationTaskModel
+    import uuid
 
-        fp = session.get(FilterPresetModel, schedule.filter_preset_id)
-        ep = session.get(EffectPresetModel, schedule.effect_preset_id)
-        if not fp or not ep:
-            logger.warning("Schedule %d missing presets, skipping", schedule.id)
-            results.append({"schedule_id": schedule.id, "status": "skipped", "reason": "missing presets"})
-            continue
+    current = now or _local_now()
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=_local_now().tzinfo)
 
-        run_context = build_scheduled_run_context(
-            schedule_id=schedule.id,
-            album_name=schedule.album_name,
-            filter_preset=fp,
-            effect_preset=ep,
-            notification_presets=list(schedule.notification_presets),
+    settings = get_or_create_settings(session)
+    MAX_CONCURRENT_TASKS = int(os.environ.get("CONCURRENCY_LIMIT", "2"))
+
+    if not async_mode:
+        # --- SYNCHRONOUS MODE (For tests) ---
+        queued_task = (
+            session.query(GenerationTaskModel)
+            .filter(GenerationTaskModel.status == "queued")
+            .order_by(GenerationTaskModel.created_at.asc())
+            .first()
         )
-        payload = run_context.to_run_now_task_payload()
 
-        schedule.last_run_at = current
-        schedule.last_tick_status = "started"
-        schedule.last_tick_reason = "generation queued"
-        import uuid
-
-        task_id = f"auto-s{schedule.id}-{uuid.uuid4().hex[:8]}"
-        schedule.last_task_id = task_id
-        schedule.next_run_at = _compute_next_run(schedule.schedule_expr, current, current)
-        session.add(schedule)
-        session.commit()
-
-        try:
-            result = await run_generation_cycle(
+        if queued_task:
+            logger.info("[Sync Mode] Found queued manual task: %s", queued_task.task_id)
+            result = await run_queued_generation_task(
                 session,
                 settings,
-                task_id,
-                **payload.to_run_generation_kwargs(notification_presets=run_context.notification_presets),
+                queued_task,
+                run_generation_cycle_fn=run_generation_cycle,
             )
-            schedule.last_tick_status = "completed"
-            schedule.last_tick_reason = "generation completed" if result else "generation completed with no result"
-        except Exception as exc:
-            logger.exception("Schedule %d generation failed: %s", schedule.id, exc)
-            schedule.last_tick_status = "error"
-            schedule.last_tick_reason = str(exc)
+            if result["status"] == "failed":
+                logger.warning("[Sync Mode] Queued manual task %s failed: %s", queued_task.task_id, result.get("error"))
+            return result
 
-        session.add(schedule)
-        session.commit()
-        results.append({"schedule_id": schedule.id, "status": schedule.last_tick_status, "task_id": task_id})
+        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True)).all()
+        if not schedules:
+            return {"status": "skipped", "reason": "no enabled schedules"}
 
-    due = [r for r in results if r["status"] != "not_due"]
-    return {"status": "completed", "schedules_checked": len(results), "schedules_run": len(due), "results": results}
+        results = []
+        for schedule in schedules:
+            if not should_run_automation(schedule.schedule_expr, schedule.last_run_at, current):
+                results.append({"schedule_id": schedule.id, "status": "not_due"})
+                continue
+
+            fp = session.get(FilterPresetModel, schedule.filter_preset_id)
+            ep = session.get(EffectPresetModel, schedule.effect_preset_id)
+            if not fp or not ep:
+                logger.warning("[Sync Mode] Schedule %d missing presets, skipping", schedule.id)
+                results.append({"schedule_id": schedule.id, "status": "skipped", "reason": "missing presets"})
+                continue
+
+            run_context = build_scheduled_run_context(
+                schedule_id=schedule.id,
+                album_name=schedule.album_name,
+                filter_preset=fp,
+                effect_preset=ep,
+                notification_presets=list(schedule.notification_presets),
+            )
+            payload = run_context.to_run_now_task_payload()
+
+            schedule.last_run_at = current
+            schedule.last_tick_status = "started"
+            schedule.last_tick_reason = "generation queued"
+            task_id = f"auto-s{schedule.id}-{uuid.uuid4().hex[:8]}"
+            schedule.last_task_id = task_id
+            schedule.next_run_at = _compute_next_run(schedule.schedule_expr, current, current)
+            session.add(schedule)
+            session.commit()
+
+            try:
+                result = await run_generation_cycle(
+                    session,
+                    settings,
+                    task_id,
+                    **payload.to_run_generation_kwargs(notification_presets=run_context.notification_presets),
+                )
+                schedule.last_tick_status = "completed"
+                schedule.last_tick_reason = "generation completed" if result else "generation completed with no result"
+            except Exception as exc:
+                logger.exception("[Sync Mode] Schedule %d generation failed: %s", schedule.id, exc)
+                schedule.last_tick_status = "error"
+                schedule.last_tick_reason = str(exc)
+
+            session.add(schedule)
+            session.commit()
+            results.append({"schedule_id": schedule.id, "status": schedule.last_tick_status, "task_id": task_id})
+
+        due = [r for r in results if r["status"] != "not_due"]
+        return {"status": "completed", "schedules_checked": len(results), "schedules_run": len(due), "results": results}
+
+    else:
+        # --- ASYNCHRONOUS CONCURRENT MODE (For production) ---
+        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True)).all()
+        schedules_enqueued = 0
+        for schedule in schedules:
+            if not should_run_automation(schedule.schedule_expr, schedule.last_run_at, current):
+                continue
+
+            fp = session.get(FilterPresetModel, schedule.filter_preset_id)
+            ep = session.get(EffectPresetModel, schedule.effect_preset_id)
+            if not fp or not ep:
+                logger.warning("Schedule %d missing presets, skipping auto-queue", schedule.id)
+                continue
+
+            run_context = build_scheduled_run_context(
+                schedule_id=schedule.id,
+                album_name=schedule.album_name,
+                filter_preset=fp,
+                effect_preset=ep,
+                notification_presets=list(schedule.notification_presets),
+            )
+            payload = run_context.to_run_now_task_payload()
+
+            task_id = f"auto-s{schedule.id}-{uuid.uuid4().hex[:8]}"
+            ensure_task(session, task_id, status="queued", step="queued", progress=0.0, payload_json=payload.to_json())
+
+            schedule.last_run_at = current
+            schedule.last_task_id = task_id
+            schedule.last_tick_status = "queued"
+            schedule.last_tick_reason = "Enqueued in background task runner"
+            schedule.next_run_at = _compute_next_run(schedule.schedule_expr, current, current)
+            session.add(schedule)
+            session.commit()
+            schedules_enqueued += 1
+            logger.info("Enqueued scheduled run task: %s for schedule: %s", task_id, schedule.name)
+
+        queued_tasks = (
+            session.query(GenerationTaskModel)
+            .filter(GenerationTaskModel.status == "queued")
+            .order_by(GenerationTaskModel.created_at.asc())
+            .all()
+        )
+
+        spawned_count = 0
+        for task in queued_tasks:
+            if task.task_id in _running_task_ids:
+                continue
+            if len(_running_task_ids) >= MAX_CONCURRENT_TASKS:
+                logger.info("Concurrency limit reached (%d/%d). Skipping further queue processing.", len(_running_task_ids), MAX_CONCURRENT_TASKS)
+                break
+
+            _running_task_ids.add(task.task_id)
+            asyncio.create_task(_run_queued_task_in_background(task.task_id))
+            spawned_count += 1
+
+        return {
+            "status": "completed",
+            "schedules_checked": len(schedules),
+            "schedules_enqueued": schedules_enqueued,
+            "active_tasks_count": len(_running_task_ids),
+            "tasks_spawned_this_tick": spawned_count,
+        }
 
 
 def run_scheduler_tick(db: Session | None = None, now: datetime | None = None) -> dict[str, object]:
@@ -295,7 +404,7 @@ def run_scheduler_tick(db: Session | None = None, now: datetime | None = None) -
     owns_db = db is None
     session = db or SessionLocal()
     try:
-        return asyncio.run(_perform_tick(session, now))
+        return asyncio.run(_perform_tick(session, now, async_mode=False))
     finally:
         if owns_db:
             session.close()
@@ -305,7 +414,7 @@ async def run_scheduler_tick_async(now: datetime | None = None) -> dict[str, obj
     """Async version used by the production scheduler loop."""
     session = SessionLocal()
     try:
-        return await _perform_tick(session, now)
+        return await _perform_tick(session, now, async_mode=True)
     finally:
         session.close()
 
@@ -339,6 +448,15 @@ async def _async_main() -> None:
                 task.error = "Interrupted by scheduler restart"
             session.commit()
             logger.info("Reset %d stuck RUNNING tasks to FAILED", len(stuck_tasks))
+
+        from app.models.generation_task import GenerationTaskModel
+        stuck_queued_tasks = session.query(GenerationTaskModel).filter(GenerationTaskModel.status == "running").all()
+        if stuck_queued_tasks:
+            for task in stuck_queued_tasks:
+                task.status = "failed"
+                task.error = "Interrupted by scheduler restart"
+            session.commit()
+            logger.info("Reset %d stuck running queued tasks to failed", len(stuck_queued_tasks))
     except Exception as exc:
         logger.exception("Failed to reset stuck tasks: %s", exc)
         session.rollback()

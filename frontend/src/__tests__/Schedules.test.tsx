@@ -162,6 +162,47 @@ describe('SchedulesPage', () => {
     expect(screen.queryByLabelText('Schedule form panel')).not.toBeInTheDocument();
   });
 
+  it('normalizes unsupported Xiaomi vision models when loading an edit form', async () => {
+    window.history.pushState({}, '', '/schedules');
+    vi.mocked(client.getSchedules).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Morning run',
+        enabled: true,
+        schedule_expr: 'daily@08:00',
+        filter_preset_id: 2,
+        effect_preset_id: 3,
+        notification_preset_ids: [4],
+        album_name: 'AI Photos',
+        ai_vision_provider: 'xiaomi',
+        ai_vision_model: 'mimo-v2.5-pro',
+        ai_image_provider: 'local',
+        ai_image_model: 'flux.1',
+        ai_prompt_enrichment: true,
+        last_run_at: null,
+        next_run_at: null,
+        last_tick_status: null,
+        last_tick_reason: null,
+        last_task_id: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        filter_preset_name: 'Default filter',
+        effect_preset_name: 'Default effect',
+        notification_preset_names: ['Phone'],
+      },
+    ]);
+    vi.mocked(client.getFilterPresets).mockResolvedValue([{ id: 2, name: 'Default filter', album_ids: [], person_filters: [], start_date: null, end_date: null, media_type: 'photo', created_at: '2026-05-30T04:00:00.000Z' }]);
+    vi.mocked(client.getEffectPresets).mockResolvedValue([{ id: 3, name: 'Default effect', groups: {}, created_at: '2026-05-30T04:00:00.000Z' }]);
+    vi.mocked(client.getNotificationPresets).mockResolvedValue([{ id: 4, name: 'Phone', provider: 'web', url: null, topic: null, has_token: false, token_masked: null, webhook_url: null, created_at: '2026-05-30T04:00:00.000Z' }]);
+
+    renderSchedules();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+
+    const formPanel = await screen.findByLabelText('Schedule form panel');
+    expect(within(formPanel).getByDisplayValue('mimo-v2.5')).toBeInTheDocument();
+    expect(within(formPanel).queryByDisplayValue('mimo-v2.5-pro')).not.toBeInTheDocument();
+  });
+
   it('saves edits from the right panel form', async () => {
     window.history.pushState({}, '', '/schedules');
     const schedule = {

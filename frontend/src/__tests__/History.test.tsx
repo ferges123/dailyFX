@@ -109,10 +109,44 @@ const mockHistoryItem2 = {
   total_token_count: null,
 };
 
+const mockQueuedHistoryItem = {
+  id: 3,
+  task_id: 'man-3',
+  generation_type: 'schedule_run',
+  status: 'QUEUED',
+  title: 'Queued: Morning run',
+  summary: 'Waiting for the worker to start this scheduled run.',
+  source_asset_ids: '[]',
+  output_path: null,
+  image_url: null,
+  provider: null,
+  model: null,
+  tags_json: null,
+  created_at: '2026-05-27T12:00:00.000Z',
+  album_name: 'AI Photos',
+  album_id: null,
+  album_created: false,
+  album_updated: false,
+  accept_notes: null,
+  accepted_at: null,
+  uploaded_asset_id: null,
+  upload_status: null,
+  updated_at: '2026-05-27T12:00:00.000Z',
+  config_json: JSON.stringify({ schedule_id: 1, album_name: 'AI Photos' }),
+  task_step: 'queued',
+  total_token_count: null,
+};
+
 const mockHistoryPage = {
   items: [mockHistoryItem1, mockHistoryItem2],
   total: 2,
   latest_event_id: 10,
+};
+
+const mockQueuedHistoryPage = {
+  items: [mockQueuedHistoryItem, mockHistoryItem1],
+  total: 2,
+  latest_event_id: 11,
 };
 
 const mockFilterOptions = {
@@ -169,6 +203,18 @@ describe('HistoryPage', () => {
     expect(screen.getByText('Task timeline')).toBeInTheDocument();
     expect(screen.getByText('Generation started')).toBeInTheDocument();
     expect(screen.getByText('+12s')).toBeInTheDocument();
+  });
+
+  it('renders queued run-now tasks in history immediately', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.getGenerationHistory).mockResolvedValue(mockQueuedHistoryPage);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+
+    renderHistory();
+
+    expect(await screen.findByText('Queued: Morning run')).toBeInTheDocument();
+    expect(screen.getAllByText('Queued').length).toBeGreaterThan(0);
+    expect(screen.getByText('This task is queued and waiting for the worker to start it.')).toBeInTheDocument();
   });
 
   it('keeps history usable when settings cannot be loaded initially', async () => {

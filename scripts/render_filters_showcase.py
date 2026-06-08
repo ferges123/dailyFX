@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_ROOT = REPO_ROOT / "backend"
-OUT_ROOT = Path(__file__).resolve().parent / "filter-showcase"
+OUT_ROOT = REPO_ROOT / "tests" / "filter-showcase"
 MODULE_OUT = OUT_ROOT / "modules"
 STYLE_OUT = OUT_ROOT / "instafilters"
 
@@ -23,6 +23,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.services.generation.instafilter import AVAILABLE_FILTERS, apply_instafilter
 from app.services.generation.modules import MODULES
+from app.database import _ensure_engine
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,36 @@ class FakeClient:
 
     async def get_asset_thumbnail(self, asset_id: str, size: str = "preview"):
         return self._image_bytes, "image/png"
+
+    async def get_asset_data(self, asset_id: str) -> bytes:
+        return self._image_bytes
+
+    async def get_asset_exif(self, asset_id: str) -> dict:
+        return {
+            "latitude": 52.0725,
+            "longitude": 21.02,
+            "dateTimeOriginal": "2025-06-04T12:34:56Z",
+        }
+
+    async def get_asset_info(self, asset_id: str) -> dict:
+        return {
+            "people": [
+                {
+                    "faces": [
+                        {
+                            "boundingBoxX1": 0.1,
+                            "boundingBoxY1": 0.1,
+                            "boundingBoxX2": 0.3,
+                            "boundingBoxY2": 0.3,
+                        }
+                    ]
+                }
+            ]
+        }
+
+    def _coerce_face_summary(self, payload):
+        from app.immich.client import ImmichClient
+        return ImmichClient._coerce_face_summary(payload)
 
 
 def _seed_for(label: str) -> int:
@@ -168,6 +199,7 @@ async def _run_module(name: str, module, asset: FakeAsset, base_bytes: bytes, ou
 
 
 async def main() -> None:
+    _ensure_engine()
     base_bytes = _make_base_image()
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
     MODULE_OUT.mkdir(parents=True, exist_ok=True)
@@ -196,6 +228,8 @@ async def main() -> None:
         ("polaroid", MODULES["polaroid"], {}),
         ("prism_split", MODULES["prism_split"], {}),
         ("paper_cutout", MODULES["paper_cutout"], {}),
+        ("apple_weather", MODULES["apple_weather"], {}),
+        ("instaweather", MODULES["instaweather"], {}),
     ]
 
     module_cards: list[tuple[Path, str, str | None]] = [(base_path, "Base image", "Synthetic showcase photo")]
