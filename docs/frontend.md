@@ -1,10 +1,21 @@
 # Frontend Documentation
 
 ## Overview
-The frontend is a Vite + React + TypeScript single-page app that talks only to the backend API. It provides the operator UI for reviewing generated images, configuring presets, scheduling jobs, and managing settings.
+The frontend is a modern single-page application (SPA) that communicates with the backend API. It provides the operator interface for reviewing generated images, configuring presets, scheduling automation jobs, and managing settings.
+
+## Tech Stack
+The frontend has been upgraded to the following modern technologies:
+- **Core Framework**: React 19
+- **Build System**: Vite 8 (utilizing the Rolldown/Oxc based compiler under the hood for extremely fast builds)
+- **Programming Language**: TypeScript 6
+- **Styling**: Tailwind CSS v4.0 (leveraging the new CSS-first configuration system in [styles.css](../frontend/src/styles.css) instead of `tailwind.config.js` or PostCSS configurations)
+- **Data Fetching & Caching**: TanStack React Query v5.101.0
+- **Testing**: Vitest 4.1.8 with React Testing Library and JSDOM
+- **Icons**: Lucide React v1.17.0
+- **Progressive Web App (PWA)**: vite-plugin-pwa (Vite plugin to automate service worker building and manifest injection)
 
 ## Main Screens
-- `History`: review generated results, search by title/summary/provider, inspect metadata, and accept, reject, retry, or download images.
+- `History`: review generated results, see queued and running schedule runs, search by title/summary/provider, inspect metadata, and accept, reject, retry, or download images. Supports dynamic **Before/After Image Comparison** toggles (switching between the original photo and the styled AI result) in both the details panel and the full-screen lightbox view.
 - `Schedules`: create and edit automated jobs by combining filter presets, effect presets, notification presets, and AI vision/image provider settings.
 - `Presets`: manage filter presets, effect presets, notification presets, and web push subscriptions.
 - `Settings`: configure Immich access, API keys, AI budgets, and the default AI prompt.
@@ -13,14 +24,14 @@ The frontend is a Vite + React + TypeScript single-page app that talks only to t
 ## Data Flow
 - The app fetches most data through `/api/*` endpoints defined in [frontend/src/api/client.ts](../frontend/src/api/client.ts).
 - Authentication uses a bearer token stored in `localStorage` under `dailyfx_token`.
-- The history view also listens to `/api/generation/stream` for live status updates.
+- The history view also listens to `/api/generation/stream` for live status updates, including queued and running run-now tasks.
 - Images are loaded through authenticated fetches via `SecureImage`, so protected instances still work without exposing raw image URLs.
 
 ## Browser State
 - `localStorage`: access token, cached Immich filter options, filter presets, and other UI cache entries.
 - `sessionStorage`: last started generation task ID for the history view.
 - Cookie: app-level filter state used by the preset/filter UI.
-- Service worker: `frontend/public/sw.js` enables web push notifications.
+- Service worker: `frontend/src/sw.js` (compiled to `dist/sw.js` via `vite-plugin-pwa`) enables both PWA offline shell assets caching (precaching) and web push notifications.
 
 ## Frontend Structure
 - `frontend/src/App.tsx`: shell layout, mobile navigation, and view switching.
