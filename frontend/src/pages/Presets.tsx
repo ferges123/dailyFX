@@ -302,7 +302,7 @@ function EffectPresetTableItem({
                 <img
                   src={exampleInfo.image_url}
                   alt={mod.label}
-                  className="w-full rounded-lg border border-stone-200 shadow-sm sm:w-64"
+                  className="w-full rounded-lg border border-stone-200 shadow-xs sm:w-64"
                   loading="lazy"
                 />
               </div>
@@ -376,7 +376,7 @@ function EffectPresetMobileCard({
               type="checkbox"
               checked={group.enabled}
               onChange={(e) => onEnabledChange(e.target.checked)}
-              className="h-4 w-4 rounded border-stone-300 accent-emerald-700"
+              className="h-4 w-4 rounded-sm border-stone-300 accent-emerald-700"
             />
             Enable
           </label>
@@ -410,7 +410,7 @@ function EffectPresetMobileCard({
             <img
               src={exampleInfo.image_url}
               alt={mod.label}
-              className="w-full rounded-xl border border-stone-200 shadow-sm"
+              className="w-full rounded-xl border border-stone-200 shadow-xs"
               loading="lazy"
             />
             <div className="min-w-0">
@@ -1044,7 +1044,7 @@ function NotificationPresetsTab() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    navigator.serviceWorker.ready.then(reg => {
       reg.pushManager.getSubscription().then(sub => {
         if (sub) { setPushSub(sub); setPushStatus('subscribed'); }
       });
@@ -1252,7 +1252,7 @@ function NotificationPresetsTab() {
                     )}
                     {hasHomeAssistant && (
                       <p>
-                        <span className="font-semibold text-stone-800">Home Assistant:</span> use a long-lived access token and a notify service such as <code className="rounded bg-white px-1 py-0.5 text-[11px] text-stone-700">mobile_app_phone</code> or <code className="rounded bg-white px-1 py-0.5 text-[11px] text-stone-700">persistent_notification</code>.
+                        <span className="font-semibold text-stone-800">Home Assistant:</span> use a long-lived access token and a notify service such as <code className="rounded-sm bg-white px-1 py-0.5 text-[11px] text-stone-700">mobile_app_phone</code> or <code className="rounded-sm bg-white px-1 py-0.5 text-[11px] text-stone-700">persistent_notification</code>.
                       </p>
                     )}
                     {hasDiscord && (
