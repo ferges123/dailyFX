@@ -81,6 +81,22 @@ export function LightboxModal({
 }: LightboxModalProps) {
   const [isSharing, setIsSharing] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [showOriginal, setShowOriginal] = useState(false);
+
+  useEffect(() => {
+    setShowOriginal(false);
+  }, [imageUrl, isOpen]);
+
+  const sourceAssetId = (() => {
+    if (!entry?.source_asset_ids) return null;
+    try {
+      const ids = JSON.parse(entry.source_asset_ids);
+      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
+    } catch {
+      return null;
+    }
+  })();
+  const originalImageUrl = sourceAssetId ? `/api/immich/assets/${sourceAssetId}/thumbnail?size=preview` : null;
 
   // Handle Escape key to close lightbox
   useEffect(() => {
@@ -167,6 +183,33 @@ export function LightboxModal({
             alt="Preview"
             className="max-h-full max-w-full rounded-lg object-contain"
           />
+          {originalImageUrl && (
+            <div
+              className={`absolute inset-0 flex items-center justify-center bg-stone-950 transition-opacity duration-200 pointer-events-none ${
+                showOriginal ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <SecureImage
+                src={originalImageUrl}
+                alt="Original Preview"
+                className="max-h-full max-w-full rounded-lg object-contain"
+              />
+            </div>
+          )}
+          {originalImageUrl && (
+            <button
+              type="button"
+              onClick={() => setShowOriginal(!showOriginal)}
+              className={`absolute bottom-4 right-4 z-30 inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition active:scale-95 cursor-pointer ${
+                showOriginal
+                  ? 'border-emerald-600 bg-emerald-800 text-white hover:bg-emerald-900'
+                  : 'border-white/10 bg-stone-900/80 text-white hover:bg-stone-955'
+              }`}
+            >
+              <Layers size={13} />
+              {showOriginal ? 'Show Effect' : 'Show Original'}
+            </button>
+          )}
         </div>
 
         {/* Premium EXIF Details Overlay Panel */}
@@ -325,7 +368,7 @@ export function LightboxModal({
                   <Share2 size={14} />
                 )}
                 {shareStatus === 'copied' && (
-                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-emerald-800 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-sm bg-emerald-800 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">
                     Copied!
                   </span>
                 )}
