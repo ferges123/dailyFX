@@ -51,7 +51,7 @@ class MuseumArchiveModule:
 
         people_context = await load_people_context(client, asset)
         name_hint = (
-            f", ideally referencing {people_context.names[0] if len(people_context.names) == 1 else 'the people by name'}"
+            ", ideally referencing the people"
             if people_context and people_context.names
             else ""
         )
@@ -67,7 +67,7 @@ class MuseumArchiveModule:
                 settings,
                 image_bytes,
                 prompt=vision_prompt,
-                context_hint=people_context.prompt_hint if people_context else None,
+                context_hint=people_context.anonymized_prompt_hint() if people_context else None,
             )
             display_title = vision.title
             summary = vision.summary

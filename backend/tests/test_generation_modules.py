@@ -348,3 +348,54 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
     # Ensure original names are stored in config
     assert result.config["prompt_enrichment_context"]["people_names"] == ["Alice"]
     client.get_asset_exif.assert_awaited_once_with("asset-1")
+
+
+def test_museum_archive_anonymization():
+    from app.services.generation.modules.museum_archive import MuseumArchiveModule
+    from app.services.generation.ai_vision import AIVisionResult
+    
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
+    client.get_asset_exif = MagicMock()
+    client.get_asset_exif = AsyncMock(return_value={"city": "Warsaw", "country": "Poland"})
+    client.get_asset_info = AsyncMock(
+        return_value={
+            "people": [
+                {
+                    "id": "person-1",
+                    "name": "Alice",
+                    "faces": [
+                        {
+                            "id": "face-1",
+                            "imageWidth": 400,
+                            "imageHeight": 300,
+                            "boundingBoxX1": 0,
+                            "boundingBoxY1": 0,
+                            "boundingBoxX2": 100,
+                            "boundingBoxY2": 120,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+    settings = MagicMock(default_ai_provider="openai")
+    asset = SimpleNamespace(
+        id="asset-1", original_file_name="photo.jpg", created_at="2024-06-15T10:30:00.000Z", people=[SimpleNamespace(id="person-1", name="Alice")]
+    )
+    
+    captured: dict[str, object] = {}
+    async def fake_analyze(settings, image_bytes, *args, **kwargs):
+        captured["prompt"] = kwargs.get("prompt")
+        captured["context_hint"] = kwargs.get("context_hint")
+        return AIVisionResult(title="Mock Title", summary="Mock Summary")
+
+    with patch("app.services.generation.modules.museum_archive.analyze_image", fake_analyze):
+        result = asyncio.run(MuseumArchiveModule().run([asset], {}, client, settings))
+
+    assert result.generation_type == "museum_archive"
+    assert "Alice" not in captured["prompt"]
+    assert "person 1" not in captured["prompt"]
+    assert "ideally referencing the people" in captured["prompt"]
+    assert captured["context_hint"] == "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left."
+    assert result.config["people_context"]["names"] == ["Alice"]
