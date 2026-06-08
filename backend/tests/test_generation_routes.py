@@ -11,6 +11,7 @@ from app.api.routes_generation import (
     list_generation_modules,
     reject_generation,
     retry_acceptance,
+    get_review_page,
 )
 from app.database import SessionLocal
 from app.database import init_db as _init_db
@@ -169,33 +170,38 @@ def test_generation_history_returns_entry():
 
 
 def test_generation_modules_endpoint_lists_new_effects():
-    modules = asyncio.run(list_generation_modules())
-    names = {module.name for module in modules}
-    assert {
-        "collage",
-        "instafilter",
-        "filmstrip",
-        "popart",
-        "duotone",
-        "halftone",
-        "glitch",
-        "light_leak",
-        "neon_bloom",
-        "cyanotype",
-        "polaroid",
-        "prism_split",
-        "paper_cutout",
-        "ai_caricature",
-        "ai_anime",
-        "ai_cinematic_3d_toy",
-        "ai_collectible_figure",
-        "ai_fantasy_hero",
-        "ai_high_fashion_editorial",
-        "ai_brick_built_figure",
-        "ai_yellow_cartoon_sitcom",
-    } <= names
-    collage = next(module for module in modules if module.name == "collage")
-    assert collage.config_schema and collage.config_schema[0].key == "styles"
+    db = _setup_generation_routes_db()
+    try:
+        modules = asyncio.run(list_generation_modules())
+        names = {module.name for module in modules}
+        assert {
+            "collage",
+            "instafilter",
+            "apple_weather",
+            "filmstrip",
+            "popart",
+            "duotone",
+            "halftone",
+            "glitch",
+            "light_leak",
+            "neon_bloom",
+            "cyanotype",
+            "polaroid",
+            "prism_split",
+            "paper_cutout",
+            "ai_caricature",
+            "ai_anime",
+            "ai_cinematic_3d_toy",
+            "ai_collectible_figure",
+            "ai_fantasy_hero",
+            "ai_high_fashion_editorial",
+            "ai_brick_built_figure",
+            "ai_yellow_cartoon_sitcom",
+        } <= names
+        collage = next(module for module in modules if module.name == "collage")
+        assert collage.config_schema and collage.config_schema[0].key == "styles"
+    finally:
+        db.close()
 
 
 def test_reject_generation(tmp_path):
@@ -393,3 +399,19 @@ def test_retry_acceptance_replays_album_and_tag(tmp_path):
         assert result.uploaded_asset_id == "immich-asset-id-3"
     finally:
         db.close()
+
+
+def test_get_review_page():
+    result = asyncio.run(get_review_page("task-review-test"))
+    assert result is not None
+    assert result.status_code == 200
+    assert str(result.path).endswith("review.html")
+
+    # Read the file and assert the new elements exist
+    with open(result.path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "btn-toggle-original" in content
+    assert "img-original" in content
+    assert "lb-toggle-original" in content
+    assert "lb-img-original" in content

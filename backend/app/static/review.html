@@ -315,6 +315,90 @@ button:disabled{opacity:.45;cursor:not-allowed}
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+#btn-toggle-original {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 1.25rem;
+  font-size: .6875rem;
+  font-weight: 600;
+  border-radius: .375rem;
+  padding: 0 .5rem;
+  border: 1px solid rgba(187, 247, 208, 0.5);
+  background: #f0fdf4;
+  color: #166534;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+#btn-toggle-original:hover {
+  background: #dcfce7;
+}
+#btn-toggle-original.active {
+  border-color: #059669;
+  background: #065f46;
+  color: #fff;
+}
+#btn-toggle-original.active:hover {
+  background: #047857;
+}
+#img-original {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #111;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+#img-original.visible {
+  opacity: 1;
+}
+#lb-toggle-original {
+  display: none;
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 30;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(28, 25, 23, 0.8);
+  color: #fff;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+#lb-toggle-original:hover {
+  background: rgba(12, 10, 9, 0.95);
+}
+#lb-toggle-original.active {
+  border-color: #059669;
+  background: #065f46;
+  color: #fff;
+}
+#lb-toggle-original.active:hover {
+  background: #047857;
+}
+#lb-img-original {
+  position: absolute;
+  max-height: calc(100% - 1rem);
+  max-width: calc(100% - 1rem);
+  border-radius: 8px;
+  object-fit: contain;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+#lb-img-original.visible {
+  opacity: 1;
+}
 </style>
 </head>
 <body>
@@ -338,6 +422,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       View original in Immich
     </a>
+    <button id="btn-toggle-original" type="button">Show Original</button>
   </div>
 
   <!-- metadata grid -->
@@ -359,6 +444,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <!-- image -->
   <div class="img-wrap" id="img-wrap">
     <img id="img" src="" alt="Generated image" />
+    <img id="img-original" src="" alt="Original image" />
     <div class="zoom-hint"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></span></div>
   </div>
 
@@ -397,8 +483,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="lightbox" id="lightbox">
   <div class="lb-content" id="lb-content">
     <!-- Photo Canvas -->
-    <div class="lb-canvas">
+    <div class="lb-canvas" style="position: relative;">
       <img id="lb-img" src="" alt="Preview" />
+      <img id="lb-img-original" src="" alt="Original Preview" />
+      <button id="lb-toggle-original" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span>Show Original</span>
+      </button>
     </div>
 
     <!-- EXIF Panel -->
@@ -458,6 +549,16 @@ let immichUrl = '';
 let currentEntry = null;
 let selectedExifData = null;
 let eTitle = 'image';
+
+let showOriginalMain = false;
+let showOriginalLightbox = false;
+let originalImageBlobUrl = null;
+
+const imgOriginalEl = document.getElementById('img-original');
+const btnToggleOriginal = document.getElementById('btn-toggle-original');
+const lbImgOriginalEl = document.getElementById('lb-img-original');
+const lbToggleOriginal = document.getElementById('lb-toggle-original');
+
 
 // Format shutter speed decimal into a readable fraction
 function formatShutterSpeed(seconds) {
@@ -763,6 +864,29 @@ function setUploadSuccessState(uploadedAssetId) {
     : '';
 }
 
+async function loadOriginalImage(assetId) {
+  if (!assetId) return;
+  const t = getToken();
+  const headersList = t ? {'Authorization': `Bearer ${t}`} : {};
+  try {
+    const r = await fetch(`/api/immich/assets/${assetId}/thumbnail?size=preview`, { headers: headersList });
+    if (r.ok) {
+      const blob = await r.blob();
+      if (originalImageBlobUrl) {
+        URL.revokeObjectURL(originalImageBlobUrl);
+      }
+      originalImageBlobUrl = URL.createObjectURL(blob);
+      if (imgOriginalEl) imgOriginalEl.src = originalImageBlobUrl;
+      if (lbImgOriginalEl) lbImgOriginalEl.src = originalImageBlobUrl;
+      
+      if (btnToggleOriginal) btnToggleOriginal.style.display = 'inline-flex';
+      if (lbToggleOriginal) lbToggleOriginal.style.display = 'inline-flex';
+    }
+  } catch (err) {
+    console.error('Failed to load original image:', err);
+  }
+}
+
 async function load() {
   try {
     const [rEntry, rSettings] = await Promise.all([
@@ -796,6 +920,10 @@ async function load() {
         const ids = JSON.parse(e.source_asset_ids);
         if (ids.length > 0) sourceAssetId = ids[0];
       } catch {}
+    }
+
+    if (sourceAssetId) {
+      loadOriginalImage(sourceAssetId);
     }
 
     if (!selectedExifData && sourceAssetId) {
@@ -951,12 +1079,55 @@ document.getElementById('img-wrap').addEventListener('click', () => {
   if (!currentEntry) return;
   lbImg.src = imgEl.src;
   renderExif(currentEntry, selectedExifData);
+
+  // Reset lightbox original comparison view
+  showOriginalLightbox = false;
+  if (lbImgOriginalEl) lbImgOriginalEl.classList.remove('visible');
+  if (lbToggleOriginal) {
+    lbToggleOriginal.classList.remove('active');
+    lbToggleOriginal.querySelector('span').textContent = 'Show Original';
+  }
+
   lightbox.classList.add('open');
 });
 document.getElementById('lb-close').addEventListener('click', () => lightbox.classList.remove('open'));
 lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
 document.getElementById('lb-content').addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+
+// Main page toggle comparison
+if (btnToggleOriginal) {
+  btnToggleOriginal.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showOriginalMain = !showOriginalMain;
+    if (showOriginalMain) {
+      if (imgOriginalEl) imgOriginalEl.classList.add('visible');
+      btnToggleOriginal.classList.add('active');
+      btnToggleOriginal.textContent = 'Show Effect';
+    } else {
+      if (imgOriginalEl) imgOriginalEl.classList.remove('visible');
+      btnToggleOriginal.classList.remove('active');
+      btnToggleOriginal.textContent = 'Show Original';
+    }
+  });
+}
+
+// Lightbox toggle comparison
+if (lbToggleOriginal) {
+  lbToggleOriginal.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showOriginalLightbox = !showOriginalLightbox;
+    if (showOriginalLightbox) {
+      if (lbImgOriginalEl) lbImgOriginalEl.classList.add('visible');
+      lbToggleOriginal.classList.add('active');
+      lbToggleOriginal.querySelector('span').textContent = 'Show Effect';
+    } else {
+      if (lbImgOriginalEl) lbImgOriginalEl.classList.remove('visible');
+      lbToggleOriginal.classList.remove('active');
+      lbToggleOriginal.querySelector('span').textContent = 'Show Original';
+    }
+  });
+}
 
 document.getElementById('lb-download').addEventListener('click', async (e) => {
   e.preventDefault();

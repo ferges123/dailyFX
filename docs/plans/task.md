@@ -1,6 +1,7 @@
-# Task Tracker - Image Comparator Toggle Implementation
+# Task Tracker - Review Page Image Comparison
 
 | Task | Status | Details |
 |------|--------|---------|
-| Task 1: Update HistoryDetailPanel | Completed | Add toggle state and dynamic button, overlay original image with transition |
-| Task 2: Update LightboxModal | Completed | Add floating toggle button in bottom-right corner, overlay original image with transition |
+| Task 1: Update review.html Styles and Elements | Completed | Add styles and HTML overlay/toggle buttons to review.html |
+| Task 2: Add JS Logic for Image Comparison | Completed | Fetch original image authenticated and bind toggle event handlers |
+| Task 3: Add Regression Test for Review Page | Completed | Write test in test_generation_routes.py and verify all tests pass |
