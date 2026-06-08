@@ -1,3 +1,12 @@
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+
+// Precache list injected by vite-plugin-pwa
+precacheAndRoute(self.__WB_MANIFEST || []);
+
+// Immediately clean up old caches from previous builds
+cleanupOutdatedCaches();
+
+// Web Push listeners
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   
@@ -26,13 +35,16 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = event.notification.data?.url || '/';
   
   event.waitUntil(
+    // eslint-disable-next-line no-undef
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus();
         }
       }
+      // eslint-disable-next-line no-undef
       if (clients.openWindow) {
+        // eslint-disable-next-line no-undef
         return clients.openWindow(targetUrl);
       }
     })
