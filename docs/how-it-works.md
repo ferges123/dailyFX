@@ -22,6 +22,14 @@ flowchart LR
 5. You review the result in the History page or from a notification.
 6. If you accept it, DailyFX uploads the image back to Immich with metadata preserved.
 7. If you reject it, the result stays in history and is not uploaded.
+8. If you click **Run now** on a schedule, the request is recorded in History immediately as `Queued`, then moves to `Running` when the worker picks it up.
+
+## Privacy & AI Prompt Anonymization
+
+To protect user privacy, DailyFX automatically anonymizes people's real names in all prompts sent to external AI providers (such as OpenAI, Gemini, or OpenRouter):
+- **Placeholders**: Detected real names (e.g. from Immich face recognition) are replaced with indexed placeholders (like `person 1`, `person 2`) in the prompt text and face position hints.
+- **Output Constraint**: All vision prompts append strict instructions to ensure the external AI model does not output these placeholders (e.g. `person 1` or `Person A`) in the generated titles, summaries, or tags, referring to them naturally instead (e.g. `a man`, `a woman`, `they`).
+- **Local Preservation**: The anonymization happens strictly for prompts sent to external APIs. The local database and review UI still display the original, real names in the details panel under "Prompt enrichment" so the operator knows exactly who was identified locally.
 
 ## What The Operator Configures
 
@@ -58,6 +66,10 @@ flowchart LR
   - open History,
   - check the trace,
   - verify the selected effect and schedule AI settings.
+- A manual run is queued but not yet running:
+  - open History and look for the `Queued` entry,
+  - wait for the worker to pick it up,
+  - if it stays queued too long, check the backend worker and scheduler logs.
 - Upload failed:
   - check Immich URL/API key in Settings,
   - check the history entry for the saved error.
