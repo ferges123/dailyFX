@@ -108,7 +108,12 @@ async def analyze_image(
 
     prompt = prompt or DEFAULT_VISION_PROMPT
     if context_hint:
-        prompt = f"{context_hint}\n\n{prompt}"
+        constraint_note = (
+            "\n\nNote: Do not use placeholders like 'person 1', 'person 2', or 'Person A' in the "
+            "final generated title, summary, or description. Instead, refer to them naturally "
+            "(e.g., 'a man', 'a woman', 'a child', 'a person', or 'they') based on what is visible in the photo."
+        )
+        prompt = f"{context_hint}\n\n{prompt}{constraint_note}"
     reserve_ai_usage(
         "vision",
         limit=getattr(settings, "ai_vision_hourly_limit", 30),

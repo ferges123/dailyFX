@@ -518,7 +518,7 @@ async def _apply_source_vision(
     ai_analysis = await engine_module.analyze_image(
         settings,
         original_bytes,
-        context_hint=people_context.prompt_hint if people_context else None,
+        context_hint=people_context.anonymized_prompt_hint() if people_context else None,
     )
     state["ai_title"] = ai_analysis.title
     state["ai_summary"] = ai_analysis.summary
