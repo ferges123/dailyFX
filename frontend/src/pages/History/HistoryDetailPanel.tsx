@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ExternalLink,
@@ -64,6 +65,21 @@ export function HistoryDetailPanel({
   rejectPending,
   retryPending,
 }: HistoryDetailPanelProps) {
+  const [showOriginal, setShowOriginal] = useState(false);
+
+  useEffect(() => {
+    setShowOriginal(false);
+  }, [entry]);
+
+  const sourceAssetId = (() => {
+    if (!entry?.source_asset_ids) return null;
+    try {
+      const ids = JSON.parse(entry.source_asset_ids);
+      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
+    } catch {
+      return null;
+    }
+  })();
   const metadataProvenance = (() => {
     if (!entry?.config_json) return null;
     try {
@@ -116,7 +132,7 @@ export function HistoryDetailPanel({
     return (
       <div
         className={`app-panel-soft flex-1 flex flex-col items-center justify-center border-2 border-dashed border-stone-200 text-stone-400 p-8 ${
-          mobileShowDetail ? 'flex min-h-[20rem]' : 'hidden lg:flex'
+          mobileShowDetail ? 'flex min-h-80' : 'hidden lg:flex'
         }`}
       >
         <HelpCircle size={32} className="mb-2.5 text-stone-300 animate-pulse" />
@@ -188,11 +204,24 @@ export function HistoryDetailPanel({
                 href={sourceAssetImmichUrl}
                 target="_blank"
                 rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
               >
                 <ExternalLink size={10} />
                 View original in Immich
               </a>
+              {sourceAssetId && (
+                <button
+                  type="button"
+                  onClick={() => setShowOriginal(!showOriginal)}
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[9.5px] font-semibold transition cursor-pointer ${
+                    showOriginal
+                      ? 'border-emerald-600 bg-emerald-800 text-white hover:bg-emerald-900'
+                      : 'border-emerald-250 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  }`}
+                >
+                  {showOriginal ? 'Show Effect' : 'Show Original'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -231,6 +260,8 @@ export function HistoryDetailPanel({
                 ? `${entry.provider} (${entry.model || 'unknown'})`
                 : entry.status === 'RUNNING'
                 ? '-'
+                : entry.status === 'QUEUED'
+                ? 'Queued'
                 : 'Local Engine'}
             </span>
           </div>
@@ -251,14 +282,34 @@ export function HistoryDetailPanel({
             {entry.task_step ? ` Current step: ${entry.task_step.replace(/_/g, ' ')}` : ''}
           </div>
         )}
+        {entry.status === 'QUEUED' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-[10px] font-medium text-amber-800">
+            This task is queued and waiting for the worker to start it.
+          </div>
+        )}
         {entry.image_url ? (
           <div className="relative group max-w-full overflow-hidden rounded-xl md:rounded-2xl border border-stone-200 bg-stone-100 shadow-[0_12px_26px_rgba(36,29,16,0.06)]">
+            {/* Base: Generated image */}
             <SecureImage
               src={`${entry.image_url}?thumbnail=true`}
               alt={entry.title}
               className="w-full max-h-[220px] md:max-h-[320px] cursor-zoom-in object-contain mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.015]"
               onClick={() => onOpenLightbox(entry.image_url ?? '')}
             />
+            {/* Overlay: Original image */}
+            {sourceAssetId && (
+              <div
+                className={`absolute inset-0 bg-stone-100 transition-opacity duration-200 pointer-events-none ${
+                  showOriginal ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <SecureImage
+                  src={`/api/immich/assets/${sourceAssetId}/thumbnail?size=preview`}
+                  alt="Original"
+                  className="w-full h-full object-contain mx-auto"
+                />
+              </div>
+            )}
             {/* Centered Zoom Icon Overlay */}
             <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
               <div className="bg-white/20 backdrop-blur-md border border-white/30 text-white p-2 rounded-full shadow-lg">
@@ -295,7 +346,7 @@ export function HistoryDetailPanel({
                 onClick={onAccept}
                 disabled={acceptPending}
                 title={entry.album_name ? `Accept and upload to "${entry.album_name}"` : 'Accept and upload'}
-                className="flex-1 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3 text-xs font-bold text-white hover:bg-emerald-950 disabled:bg-stone-200 transition active:scale-98 shadow-sm cursor-pointer"
+                className="flex-1 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3 text-xs font-bold text-white hover:bg-emerald-950 disabled:bg-stone-200 transition active:scale-98 shadow-xs cursor-pointer"
               >
                 <Check size={14} />
                 Accept
@@ -526,7 +577,7 @@ export function HistoryDetailPanel({
               {entry.album_name && (
                 <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium">
                   <span>Target Album:</span>
-                  <span className="rounded bg-emerald-50 border border-emerald-150 px-2 py-0.5 text-emerald-850 font-semibold">
+                  <span className="rounded-sm bg-emerald-50 border border-emerald-150 px-2 py-0.5 text-emerald-850 font-semibold">
                     {entry.album_name}
                   </span>
                 </div>
