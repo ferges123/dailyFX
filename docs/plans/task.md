@@ -7,4 +7,4 @@
 | Propose 2-3 approaches | Completed | Suggest options for refactoring, features, or architecture |
 | Present design | Completed | Present details of the chosen approach |
 | Write design doc | Completed | Save to `docs/plans/2026-06-08-pwa-support-design.md` |
-| Transition to implementation | In Progress | Invoke `writing-plans` skill |
+| Transition to implementation | Completed | Invoke `writing-plans` skill |
