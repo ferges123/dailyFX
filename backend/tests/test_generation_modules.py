@@ -285,7 +285,7 @@ def test_ai_modules_forward_people_context_to_generation():
     assert result.generation_type == "ai_anime"
     assert (
         captured["context_hint"]
-        == "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left."
+        == "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left."
     )
     assert "people_context" in result.config
     assert result.config["people_context"]["names"] == ["Alice"]
@@ -336,13 +336,15 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
     assert result.generation_type == "ai_anime"
     assert (
         captured["context_hint"]
-        == "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left."
+        == "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left."
     )
     assert captured["prompt_enrichment_context_hint"] == (
         "Album: Vacation Album\n"
-        "Detected people: Alice\n"
-        "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.\n"
+        "Detected people: person 1\n"
+        "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left.\n"
         "EXIF: Camera: Sony A7; Exposure: ISO 400"
     )
     assert result.config["prompt_enrichment_context"]["album_name"] == "Vacation Album"
+    # Ensure original names are stored in config
+    assert result.config["prompt_enrichment_context"]["people_names"] == ["Alice"]
     client.get_asset_exif.assert_awaited_once_with("asset-1")

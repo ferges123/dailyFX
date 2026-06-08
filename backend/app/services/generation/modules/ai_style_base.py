@@ -107,6 +107,7 @@ class AIStyleBaseModule:
         album_name: str | None,
         people_context,
         exif_info: ImmichExifInfo | None,
+        anonymize: bool = False,
     ) -> dict[str, str | list[str]] | None:
         parts: list[str] = []
         people_names: list[str] = []
@@ -114,12 +115,17 @@ class AIStyleBaseModule:
             parts.append(f"Album: {album_name}")
         if people_context:
             if getattr(people_context, "names", None):
-                people_names = [name for name in people_context.names if isinstance(name, str) and name.strip()]
+                if anonymize:
+                    people_names = [f"person {i+1}" for i, name in enumerate(people_context.names) if isinstance(name, str) and name.strip()]
+                else:
+                    people_names = [name for name in people_context.names if isinstance(name, str) and name.strip()]
                 names = ", ".join(people_names)
                 if names:
                     parts.append(f"Detected people: {names}")
-            if getattr(people_context, "prompt_hint", ""):
-                parts.append(people_context.prompt_hint)
+            
+            prompt_hint = people_context.anonymized_prompt_hint() if anonymize else getattr(people_context, "prompt_hint", "")
+            if prompt_hint:
+                parts.append(prompt_hint)
         exif_hint = self._format_exif_context(exif_info)
         if exif_hint:
             parts.append(f"EXIF: {exif_hint}")
@@ -129,7 +135,7 @@ class AIStyleBaseModule:
         return {
             "album_name": album_name or "",
             "people_names": people_names,
-            "people_prompt_hint": getattr(people_context, "prompt_hint", "") if people_context else "",
+            "people_prompt_hint": (people_context.anonymized_prompt_hint() if anonymize else getattr(people_context, "prompt_hint", "")) if people_context else "",
             "exif_summary": exif_hint or "",
             "context_hint": context_hint,
         }
@@ -159,14 +165,21 @@ class AIStyleBaseModule:
                     album_name=album_name,
                     people_context=people_context,
                     exif_info=exif_info,
+                    anonymize=False,
                 )
-                if enrichment_context:
-                    enrichment_context_hint = enrichment_context["context_hint"]
+                anonymized_enrichment = self._build_prompt_context_hint(
+                    album_name=album_name,
+                    people_context=people_context,
+                    exif_info=exif_info,
+                    anonymize=True,
+                )
+                if anonymized_enrichment:
+                    enrichment_context_hint = anonymized_enrichment["context_hint"]
                     debug_log(
-                        "AI prompt enrichment context assembled",
-                        album_name=enrichment_context["album_name"],
-                        people_names=enrichment_context["people_names"],
-                        exif_summary=enrichment_context["exif_summary"],
+                        "AI prompt enrichment context assembled (anonymized)",
+                        album_name=anonymized_enrichment["album_name"],
+                        people_names=anonymized_enrichment["people_names"],
+                        exif_summary=anonymized_enrichment["exif_summary"],
                         context_hint=enrichment_context_hint,
                     )
             try:
@@ -175,7 +188,7 @@ class AIStyleBaseModule:
                     image_bytes,
                     prompt,
                     negative_prompt=self.default_negative_prompt,
-                    context_hint=people_context.prompt_hint if people_context else None,
+                    context_hint=people_context.anonymized_prompt_hint() if people_context else None,
                     prompt_enrichment_context_hint=enrichment_context_hint,
                 )
             except AIImageError as exc:
