@@ -95,6 +95,22 @@ def get_text_height(text: str, font: ImageFont.FreeTypeFont | ImageFont.ImageFon
         return draw.textsize(text, font=font)[1]
 
 
+def degrees_to_cardinal(deg: float | int) -> str:
+    """Map degrees (0-360) to 8 cardinal directions."""
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    idx = round(deg / 45) % 8
+    return directions[idx]
+
+
+def format_time_str(val: str | None) -> str:
+    """Extract HH:MM from Open-Meteo time strings."""
+    if not val:
+        return ""
+    if "T" in val:
+        return val.split("T")[1][:5]
+    return val[:5]
+
+
 async def fetch_weather(lat: float, lon: float, dt: datetime) -> dict | None:
     """Fetch weather status from Open-Meteo Forecast or Archive API."""
     date_str = dt.strftime("%Y-%m-%d")
@@ -113,7 +129,9 @@ async def fetch_weather(lat: float, lon: float, dt: datetime) -> dict | None:
         "longitude": lon,
         "start_date": date_str,
         "end_date": date_str,
-        "hourly": "temperature_2m,weather_code",
+        "hourly": "temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,cloud_cover",
+        "daily": "sunrise,sunset",
+        "timezone": "auto",
     }
 
     try:
@@ -136,6 +154,15 @@ async def fetch_weather(lat: float, lon: float, dt: datetime) -> dict | None:
             times = hourly.get("time", [])
             temps = hourly.get("temperature_2m", [])
             codes = hourly.get("weather_code", [])
+            apparents = hourly.get("apparent_temperature", [])
+            humidities = hourly.get("relative_humidity_2m", [])
+            wind_speeds = hourly.get("wind_speed_10m", [])
+            wind_dirs = hourly.get("wind_direction_10m", [])
+            clouds = hourly.get("cloud_cover", [])
+
+            daily = data.get("daily", {})
+            sunrises = daily.get("sunrise", [])
+            sunsets = daily.get("sunset", [])
 
             if not temps or not codes:
                 return None
@@ -153,9 +180,19 @@ async def fetch_weather(lat: float, lon: float, dt: datetime) -> dict | None:
                 except Exception:
                     pass
 
+            sunrise_str = sunrises[0] if sunrises else None
+            sunset_str = sunsets[0] if sunsets else None
+
             return {
                 "temp_c": temps[closest_idx],
                 "weather_code": codes[closest_idx],
+                "apparent_temp_c": apparents[closest_idx] if closest_idx < len(apparents) else temps[closest_idx],
+                "cloud_cover": clouds[closest_idx] if closest_idx < len(clouds) else 0,
+                "humidity": humidities[closest_idx] if closest_idx < len(humidities) else 50,
+                "wind_speed": wind_speeds[closest_idx] if closest_idx < len(wind_speeds) else 10.0,
+                "wind_dir": degrees_to_cardinal(wind_dirs[closest_idx]) if closest_idx < len(wind_dirs) else "N",
+                "sunrise": format_time_str(sunrise_str),
+                "sunset": format_time_str(sunset_str),
             }
     except Exception as exc:
         logger.warning("Exception during Open-Meteo weather fetch: %s", exc)
@@ -218,11 +255,28 @@ def get_fallback_weather(lat: float, month: int) -> dict:
     else:
         code = 0   # Clear
 
+    # Fallback simulation details
+    apparent_temp_c = round(temp_c + (2.0 if code == 0 else -1.5), 1)
+    cloud_cover = 90 if code == 3 else (10 if code == 0 else 45)
+    humidity = 85 if code in (3, 61, 71) else 45
+    wind_speed = 12.5
+    wind_dir = "NE"
+    sunrise = "05:12"
+    sunset = "20:45"
+
     return {
         "temp_c": round(temp_c, 1),
         "weather_code": code,
+        "apparent_temp_c": apparent_temp_c,
+        "cloud_cover": cloud_cover,
+        "humidity": humidity,
+        "wind_speed": wind_speed,
+        "wind_dir": wind_dir,
+        "sunrise": sunrise,
+        "sunset": sunset,
         "simulated": True,
     }
+
 
 
 class InstaWeatherModule:

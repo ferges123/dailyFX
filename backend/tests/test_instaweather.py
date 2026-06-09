@@ -102,3 +102,17 @@ def test_instaweather_module_run_weather_mode(monkeypatch):
     assert res.config["mode"] == "instaweather"
     assert "Piaseczno" in res.summary
     assert "22°C" in res.summary
+
+
+def test_fetch_weather_structure():
+    # Test that fallback geocode/weather provides all required fields
+    from app.services.generation.modules.instaweather import get_fallback_weather
+    data = get_fallback_weather(52.23, 6)
+    assert "apparent_temp_c" in data
+    assert "cloud_cover" in data
+    assert "humidity" in data
+    assert "wind_speed" in data
+    assert "wind_dir" in data
+    assert "sunrise" in data
+    assert "sunset" in data
+
