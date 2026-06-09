@@ -116,3 +116,22 @@ def test_fetch_weather_structure():
     assert "sunrise" in data
     assert "sunset" in data
 
+
+def test_vector_icons():
+    from PIL import Image, ImageDraw
+    from app.services.generation.modules.instaweather import (
+        draw_pin_icon,
+        draw_humidity_icon,
+        draw_wind_icon,
+        draw_sunrise_icon,
+        draw_sunset_icon,
+    )
+    img = Image.new("RGBA", (100, 100))
+    draw = ImageDraw.Draw(img)
+    draw_pin_icon(draw, 10, 10, 20, (255, 255, 255, 255))
+    draw_humidity_icon(draw, 10, 10, 20, (255, 255, 255, 255))
+    draw_wind_icon(draw, 10, 10, 20, (255, 255, 255, 255))
+    draw_sunrise_icon(draw, 10, 10, 20, (255, 255, 255, 255))
+    draw_sunset_icon(draw, 10, 10, 20, (255, 255, 255, 255))
+
+

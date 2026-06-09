@@ -276,7 +276,195 @@ def get_fallback_weather(lat: float, month: int) -> dict:
         "sunset": sunset,
         "simulated": True,
     }
+def draw_pin_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+    w = max(1.5, size * 0.08)
+    cx = x + size / 2
+    cy = y + size * 0.38
+    r = size * 0.28
+    # Upper circle
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=int(w))
+    # Inner dot
+    r_in = size * 0.08
+    draw.ellipse([cx - r_in, cy - r_in, cx + r_in, cy + r_in], fill=color)
+    # Bottom pointer
+    p1 = (cx - r * 0.866, cy + r * 0.5) # 150 deg
+    p2 = (cx, y + size * 0.95)
+    p3 = (cx + r * 0.866, cy + r * 0.5) # 30 deg
+    draw.line([p1, p2, p3], fill=color, width=int(w), joint="round")
 
+
+def draw_humidity_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+    w = max(1.5, size * 0.08)
+    cx = x + size / 2
+    r = size * 0.28
+    cy = y + size * 0.62
+    # Draw bottom half arc
+    draw.arc([cx - r, cy - r, cx + r, cy + r], start=0, end=180, fill=color, width=int(w))
+    # Draw lines from top point to the arc sides
+    top = (cx, y + size * 0.15)
+    p_left = (cx - r, cy)
+    p_right = (cx + r, cy)
+    draw.line([p_left, top, p_right], fill=color, width=int(w), joint="round")
+
+
+def draw_wind_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+    w = max(1.5, size * 0.08)
+    # Line 1 (top)
+    y1 = y + size * 0.35
+    draw.line([(x + size * 0.1, y1), (x + size * 0.65, y1)], fill=color, width=int(w))
+    # Curl 1 (up and back)
+    draw.arc([x + size * 0.55, y1 - size * 0.2, x + size * 0.75, y1], start=270, end=90, fill=color, width=int(w))
+    
+    # Line 2 (bottom)
+    y2 = y + size * 0.65
+    draw.line([(x + size * 0.2, y2), (x + size * 0.75, y2)], fill=color, width=int(w))
+    # Curl 2 (down and back)
+    draw.arc([x + size * 0.65, y2, x + size * 0.85, y2 + size * 0.2], start=90, end=270, fill=color, width=int(w))
+
+
+def draw_sunrise_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+    w = max(1.5, size * 0.08)
+    cx = x + size / 2
+    hy = y + size * 0.75
+    # Horizon line
+    draw.line([(x + size * 0.1, hy), (x + size * 0.9, hy)], fill=color, width=int(w))
+    # Half sun
+    r = size * 0.22
+    draw.arc([cx - r, hy - r, cx + r, hy + r], start=180, end=360, fill=color, width=int(w))
+    # Rays
+    # Top ray
+    draw.line([(cx, hy - r - size * 0.05), (cx, hy - r - size * 0.2)], fill=color, width=int(w))
+    # Left ray
+    draw.line([(cx - r * 0.7, hy - r * 0.7), (cx - r * 1.1, hy - r * 1.1)], fill=color, width=int(w))
+    # Right ray
+    draw.line([(cx + r * 0.7, hy - r * 0.7), (cx + r * 1.1, hy - r * 1.1)], fill=color, width=int(w))
+    # Up arrow (small, in center of sun)
+    draw.line([(cx, hy - size * 0.05), (cx, hy - size * 0.18)], fill=color, width=int(w))
+    draw.line([(cx - size * 0.05, hy - size * 0.13), (cx, hy - size * 0.18), (cx + size * 0.05, hy - size * 0.13)], fill=color, width=int(w))
+
+
+def draw_sunset_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+    w = max(1.5, size * 0.08)
+    cx = x + size / 2
+    hy = y + size * 0.75
+    # Horizon line
+    draw.line([(x + size * 0.1, hy), (x + size * 0.9, hy)], fill=color, width=int(w))
+    # Half sun
+    r = size * 0.22
+    draw.arc([cx - r, hy - r, cx + r, hy + r], start=180, end=360, fill=color, width=int(w))
+    # Rays
+    # Top ray
+    draw.line([(cx, hy - r - size * 0.05), (cx, hy - r - size * 0.2)], fill=color, width=int(w))
+    # Left ray
+    draw.line([(cx - r * 0.7, hy - r * 0.7), (cx - r * 1.1, hy - r * 1.1)], fill=color, width=int(w))
+    # Right ray
+    draw.line([(cx + r * 0.7, hy - r * 0.7), (cx + r * 1.1, hy - r * 1.1)], fill=color, width=int(w))
+    # Down arrow
+    draw.line([(cx, hy - size * 0.18), (cx, hy - size * 0.05)], fill=color, width=int(w))
+    draw.line([(cx - size * 0.05, hy - size * 0.10), (cx, hy - size * 0.05), (cx + size * 0.05, hy - size * 0.10)], fill=color, width=int(w))
+
+
+def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple = (255, 204, 0, 255)):
+    w = max(1.5, size * 0.08)
+    cx = x + size / 2
+    cy = y + size / 2
+    r = size * 0.22
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=int(w))
+    # 8 rays
+    ray_len = size * 0.12
+    ray_gap = size * 0.08
+    import math
+    for i in range(8):
+        angle = i * (math.pi / 4)
+        x1 = cx + (r + ray_gap) * math.cos(angle)
+        y1 = cy + (r + ray_gap) * math.sin(angle)
+        x2 = cx + (r + ray_gap + ray_len) * math.cos(angle)
+        y2 = cy + (r + ray_gap + ray_len) * math.sin(angle)
+        draw.line([(x1, y1), (x2, y2)], fill=color, width=int(w))
+
+
+def draw_cloud(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, fill_color: tuple = (255, 255, 255, 230)):
+    # Left circle
+    r1 = size * 0.18
+    cx1, cy1 = x + size * 0.35, y + size * 0.6
+    draw.ellipse([cx1 - r1, cy1 - r1, cx1 + r1, cy1 + r1], fill=fill_color)
+    
+    # Middle circle
+    r2 = size * 0.23
+    cx2, cy2 = x + size * 0.52, y + size * 0.45
+    draw.ellipse([cx2 - r2, cy2 - r2, cx2 + r2, cy2 + r2], fill=fill_color)
+    
+    # Right circle
+    r3 = size * 0.15
+    cx3, cy3 = x + size * 0.68, y + size * 0.62
+    draw.ellipse([cx3 - r3, cy3 - r3, cx3 + r3, cy3 + r3], fill=fill_color)
+    
+    # Bottom rect
+    draw.rounded_rectangle(
+        [x + size * 0.25, y + size * 0.55, x + size * 0.75, y + size * 0.78],
+        radius=int(size * 0.12),
+        fill=fill_color
+    )
+
+
+def draw_rain(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
+    # First draw the cloud slightly shifted up
+    draw_cloud(draw, x, y - size * 0.08, size, fill_color=(255, 255, 255, 220))
+    # Now draw 3 rain streaks
+    w = max(1.5, size * 0.06)
+    color = (100, 180, 255, 255)
+    # Streak 1
+    draw.line([(x + size * 0.38, y + size * 0.72), (x + size * 0.32, y + size * 0.88)], fill=color, width=int(w))
+    # Streak 2
+    draw.line([(x + size * 0.52, y + size * 0.72), (x + size * 0.46, y + size * 0.88)], fill=color, width=int(w))
+    # Streak 3
+    draw.line([(x + size * 0.66, y + size * 0.72), (x + size * 0.60, y + size * 0.88)], fill=color, width=int(w))
+
+
+def draw_snow(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
+    draw_cloud(draw, x, y - size * 0.08, size, fill_color=(255, 255, 255, 220))
+    # Draw snowflakes (dots)
+    color = (255, 255, 255, 255)
+    r = max(1.5, size * 0.03)
+    # Dot 1
+    cx1, cy1 = x + size * 0.38, y + size * 0.78
+    draw.ellipse([cx1 - r, cy1 - r, cx1 + r, cy1 + r], fill=color)
+    # Dot 2
+    cx2, cy2 = x + size * 0.52, y + size * 0.82
+    draw.ellipse([cx2 - r, cy2 - r, cx2 + r, cy2 + r], fill=color)
+    # Dot 3
+    cx3, cy3 = x + size * 0.66, y + size * 0.78
+    draw.ellipse([cx3 - r, cy3 - r, cx3 + r, cy3 + r], fill=color)
+
+
+def draw_thunderstorm(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
+    draw_cloud(draw, x, y - size * 0.08, size, fill_color=(235, 235, 235, 220))
+    # Sharp lightning bolt polygon
+    color = (255, 220, 0, 255)
+    p = [
+        (x + size * 0.55, y + size * 0.65), # top start
+        (x + size * 0.44, y + size * 0.78), # middle left
+        (x + size * 0.52, y + size * 0.78), # middle right
+        (x + size * 0.45, y + size * 0.94), # bottom tip
+        (x + size * 0.58, y + size * 0.76), # middle right high
+        (x + size * 0.50, y + size * 0.76), # middle left high
+    ]
+    draw.polygon(p, fill=color)
+
+
+def draw_main_weather_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, code: int):
+    if code == 0:
+        draw_sun(draw, x, y, size)
+    elif code in (1, 2, 3, 45, 48):
+        draw_cloud(draw, x, y, size)
+    elif code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
+        draw_rain(draw, x, y, size)
+    elif code in (71, 73, 75, 77, 85, 86):
+        draw_snow(draw, x, y, size)
+    elif code in (95, 96, 99):
+        draw_thunderstorm(draw, x, y, size)
+    else:
+        draw_sun(draw, x, y, size)
 
 
 class InstaWeatherModule:
