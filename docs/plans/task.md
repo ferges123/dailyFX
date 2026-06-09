@@ -6,4 +6,4 @@
 | Design: Write Design Doc & Plan | Completed | Documented approved design and generated implementation plan. |
 | Task 1: Update API Parameters and Weather Parsing | Completed | Extend Open-Meteo variables, implement feels-like, wind, humidity, sunrise, sunset, and cloudiness parsing, and extend fallback weather data. |
 | Task 2: Implement Vector Icon Draw Functions | Completed | Write dynamic PIL drawing functions for weather states and secondary metrics. |
-| Task 3: Implement Layout Rendering with Collision Avoidance | In Progress | Implement 7% safe area layout blocks, fake bold, readability shadows, face protection collision shifting, and integrate with image generation flow. |
+| Task 3: Implement Layout Rendering with Collision Avoidance | Completed | Implement 7% safe area layout blocks, fake bold, readability shadows, face protection collision shifting, and integrate with image generation flow. |
