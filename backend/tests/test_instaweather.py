@@ -79,9 +79,14 @@ def test_instaweather_module_run_weather_mode(monkeypatch):
     async def mock_reverse_geocode(lat, lon):
         return "Piaseczno"
 
+    async def mock_reverse_geocode_detailed(lat, lon):
+        return "Piaseczno", "Poland"
+
     from app.services.generation.modules import instaweather
     monkeypatch.setattr(instaweather, "fetch_weather", mock_fetch_weather)
     monkeypatch.setattr(instaweather, "reverse_geocode", mock_reverse_geocode)
+    monkeypatch.setattr(instaweather, "reverse_geocode_detailed", mock_reverse_geocode_detailed)
+
 
     module = InstaWeatherModule()
     client = MockImmichClient(exif_data={
@@ -133,5 +138,46 @@ def test_vector_icons():
     draw_wind_icon(draw, 10, 10, 20, (255, 255, 255, 255))
     draw_sunrise_icon(draw, 10, 10, 20, (255, 255, 255, 255))
     draw_sunset_icon(draw, 10, 10, 20, (255, 255, 255, 255))
+
+
+def test_collision_avoidance():
+    from PIL import Image
+    from app.services.generation.modules.instaweather import _draw_graphics_overlay
+    
+    img = Image.new("RGB", (1000, 1000), "white")
+    # Mock face
+    class MockFace:
+        bounding_box_x1 = 0.05
+        bounding_box_y1 = 0.05
+        bounding_box_x2 = 0.15
+        bounding_box_y2 = 0.15
+        
+    faces = [MockFace()]
+    weather_info = {
+        "temp_c": 22.0,
+        "weather_code": 0,
+        "apparent_temp_c": 21.0,
+        "cloud_cover": 10,
+        "humidity": 45,
+        "wind_speed": 12.0,
+        "wind_dir": "NE",
+        "sunrise": "05:12",
+        "sunset": "20:45",
+    }
+    
+    # Render with faces and check that it doesn't crash
+    res = _draw_graphics_overlay(
+        img=img,
+        mode="instaweather",
+        location=("ZAKOPANE", "POLAND"),
+        weather_info=weather_info,
+        dt=None,
+        faces=faces,
+        units="celsius",
+        font_style="classic",
+    )
+    assert res is not None
+    assert res.size == (1000, 1000)
+
 
 
