@@ -1,6 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Download, Pencil, Plus, RefreshCcw, Trash2, Upload } from 'lucide-react';
+import {
+  Copy,
+  Download,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import {
   createAIEffect,
   deleteAIEffect,
@@ -18,7 +27,14 @@ import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../components/FormUI';
 import { Field, SelectField } from '../components/Field';
 
-const AI_EFFECT_GROUP_ORDER = ['Portrait', 'Illustration', 'Poster', '3D / Toy', 'Pop Culture', 'Ungrouped'];
+const AI_EFFECT_GROUP_ORDER = [
+  'Portrait',
+  'Illustration',
+  'Poster',
+  '3D / Toy',
+  'Pop Culture',
+  'Ungrouped',
+];
 
 function getAIEffectGroupOrder(group: string): number {
   const index = AI_EFFECT_GROUP_ORDER.indexOf(group);
@@ -45,7 +61,12 @@ function formatStatus(effect: AIEffect): string[] {
   if (effect.source === 'builtin') {
     tags.push('Built-in');
     if (effect.user_modified_at) tags.push('Modified locally');
-    if (effect.user_modified_at && effect.builtin_hash && effect.latest_builtin_hash && effect.builtin_hash !== effect.latest_builtin_hash) {
+    if (
+      effect.user_modified_at &&
+      effect.builtin_hash &&
+      effect.latest_builtin_hash &&
+      effect.builtin_hash !== effect.latest_builtin_hash
+    ) {
       tags.push('Default changed');
     }
   } else if (effect.source === 'custom') {
@@ -72,46 +93,110 @@ function AIEffectCard({
 }) {
   const statusTags = formatStatus(effect);
   const [showPrompts, setShowPrompts] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   return (
-    <div className={`grid gap-3 rounded-2xl border px-3 py-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${effect.enabled ? 'border-stone-200/80 bg-white/85' : 'border-stone-200 bg-stone-50/80'}`}>
+    <div
+      className={`grid gap-2 rounded-xl border px-3 py-2.5 ${effect.enabled ? 'border-stone-200/80 bg-white/85' : 'border-stone-200 bg-stone-50/80'}`}
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 grid gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-stone-900">{effect.title}</span>
-            <span className="app-chip px-2 py-0.5 text-[10px]">{effect.id}</span>
-            {effect.display_group && <span className="app-chip px-2 py-0.5 text-[10px]">group {effect.display_group}</span>}
+            <span className="text-sm font-semibold text-stone-900">
+              {effect.title}
+            </span>
+            <span className="app-chip px-2 py-0.5 text-[10px]">
+              {effect.id}
+            </span>
+            {effect.display_group && (
+              <span className="app-chip px-2 py-0.5 text-[10px]">
+                group {effect.display_group}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {statusTags.map((tag) => (
-              <span key={tag} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+              <span
+                key={tag}
+                className="app-chip px-2 py-0.5 text-[10px] font-medium"
+              >
                 {tag}
               </span>
             ))}
           </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => onEdit(effect)} className="app-button-secondary px-2.5 py-1.5 text-xs">
+        <div className="relative flex flex-wrap gap-1.5 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => onEdit(effect)}
+            aria-label={`Edit ${effect.title}`}
+            className="app-button-secondary px-2.5 py-1.5 text-xs"
+          >
             <Pencil size={12} /> Edit
           </button>
-          <button type="button" onClick={() => onDuplicate(effect)} className="app-button-secondary px-2.5 py-1.5 text-xs">
-            <Copy size={12} /> Duplicate
+          <button
+            type="button"
+            onClick={() => setShowActions((current) => !current)}
+            aria-expanded={showActions}
+            aria-label={`More actions for ${effect.title}`}
+            className="app-button-secondary px-2 py-1.5 text-xs"
+          >
+            <MoreHorizontal size={14} />
           </button>
-          {effect.source === 'builtin' && (
-            <button type="button" onClick={() => onReset(effect)} className="app-button-secondary px-2.5 py-1.5 text-xs text-blue-700">
-              <RefreshCcw size={12} /> Reset
-            </button>
+          {showActions && (
+            <div className="z-10 flex w-full flex-wrap gap-1.5 rounded-xl border border-stone-200 bg-white p-1.5 shadow-sm sm:absolute sm:right-0 sm:top-9 sm:w-56 sm:flex-col">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowActions(false);
+                  onDuplicate(effect);
+                }}
+                aria-label={`Duplicate ${effect.title}`}
+                className="app-button-secondary justify-start px-2.5 py-1.5 text-xs"
+              >
+                <Copy size={12} /> Duplicate
+              </button>
+              {effect.source === 'builtin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActions(false);
+                    onReset(effect);
+                  }}
+                  aria-label={`Reset ${effect.title}`}
+                  className="app-button-secondary justify-start px-2.5 py-1.5 text-xs text-blue-700"
+                >
+                  <RefreshCcw size={12} /> Reset
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowActions(false);
+                  onDelete(effect);
+                }}
+                aria-label={`Delete ${effect.title}`}
+                className="app-button-secondary justify-start px-2.5 py-1.5 text-xs text-rose-700"
+              >
+                <Trash2 size={12} /> Delete
+              </button>
+            </div>
           )}
-          <button type="button" onClick={() => onDelete(effect)} className="app-button-secondary px-2.5 py-1.5 text-xs text-rose-700">
-            <Trash2 size={12} /> Delete
-          </button>
         </div>
       </div>
 
-      {effect.description && <div className="text-xs leading-5 text-stone-600">{effect.description}</div>}
+      {effect.description && (
+        <div className="text-xs leading-5 text-stone-600">
+          {effect.description}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setShowPrompts((current) => !current)} className="app-button-secondary px-2.5 py-1.5 text-xs">
+        <button
+          type="button"
+          onClick={() => setShowPrompts((current) => !current)}
+          className="app-button-secondary px-2.5 py-1.5 text-xs"
+        >
           {showPrompts ? 'Hide prompts' : 'Show prompts'}
         </button>
       </div>
@@ -119,13 +204,17 @@ function AIEffectCard({
       {showPrompts && (
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div className="grid gap-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Positive prompt</div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              Positive prompt
+            </div>
             <pre className="max-h-28 overflow-auto whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-700">
               {effect.positive_prompt}
             </pre>
           </div>
           <div className="grid gap-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Negative prompt</div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              Negative prompt
+            </div>
             <pre className="max-h-28 overflow-auto whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-700">
               {effect.negative_prompt || 'None'}
             </pre>
@@ -158,10 +247,13 @@ export function AIEffectsPage() {
         display_group: form.display_group?.trim() || null,
         positive_prompt: form.positive_prompt.trim(),
         negative_prompt: form.negative_prompt?.trim() || null,
-        custom_prompt_placeholder: form.custom_prompt_placeholder?.trim() || null,
+        custom_prompt_placeholder:
+          form.custom_prompt_placeholder?.trim() || null,
         enabled: form.enabled,
       };
-      return editing && !isNew ? updateAIEffect(editing.id, payload) : createAIEffect(payload);
+      return editing && !isNew
+        ? updateAIEffect(editing.id, payload)
+        : createAIEffect(payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ai-effects'] });
@@ -191,7 +283,9 @@ export function AIEffectsPage() {
   const exportMutation = useMutation({
     mutationFn: exportAIEffects,
     onSuccess: (data) => {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -208,7 +302,9 @@ export function AIEffectsPage() {
     mutationFn: importAIEffects,
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['ai-effects'] });
-      setImportResult(`Imported ${data.added.length} added, ${data.updated.length} updated, ${data.conflicts.length} conflicts.`);
+      setImportResult(
+        `Imported ${data.added.length} added, ${data.updated.length} updated, ${data.conflicts.length} conflicts.`,
+      );
     },
     onError: (e: Error) => setError(e.message),
     onSettled: () => setImporting(false),
@@ -217,9 +313,13 @@ export function AIEffectsPage() {
   const [validationIssues, canSave] = useMemo(() => {
     const issues: string[] = [];
     if (!form.id.trim()) issues.push('Effect id is required.');
-    if (!/^[a-z][a-z0-9_]*$/.test(form.id.trim())) issues.push('Effect id must use lowercase letters, numbers, and underscores.');
+    if (!/^[a-z][a-z0-9_]*$/.test(form.id.trim()))
+      issues.push(
+        'Effect id must use lowercase letters, numbers, and underscores.',
+      );
     if (!form.title.trim()) issues.push('Title is required.');
-    if (!form.positive_prompt.trim()) issues.push('Positive prompt is required.');
+    if (!form.positive_prompt.trim())
+      issues.push('Positive prompt is required.');
     return [issues, issues.length === 0] as const;
   }, [form]);
 
@@ -336,7 +436,13 @@ export function AIEffectsPage() {
   }
 
   if (isError) {
-    return <ErrorBanner title="Could not load AI effects" error={effects.error} onRetry={() => effects.refetch()} />;
+    return (
+      <ErrorBanner
+        title="Could not load AI effects"
+        error={effects.error}
+        onRetry={() => effects.refetch()}
+      />
+    );
   }
 
   return (
@@ -344,17 +450,33 @@ export function AIEffectsPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-semibold text-stone-900">AI effects</div>
-          <div className="text-xs text-stone-500">Built-in seeds are synced from JSON into the database. Runtime edits stay local.</div>
+          <div className="text-xs text-stone-500">
+            Built-in seeds are synced from JSON into the database. Runtime edits
+            stay local.
+          </div>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={openNew} className="app-button-primary px-3 py-2 text-sm">
+            <button
+              type="button"
+              onClick={openNew}
+              className="app-button-primary px-3 py-2 text-sm"
+            >
               <Plus size={14} /> New effect
             </button>
-            <button type="button" onClick={() => exportMutation.mutate()} className="app-button-secondary px-3 py-2 text-sm">
+            <button
+              type="button"
+              onClick={() => exportMutation.mutate()}
+              className="app-button-secondary px-3 py-2 text-sm"
+            >
               <Download size={14} /> Export
             </button>
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="app-button-secondary px-3 py-2 text-sm disabled:opacity-50">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="app-button-secondary px-3 py-2 text-sm disabled:opacity-50"
+            >
               <Upload size={14} /> Import
             </button>
             <input
@@ -366,7 +488,11 @@ export function AIEffectsPage() {
             />
           </div>
           <div className="w-full sm:w-72">
-            <SelectField label="Filter by group" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+            <SelectField
+              label="Filter by group"
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+            >
               <option value="all">All groups</option>
               {groupOptions.map((group) => (
                 <option key={group} value={group}>
@@ -379,17 +505,29 @@ export function AIEffectsPage() {
       </div>
 
       {error && <InlineError title="AI effect action failed" message={error} />}
-      {importResult && <InlineError title="Import result" message={importResult} />}
+      {importResult && (
+        <InlineError title="Import result" message={importResult} />
+      )}
 
-      {validationIssues.length > 0 && showForm && <InlineError title="Fix the highlighted fields" message={validationIssues.join(' ')} />}
+      {validationIssues.length > 0 && showForm && (
+        <InlineError
+          title="Fix the highlighted fields"
+          message={validationIssues.join(' ')}
+        />
+      )}
 
       {showForm && (
         <div className="app-panel grid gap-4 p-4">
           <div className="flex items-center gap-1.5">
-            <div className="text-sm font-semibold text-stone-900">{isNew ? 'New AI effect' : `Editing: ${editing?.title}`}</div>
+            <div className="text-sm font-semibold text-stone-900">
+              {isNew ? 'New AI effect' : `Editing: ${editing?.title}`}
+            </div>
           </div>
 
-          <SectionCard title="Basics" description="Title, identifier, and availability.">
+          <SectionCard
+            title="Basics"
+            description="Title, identifier, and availability."
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               <Field
                 label="ID"
@@ -403,14 +541,18 @@ export function AIEffectsPage() {
                 label="Title"
                 required
                 value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
                 placeholder="My Custom AI Effect"
               />
               <label className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700">
                 <input
                   type="checkbox"
                   checked={form.enabled}
-                  onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, enabled: e.target.checked }))
+                  }
                   className="h-4 w-4 accent-emerald-700"
                 />
                 Enabled
@@ -419,7 +561,9 @@ export function AIEffectsPage() {
                 <Field
                   label="Description"
                   value={form.description ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
                   optional
                 />
               </div>
@@ -427,7 +571,9 @@ export function AIEffectsPage() {
                 <Field
                   label="Group"
                   value={form.display_group ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, display_group: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, display_group: e.target.value }))
+                  }
                   optional
                   placeholder="Illustration"
                 />
@@ -435,7 +581,10 @@ export function AIEffectsPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Prompts" description="Seed fields that can be edited locally on built-in effects.">
+          <SectionCard
+            title="Prompts"
+            description="Seed fields that can be edited locally on built-in effects."
+          >
             <div className="grid gap-3">
               <label className="grid gap-1.5 text-sm font-medium text-stone-800">
                 <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
@@ -444,7 +593,9 @@ export function AIEffectsPage() {
                 </span>
                 <textarea
                   value={form.positive_prompt}
-                  onChange={(e) => setForm((f) => ({ ...f, positive_prompt: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, positive_prompt: e.target.value }))
+                  }
                   rows={7}
                   className="app-control min-h-40 resize-y px-3 py-2 text-sm"
                   placeholder="Describe the exact transformation the model should apply."
@@ -456,7 +607,9 @@ export function AIEffectsPage() {
                 </span>
                 <textarea
                   value={form.negative_prompt ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, negative_prompt: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, negative_prompt: e.target.value }))
+                  }
                   rows={5}
                   className="app-control min-h-32 resize-y px-3 py-2 text-sm"
                   placeholder="Things to avoid."
@@ -465,7 +618,12 @@ export function AIEffectsPage() {
               <Field
                 label="Custom prompt placeholder"
                 value={form.custom_prompt_placeholder ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, custom_prompt_placeholder: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    custom_prompt_placeholder: e.target.value,
+                  }))
+                }
                 optional
                 placeholder="e.g. Studio Ghibli style, soft watercolor..."
               />
@@ -473,10 +631,19 @@ export function AIEffectsPage() {
           </SectionCard>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => saveMutation.mutate()} disabled={!canSave || saveMutation.isPending} className="app-button-primary px-3 py-2 text-sm disabled:opacity-50">
+            <button
+              type="button"
+              onClick={() => saveMutation.mutate()}
+              disabled={!canSave || saveMutation.isPending}
+              className="app-button-primary px-3 py-2 text-sm disabled:opacity-50"
+            >
               Save
             </button>
-            <button type="button" onClick={closeForm} className="app-button-secondary px-3 py-2 text-sm">
+            <button
+              type="button"
+              onClick={closeForm}
+              className="app-button-secondary px-3 py-2 text-sm"
+            >
               Cancel
             </button>
           </div>
@@ -488,11 +655,15 @@ export function AIEffectsPage() {
           <EmptyState
             title="No AI effects in this group"
             description="Try another group filter or create a new effect."
-            action={(
-              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
+            action={
+              <button
+                type="button"
+                onClick={openNew}
+                className="app-button-primary px-3 py-1.5 text-sm"
+              >
                 <Plus size={14} /> New effect
               </button>
-            )}
+            }
           />
         )}
         {groupedEffects.map(([groupName, items]) => (
@@ -508,14 +679,24 @@ export function AIEffectsPage() {
                   effect={effect}
                   onEdit={openEdit}
                   onDuplicate={(item) => {
-                    if (confirm(`Duplicate "${item.title}"?`)) duplicateMutation.mutate(item);
+                    if (confirm(`Duplicate "${item.title}"?`))
+                      duplicateMutation.mutate(item);
                   }}
                   onReset={(item) => {
-                    if (confirm(`Reset "${item.title}" to the built-in default?`)) resetMutation.mutate(item);
+                    if (
+                      confirm(`Reset "${item.title}" to the built-in default?`)
+                    )
+                      resetMutation.mutate(item);
                   }}
                   onDelete={(item) => {
-                    const verb = item.source === 'builtin' ? 'disable' : 'delete';
-                    if (confirm(`${verb === 'disable' ? 'Disable' : 'Delete'} "${item.title}"?`)) deleteMutation.mutate(item);
+                    const verb =
+                      item.source === 'builtin' ? 'disable' : 'delete';
+                    if (
+                      confirm(
+                        `${verb === 'disable' ? 'Disable' : 'Delete'} "${item.title}"?`,
+                      )
+                    )
+                      deleteMutation.mutate(item);
                   }}
                 />
               ))}

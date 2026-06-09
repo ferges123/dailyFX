@@ -1,20 +1,55 @@
 import { useState, useEffect, Fragment, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BellOff, Monitor, Plus, Trash2, Pencil, Check, X, Smartphone, Eye } from 'lucide-react';
+import {
+  Bell,
+  BellOff,
+  Monitor,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+  Smartphone,
+  Eye,
+} from 'lucide-react';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../components/FormUI';
 import {
-  getFilterPresets, createFilterPreset, updateFilterPreset, deleteFilterPreset,
-  getEffectPresets, createEffectPreset, updateEffectPreset, deleteEffectPreset,
-  getNotificationPresets, createNotificationPreset, updateNotificationPreset, deleteNotificationPreset, testNotificationPreset,
-  getImmichFilterOptions, getGenerationModules, getGenerationExamples,
-  getVapidPublicKey, subscribeWebPush, unsubscribeWebPush, getPushSubscriptions, deletePushSubscription,
+  getFilterPresets,
+  createFilterPreset,
+  updateFilterPreset,
+  deleteFilterPreset,
+  getEffectPresets,
+  createEffectPreset,
+  updateEffectPreset,
+  deleteEffectPreset,
+  getNotificationPresets,
+  createNotificationPreset,
+  updateNotificationPreset,
+  deleteNotificationPreset,
+  testNotificationPreset,
+  getImmichFilterOptions,
+  getGenerationModules,
+  getGenerationExamples,
+  getVapidPublicKey,
+  subscribeWebPush,
+  unsubscribeWebPush,
+  getPushSubscriptions,
+  deletePushSubscription,
   formatNotificationProviders,
   splitNotificationProviders,
-  type FilterPreset, type EffectPreset, type NotificationPreset, type ImmichPersonFilter, type ImmichFilterOptions, type GenerationModuleInfo,
+  type FilterPreset,
+  type EffectPreset,
+  type NotificationPreset,
+  type ImmichPersonFilter,
+  type ImmichFilterOptions,
+  type GenerationModuleInfo,
 } from '../api/client';
 import { Field, SelectField } from '../components/Field';
-import { MultiSelectPanel, PersonSelectPanel } from '../components/FilterPanels';
+import {
+  MultiSelectPanel,
+  PersonSelectPanel,
+} from '../components/FilterPanels';
 import { FilterRow, ModuleConfigEditor } from '../components/EffectsComponents';
 import {
   createDefaultModificationGroups,
@@ -45,7 +80,11 @@ function PresetHeader({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-stone-500">{count} preset(s)</span>
-      <button type="button" onClick={onCreate} className="app-button-primary w-full justify-center px-3 py-2 text-sm sm:w-auto sm:py-1.5">
+      <button
+        type="button"
+        onClick={onCreate}
+        className="app-button-primary w-full justify-center px-3 py-2 text-sm sm:w-auto sm:py-1.5"
+      >
         <Plus size={14} /> {buttonLabel}
       </button>
     </div>
@@ -87,7 +126,11 @@ function PresetFormActions({
 }
 
 function PresetActionRow({ children }: { children: ReactNode }) {
-  return <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-1.5 sm:shrink-0 sm:items-center">{children}</div>;
+  return (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-1.5 sm:shrink-0 sm:items-center">
+      {children}
+    </div>
+  );
 }
 
 function FilterPresetCard({
@@ -104,13 +147,17 @@ function FilterPresetCard({
   onDelete: (id: number, name: string) => void;
 }) {
   const albumsList = preset.album_ids
-    .map(id => ({ id, name: albumNames.get(id) ?? id }))
+    .map((id) => ({ id, name: albumNames.get(id) ?? id }))
     .slice(0, 5);
   const peopleList = preset.person_filters
-    .map(pf => ({ id: pf.personId, name: personNames.get(pf.personId) ?? pf.personId }))
+    .map((pf) => ({
+      id: pf.personId,
+      name: personNames.get(pf.personId) ?? pf.personId,
+    }))
     .slice(0, 5);
   const tags: string[] = [];
-  if (preset.media_type && preset.media_type !== 'photo') tags.push(preset.media_type);
+  if (preset.media_type && preset.media_type !== 'photo')
+    tags.push(preset.media_type);
   if (preset.start_date) tags.push(`from ${preset.start_date}`);
   if (preset.end_date) tags.push(`to ${preset.end_date}`);
 
@@ -118,7 +165,9 @@ function FilterPresetCard({
     <div className="grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 px-2.5 py-2.5 md:px-3 md:py-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
       <div className="min-w-0 grid gap-1.5 md:gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-stone-900 truncate">{preset.name}</span>
+          <span className="text-sm font-semibold text-stone-900 truncate">
+            {preset.name}
+          </span>
           <span className="app-chip px-2 py-0.5 text-[10px]">
             {albumsList.length} album{albumsList.length === 1 ? '' : 's'}
           </span>
@@ -127,18 +176,27 @@ function FilterPresetCard({
           </span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {albumsList.map(item => (
-            <span key={item.id} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+          {albumsList.map((item) => (
+            <span
+              key={item.id}
+              className="app-chip px-2 py-0.5 text-[10px] font-medium"
+            >
               📁 {item.name}
             </span>
           ))}
-          {peopleList.map(item => (
-            <span key={item.id} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+          {peopleList.map((item) => (
+            <span
+              key={item.id}
+              className="app-chip px-2 py-0.5 text-[10px] font-medium"
+            >
               👤 {item.name}
             </span>
           ))}
-          {tags.map(t => (
-            <span key={t} className="app-chip px-2 py-0.5 text-[10px] font-medium">
+          {tags.map((t) => (
+            <span
+              key={t}
+              className="app-chip px-2 py-0.5 text-[10px] font-medium"
+            >
               {t}
             </span>
           ))}
@@ -182,7 +240,9 @@ function NotificationPresetCard({
   return (
     <div className="flex flex-col gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 px-2.5 py-2.5 md:px-3 md:py-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 grid gap-1">
-        <div className="text-sm font-semibold text-stone-900">{preset.name}</div>
+        <div className="text-sm font-semibold text-stone-900">
+          {preset.name}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           <span className="app-chip px-2 py-0.5 text-[11px]">
             {formatNotificationProviders(preset.provider)}
@@ -204,7 +264,11 @@ function NotificationPresetCard({
           <Bell size={12} /> Test
         </button>
         {testResult?.id === preset.id && (
-          <span className={`w-full text-xs sm:w-auto ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{testResult.msg}</span>
+          <span
+            className={`w-full text-xs sm:w-auto ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}
+          >
+            {testResult.msg}
+          </span>
         )}
         <button
           type="button"
@@ -271,14 +335,18 @@ function EffectPresetTableItem({
                   onClick={onTogglePreview}
                   title="Toggle preview image"
                   className={`inline-flex items-center justify-center rounded-md p-1 transition-colors ${
-                    isExpanded ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'text-stone-400 hover:text-stone-600'
+                    isExpanded
+                      ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                      : 'text-stone-400 hover:text-stone-600'
                   }`}
                 >
                   <Eye size={13} />
                 </button>
               )}
             </div>
-            <div className="text-[11px] font-normal leading-normal text-stone-500">{mod.description}</div>
+            <div className="text-[11px] font-normal leading-normal text-stone-500">
+              {mod.description}
+            </div>
           </div>
         }
         icon={null}
@@ -286,13 +354,15 @@ function EffectPresetTableItem({
         weight={group.weight}
         onEnabledChange={onEnabledChange}
         onWeightChange={onWeightChange}
-        config={(mod.config_schema?.length ?? 0) > 0 ? (
-          <ModuleConfigEditor
-            module={mod}
-            config={group.config}
-            onChange={onConfigChange}
-          />
-        ) : null}
+        config={
+          (mod.config_schema?.length ?? 0) > 0 ? (
+            <ModuleConfigEditor
+              module={mod}
+              config={group.config}
+              onChange={onConfigChange}
+            />
+          ) : null
+        }
       />
       {isExpanded && exampleInfo && (
         <tr className="bg-stone-50/30">
@@ -307,9 +377,15 @@ function EffectPresetTableItem({
                 />
               </div>
               <div className="grid gap-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">Example Result</div>
-                <div className="text-sm font-semibold text-stone-800 truncate">{exampleInfo.title}</div>
-                <div className="text-xs text-stone-600 leading-relaxed">{exampleInfo.summary}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                  Example Result
+                </div>
+                <div className="text-sm font-semibold text-stone-800 truncate">
+                  {exampleInfo.title}
+                </div>
+                <div className="text-xs text-stone-600 leading-relaxed">
+                  {exampleInfo.summary}
+                </div>
               </div>
             </div>
           </td>
@@ -341,24 +417,30 @@ function EffectPresetMobileCard({
   return (
     <div
       className={`grid gap-2.5 rounded-xl md:rounded-2xl border p-2.5 md:p-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md transition ${
-        group.enabled ? 'border-emerald-200 bg-emerald-50/20' : 'border-stone-200/80 bg-white/90'
+        group.enabled
+          ? 'border-emerald-200 bg-emerald-50/20'
+          : 'border-stone-200/80 bg-white/90'
       }`}
     >
-      <div className="grid gap-2">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
-                  <span>{mod.label}</span>
-                  <span className={`app-chip px-1.5 py-0.5 text-[9px] ${group.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : ''}`}>
-                    {group.enabled ? 'On' : 'Off'}
-                  </span>
-                </div>
-                <div className="mt-0.5 text-[11px] leading-snug text-stone-500">{mod.description}</div>
-              </div>
-              {!!exampleInfo && (
-                <button
-                  type="button"
-                  onClick={onTogglePreview}
+      <div className="grid gap-2 xl:grid-cols-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+              <span>{mod.label}</span>
+              <span
+                className={`app-chip px-1.5 py-0.5 text-[9px] ${group.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : ''}`}
+              >
+                {group.enabled ? 'On' : 'Off'}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] leading-snug text-stone-500">
+              {mod.description}
+            </div>
+          </div>
+          {!!exampleInfo && (
+            <button
+              type="button"
+              onClick={onTogglePreview}
               className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border transition-colors ${
                 isExpanded
                   ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -395,7 +477,9 @@ function EffectPresetMobileCard({
 
       {(mod.config_schema?.length ?? 0) > 0 && (
         <div className="border-t border-stone-100 pt-1.5 text-xs">
-          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">Configuration</div>
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+            Configuration
+          </div>
           <ModuleConfigEditor
             module={mod}
             config={group.config}
@@ -414,9 +498,15 @@ function EffectPresetMobileCard({
               loading="lazy"
             />
             <div className="min-w-0">
-              <div className="text-[9px] font-bold uppercase tracking-wide text-stone-400">Example Result</div>
-              <div className="text-xs font-semibold text-stone-800">{exampleInfo.title}</div>
-              <div className="mt-0.5 text-[11px] leading-snug text-stone-600">{exampleInfo.summary}</div>
+              <div className="text-[9px] font-bold uppercase tracking-wide text-stone-400">
+                Example Result
+              </div>
+              <div className="text-xs font-semibold text-stone-800">
+                {exampleInfo.title}
+              </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-stone-600">
+                {exampleInfo.summary}
+              </div>
             </div>
           </div>
         </div>
@@ -427,7 +517,10 @@ function EffectPresetMobileCard({
 
 function FilterPresetsTab() {
   const qc = useQueryClient();
-  const presets = useQuery({ queryKey: ['filter-presets'], queryFn: getFilterPresets });
+  const presets = useQuery({
+    queryKey: ['filter-presets'],
+    queryFn: getFilterPresets,
+  });
   const options = useQuery<ImmichFilterOptions>({
     queryKey: ['immich-filter-options'],
     queryFn: getImmichFilterOptions,
@@ -439,13 +532,16 @@ function FilterPresetsTab() {
       } catch {
         return undefined;
       }
-    }
+    },
   });
 
   useEffect(() => {
     if (options.data) {
       try {
-        localStorage.setItem('dailyfx_immich_filter_options', JSON.stringify(options.data));
+        localStorage.setItem(
+          'dailyfx_immich_filter_options',
+          JSON.stringify(options.data),
+        );
       } catch (err) {
         console.warn('Failed to cache Immich filter options:', err);
       }
@@ -455,18 +551,26 @@ function FilterPresetsTab() {
   const [editing, setEditing] = useState<FilterPreset | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [form, setForm] = useState<FilterFormState>({
-    name: '', album_ids: [], person_filters: [],
-    start_date: null, end_date: null, media_type: 'photo',
+    name: '',
+    album_ids: [],
+    person_filters: [],
+    start_date: null,
+    end_date: null,
+    media_type: 'photo',
   });
   const [albumSearch, setAlbumSearch] = useState('');
   const [personSearch, setPersonSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const saveMutation = useMutation({
-    mutationFn: () => editing && !isNew
-      ? updateFilterPreset(editing.id, form)
-      : createFilterPreset(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['filter-presets'] }); closeForm(); },
+    mutationFn: () =>
+      editing && !isNew
+        ? updateFilterPreset(editing.id, form)
+        : createFilterPreset(form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['filter-presets'] });
+      closeForm();
+    },
     onError: (e: Error) => setError(e.message),
   });
 
@@ -477,10 +581,19 @@ function FilterPresetsTab() {
   });
 
   function openNew() {
-    setForm({ name: '', album_ids: [], person_filters: [], start_date: null, end_date: null, media_type: 'photo' });
+    setForm({
+      name: '',
+      album_ids: [],
+      person_filters: [],
+      start_date: null,
+      end_date: null,
+      media_type: 'photo',
+    });
     setAlbumSearch('');
     setPersonSearch('');
-    setEditing(null); setIsNew(true); setError(null);
+    setEditing(null);
+    setIsNew(true);
+    setError(null);
   }
 
   function openEdit(p: FilterPreset) {
@@ -494,17 +607,25 @@ function FilterPresetsTab() {
     });
     setAlbumSearch('');
     setPersonSearch('');
-    setEditing(p); setIsNew(false); setError(null);
+    setEditing(p);
+    setIsNew(false);
+    setError(null);
   }
 
   function closeForm() {
     setAlbumSearch('');
     setPersonSearch('');
-    setEditing(null); setIsNew(false); setError(null);
+    setEditing(null);
+    setIsNew(false);
+    setError(null);
   }
 
-  const albums = (options.data?.albums ?? []).filter(a => a.album_name.toLowerCase().includes(albumSearch.toLowerCase()));
-  const people = (options.data?.people ?? []).filter(p => p.name.toLowerCase().includes(personSearch.toLowerCase()));
+  const albums = (options.data?.albums ?? []).filter((a) =>
+    a.album_name.toLowerCase().includes(albumSearch.toLowerCase()),
+  );
+  const people = (options.data?.people ?? []).filter((p) =>
+    p.name.toLowerCase().includes(personSearch.toLowerCase()),
+  );
 
   const showForm = isNew || editing !== null;
   const isLoading = presets.isLoading && !presets.data;
@@ -524,7 +645,16 @@ function FilterPresetsTab() {
 
   if (isError) {
     const errorMsg = presets.error;
-    return <ErrorBanner title="Could not load filter presets" error={errorMsg} onRetry={() => { presets.refetch(); options.refetch(); }} />;
+    return (
+      <ErrorBanner
+        title="Could not load filter presets"
+        error={errorMsg}
+        onRetry={() => {
+          presets.refetch();
+          options.refetch();
+        }}
+      />
+    );
   }
 
   return (
@@ -539,15 +669,27 @@ function FilterPresetsTab() {
 
       <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
-      {error && <InlineError title="Could not save filter preset" message={error} />}
+      {error && (
+        <InlineError title="Could not save filter preset" message={error} />
+      )}
 
       {showForm && (
         <div className="app-panel grid gap-3 p-3 md:gap-4 md:p-4">
           <div className="grid gap-0.5 md:gap-1">
-            <div className="text-sm font-semibold text-stone-900">{isNew ? 'New filter preset' : `Editing: ${editing?.name}`}</div>
-            <div className="text-sm text-stone-500">Keep the core criteria visible while you fine-tune albums and people.</div>
+            <div className="text-sm font-semibold text-stone-900">
+              {isNew ? 'New filter preset' : `Editing: ${editing?.name}`}
+            </div>
+            <div className="text-sm text-stone-500">
+              Keep the core criteria visible while you fine-tune albums and
+              people.
+            </div>
           </div>
-          {validationIssues.length > 0 && <InlineError title="Fix the highlighted fields" message={validationIssues.join(' ')} />}
+          {validationIssues.length > 0 && (
+            <InlineError
+              title="Fix the highlighted fields"
+              message={validationIssues.join(' ')}
+            />
+          )}
 
           <SectionCard
             title="Basics"
@@ -560,19 +702,25 @@ function FilterPresetsTab() {
                   required
                   value={form.name}
                   maxLength={255}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
                 />
                 <SelectField
                   label="Media type"
                   value={form.media_type}
-                  onChange={e => setForm(f => ({ ...f, media_type: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, media_type: e.target.value }))
+                  }
                 >
                   <option value="photo">Photos</option>
                   <option value="video">Videos</option>
                   <option value="all">All media</option>
                 </SelectField>
                 <div className="grid gap-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-500">
-                  <div className="font-semibold uppercase tracking-[0.18em] text-stone-500">Date range</div>
+                  <div className="font-semibold uppercase tracking-[0.18em] text-stone-500">
+                    Date range
+                  </div>
                   <div>
                     {form.start_date && form.end_date
                       ? `${form.start_date} to ${form.end_date}`
@@ -589,14 +737,21 @@ function FilterPresetsTab() {
                   label="From"
                   type="date"
                   value={form.start_date ?? ''}
-                  onChange={e => setForm(f => ({ ...f, start_date: e.target.value || null }))}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      start_date: e.target.value || null,
+                    }))
+                  }
                   optional
                 />
                 <Field
                   label="To"
                   type="date"
                   value={form.end_date ?? ''}
-                  onChange={e => setForm(f => ({ ...f, end_date: e.target.value || null }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, end_date: e.target.value || null }))
+                  }
                   optional
                 />
               </div>
@@ -611,10 +766,20 @@ function FilterPresetsTab() {
               label="Albums"
               searchValue={albumSearch}
               onSearchChange={setAlbumSearch}
-              options={albums.map(a => ({ id: a.id, label: `${a.album_name} (${a.asset_count})` }))}
+              options={albums.map((a) => ({
+                id: a.id,
+                label: `${a.album_name} (${a.asset_count})`,
+              }))}
               selectedIds={form.album_ids}
               loading={options.isLoading}
-              onToggle={id => setForm(f => ({ ...f, album_ids: f.album_ids.includes(id) ? f.album_ids.filter(x => x !== id) : [...f.album_ids, id] }))}
+              onToggle={(id) =>
+                setForm((f) => ({
+                  ...f,
+                  album_ids: f.album_ids.includes(id)
+                    ? f.album_ids.filter((x) => x !== id)
+                    : [...f.album_ids, id],
+                }))
+              }
             />
           </SectionCard>
 
@@ -626,23 +791,44 @@ function FilterPresetsTab() {
               label="People"
               searchValue={personSearch}
               onSearchChange={setPersonSearch}
-              options={people.map(p => ({ id: p.id, label: `${p.name} (${p.asset_count})` }))}
+              options={people.map((p) => ({
+                id: p.id,
+                label: `${p.name} (${p.asset_count})`,
+              }))}
               selectedFilters={form.person_filters}
               loading={options.isLoading}
-              onToggle={id => setForm(f => {
-                const exists = f.person_filters.some(p => p.personId === id);
-                const next = exists ? f.person_filters.filter(p => p.personId !== id) : [...f.person_filters, { personId: id, mode: 'optional' as const }];
-                return { ...f, person_filters: next };
-              })}
-              onModeChange={(id, mode) => setForm(f => ({
-                ...f,
-                person_filters: f.person_filters.map(p => p.personId === id ? { ...p, mode: mode as ImmichPersonFilter['mode'] } : p),
-              }))}
+              onToggle={(id) =>
+                setForm((f) => {
+                  const exists = f.person_filters.some(
+                    (p) => p.personId === id,
+                  );
+                  const next = exists
+                    ? f.person_filters.filter((p) => p.personId !== id)
+                    : [
+                        ...f.person_filters,
+                        { personId: id, mode: 'optional' as const },
+                      ];
+                  return { ...f, person_filters: next };
+                })
+              }
+              onModeChange={(id, mode) =>
+                setForm((f) => ({
+                  ...f,
+                  person_filters: f.person_filters.map((p) =>
+                    p.personId === id
+                      ? { ...p, mode: mode as ImmichPersonFilter['mode'] }
+                      : p,
+                  ),
+                }))
+              }
             />
           </SectionCard>
 
           <div className="flex flex-col gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs text-stone-500 sm:flex-row sm:items-center sm:justify-between">
-            <span>{selectedAlbumCount} album(s) and {selectedPersonCount} people selected.</span>
+            <span>
+              {selectedAlbumCount} album(s) and {selectedPersonCount} people
+              selected.
+            </span>
             <span>Required fields are marked with an asterisk.</span>
           </div>
 
@@ -657,29 +843,41 @@ function FilterPresetsTab() {
 
       <div className="grid gap-2">
         {(() => {
-          const albumNames = new Map((options.data?.albums ?? []).map(a => [a.id, a.album_name]));
-          const personNames = new Map((options.data?.people ?? []).map(p => [p.id, p.name]));
-          return presets.data?.map(p => (
+          const albumNames = new Map(
+            (options.data?.albums ?? []).map((a) => [a.id, a.album_name]),
+          );
+          const personNames = new Map(
+            (options.data?.people ?? []).map((p) => [p.id, p.name]),
+          );
+          return presets.data?.map((p) => (
             <FilterPresetCard
               key={p.id}
               preset={p}
               albumNames={albumNames}
               personNames={personNames}
               onEdit={openEdit}
-              onDelete={(id, name) => { if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id); }}
+              onDelete={(id, name) => {
+                if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id);
+              }}
             />
           ));
         })()}
         {presets.data?.length === 0 && (
-          <EmptyState
-            title="No filter presets yet"
-            description="Create a filter preset to control which albums, people, and dates feed generation."
-            action={(
-              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
-                <Plus size={14} /> New preset
-              </button>
-            )}
-          />
+          <div className="xl:col-span-2">
+            <EmptyState
+              title="No filter presets yet"
+              description="Create a filter preset to control which albums, people, and dates feed generation."
+              action={
+                <button
+                  type="button"
+                  onClick={openNew}
+                  className="app-button-primary px-3 py-1.5 text-sm"
+                >
+                  <Plus size={14} /> New preset
+                </button>
+              }
+            />
+          </div>
         )}
       </div>
     </div>
@@ -690,24 +888,43 @@ function FilterPresetsTab() {
 
 function EffectPresetsTab() {
   const qc = useQueryClient();
-  const presets = useQuery({ queryKey: ['effect-presets'], queryFn: getEffectPresets });
-  const modules = useQuery({ queryKey: ['generation-modules'], queryFn: getGenerationModules });
-  const examples = useQuery({ queryKey: ['generation-examples'], queryFn: getGenerationExamples, retry: false });
+  const presets = useQuery({
+    queryKey: ['effect-presets'],
+    queryFn: getEffectPresets,
+  });
+  const modules = useQuery({
+    queryKey: ['generation-modules'],
+    queryFn: getGenerationModules,
+  });
+  const examples = useQuery({
+    queryKey: ['generation-examples'],
+    queryFn: getGenerationExamples,
+    retry: false,
+  });
 
   const [editing, setEditing] = useState<EffectPreset | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [name, setName] = useState('');
-  const [groups, setGroups] = useState<ModificationGroupsConfig>(createDefaultModificationGroups());
+  const [groups, setGroups] = useState<ModificationGroupsConfig>(
+    createDefaultModificationGroups(),
+  );
   const [error, setError] = useState<string | null>(null);
   const [effectTab, setEffectTab] = useState<'local' | 'ai'>('local');
-  const [expandedPreviews, setExpandedPreviews] = useState<Record<string, boolean>>({});
+  const [expandedPreviews, setExpandedPreviews] = useState<
+    Record<string, boolean>
+  >({});
 
   const saveMutation = useMutation({
     mutationFn: () => {
       const body = { name, groups };
-      return editing && !isNew ? updateEffectPreset(editing.id, body) : createEffectPreset(body);
+      return editing && !isNew
+        ? updateEffectPreset(editing.id, body)
+        : createEffectPreset(body);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['effect-presets'] }); closeForm(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['effect-presets'] });
+      closeForm();
+    },
     onError: (e: Error) => setError(e.message),
   });
 
@@ -718,8 +935,11 @@ function EffectPresetsTab() {
   });
 
   function openNew() {
-    setName(''); setGroups(createDefaultModificationGroups());
-    setEditing(null); setIsNew(true); setError(null);
+    setName('');
+    setGroups(createDefaultModificationGroups());
+    setEditing(null);
+    setIsNew(true);
+    setError(null);
     setExpandedPreviews({});
   }
 
@@ -727,27 +947,38 @@ function EffectPresetsTab() {
     setName(p.name);
     const parsed = parseModificationGroups(JSON.stringify(p.groups));
     setGroups(parsed.value);
-    setEditing(p); setIsNew(false); setError(null);
+    setEditing(p);
+    setIsNew(false);
+    setError(null);
     setExpandedPreviews({});
   }
 
-  function closeForm() { setEditing(null); setIsNew(false); setError(null); }
+  function closeForm() {
+    setEditing(null);
+    setIsNew(false);
+    setError(null);
+  }
 
   const showForm = isNew || editing !== null;
   const moduleList = modules.data ?? [];
 
-  const localModules = moduleList.filter(mod => !mod.name.startsWith('ai_'));
-  const aiModules = moduleList.filter(mod => mod.name.startsWith('ai_'));
+  const localModules = moduleList.filter((mod) => !mod.name.startsWith('ai_'));
+  const aiModules = moduleList.filter((mod) => mod.name.startsWith('ai_'));
 
-  const activeLocalCount = localModules.filter(mod => groups[mod.name]?.enabled).length;
-  const activeAiCount = aiModules.filter(mod => groups[mod.name]?.enabled).length;
+  const activeLocalCount = localModules.filter(
+    (mod) => groups[mod.name]?.enabled,
+  ).length;
+  const activeAiCount = aiModules.filter(
+    (mod) => groups[mod.name]?.enabled,
+  ).length;
 
   const currentModules = effectTab === 'local' ? localModules : aiModules;
   const isLoading = presets.isLoading && !presets.data;
   const isError = presets.isError && !presets.data;
   const validationIssues: string[] = [];
   if (!name.trim()) validationIssues.push('Preset name is required.');
-  if (activeLocalCount + activeAiCount === 0) validationIssues.push('Enable at least one effect before saving.');
+  if (activeLocalCount + activeAiCount === 0)
+    validationIssues.push('Enable at least one effect before saving.');
   const canSave = validationIssues.length === 0;
 
   if (isLoading) {
@@ -756,7 +987,16 @@ function EffectPresetsTab() {
 
   if (isError) {
     const errorMsg = presets.error;
-    return <ErrorBanner title="Could not load effect presets" error={errorMsg} onRetry={() => { presets.refetch(); modules.refetch(); }} />;
+    return (
+      <ErrorBanner
+        title="Could not load effect presets"
+        error={errorMsg}
+        onRetry={() => {
+          presets.refetch();
+          modules.refetch();
+        }}
+      />
+    );
   }
 
   return (
@@ -771,13 +1011,22 @@ function EffectPresetsTab() {
 
       <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
-      {error && <InlineError title="Could not save effect preset" message={error} />}
+      {error && (
+        <InlineError title="Could not save effect preset" message={error} />
+      )}
 
       {showForm && (
         <div className="app-panel grid gap-2.5 p-3 md:gap-3 md:p-4">
-          <div className="text-sm font-semibold text-stone-900">{isNew ? 'New effect preset' : `Editing: ${editing?.name}`}</div>
-          <Field label="Name" value={name} maxLength={255} onChange={e => setName(e.target.value)} />
-          
+          <div className="text-sm font-semibold text-stone-900">
+            {isNew ? 'New effect preset' : `Editing: ${editing?.name}`}
+          </div>
+          <Field
+            label="Name"
+            value={name}
+            maxLength={255}
+            onChange={(e) => setName(e.target.value)}
+          />
+
           <div className="grid gap-2">
             {/* Sub-tabs for Local and AI Effects */}
             <div className="grid gap-2 border-b border-stone-200/70 pb-2 sm:flex sm:gap-1.5 sm:pb-2">
@@ -791,11 +1040,13 @@ function EffectPresetsTab() {
                 }`}
               >
                 <span>Local Effects</span>
-                <span className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
-                  activeLocalCount > 0
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-stone-100 text-stone-500'
-                }`}>
+                <span
+                  className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
+                    activeLocalCount > 0
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
                   {activeLocalCount}
                 </span>
               </button>
@@ -809,11 +1060,13 @@ function EffectPresetsTab() {
                 }`}
               >
                 <span>AI Effects</span>
-                <span className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
-                  activeAiCount > 0
-                    ? 'bg-purple-100 text-purple-800'
-                    : 'bg-stone-100 text-stone-500'
-                }`}>
+                <span
+                  className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
+                    activeAiCount > 0
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
                   {activeAiCount}
                 </span>
               </button>
@@ -825,15 +1078,25 @@ function EffectPresetsTab() {
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-stone-100/70 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
                     <th className="py-2 px-3 font-semibold">Effect</th>
-                    <th className="py-2 px-3 font-semibold w-16 text-center">Enable</th>
-                    <th className="py-2 px-3 font-semibold w-20 text-center">Weight</th>
+                    <th className="py-2 px-3 font-semibold w-16 text-center">
+                      Enable
+                    </th>
+                    <th className="py-2 px-3 font-semibold w-20 text-center">
+                      Weight
+                    </th>
                     <th className="py-2 px-3 font-semibold">Configuration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-200/60 bg-white">
-                  {currentModules.map(mod => {
-                    const group = groups[mod.name] ?? { enabled: false, weight: mod.default_weight, config: mod.default_config ?? {} };
-                    const exampleInfo = examples.data?.find(ex => ex.module_name === mod.name);
+                  {currentModules.map((mod) => {
+                    const group = groups[mod.name] ?? {
+                      enabled: false,
+                      weight: mod.default_weight,
+                      config: mod.default_config ?? {},
+                    };
+                    const exampleInfo = examples.data?.find(
+                      (ex) => ex.module_name === mod.name,
+                    );
                     const isExpanded = !!expandedPreviews[mod.name];
                     return (
                       <EffectPresetTableItem
@@ -842,10 +1105,33 @@ function EffectPresetsTab() {
                         group={group}
                         exampleInfo={exampleInfo}
                         isExpanded={isExpanded}
-                        onTogglePreview={() => setExpandedPreviews(prev => ({ ...prev, [mod.name]: !prev[mod.name] }))}
-                        onEnabledChange={(enabled: boolean) => setGroups(g => ({ ...g, [mod.name]: { ...group, enabled } }))}
-                        onWeightChange={(weight: number) => setGroups(g => ({ ...g, [mod.name]: { ...group, weight } }))}
-                        onConfigChange={(key, value) => setGroups(g => ({ ...g, [mod.name]: { ...group, config: { ...group.config, [key]: value } } }))}
+                        onTogglePreview={() =>
+                          setExpandedPreviews((prev) => ({
+                            ...prev,
+                            [mod.name]: !prev[mod.name],
+                          }))
+                        }
+                        onEnabledChange={(enabled: boolean) =>
+                          setGroups((g) => ({
+                            ...g,
+                            [mod.name]: { ...group, enabled },
+                          }))
+                        }
+                        onWeightChange={(weight: number) =>
+                          setGroups((g) => ({
+                            ...g,
+                            [mod.name]: { ...group, weight },
+                          }))
+                        }
+                        onConfigChange={(key, value) =>
+                          setGroups((g) => ({
+                            ...g,
+                            [mod.name]: {
+                              ...group,
+                              config: { ...group.config, [key]: value },
+                            },
+                          }))
+                        }
                       />
                     );
                   })}
@@ -855,9 +1141,15 @@ function EffectPresetsTab() {
 
             {/* Mobile View Cards */}
             <div className="md:hidden grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 max-h-[500px] overflow-y-auto p-0.5">
-              {currentModules.map(mod => {
-                const group = groups[mod.name] ?? { enabled: false, weight: mod.default_weight, config: mod.default_config ?? {} };
-                const exampleInfo = examples.data?.find(ex => ex.module_name === mod.name);
+              {currentModules.map((mod) => {
+                const group = groups[mod.name] ?? {
+                  enabled: false,
+                  weight: mod.default_weight,
+                  config: mod.default_config ?? {},
+                };
+                const exampleInfo = examples.data?.find(
+                  (ex) => ex.module_name === mod.name,
+                );
                 const isExpanded = !!expandedPreviews[mod.name];
 
                 return (
@@ -867,16 +1159,39 @@ function EffectPresetsTab() {
                     group={group}
                     exampleInfo={exampleInfo}
                     isExpanded={isExpanded}
-                    onTogglePreview={() => setExpandedPreviews(prev => ({ ...prev, [mod.name]: !prev[mod.name] }))}
-                    onEnabledChange={(enabled: boolean) => setGroups(g => ({ ...g, [mod.name]: { ...group, enabled } }))}
-                    onWeightChange={(weight: number) => setGroups(g => ({ ...g, [mod.name]: { ...group, weight } }))}
-                    onConfigChange={(key, value) => setGroups(g => ({ ...g, [mod.name]: { ...group, config: { ...group.config, [key]: value } } }))}
+                    onTogglePreview={() =>
+                      setExpandedPreviews((prev) => ({
+                        ...prev,
+                        [mod.name]: !prev[mod.name],
+                      }))
+                    }
+                    onEnabledChange={(enabled: boolean) =>
+                      setGroups((g) => ({
+                        ...g,
+                        [mod.name]: { ...group, enabled },
+                      }))
+                    }
+                    onWeightChange={(weight: number) =>
+                      setGroups((g) => ({
+                        ...g,
+                        [mod.name]: { ...group, weight },
+                      }))
+                    }
+                    onConfigChange={(key, value) =>
+                      setGroups((g) => ({
+                        ...g,
+                        [mod.name]: {
+                          ...group,
+                          config: { ...group.config, [key]: value },
+                        },
+                      }))
+                    }
                   />
                 );
               })}
             </div>
           </div>
-          
+
           <PresetFormActions
             onSave={() => saveMutation.mutate()}
             onCancel={closeForm}
@@ -886,26 +1201,36 @@ function EffectPresetsTab() {
         </div>
       )}
 
-            <div className="grid gap-2">
-                {presets.data?.map(p => {
-          const enabledEntries = Object.entries(p.groups).filter(([, g]) => g.enabled);
+      <div className="grid gap-2 xl:grid-cols-2">
+        {presets.data?.map((p) => {
+          const enabledEntries = Object.entries(p.groups).filter(
+            ([, g]) => g.enabled,
+          );
           const enabledNames = enabledEntries.map(([name]) => {
-            const mod = modules.data?.find(m => m.name === name);
+            const mod = modules.data?.find((m) => m.name === name);
             return mod?.label ?? name.replace(/_/g, ' ');
           });
           return (
-            <div key={p.id} className="flex flex-col gap-2.5 md:gap-3 rounded-2xl border border-stone-200/80 bg-white/85 px-3 py-2.5 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:py-2">
+            <div
+              key={p.id}
+              className="flex flex-col gap-2.5 md:gap-3 rounded-2xl border border-stone-200/80 bg-white/85 px-3 py-2.5 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:py-2"
+            >
               <div className="min-w-0 flex-1 grid gap-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-stone-900">{p.name}</span>
+                  <span className="truncate text-sm font-semibold text-stone-900">
+                    {p.name}
+                  </span>
                   <span className="app-chip shrink-0 px-1.5 py-0.5 text-[10px] text-emerald-800">
                     {enabledEntries.length} active
                   </span>
                 </div>
                 {enabledNames.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {enabledNames.map(label => (
-                      <span key={label} className="app-chip px-2 py-0.5 text-[10px]">
+                    {enabledNames.map((label) => (
+                      <span
+                        key={label}
+                        className="app-chip px-2 py-0.5 text-[10px]"
+                      >
                         {label}
                       </span>
                     ))}
@@ -913,12 +1238,21 @@ function EffectPresetsTab() {
                 )}
               </div>
               <PresetActionRow>
-                <button type="button" onClick={() => openEdit(p)}
-                  className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 sm:w-auto sm:bg-transparent sm:py-1">
+                <button
+                  type="button"
+                  onClick={() => openEdit(p)}
+                  className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 sm:w-auto sm:bg-transparent sm:py-1"
+                >
                   <Pencil size={12} /> Edit
                 </button>
-                <button type="button" onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id); }}
-                  className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 bg-rose-50/30 sm:w-auto sm:bg-transparent sm:py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Delete "${p.name}"?`))
+                      deleteMutation.mutate(p.id);
+                  }}
+                  className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 bg-rose-50/30 sm:w-auto sm:bg-transparent sm:py-1"
+                >
                   <Trash2 size={12} /> Delete
                 </button>
               </PresetActionRow>
@@ -926,15 +1260,21 @@ function EffectPresetsTab() {
           );
         })}
         {presets.data?.length === 0 && (
-          <EmptyState
-            title="No effect presets yet"
-            description="Create an effect preset to choose which local and AI modules should run."
-            action={(
-              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
-                <Plus size={14} /> New preset
-              </button>
-            )}
-          />
+          <div className="xl:col-span-2">
+            <EmptyState
+              title="No effect presets yet"
+              description="Create an effect preset to choose which local and AI modules should run."
+              action={
+                <button
+                  type="button"
+                  onClick={openNew}
+                  className="app-button-primary px-3 py-1.5 text-sm"
+                >
+                  <Plus size={14} /> New preset
+                </button>
+              }
+            />
+          </div>
         )}
       </div>
     </div>
@@ -945,14 +1285,33 @@ function EffectPresetsTab() {
 
 function NotificationPresetsTab() {
   const qc = useQueryClient();
-  const presets = useQuery({ queryKey: ['notification-presets'], queryFn: getNotificationPresets });
+  const presets = useQuery({
+    queryKey: ['notification-presets'],
+    queryFn: getNotificationPresets,
+  });
 
   const [editing, setEditing] = useState<NotificationPreset | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [form, setForm] = useState({ name: '', channels: ['web'] as string[], url: '', topic: '', token: '', webhook_url: '' });
+  const [form, setForm] = useState({
+    name: '',
+    channels: ['web'] as string[],
+    url: '',
+    topic: '',
+    token: '',
+    webhook_url: '',
+  });
   const [error, setError] = useState<string | null>(null);
 
-  const CHANNELS = ['web', 'ntfy', 'gotify', 'telegram', 'homeassistant', 'apprise', 'discord', 'slack'] as const;
+  const CHANNELS = [
+    'web',
+    'ntfy',
+    'gotify',
+    'telegram',
+    'homeassistant',
+    'apprise',
+    'discord',
+    'slack',
+  ] as const;
   const CHANNEL_LABELS: Record<(typeof CHANNELS)[number], string> = {
     web: 'Web Push',
     ntfy: 'ntfy',
@@ -974,43 +1333,84 @@ function NotificationPresetsTab() {
         token: form.token || null,
         webhook_url: form.webhook_url || null,
       };
-      return editing && !isNew ? updateNotificationPreset(editing.id, body) : createNotificationPreset(body);
+      return editing && !isNew
+        ? updateNotificationPreset(editing.id, body)
+        : createNotificationPreset(body);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['notification-presets'] }); closeForm(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notification-presets'] });
+      closeForm();
+    },
     onError: (e: Error) => setError(e.message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteNotificationPreset(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-presets'] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['notification-presets'] }),
     onError: (e: Error) => setError(e.message),
   });
 
-  const [testResult, setTestResult] = useState<{ id: number; msg: string; ok: boolean } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    id: number;
+    msg: string;
+    ok: boolean;
+  } | null>(null);
   const testMutation = useMutation({
     mutationFn: (id: number) => testNotificationPreset(id),
-    onSuccess: (data, id) => setTestResult({ id, msg: data.sent.join(', ') || data.errors.join(', '), ok: data.ok }),
+    onSuccess: (data, id) =>
+      setTestResult({
+        id,
+        msg: data.sent.join(', ') || data.errors.join(', '),
+        ok: data.ok,
+      }),
     onError: (e: Error, id) => setTestResult({ id, msg: e.message, ok: false }),
   });
-  const testingId = testMutation.isPending ? (testMutation.variables ?? null) : null;
+  const testingId = testMutation.isPending
+    ? (testMutation.variables ?? null)
+    : null;
 
   function openNew() {
-    setForm({ name: '', channels: ['web'], url: '', topic: '', token: '', webhook_url: '' });
-    setEditing(null); setIsNew(true); setError(null);
+    setForm({
+      name: '',
+      channels: ['web'],
+      url: '',
+      topic: '',
+      token: '',
+      webhook_url: '',
+    });
+    setEditing(null);
+    setIsNew(true);
+    setError(null);
   }
 
   function openEdit(p: NotificationPreset) {
     const channels = splitNotificationProviders(p.provider);
-    setForm({ name: p.name, channels, url: p.url ?? '', topic: p.topic ?? '', token: '', webhook_url: p.webhook_url ?? '' });
-    setEditing(p); setIsNew(false); setError(null);
+    setForm({
+      name: p.name,
+      channels,
+      url: p.url ?? '',
+      topic: p.topic ?? '',
+      token: '',
+      webhook_url: p.webhook_url ?? '',
+    });
+    setEditing(p);
+    setIsNew(false);
+    setError(null);
   }
 
-  function closeForm() { setEditing(null); setIsNew(false); setError(null); }
+  function closeForm() {
+    setEditing(null);
+    setIsNew(false);
+    setError(null);
+  }
 
   function toggleChannel(ch: string) {
-    setForm(f => ({
+    setForm((f) => ({
       ...f,
-      channels: f.channels.includes(ch) ? f.channels.filter(c => c !== ch) : [...f.channels, ch],
+      channels: f.channels.includes(ch)
+        ? f.channels.filter((c) => c !== ch)
+        : [...f.channels, ch],
     }));
   }
 
@@ -1026,27 +1426,47 @@ function NotificationPresetsTab() {
   const needsUrl = hasNtfy || hasGotify || hasHomeAssistant || hasApprise;
   const validationIssues: string[] = [];
   if (!form.name.trim()) validationIssues.push('Preset name is required.');
-  if (form.channels.length === 0) validationIssues.push('Select at least one channel.');
-  if (needsUrl && !form.url.trim()) validationIssues.push('A server URL is required for the selected channels.');
-  if (hasNtfy && !form.topic.trim()) validationIssues.push('ntfy topic is required.');
-  if (hasTelegram && !form.topic.trim()) validationIssues.push('Telegram chat ID is required.');
-  if (hasHomeAssistant && !form.token.trim() && !editing?.token_masked) validationIssues.push('Home Assistant access token is required.');
-  if (hasDiscord && !form.webhook_url.trim()) validationIssues.push('Discord Webhook URL is required.');
-  if (hasSlack && !form.webhook_url.trim()) validationIssues.push('Slack Webhook URL is required.');
+  if (form.channels.length === 0)
+    validationIssues.push('Select at least one channel.');
+  if (needsUrl && !form.url.trim())
+    validationIssues.push(
+      'A server URL is required for the selected channels.',
+    );
+  if (hasNtfy && !form.topic.trim())
+    validationIssues.push('ntfy topic is required.');
+  if (hasTelegram && !form.topic.trim())
+    validationIssues.push('Telegram chat ID is required.');
+  if (hasHomeAssistant && !form.token.trim() && !editing?.token_masked)
+    validationIssues.push('Home Assistant access token is required.');
+  if (hasDiscord && !form.webhook_url.trim())
+    validationIssues.push('Discord Webhook URL is required.');
+  if (hasSlack && !form.webhook_url.trim())
+    validationIssues.push('Slack Webhook URL is required.');
   const canSave = validationIssues.length === 0;
 
-
   // Web Push state
-  const subscriptions = useQuery({ queryKey: ['push-subscriptions'], queryFn: getPushSubscriptions, enabled: hasWeb });
-  const deleteSubMutation = useMutation({ mutationFn: deletePushSubscription, onSuccess: () => qc.invalidateQueries({ queryKey: ['push-subscriptions'] }) });
+  const subscriptions = useQuery({
+    queryKey: ['push-subscriptions'],
+    queryFn: getPushSubscriptions,
+    enabled: hasWeb,
+  });
+  const deleteSubMutation = useMutation({
+    mutationFn: deletePushSubscription,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['push-subscriptions'] }),
+  });
   const [pushSub, setPushSub] = useState<PushSubscription | null>(null);
-  const [pushStatus, setPushStatus] = useState<'idle' | 'pending' | 'subscribed' | 'error'>('idle');
+  const [pushStatus, setPushStatus] = useState<
+    'idle' | 'pending' | 'subscribed' | 'error'
+  >('idle');
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    navigator.serviceWorker.ready.then(reg => {
-      reg.pushManager.getSubscription().then(sub => {
-        if (sub) { setPushSub(sub); setPushStatus('subscribed'); }
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.pushManager.getSubscription().then((sub) => {
+        if (sub) {
+          setPushSub(sub);
+          setPushStatus('subscribed');
+        }
       });
     });
   }, []);
@@ -1059,16 +1479,23 @@ function NotificationPresetsTab() {
       if (pushSub) {
         await unsubscribeWebPush(pushSub);
         await pushSub.unsubscribe();
-        setPushSub(null); setPushStatus('idle');
+        setPushSub(null);
+        setPushStatus('idle');
         qc.invalidateQueries({ queryKey: ['push-subscriptions'] });
       } else {
         const vapidKey = await getVapidPublicKey();
-        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey });
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey,
+        });
         await subscribeWebPush(sub);
-        setPushSub(sub); setPushStatus('subscribed');
+        setPushSub(sub);
+        setPushStatus('subscribed');
         qc.invalidateQueries({ queryKey: ['push-subscriptions'] });
       }
-    } catch { setPushStatus('idle'); }
+    } catch {
+      setPushStatus('idle');
+    }
   }
 
   const isLoading = presets.isLoading && !presets.data;
@@ -1079,32 +1506,69 @@ function NotificationPresetsTab() {
   }
 
   if (isError) {
-    return <ErrorBanner title="Could not load notification presets" error={presets.error} onRetry={() => presets.refetch()} />;
+    return (
+      <ErrorBanner
+        title="Could not load notification presets"
+        error={presets.error}
+        onRetry={() => presets.refetch()}
+      />
+    );
   }
 
   return (
     <div className="grid gap-3">
       <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
-      {error && <InlineError title="Could not save notification preset" message={error} />}
+      {error && (
+        <InlineError
+          title="Could not save notification preset"
+          message={error}
+        />
+      )}
 
       {showForm && (
         <div className="app-panel grid gap-4 p-4">
           <div className="grid gap-0.5 md:gap-1">
-            <div className="text-sm font-semibold text-stone-900">{isNew ? 'New notification preset' : `Editing: ${editing?.name}`}</div>
-            <div className="text-sm text-stone-500">Channels are stored as a single preset, but each one keeps its own connection details.</div>
+            <div className="text-sm font-semibold text-stone-900">
+              {isNew ? 'New notification preset' : `Editing: ${editing?.name}`}
+            </div>
+            <div className="text-sm text-stone-500">
+              Channels are stored as a single preset, but each one keeps its own
+              connection details.
+            </div>
           </div>
 
-          {validationIssues.length > 0 && <InlineError title="Fix the highlighted fields" message={validationIssues.join(' ')} />}
+          {validationIssues.length > 0 && (
+            <InlineError
+              title="Fix the highlighted fields"
+              message={validationIssues.join(' ')}
+            />
+          )}
 
-          <SectionCard title="Basics" description="Name the preset and choose where notifications go.">
+          <SectionCard
+            title="Basics"
+            description="Name the preset and choose where notifications go."
+          >
             <div className="grid gap-3">
-              <Field label="Name" required value={form.name} maxLength={255} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <Field
+                label="Name"
+                required
+                value={form.name}
+                maxLength={255}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+              />
               <div className="grid gap-2">
-                <div className="text-sm font-semibold text-stone-800">Channels <span className="text-rose-500">*</span></div>
+                <div className="text-sm font-semibold text-stone-800">
+                  Channels <span className="text-rose-500">*</span>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {CHANNELS.map(ch => (
-                    <label key={ch} className={`flex items-start gap-2 rounded-2xl border px-3 py-2 text-sm transition-colors ${form.channels.includes(ch) ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900' : 'border-stone-200 bg-white text-stone-700'}`}>
+                  {CHANNELS.map((ch) => (
+                    <label
+                      key={ch}
+                      className={`flex items-start gap-2 rounded-2xl border px-3 py-2 text-sm transition-colors ${form.channels.includes(ch) ? 'border-emerald-200 bg-emerald-50/50 text-emerald-900' : 'border-stone-200 bg-white text-stone-700'}`}
+                    >
                       <input
                         type="checkbox"
                         checked={form.channels.includes(ch)}
@@ -1112,9 +1576,15 @@ function NotificationPresetsTab() {
                         className="mt-0.5 h-4 w-4 accent-emerald-700"
                       />
                       <div className="grid gap-0.5">
-                        <span className="font-medium">{CHANNEL_LABELS[ch]}</span>
+                        <span className="font-medium">
+                          {CHANNEL_LABELS[ch]}
+                        </span>
                         <span className="text-xs text-stone-500">
-                          {ch === 'web' ? 'Browser push notifications.' : ch === 'telegram' ? 'Telegram bot delivery.' : 'External notification provider.'}
+                          {ch === 'web'
+                            ? 'Browser push notifications.'
+                            : ch === 'telegram'
+                              ? 'Telegram bot delivery.'
+                              : 'External notification provider.'}
                         </span>
                       </div>
                     </label>
@@ -1125,51 +1595,108 @@ function NotificationPresetsTab() {
           </SectionCard>
 
           {hasWeb && (
-            <SectionCard title="Web Push" description="Manage browser subscriptions for this preset.">
+            <SectionCard
+              title="Web Push"
+              description="Manage browser subscriptions for this preset."
+            >
               <div className="grid gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                  <button type="button" onClick={handlePushToggle}
-                    disabled={pushStatus === 'pending' || !('PushManager' in window)}
-                    className="app-button-secondary h-8 w-full px-3 text-xs disabled:opacity-50 sm:w-auto">
-                    {pushStatus === 'subscribed' ? <BellOff size={12} /> : <Bell size={12} />}
-                    {pushStatus === 'subscribed' ? 'Unsubscribe this browser' : pushStatus === 'pending' ? 'Wait…' : 'Subscribe this browser'}
+                  <button
+                    type="button"
+                    onClick={handlePushToggle}
+                    disabled={
+                      pushStatus === 'pending' || !('PushManager' in window)
+                    }
+                    className="app-button-secondary h-8 w-full px-3 text-xs disabled:opacity-50 sm:w-auto"
+                  >
+                    {pushStatus === 'subscribed' ? (
+                      <BellOff size={12} />
+                    ) : (
+                      <Bell size={12} />
+                    )}
+                    {pushStatus === 'subscribed'
+                      ? 'Unsubscribe this browser'
+                      : pushStatus === 'pending'
+                        ? 'Wait…'
+                        : 'Subscribe this browser'}
                   </button>
-                  {pushStatus === 'subscribed' && <span className="text-xs font-medium text-emerald-700">Subscribed</span>}
+                  {pushStatus === 'subscribed' && (
+                    <span className="text-xs font-medium text-emerald-700">
+                      Subscribed
+                    </span>
+                  )}
                 </div>
-                {subscriptions.data && subscriptions.data.subscriptions.length > 0 && (
-                  <div className="grid gap-2">
-                    {subscriptions.data.subscriptions.map(sub => {
-                      const label = sub.device_label || sub.user_agent || 'Unknown browser';
-                      const isMobile = /mobile|android|iphone|ipad/i.test(label);
-                      return (
-                        <div key={sub.id} className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-2.5 py-2">
-                          {isMobile ? <Smartphone size={14} className="shrink-0 text-stone-400" /> : <Monitor size={14} className="shrink-0 text-stone-400" />}
-                          <span className="flex-1 truncate text-xs text-stone-700">{label}</span>
-                          <button type="button" onClick={() => deleteSubMutation.mutate(sub.id)}
-                            disabled={deleteSubMutation.isPending}
-                            className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {subscriptions.data &&
+                  subscriptions.data.subscriptions.length > 0 && (
+                    <div className="grid gap-2">
+                      {subscriptions.data.subscriptions.map((sub) => {
+                        const label =
+                          sub.device_label ||
+                          sub.user_agent ||
+                          'Unknown browser';
+                        const isMobile = /mobile|android|iphone|ipad/i.test(
+                          label,
+                        );
+                        return (
+                          <div
+                            key={sub.id}
+                            className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-2.5 py-2"
+                          >
+                            {isMobile ? (
+                              <Smartphone
+                                size={14}
+                                className="shrink-0 text-stone-400"
+                              />
+                            ) : (
+                              <Monitor
+                                size={14}
+                                className="shrink-0 text-stone-400"
+                              />
+                            )}
+                            <span className="flex-1 truncate text-xs text-stone-700">
+                              {label}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => deleteSubMutation.mutate(sub.id)}
+                              disabled={deleteSubMutation.isPending}
+                              className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
               </div>
             </SectionCard>
           )}
 
-          <SectionCard title="Provider settings" description="Fill in the fields required by the selected channels.">
+          <SectionCard
+            title="Provider settings"
+            description="Fill in the fields required by the selected channels."
+          >
             <div className="grid gap-3">
               {needsUrl && (
                 <Field
-                  label={hasApprise ? 'Apprise endpoint URL(s)' : 'Endpoint URL'}
+                  label={
+                    hasApprise ? 'Apprise endpoint URL(s)' : 'Endpoint URL'
+                  }
                   required
                   type={hasApprise ? 'text' : 'url'}
                   maxLength={2048}
                   value={form.url}
-                  onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
-                  placeholder={hasApprise ? 'tgram://bot_token/chat_id, mailto://user:pass@gmail.com' : hasHomeAssistant ? 'http://homeassistant.local:8123' : 'https://ntfy.sh'}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, url: e.target.value }))
+                  }
+                  placeholder={
+                    hasApprise
+                      ? 'tgram://bot_token/chat_id, mailto://user:pass@gmail.com'
+                      : hasHomeAssistant
+                        ? 'http://homeassistant.local:8123'
+                        : 'https://ntfy.sh'
+                  }
                   hint={
                     hasApprise
                       ? 'Required for Apprise.'
@@ -1187,7 +1714,9 @@ function NotificationPresetsTab() {
                   required
                   value={form.topic}
                   maxLength={255}
-                  onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, topic: e.target.value }))
+                  }
                   hint="The ntfy topic name. Add a token only if the topic is protected."
                 />
               )}
@@ -1197,7 +1726,9 @@ function NotificationPresetsTab() {
                   required
                   value={form.topic}
                   maxLength={255}
-                  onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, topic: e.target.value }))
+                  }
                   placeholder="-10012345678 or @channelname"
                   hint="Use the chat ID for a private chat or group, or an @channelname for a channel."
                 />
@@ -1208,20 +1739,30 @@ function NotificationPresetsTab() {
                   optional
                   value={form.topic}
                   maxLength={255}
-                  onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, topic: e.target.value }))
+                  }
                   placeholder="e.g. notify or mobile_app_phone"
                   hint="Leave blank to use the default notify service. Use persistent_notification for a sidebar notice."
                 />
               )}
               {(hasNtfy || hasGotify || hasTelegram || hasHomeAssistant) && (
                 <Field
-                  label={hasTelegram ? 'Telegram Bot Token' : hasHomeAssistant ? 'Home Assistant Access Token (LLAT)' : 'Token'}
+                  label={
+                    hasTelegram
+                      ? 'Telegram Bot Token'
+                      : hasHomeAssistant
+                        ? 'Home Assistant Access Token (LLAT)'
+                        : 'Token'
+                  }
                   required={hasTelegram || hasHomeAssistant}
                   optional={!hasTelegram && !hasHomeAssistant}
                   type="password"
                   value={form.token}
                   placeholder={editing?.token_masked ?? ''}
-                  onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, token: e.target.value }))
+                  }
                 />
               )}
               <Field
@@ -1231,10 +1772,22 @@ function NotificationPresetsTab() {
                 type="url"
                 maxLength={2048}
                 value={form.webhook_url}
-                onChange={e => setForm(f => ({ ...f, webhook_url: e.target.value }))}
-                placeholder={hasDiscord ? "https://discord.com/api/webhooks/..." : hasSlack ? "https://hooks.slack.com/services/..." : "https://example.com/webhook"}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, webhook_url: e.target.value }))
+                }
+                placeholder={
+                  hasDiscord
+                    ? 'https://discord.com/api/webhooks/...'
+                    : hasSlack
+                      ? 'https://hooks.slack.com/services/...'
+                      : 'https://example.com/webhook'
+                }
               />
-              {(hasNtfy || hasTelegram || hasHomeAssistant || hasDiscord || hasSlack) && (
+              {(hasNtfy ||
+                hasTelegram ||
+                hasHomeAssistant ||
+                hasDiscord ||
+                hasSlack) && (
                 <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 text-xs text-stone-600">
                   <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-500">
                     Provider tips
@@ -1242,27 +1795,60 @@ function NotificationPresetsTab() {
                   <div className="grid gap-1.5 leading-relaxed">
                     {hasNtfy && (
                       <p>
-                        <span className="font-semibold text-stone-800">ntfy:</span> messages include a click target and image attachment when your DailyFX external URL is configured, so the phone notification can open the review page and preview the image.
+                        <span className="font-semibold text-stone-800">
+                          ntfy:
+                        </span>{' '}
+                        messages include a click target and image attachment
+                        when your DailyFX external URL is configured, so the
+                        phone notification can open the review page and preview
+                        the image.
                       </p>
                     )}
                     {hasTelegram && (
                       <p>
-                        <span className="font-semibold text-stone-800">Telegram:</span> the bot sends the image directly with Accept / Reject buttons, so the chat ID and bot token are the only required values.
+                        <span className="font-semibold text-stone-800">
+                          Telegram:
+                        </span>{' '}
+                        the bot sends the image directly with Accept / Reject
+                        buttons, so the chat ID and bot token are the only
+                        required values.
                       </p>
                     )}
                     {hasHomeAssistant && (
                       <p>
-                        <span className="font-semibold text-stone-800">Home Assistant:</span> use a long-lived access token and a notify service such as <code className="rounded-sm bg-white px-1 py-0.5 text-[11px] text-stone-700">mobile_app_phone</code> or <code className="rounded-sm bg-white px-1 py-0.5 text-[11px] text-stone-700">persistent_notification</code>.
+                        <span className="font-semibold text-stone-800">
+                          Home Assistant:
+                        </span>{' '}
+                        use a long-lived access token and a notify service such
+                        as{' '}
+                        <code className="rounded-sm bg-white px-1 py-0.5 text-[11px] text-stone-700">
+                          mobile_app_phone
+                        </code>{' '}
+                        or{' '}
+                        <code className="rounded-sm bg-white px-1 py-0.5 text-[11px] text-stone-700">
+                          persistent_notification
+                        </code>
+                        .
                       </p>
                     )}
                     {hasDiscord && (
                       <p>
-                        <span className="font-semibold text-stone-800">Discord:</span> messages are delivered directly to the configured channel webhook with image preview embeds when your DailyFX external URL is configured.
+                        <span className="font-semibold text-stone-800">
+                          Discord:
+                        </span>{' '}
+                        messages are delivered directly to the configured
+                        channel webhook with image preview embeds when your
+                        DailyFX external URL is configured.
                       </p>
                     )}
                     {hasSlack && (
                       <p>
-                        <span className="font-semibold text-stone-800">Slack:</span> messages are delivered directly to the configured channel webhook using Slack's rich block kit, including image preview and review action buttons.
+                        <span className="font-semibold text-stone-800">
+                          Slack:
+                        </span>{' '}
+                        messages are delivered directly to the configured
+                        channel webhook using Slack's rich block kit, including
+                        image preview and review action buttons.
                       </p>
                     )}
                   </div>
@@ -1280,8 +1866,8 @@ function NotificationPresetsTab() {
         </div>
       )}
 
-      <div className="grid gap-2">
-        {presets.data?.map(p => (
+      <div className="grid gap-2 xl:grid-cols-2">
+        {presets.data?.map((p) => (
           <NotificationPresetCard
             key={p.id}
             preset={p}
@@ -1289,19 +1875,27 @@ function NotificationPresetsTab() {
             testingId={testingId}
             onTest={(id) => testMutation.mutate(id)}
             onEdit={openEdit}
-            onDelete={(id, name) => { if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id); }}
+            onDelete={(id, name) => {
+              if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id);
+            }}
           />
         ))}
         {presets.data?.length === 0 && (
-          <EmptyState
-            title="No notification presets yet"
-            description="Create a notification preset to wire one or more delivery channels into schedules."
-            action={(
-              <button type="button" onClick={openNew} className="app-button-primary px-3 py-1.5 text-sm">
-                <Plus size={14} /> New preset
-              </button>
-            )}
-          />
+          <div className="xl:col-span-2">
+            <EmptyState
+              title="No notification presets yet"
+              description="Create a notification preset to wire one or more delivery channels into schedules."
+              action={
+                <button
+                  type="button"
+                  onClick={openNew}
+                  className="app-button-primary px-3 py-1.5 text-sm"
+                >
+                  <Plus size={14} /> New preset
+                </button>
+              }
+            />
+          </div>
         )}
       </div>
     </div>

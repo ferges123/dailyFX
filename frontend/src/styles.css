@@ -39,15 +39,15 @@
 }
 
 @utility app-surface {
-  @apply rounded-xl md:rounded-2xl border border-white/70 bg-white/80 shadow-[0_12px_30px_rgba(36,29,16,0.05)] md:shadow-[0_18px_48px_rgba(36,29,16,0.08)] backdrop-blur-md;
+  @apply rounded-xl md:rounded-2xl border border-white/70 bg-white/80 shadow-[0_8px_20px_rgba(36,29,16,0.04)] md:shadow-[0_12px_28px_rgba(36,29,16,0.05)] backdrop-blur-md;
 }
 
 @utility app-surface-strong {
-  @apply rounded-xl md:rounded-2xl border border-stone-200 bg-white shadow-[0_8px_20px_rgba(36,29,16,0.04)] md:shadow-[0_12px_30px_rgba(36,29,16,0.05)];
+  @apply rounded-xl md:rounded-2xl border border-stone-200 bg-white shadow-[0_6px_16px_rgba(36,29,16,0.035)] md:shadow-[0_10px_24px_rgba(36,29,16,0.045)];
 }
 
 @utility app-panel {
-  @apply rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 shadow-[0_8px_20px_rgba(36,29,16,0.04)] md:shadow-[0_12px_30px_rgba(36,29,16,0.05)] backdrop-blur-md;
+  @apply rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 shadow-[0_6px_16px_rgba(36,29,16,0.035)] md:shadow-[0_10px_24px_rgba(36,29,16,0.045)] backdrop-blur-md;
 }
 
 @utility app-panel-soft {
@@ -87,7 +87,7 @@
 }
 
 @utility app-button-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(22,101,52,0.18)] transition hover:bg-emerald-800 hover:shadow-[0_12px_24px_rgba(22,101,52,0.22)] active:scale-[0.99];
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_14px_rgba(22,101,52,0.16)] transition hover:bg-emerald-800 hover:shadow-[0_8px_18px_rgba(22,101,52,0.18)] active:scale-[0.99];
 }
 
 @utility app-button-secondary {
@@ -195,7 +195,7 @@
       Palatino,
       Georgia,
       serif;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
 
   ::selection {

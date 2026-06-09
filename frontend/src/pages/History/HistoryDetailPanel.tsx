@@ -11,7 +11,7 @@ import {
   Layers,
   HelpCircle,
   ZoomIn,
-  Download
+  Download,
 } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
@@ -94,7 +94,9 @@ export function HistoryDetailPanel({
     if (!entry?.config_json) return null;
     try {
       const config = JSON.parse(entry.config_json);
-      return Array.isArray(config.task_trace) ? (config.task_trace as TaskTraceItem[]) : null;
+      return Array.isArray(config.task_trace)
+        ? (config.task_trace as TaskTraceItem[])
+        : null;
     } catch {
       return null;
     }
@@ -106,11 +108,15 @@ export function HistoryDetailPanel({
     return vision.succeeded ? 'succeeded' : 'failed';
   };
 
-  const formatElapsed = (previousTimestamp: string | undefined, currentTimestamp: string | undefined) => {
+  const formatElapsed = (
+    previousTimestamp: string | undefined,
+    currentTimestamp: string | undefined,
+  ) => {
     if (!previousTimestamp || !currentTimestamp) return '';
     const previous = Date.parse(previousTimestamp);
     const current = Date.parse(currentTimestamp);
-    if (Number.isNaN(previous) || Number.isNaN(current) || current <= previous) return '';
+    if (Number.isNaN(previous) || Number.isNaN(current) || current <= previous)
+      return '';
     const totalSeconds = Math.round((current - previous) / 1000);
     if (totalSeconds < 60) return `+${totalSeconds}s`;
     const minutes = Math.floor(totalSeconds / 60);
@@ -138,7 +144,8 @@ export function HistoryDetailPanel({
         <HelpCircle size={32} className="mb-2.5 text-stone-300 animate-pulse" />
         <span className="text-sm font-semibold">Select a history entry</span>
         <p className="text-xs text-stone-400 mt-1 max-w-xs text-center">
-          Pick any generated item from the list to view its AI prompts, tags, metadata, and upload control options.
+          Pick any generated item from the list to view its AI prompts, tags,
+          metadata, and upload control options.
         </p>
       </div>
     );
@@ -177,25 +184,26 @@ export function HistoryDetailPanel({
             </p>
           )}
           {/* AI Tags List */}
-          {entry.tags_json && (() => {
-            try {
-              const tags: string[] = JSON.parse(entry.tags_json);
-              return tags.length > 0 ? (
-                <div className="flex flex-wrap gap-1 pt-0.5">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                    className="rounded-full border border-emerald-100/60 bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-700"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null;
-            } catch {
-              return null;
-            }
-          })()}
+          {entry.tags_json &&
+            (() => {
+              try {
+                const tags: string[] = JSON.parse(entry.tags_json);
+                return tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-emerald-100/60 bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-700"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null;
+              } catch {
+                return null;
+              }
+            })()}
           {/* Original image link */}
           {sourceAssetImmichUrl && (
             <div className="flex items-center gap-1.5 text-[9.5px] text-stone-500 font-medium pt-0.5">
@@ -227,7 +235,7 @@ export function HistoryDetailPanel({
         </div>
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-3 gap-1.5 md:gap-2 rounded-xl md:rounded-2xl border border-stone-100/80 bg-white/70 p-1.5 md:p-2 text-[9.5px]">
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-stone-100/80 bg-white/70 p-1.5 text-[9.5px]">
           <div>
             <span className="text-[7.5px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
               System Status
@@ -237,10 +245,10 @@ export function HistoryDetailPanel({
                 entry.status === 'UPLOADED'
                   ? 'text-emerald-700'
                   : entry.status === 'RUNNING'
-                  ? 'text-blue-700'
-                  : entry.status === 'FAILED'
-                  ? 'text-red-600'
-                  : 'text-amber-700'
+                    ? 'text-blue-700'
+                    : entry.status === 'FAILED'
+                      ? 'text-red-600'
+                      : 'text-amber-700'
               }`}
             >
               {entry.status.toLowerCase().replace(/_/g, ' ')}
@@ -259,10 +267,10 @@ export function HistoryDetailPanel({
               {entry.provider
                 ? `${entry.provider} (${entry.model || 'unknown'})`
                 : entry.status === 'RUNNING'
-                ? '-'
-                : entry.status === 'QUEUED'
-                ? 'Queued'
-                : 'Local Engine'}
+                  ? '-'
+                  : entry.status === 'QUEUED'
+                    ? 'Queued'
+                    : 'Local Engine'}
             </span>
           </div>
           <div>
@@ -279,7 +287,9 @@ export function HistoryDetailPanel({
         {entry.status === 'RUNNING' && (
           <div className="rounded-xl border border-blue-200 bg-blue-50/70 px-3 py-2 text-[10px] font-medium text-blue-800">
             Generation is still running.
-            {entry.task_step ? ` Current step: ${entry.task_step.replace(/_/g, ' ')}` : ''}
+            {entry.task_step
+              ? ` Current step: ${entry.task_step.replace(/_/g, ' ')}`
+              : ''}
           </div>
         )}
         {entry.status === 'QUEUED' && (
@@ -330,7 +340,7 @@ export function HistoryDetailPanel({
             </div>
           </div>
         ) : (
-          <div className="flex h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50 text-stone-400">
+          <div className="flex h-24 flex-col items-center justify-center rounded-xl border border-dashed border-stone-200 bg-stone-50 text-stone-400">
             <Layers size={20} className="mb-1.5" />
             <span className="text-[11px]">No preview image available</span>
           </div>
@@ -345,7 +355,11 @@ export function HistoryDetailPanel({
                 type="button"
                 onClick={onAccept}
                 disabled={acceptPending}
-                title={entry.album_name ? `Accept and upload to "${entry.album_name}"` : 'Accept and upload'}
+                title={
+                  entry.album_name
+                    ? `Accept and upload to "${entry.album_name}"`
+                    : 'Accept and upload'
+                }
                 className="flex-1 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3 text-xs font-bold text-white hover:bg-emerald-950 disabled:bg-stone-200 transition active:scale-98 shadow-xs cursor-pointer"
               >
                 <Check size={14} />
@@ -382,13 +396,19 @@ export function HistoryDetailPanel({
                 disabled={retryPending}
                 className="w-full inline-flex h-8 items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 text-xs font-semibold text-white hover:bg-amber-850 disabled:bg-stone-200 transition active:scale-98 cursor-pointer"
               >
-                <RefreshCw size={14} className={retryPending ? 'animate-spin' : ''} />
-                {retryPending ? 'Retrying Upload...' : '🔄 Retry Upload to Immich'}
+                <RefreshCw
+                  size={14}
+                  className={retryPending ? 'animate-spin' : ''}
+                />
+                {retryPending
+                  ? 'Retrying Upload...'
+                  : '🔄 Retry Upload to Immich'}
               </button>
               <p className="text-[10px] text-red-600 font-medium bg-red-50/70 border border-red-100 p-2 rounded-lg leading-relaxed flex items-start gap-1">
                 <AlertTriangle size={12} className="shrink-0 mt-0.5" />
                 <span>
-                  <strong>Error Details:</strong> {entry.accept_notes || 'Unknown execution failure.'}
+                  <strong>Error Details:</strong>{' '}
+                  {entry.accept_notes || 'Unknown execution failure.'}
                 </span>
               </p>
             </div>
@@ -407,7 +427,8 @@ export function HistoryDetailPanel({
                 Reconsider & Upload to Immich
               </button>
               <div className="text-[10px] text-stone-500 bg-stone-50 border border-stone-100 p-2 rounded-lg text-center">
-                This item was marked as rejected but remains stored in your database.
+                This item was marked as rejected but remains stored in your
+                database.
               </div>
             </div>
           )}
@@ -418,7 +439,9 @@ export function HistoryDetailPanel({
                 <Layers size={11} />
                 Additional info
               </span>
-              <span className="text-[7.5px] font-semibold text-stone-400 normal-case tracking-normal">Metadata provenance and timeline</span>
+              <span className="text-[7.5px] font-semibold text-stone-400 normal-case tracking-normal">
+                Metadata provenance and timeline
+              </span>
             </summary>
             <div className="mt-2 space-y-2">
               {metadataProvenance && (
@@ -429,46 +452,69 @@ export function HistoryDetailPanel({
                   </div>
                   <div className="grid grid-cols-1 gap-1.5">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[7.5px] font-semibold text-sky-700">Title:</span>
+                      <span className="text-[7.5px] font-semibold text-sky-700">
+                        Title:
+                      </span>
                       <span className="rounded-full border border-sky-200/60 bg-white px-2 py-0.5 font-medium text-sky-900">
-                        {(metadataProvenance.title_source || 'unknown').replace(/_/g, ' ')}
+                        {(metadataProvenance.title_source || 'unknown').replace(
+                          /_/g,
+                          ' ',
+                        )}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[7.5px] font-semibold text-sky-700">Summary:</span>
+                      <span className="text-[7.5px] font-semibold text-sky-700">
+                        Summary:
+                      </span>
                       <span className="rounded-full border border-sky-200/60 bg-white px-2 py-0.5 font-medium text-sky-900">
-                        {(metadataProvenance.summary_source || 'unknown').replace(/_/g, ' ')}
+                        {(
+                          metadataProvenance.summary_source || 'unknown'
+                        ).replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[7.5px] font-semibold text-sky-700">Tags:</span>
+                      <span className="text-[7.5px] font-semibold text-sky-700">
+                        Tags:
+                      </span>
                       <span className="rounded-full border border-sky-200/60 bg-white px-2 py-0.5 font-medium text-sky-900">
-                        {(metadataProvenance.tags_source || 'unknown').replace(/_/g, ' ')}
+                        {(metadataProvenance.tags_source || 'unknown').replace(
+                          /_/g,
+                          ' ',
+                        )}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[7.5px] font-semibold text-sky-700">Source Vision:</span>
+                      <span className="text-[7.5px] font-semibold text-sky-700">
+                        Source Vision:
+                      </span>
                       <span className="rounded-full border border-sky-200/60 bg-white px-2 py-0.5 font-medium text-sky-900">
                         {formatVisionState(metadataProvenance.source_vision)}
                       </span>
-                      <span className="text-[7.5px] font-semibold text-sky-700 ml-2">Final Vision:</span>
+                      <span className="text-[7.5px] font-semibold text-sky-700 ml-2">
+                        Final Vision:
+                      </span>
                       <span className="rounded-full border border-sky-200/60 bg-white px-2 py-0.5 font-medium text-sky-900">
                         {formatVisionState(metadataProvenance.final_vision)}
                       </span>
                     </div>
-                    {Array.isArray(metadataProvenance.tag_injections) && metadataProvenance.tag_injections.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[7.5px] font-semibold text-sky-700">Injected tags:</span>
-                        {metadataProvenance.tag_injections.map((tag: string) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-sky-200/60 bg-sky-100/70 px-2 py-0.5 font-medium text-sky-900"
-                          >
-                            #{tag}
+                    {Array.isArray(metadataProvenance.tag_injections) &&
+                      metadataProvenance.tag_injections.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[7.5px] font-semibold text-sky-700">
+                            Injected tags:
                           </span>
-                        ))}
-                      </div>
-                    )}
+                          {metadataProvenance.tag_injections.map(
+                            (tag: string) => (
+                              <span
+                                key={tag}
+                                className="rounded-full border border-sky-200/60 bg-sky-100/70 px-2 py-0.5 font-medium text-sky-900"
+                              >
+                                #{tag}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      )}
                     {metadataProvenance.prompt_enrichment_context && (
                       <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 p-2 text-[9px] text-emerald-950">
                         <div className="flex items-center gap-1.5 text-[7.5px] font-bold uppercase tracking-[0.12em] text-emerald-700 mb-1">
@@ -476,18 +522,52 @@ export function HistoryDetailPanel({
                           Prompt enrichment
                         </div>
                         <div className="space-y-1">
-                          {metadataProvenance.prompt_enrichment_context.album_name && (
-                            <div><span className="font-semibold text-emerald-800">Album:</span> {metadataProvenance.prompt_enrichment_context.album_name}</div>
+                          {metadataProvenance.prompt_enrichment_context
+                            .album_name && (
+                            <div>
+                              <span className="font-semibold text-emerald-800">
+                                Album:
+                              </span>{' '}
+                              {
+                                metadataProvenance.prompt_enrichment_context
+                                  .album_name
+                              }
+                            </div>
                           )}
-                          {Array.isArray(metadataProvenance.prompt_enrichment_context.people_names) && metadataProvenance.prompt_enrichment_context.people_names.length > 0 && (
-                            <div><span className="font-semibold text-emerald-800">People:</span> {metadataProvenance.prompt_enrichment_context.people_names.join(', ')}</div>
+                          {Array.isArray(
+                            metadataProvenance.prompt_enrichment_context
+                              .people_names,
+                          ) &&
+                            metadataProvenance.prompt_enrichment_context
+                              .people_names.length > 0 && (
+                              <div>
+                                <span className="font-semibold text-emerald-800">
+                                  People:
+                                </span>{' '}
+                                {metadataProvenance.prompt_enrichment_context.people_names.join(
+                                  ', ',
+                                )}
+                              </div>
+                            )}
+                          {metadataProvenance.prompt_enrichment_context
+                            .exif_summary && (
+                            <div>
+                              <span className="font-semibold text-emerald-800">
+                                EXIF:
+                              </span>{' '}
+                              {
+                                metadataProvenance.prompt_enrichment_context
+                                  .exif_summary
+                              }
+                            </div>
                           )}
-                          {metadataProvenance.prompt_enrichment_context.exif_summary && (
-                            <div><span className="font-semibold text-emerald-800">EXIF:</span> {metadataProvenance.prompt_enrichment_context.exif_summary}</div>
-                          )}
-                          {metadataProvenance.prompt_enrichment_context.context_hint && (
+                          {metadataProvenance.prompt_enrichment_context
+                            .context_hint && (
                             <div className="rounded-md border border-emerald-200/70 bg-white/70 p-2 text-[8.5px] leading-relaxed text-emerald-950 whitespace-pre-line">
-                              {metadataProvenance.prompt_enrichment_context.context_hint}
+                              {
+                                metadataProvenance.prompt_enrichment_context
+                                  .context_hint
+                              }
                             </div>
                           )}
                         </div>
@@ -505,36 +585,56 @@ export function HistoryDetailPanel({
                   </div>
                   <div className="space-y-1.5">
                     {taskTrace.map((item: TaskTraceItem, index: number) => (
-                      <div key={`${item.stage || 'stage'}-${index}`} className="rounded-md border border-stone-100/70 bg-stone-50/60 p-2">
+                      <div
+                        key={`${item.stage || 'stage'}-${index}`}
+                        className="rounded-md border border-stone-100/70 bg-stone-50/60 p-2"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="text-[7.5px] font-bold uppercase tracking-[0.12em] text-stone-400">
                               {(item.stage || 'step').replace(/_/g, ' ')}
                             </div>
-                            <div className="text-[8.5px] font-medium text-stone-800 leading-snug">{item.message || '—'}</div>
+                            <div className="text-[8.5px] font-medium text-stone-800 leading-snug">
+                              {item.message || '—'}
+                            </div>
                           </div>
                           <div className="shrink-0 text-right">
-                            {item.progress !== null && item.progress !== undefined && (
-                              <div className="text-[7.5px] font-semibold text-stone-500">
-                                {Math.round(Number(item.progress) * 100)}%
-                              </div>
-                            )}
+                            {item.progress !== null &&
+                              item.progress !== undefined && (
+                                <div className="text-[7.5px] font-semibold text-stone-500">
+                                  {Math.round(Number(item.progress) * 100)}%
+                                </div>
+                              )}
                             {item.details?.elapsed_seconds !== undefined && (
                               <div className="text-[7px] font-medium text-stone-400">
                                 {formatDuration(item.details.elapsed_seconds)}
                               </div>
                             )}
-                            {formatElapsed(taskTrace[index - 1]?.timestamp, item.timestamp) && (
+                            {formatElapsed(
+                              taskTrace[index - 1]?.timestamp,
+                              item.timestamp,
+                            ) && (
                               <div className="text-[7px] font-medium text-stone-400">
-                                {formatElapsed(taskTrace[index - 1]?.timestamp, item.timestamp)}
+                                {formatElapsed(
+                                  taskTrace[index - 1]?.timestamp,
+                                  item.timestamp,
+                                )}
                               </div>
                             )}
                           </div>
                         </div>
                         {(item.status || item.step) && (
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {item.status && <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[7.5px] font-semibold text-stone-500 border border-stone-200/70">{String(item.status).toLowerCase()}</span>}
-                            {item.step && <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[7.5px] font-semibold text-stone-500 border border-stone-200/70">{String(item.step).replace(/_/g, ' ')}</span>}
+                            {item.status && (
+                              <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[7.5px] font-semibold text-stone-500 border border-stone-200/70">
+                                {String(item.status).toLowerCase()}
+                              </span>
+                            )}
+                            {item.step && (
+                              <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[7.5px] font-semibold text-stone-500 border border-stone-200/70">
+                                {String(item.step).replace(/_/g, ' ')}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -568,7 +668,10 @@ export function HistoryDetailPanel({
                     className="inline-flex h-8 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 text-xs font-medium text-stone-700 hover:bg-stone-50 hover:border-stone-400 transition cursor-pointer"
                     title="Retry album allocation or tags application"
                   >
-                    <RefreshCw size={13} className={retryPending ? 'animate-spin' : ''} />
+                    <RefreshCw
+                      size={13}
+                      className={retryPending ? 'animate-spin' : ''}
+                    />
                     Retry Tags/Album
                   </button>
                 )}

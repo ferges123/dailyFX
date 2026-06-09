@@ -1,6 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Database, RefreshCw, Save, Server, ShieldCheck, Sparkles, Wifi } from 'lucide-react';
-import { type Dispatch, type FormEvent, type ReactNode, type SetStateAction, useEffect, useState } from 'react';
+import {
+  Database,
+  RefreshCw,
+  Save,
+  Server,
+  ShieldCheck,
+  Sparkles,
+  Wifi,
+} from 'lucide-react';
+import {
+  type Dispatch,
+  type FormEvent,
+  type ReactNode,
+  type SetStateAction,
+  useEffect,
+  useState,
+} from 'react';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import {
   ApiError,
@@ -37,13 +52,21 @@ const defaults: SettingsUpdate = {
   local_ai_api_key: '',
 };
 
-type TestState = { status: 'idle' | 'success' | 'error'; message: string | null };
+type TestState = {
+  status: 'idle' | 'success' | 'error';
+  message: string | null;
+};
 type ConnectionTestStatus = {
   status: 'idle' | 'pending' | 'success' | 'error';
   provider: string;
   message: string | null;
 };
-type SettingsFieldErrorKey = 'immich_url' | 'local_ai_base_url' | 'ai_vision_hourly_limit' | 'ai_image_hourly_limit' | 'favorite_albums_json';
+type SettingsFieldErrorKey =
+  | 'immich_url'
+  | 'local_ai_base_url'
+  | 'ai_vision_hourly_limit'
+  | 'ai_image_hourly_limit'
+  | 'favorite_albums_json';
 type SettingsFieldErrors = Partial<Record<SettingsFieldErrorKey, string>>;
 
 type TestableInputRowProps = {
@@ -72,14 +95,20 @@ type RuntimeCheckTone = 'neutral' | 'success' | 'warning' | 'danger';
 function runtimeTone(status: string | null | undefined): RuntimeCheckTone {
   if (!status || status === 'checking') return 'neutral';
   if (status === 'ok') return 'success';
-  if (status === 'not_configured' || status === 'key_missing' || status === 'missing') return 'warning';
+  if (
+    status === 'not_configured' ||
+    status === 'key_missing' ||
+    status === 'missing'
+  )
+    return 'warning';
   return 'danger';
 }
 
 function runtimeLabel(status: string | null | undefined): string {
   if (!status || status === 'checking') return 'Checking';
   if (status === 'ok') return 'Healthy';
-  if (status === 'not_configured' || status === 'key_missing') return 'Not configured';
+  if (status === 'not_configured' || status === 'key_missing')
+    return 'Not configured';
   if (status === 'missing') return 'Missing';
   if (status === 'stale') return 'Stale';
   return 'Degraded';
@@ -99,9 +128,20 @@ function createConnectionTestHandlers(
   setTestResult: Dispatch<SetStateAction<ConnectionTestStatus>>,
 ) {
   return {
-    onMutate: () => setTestResult({ status: 'pending', provider, message: 'Testing connection...' }),
-    onSuccess: (data: { message: string }) => setTestResult({ status: 'success', provider, message: data.message }),
-    onError: (err: unknown) => setTestResult({ status: 'error', provider, message: (err as Error).message }),
+    onMutate: () =>
+      setTestResult({
+        status: 'pending',
+        provider,
+        message: 'Testing connection...',
+      }),
+    onSuccess: (data: { message: string }) =>
+      setTestResult({ status: 'success', provider, message: data.message }),
+    onError: (err: unknown) =>
+      setTestResult({
+        status: 'error',
+        provider,
+        message: (err as Error).message,
+      }),
   };
 }
 
@@ -118,22 +158,35 @@ function validateSettingsForm(form: SettingsUpdate): SettingsFieldErrors {
   const errors: SettingsFieldErrors = {};
 
   if (form.immich_url && !isHttpUrl(form.immich_url)) {
-    errors.immich_url = 'Immich URL must be an absolute http:// or https:// URL.';
+    errors.immich_url =
+      'Immich URL must be an absolute http:// or https:// URL.';
   }
   if (form.local_ai_base_url && !isHttpUrl(form.local_ai_base_url)) {
-    errors.local_ai_base_url = 'Local AI base URL must be an absolute http:// or https:// URL.';
+    errors.local_ai_base_url =
+      'Local AI base URL must be an absolute http:// or https:// URL.';
   }
-  if (!Number.isInteger(form.ai_vision_hourly_limit) || form.ai_vision_hourly_limit < 1 || form.ai_vision_hourly_limit > 1000) {
-    errors.ai_vision_hourly_limit = 'Vision calls per hour must be between 1 and 1000.';
+  if (
+    !Number.isInteger(form.ai_vision_hourly_limit) ||
+    form.ai_vision_hourly_limit < 1 ||
+    form.ai_vision_hourly_limit > 1000
+  ) {
+    errors.ai_vision_hourly_limit =
+      'Vision calls per hour must be between 1 and 1000.';
   }
-  if (!Number.isInteger(form.ai_image_hourly_limit) || form.ai_image_hourly_limit < 1 || form.ai_image_hourly_limit > 1000) {
-    errors.ai_image_hourly_limit = 'Image calls per hour must be between 1 and 1000.';
+  if (
+    !Number.isInteger(form.ai_image_hourly_limit) ||
+    form.ai_image_hourly_limit < 1 ||
+    form.ai_image_hourly_limit > 1000
+  ) {
+    errors.ai_image_hourly_limit =
+      'Image calls per hour must be between 1 and 1000.';
   }
   if (form.favorite_albums_json) {
     try {
       const parsed = JSON.parse(form.favorite_albums_json);
       if (!Array.isArray(parsed)) {
-        errors.favorite_albums_json = 'favorite_albums_json must be a JSON array.';
+        errors.favorite_albums_json =
+          'favorite_albums_json must be a JSON array.';
       }
     } catch {
       errors.favorite_albums_json = 'favorite_albums_json must be valid JSON.';
@@ -188,7 +241,13 @@ function TestableInputRow({
   );
 }
 
-function SecretFieldGrid({ columns, onChange }: { columns: SecretFieldColumn[]; onChange: (key: keyof SettingsUpdate, value: string) => void }) {
+function SecretFieldGrid({
+  columns,
+  onChange,
+}: {
+  columns: SecretFieldColumn[];
+  onChange: (key: keyof SettingsUpdate, value: string) => void;
+}) {
   return (
     <div className="grid gap-2.5 md:grid-cols-2 md:gap-4 items-start">
       {columns.map((column, columnIndex) => (
@@ -200,7 +259,14 @@ function SecretFieldGrid({ columns, onChange }: { columns: SecretFieldColumn[]; 
               value={item.value}
               placeholder={item.placeholder}
               onChange={(value) => onChange(item.key, value)}
-              testButton={<TestButton icon={item.icon} label="Test" pending={item.pending} onClick={item.onClick} />}
+              testButton={
+                <TestButton
+                  icon={item.icon}
+                  label="Test"
+                  pending={item.pending}
+                  onClick={item.onClick}
+                />
+              }
             />
           ))}
         </div>
@@ -244,16 +310,43 @@ export function SettingsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
   const immichTest = useMutation({ mutationFn: testImmichConnection });
-  const [testResult, setTestResult] = useState<ConnectionTestStatus>({ status: 'idle', provider: '', message: null });
-  const openaiTest = useMutation({ mutationFn: testOpenAIConnection, ...createConnectionTestHandlers('OpenAI', setTestResult) });
-  const geminiTest = useMutation({ mutationFn: testGeminiConnection, ...createConnectionTestHandlers('Gemini', setTestResult) });
-  const openrouterTest = useMutation({ mutationFn: testOpenRouterConnection, ...createConnectionTestHandlers('OpenRouter', setTestResult) });
-  const byteplusTest = useMutation({ mutationFn: testBytePlusConnection, ...createConnectionTestHandlers('BytePlus', setTestResult) });
-  const localAiTest = useMutation({ mutationFn: testLocalAIConnection, ...createConnectionTestHandlers('Local AI', setTestResult) });
-  const xiaomiTest = useMutation({ mutationFn: testXiaomiConnection, ...createConnectionTestHandlers('Xiaomi MiMo', setTestResult) });
+  const [testResult, setTestResult] = useState<ConnectionTestStatus>({
+    status: 'idle',
+    provider: '',
+    message: null,
+  });
+  const openaiTest = useMutation({
+    mutationFn: testOpenAIConnection,
+    ...createConnectionTestHandlers('OpenAI', setTestResult),
+  });
+  const geminiTest = useMutation({
+    mutationFn: testGeminiConnection,
+    ...createConnectionTestHandlers('Gemini', setTestResult),
+  });
+  const openrouterTest = useMutation({
+    mutationFn: testOpenRouterConnection,
+    ...createConnectionTestHandlers('OpenRouter', setTestResult),
+  });
+  const byteplusTest = useMutation({
+    mutationFn: testBytePlusConnection,
+    ...createConnectionTestHandlers('BytePlus', setTestResult),
+  });
+  const localAiTest = useMutation({
+    mutationFn: testLocalAIConnection,
+    ...createConnectionTestHandlers('Local AI', setTestResult),
+  });
+  const xiaomiTest = useMutation({
+    mutationFn: testXiaomiConnection,
+    ...createConnectionTestHandlers('Xiaomi MiMo', setTestResult),
+  });
   const [form, setForm] = useState<SettingsUpdate>(defaults);
-  const [saved, setSaved] = useState<TestState>({ status: 'idle', message: null });
-  const [validationErrors, setValidationErrors] = useState<SettingsFieldErrors>({});
+  const [saved, setSaved] = useState<TestState>({
+    status: 'idle',
+    message: null,
+  });
+  const [validationErrors, setValidationErrors] = useState<SettingsFieldErrors>(
+    {},
+  );
   const runtimeChecks = runtimeHealth.data?.checks;
 
   useEffect(() => {
@@ -279,10 +372,19 @@ export function SettingsPage() {
   }
 
   if (settings.isError && !hasSettings) {
-    return <ErrorBanner error={settings.error as Error | string | null} title="Could not load settings" onRetry={() => settings.refetch()} />;
+    return (
+      <ErrorBanner
+        error={settings.error as Error | string | null}
+        title="Could not load settings"
+        onRetry={() => settings.refetch()}
+      />
+    );
   }
 
-  function setValue<K extends keyof SettingsUpdate>(key: K, value: SettingsUpdate[K]) {
+  function setValue<K extends keyof SettingsUpdate>(
+    key: K,
+    value: SettingsUpdate[K],
+  ) {
     setForm((current) => ({ ...current, [key]: value }));
     setValidationErrors({});
     setSaved({ status: 'idle', message: null });
@@ -294,7 +396,10 @@ export function SettingsPage() {
     const nextValidationErrors = validateSettingsForm(form);
     setValidationErrors(nextValidationErrors);
     if (Object.keys(nextValidationErrors).length > 0) {
-      setSaved({ status: 'error', message: 'Fix the highlighted settings before saving.' });
+      setSaved({
+        status: 'error',
+        message: 'Fix the highlighted settings before saving.',
+      });
       return;
     }
 
@@ -319,7 +424,9 @@ export function SettingsPage() {
       {Object.keys(validationErrors).length > 0 && (
         <div className="app-panel p-3 md:p-4">
           <div className="grid gap-0.5 md:gap-1">
-            <div className="text-sm font-semibold text-rose-900">Fix the highlighted settings</div>
+            <div className="text-sm font-semibold text-rose-900">
+              Fix the highlighted settings
+            </div>
             <div className="text-sm text-rose-800">
               {Object.values(validationErrors).join(' ')}
             </div>
@@ -330,8 +437,12 @@ export function SettingsPage() {
       <div className="app-panel grid gap-3 p-3 md:p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-sm font-semibold text-stone-900">Runtime Status</div>
-            <div className="text-xs text-stone-500">Refreshed automatically every 30 seconds.</div>
+            <div className="text-sm font-semibold text-stone-900">
+              Runtime Status
+            </div>
+            <div className="text-xs text-stone-500">
+              Refreshed automatically every 30 seconds.
+            </div>
           </div>
           <button
             type="button"
@@ -347,7 +458,10 @@ export function SettingsPage() {
         </div>
         {runtimeHealth.isError || health.isError ? (
           <ErrorBanner
-            error={(runtimeHealth.error as Error | string | null) ?? (health.error as Error | string | null)}
+            error={
+              (runtimeHealth.error as Error | string | null) ??
+              (health.error as Error | string | null)
+            }
             title="Could not load runtime status"
             onRetry={() => {
               health.refetch();
@@ -359,15 +473,31 @@ export function SettingsPage() {
             <StatusTile
               icon={<Server size={14} />}
               label="API"
-              value={health.isLoading ? 'Checking' : health.data?.status === 'ok' ? 'Healthy' : 'Degraded'}
+              value={
+                health.isLoading
+                  ? 'Checking'
+                  : health.data?.status === 'ok'
+                    ? 'Healthy'
+                    : 'Degraded'
+              }
               detail={health.data?.version ? `v${health.data.version}` : null}
-              tone={health.isError ? 'danger' : health.isLoading ? 'neutral' : 'success'}
+              tone={
+                health.isError
+                  ? 'danger'
+                  : health.isLoading
+                    ? 'neutral'
+                    : 'success'
+              }
             />
             <StatusTile
               icon={<RefreshCw size={14} />}
               label="Scheduler"
               value={runtimeLabel(runtimeChecks?.scheduler?.status)}
-              detail={formatAge(runtimeChecks?.scheduler?.age_seconds) ?? runtimeChecks?.scheduler?.detail ?? null}
+              detail={
+                formatAge(runtimeChecks?.scheduler?.age_seconds) ??
+                runtimeChecks?.scheduler?.detail ??
+                null
+              }
               tone={runtimeTone(runtimeChecks?.scheduler?.status)}
             />
             <StatusTile
@@ -381,7 +511,11 @@ export function SettingsPage() {
               icon={<Wifi size={14} />}
               label="Immich"
               value={runtimeLabel(runtimeChecks?.immich?.status)}
-              detail={runtimeChecks?.immich?.version ? `v${runtimeChecks?.immich?.version}` : runtimeChecks?.immich?.detail ?? null}
+              detail={
+                runtimeChecks?.immich?.version
+                  ? `v${runtimeChecks?.immich?.version}`
+                  : (runtimeChecks?.immich?.detail ?? null)
+              }
               tone={runtimeTone(runtimeChecks?.immich?.status)}
             />
           </div>
@@ -390,7 +524,9 @@ export function SettingsPage() {
 
       {/* Immich Connection */}
       <div className="app-panel grid gap-2 p-3 md:p-4">
-        <div className="text-sm font-semibold text-stone-900">Immich Connection</div>
+        <div className="text-sm font-semibold text-stone-900">
+          Immich Connection
+        </div>
         <div className="flex flex-col gap-2.5 md:flex-row md:gap-3">
           <div className="flex-1 flex flex-col gap-0.5 md:gap-1">
             <Field
@@ -409,19 +545,36 @@ export function SettingsPage() {
               value={form.immich_api_key ?? ''}
               placeholder={settings.data?.immich_api_key_masked ?? ''}
               onChange={(value) => setValue('immich_api_key', value)}
-              testButton={<TestButton icon={<ShieldCheck size={14} />} label="Test" pending={immichTest.isPending} onClick={() => immichTest.mutate()} />}
+              testButton={
+                <TestButton
+                  icon={<ShieldCheck size={14} />}
+                  label="Test"
+                  pending={immichTest.isPending}
+                  onClick={() => immichTest.mutate()}
+                />
+              }
             />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {immichTest.isSuccess && <span className="text-xs text-emerald-700">{immichTest.data.message}</span>}
-          {immichTest.isError && <span className="text-xs text-red-700">{(immichTest.error as Error).message}</span>}
+          {immichTest.isSuccess && (
+            <span className="text-xs text-emerald-700">
+              {immichTest.data.message}
+            </span>
+          )}
+          {immichTest.isError && (
+            <span className="text-xs text-red-700">
+              {(immichTest.error as Error).message}
+            </span>
+          )}
         </div>
       </div>
 
       {/* AI Budget Limits */}
       <div className="app-panel grid gap-2 p-3 md:p-4">
-        <div className="text-sm font-semibold text-stone-900">AI Budget Limits</div>
+        <div className="text-sm font-semibold text-stone-900">
+          AI Budget Limits
+        </div>
         <div className="grid gap-1.5 md:gap-2 md:grid-cols-2">
           <Field
             label="Vision calls per hour"
@@ -430,7 +583,9 @@ export function SettingsPage() {
             max={1000}
             step={1}
             value={form.ai_vision_hourly_limit}
-            onChange={(e) => setValue('ai_vision_hourly_limit', Number(e.target.value || 0))}
+            onChange={(e) =>
+              setValue('ai_vision_hourly_limit', Number(e.target.value || 0))
+            }
             error={validationErrors.ai_vision_hourly_limit}
             className="text-xs"
           />
@@ -441,7 +596,9 @@ export function SettingsPage() {
             max={1000}
             step={1}
             value={form.ai_image_hourly_limit}
-            onChange={(e) => setValue('ai_image_hourly_limit', Number(e.target.value || 0))}
+            onChange={(e) =>
+              setValue('ai_image_hourly_limit', Number(e.target.value || 0))
+            }
             error={validationErrors.ai_image_hourly_limit}
             className="text-xs"
           />
@@ -525,7 +682,14 @@ export function SettingsPage() {
               value={form.local_ai_api_key ?? ''}
               placeholder={settings.data?.local_ai_api_key_masked ?? ''}
               onChange={(value) => setValue('local_ai_api_key', value)}
-              testButton={<TestButton icon={<Sparkles size={14} />} label="Test" pending={localAiTest.isPending} onClick={() => localAiTest.mutate()} />}
+              testButton={
+                <TestButton
+                  icon={<Sparkles size={14} />}
+                  label="Test"
+                  pending={localAiTest.isPending}
+                  onClick={() => localAiTest.mutate()}
+                />
+              }
             />
           </div>
         </div>
@@ -533,10 +697,24 @@ export function SettingsPage() {
         {/* Unified test result at the bottom */}
         {testResult.status !== 'idle' && (
           <div className="mt-1 text-xs border-t border-stone-100 pt-2 flex items-center gap-1.5">
-            <span className="font-semibold text-stone-700">{testResult.provider}:</span>
-            {testResult.status === 'pending' && <span className="text-stone-500 animate-pulse">{testResult.message}</span>}
-            {testResult.status === 'success' && <span className="text-emerald-700 font-medium">{testResult.message}</span>}
-            {testResult.status === 'error' && <span className="text-red-700 font-medium">{testResult.message}</span>}
+            <span className="font-semibold text-stone-700">
+              {testResult.provider}:
+            </span>
+            {testResult.status === 'pending' && (
+              <span className="text-stone-500 animate-pulse">
+                {testResult.message}
+              </span>
+            )}
+            {testResult.status === 'success' && (
+              <span className="text-emerald-700 font-medium">
+                {testResult.message}
+              </span>
+            )}
+            {testResult.status === 'error' && (
+              <span className="text-red-700 font-medium">
+                {testResult.message}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -544,13 +722,28 @@ export function SettingsPage() {
       {/* Debug Mode */}
       <div className="app-panel p-3 md:p-4">
         <label className="flex items-start gap-1.5 md:items-center md:gap-2 text-xs cursor-pointer">
-          <input type="checkbox" checked={form.debug_mode} onChange={(e) => setValue('debug_mode', e.target.checked)} className="rounded-sm border-stone-300" />
+          <input
+            type="checkbox"
+            checked={form.debug_mode}
+            onChange={(e) => setValue('debug_mode', e.target.checked)}
+            className="rounded-sm border-stone-300"
+          />
           <div>
             <span className="font-medium">Debug mode</span>
             <span className="text-stone-600">
               {' · '}Logs to /data/logs/debug_*.log
               {form.debug_mode && (
-                <>{' · '}<a href="/api/debug/log" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">View log</a></>
+                <>
+                  {' · '}
+                  <a
+                    href="/api/debug/log"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-700 hover:underline"
+                  >
+                    View log
+                  </a>
+                </>
               )}
             </span>
           </div>
@@ -559,32 +752,58 @@ export function SettingsPage() {
 
       {/* Save */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <button type="submit" className="app-button-primary h-9 w-full justify-center px-4 disabled:opacity-60 disabled:hover:bg-emerald-700 sm:w-auto" disabled={mutation.isPending}>
+        <button
+          type="submit"
+          className="app-button-primary h-9 w-full justify-center px-4 disabled:opacity-60 disabled:hover:bg-emerald-700 sm:w-auto"
+          disabled={mutation.isPending}
+        >
           <Save size={14} />
           Save
         </button>
-        {saved.status === 'success' && <span className="text-xs text-emerald-700">{saved.message}</span>}
-        {saved.status === 'error' && <span className="text-xs text-red-700">{saved.message}</span>}
+        {saved.status === 'success' && (
+          <span className="text-xs text-emerald-700">{saved.message}</span>
+        )}
+        {saved.status === 'error' && (
+          <span className="text-xs text-red-700">{saved.message}</span>
+        )}
       </div>
 
       {/* Version Footer for Mobile */}
       <div className="mt-6 border-t border-stone-200/50 pt-4 text-center text-[10px] text-stone-400 md:hidden">
-        DailyFX 0.1.0 · PolyForm Noncommercial License 1.0.0
+        DailyFX 0.2.0 · PolyForm Noncommercial License 1.0.0
       </div>
     </form>
   );
 }
 
-function TestButton({ icon, label, pending, onClick }: { icon: ReactNode; label: string; pending: boolean; onClick: () => void }) {
+function TestButton({
+  icon,
+  label,
+  pending,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  pending: boolean;
+  onClick: () => void;
+}) {
   return (
-    <button type="button" onClick={onClick} disabled={pending} className="app-button-secondary h-11 w-[84px] shrink-0 justify-center px-3 text-xs disabled:opacity-60">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      className="app-button-secondary h-11 w-[84px] shrink-0 justify-center px-3 text-xs disabled:opacity-60"
+    >
       {icon}
       {label}
     </button>
   );
 }
 
-export const OPENAI_VISION_MODELS = [{ label: 'gpt-4o-mini', value: 'gpt-4o-mini' }, { label: 'gpt-4o', value: 'gpt-4o' }];
+export const OPENAI_VISION_MODELS = [
+  { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
+  { label: 'gpt-4o', value: 'gpt-4o' },
+];
 export const GEMINI_VISION_MODELS = [
   { label: 'gemini-2.5-flash', value: 'gemini-2.5-flash' },
   { label: 'gemini-2.5-pro', value: 'gemini-2.5-pro' },
@@ -601,10 +820,16 @@ export function getVisionModelOptions(provider: string) {
   return [];
 }
 
-export const OPENAI_IMAGE_MODELS = [{ label: 'gpt-image-1', value: 'gpt-image-1' }, { label: 'gpt-image-1-mini', value: 'gpt-image-1-mini' }];
+export const OPENAI_IMAGE_MODELS = [
+  { label: 'gpt-image-1', value: 'gpt-image-1' },
+  { label: 'gpt-image-1-mini', value: 'gpt-image-1-mini' },
+];
 export const GEMINI_IMAGE_MODELS = [
   { label: 'gemini-2.5-flash-image', value: 'gemini-2.5-flash-image' },
-  { label: 'gemini-3.1-flash-image-preview', value: 'gemini-3.1-flash-image-preview' },
+  {
+    label: 'gemini-3.1-flash-image-preview',
+    value: 'gemini-3.1-flash-image-preview',
+  },
   { label: 'gemini-3-pro-image-preview', value: 'gemini-3-pro-image-preview' },
 ];
 export function getImageModelOptions(provider: string) {
