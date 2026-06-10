@@ -1143,7 +1143,7 @@ async def _pipeline_retrieve_and_select_assets(
         progress=ctx.current_progress,
         details={"selected_asset_ids": [a.id for a in page_items]},
     )
-    return client, page_items, photo_selection_trace
+    return client, page, page_items, photo_selection_trace
 
 
 async def _pipeline_execute_module(
@@ -1304,279 +1304,74 @@ async def run_generation_pipeline(
     selected_asset_ids: list[str] | None = None,
     on_progress: "Callable[[str], None] | None" = None,
 ) -> dict | None:
-    source = "MANUAL" if force else "AUTOMATION"
-    logger.info(f"🔵 run_generation_cycle START - task_id={task_id}, source={source}")
-    pipeline_start_time = time.time()
-
-    _resolve_schedule_ai_settings(db, settings, schedule_id)
-    set_debug_mode(settings.debug_mode)
-
-    current_step = "running"
-    current_progress = 0.0
-    selected_group_name = source.lower()
-
-    def _task_update(
-        *, status: str | None = None, step: str | None = None, progress: float | None = None, error: str | None = None
-    ) -> None:
-        nonlocal current_step, current_progress
-        if step is not None:
-            current_step = step
-        if progress is not None:
-            current_progress = progress
-        update_task(
-            db,
-            task_id,
-            status=status or "running",
-            step=current_step,
-            progress=current_progress,
-            error=error,
-        )
-        if status != "succeeded":
-            history_status = history_status_for_task_status(status) or "RUNNING"
-            upsert_history_entry(db, task_id, status=history_status, task_step=current_step)
-
-    _task_update(status="running", step="running", progress=0.0)
-    upsert_history_entry(
-        db,
-        task_id,
-        generation_type=selected_group_name,
-        status="RUNNING",
-        title=f"{source.title()} generation running",
-        summary="Generation is in progress",
-        source_asset_ids="[]",
-        config_json=json.dumps({"state": "running"}),
-        task_step=current_step,
-        schedule_id=schedule_id,
-        album_name=album_name,
-    )
-    _trace_stage(
-        db, task_id, stage="start", message="Generation started", step="running", status="running", progress=0.0
-    )
-    debug_log(
-        "Generation cycle started",
-        task_id=task_id,
-        source=source,
-        schedule_id=schedule_id,
-        album_name=album_name,
-        ai_provider=settings.default_ai_provider,
-        ai_model=settings.default_ai_model,
-        ai_image_provider=settings.ai_image_provider,
-        ai_image_model=settings.ai_image_model,
-        debug_mode=settings.debug_mode,
-    )
-
-    def _progress(msg: str) -> None:
-        if on_progress:
-            on_progress(msg)
-
-    if effects_config is None:
-        debug_log("Skipping: no effects_config provided", task_id=task_id)
-        logger.warning("No effects_config provided, skipping.")
-        _task_update(status="failed", step="failed", error="No effects_config provided")
-        return None
-
-    try:
-        module_selection = _select_generation_module(effects_config)
-    except ValueError as exc:
-        debug_log("ERROR: unknown module", task_id=task_id, module=str(exc))
-        logger.error("%s", exc)
-        _task_update(status="failed", step="failed", error=str(exc))
-        return None
-    if module_selection is None:
-        debug_log("Skipping: no active modules", task_id=task_id)
-        logger.info("No active modification groups, skipping.")
-        _task_update(status="failed", step="failed", error="No active modification groups")
-        return None
-
-    selected_group_name = module_selection.name
-    module = module_selection.module
-    group_config = module_selection.config
-    debug_log("Module selected", task_id=task_id, module=selected_group_name, config=group_config.get("config", {}))
-    logger.info(f"🎯 Selected generation group: {selected_group_name} (task_id={task_id})")
-    _trace_stage(
-        db,
-        task_id,
-        stage="module_selected",
-        message=f"Selected generation group {selected_group_name}",
-        step=current_step,
-        status="running",
-        progress=current_progress,
-        details={"group": selected_group_name, "label": getattr(module, "label", selected_group_name)},
-    )
-
-    if filters is None:
-        debug_log("Skipping: no filters provided", task_id=task_id)
-        logger.warning("No filters provided, skipping.")
-        _task_update(status="failed", step="failed", error="No filters provided")
-        return None
-
-    client, page = await _search_assets_for_generation(
+    ctx = GenerationPipelineContext(
+        db=db,
         settings=settings,
-        filters=_search_filters_for_module(filters=filters, module=module, settings=settings),
         task_id=task_id,
-        _task_update=_task_update,
-        _progress=_progress,
-    )
-    _trace_stage(
-        db,
-        task_id,
-        stage="assets_found",
-        message=f"Found {len(page.items)} candidate assets",
-        step=current_step,
-        status="running",
-        progress=current_progress,
-        details={"asset_count": len(page.items)},
-    )
-    if not page.items:
-        debug_log("Skipping: no assets found", task_id=task_id)
-        logger.warning("No assets found for the given automation filter.")
-        _task_update(status="failed", step="failed", error="No assets found for the given automation filter")
-        return None
-
-    debug_log(
-        "Random asset selected", task_id=task_id, count=len(page.items), asset_ids=[a.id for a in page.items[:10]]
-    )
-    logger.info(f"📸 Selected random asset, running module {selected_group_name} (task_id={task_id})")
-
-    ai_photo_selection_enabled = bool(getattr(settings, "ai_photo_selection_enabled", False)) and int(
-        getattr(module, "source_asset_count", 1) or 1
-    ) == 1
-    page_items = _prepare_page_items_for_module(
-        page=page,
-        module=module,
+        force=force,
+        filters=filters,
+        effects_config=effects_config,
+        schedule_id=schedule_id,
+        album_name=album_name,
+        notification_presets=notification_presets,
+        webhook_url=webhook_url,
         selected_asset_ids=selected_asset_ids,
-        ai_photo_selection_enabled=ai_photo_selection_enabled,
-        task_id=task_id,
-        _task_update=_task_update,
+        on_progress=on_progress,
     )
-    if not page_items:
+
+    module_selection = _pipeline_setup_and_planning(ctx)
+    if module_selection is None:
         return None
-    photo_selection_trace = None
-    if ai_photo_selection_enabled:
-        photo_selection_trace = {}
-        selected_asset = await rank_source_assets_for_effect(
-            client=client,
-            settings=settings,
-            candidates=page_items,
-            module=module,
-            task_id=task_id,
-            trace=photo_selection_trace,
-        )
-        if selected_asset is not None:
-            page_items = [selected_asset]
-        _trace_stage(
-            db,
-            task_id,
-            stage="photo_selection",
-            message="AI photo selection completed"
-            if photo_selection_trace.get("succeeded")
-            else "AI photo selection fell back to the first candidate",
-            step=current_step,
-            status="running",
-            progress=current_progress,
-            details=photo_selection_trace,
-        )
-    _trace_stage(
-        db,
-        task_id,
-        stage="assets_selected",
-        message=f"Selected {len(page_items)} asset(s) for generation",
-        step=current_step,
-        status="running",
-        progress=current_progress,
-        details={"selected_asset_ids": [a.id for a in page_items]},
-    )
-
-    output_path, image_url = _generation_output_paths(task_id)
-
-    original_album_name = getattr(settings, "_generation_album_name", _ALBUM_NAME_SENTINEL)
-    if album_name is not None:
-        settings._generation_album_name = album_name
-    elif hasattr(settings, "_generation_album_name"):
-        delattr(settings, "_generation_album_name")
 
     try:
-        try:
-            result = await _run_selected_module(
-                db=db,
-                module=module,
-                group_name=selected_group_name,
-                group_config=group_config,
-                page_items=page_items,
-                client=client,
-                settings=settings,
-                task_id=task_id,
-                _task_update=_task_update,
-                _progress=_progress,
-            )
-        finally:
-            if original_album_name is _ALBUM_NAME_SENTINEL:
-                if hasattr(settings, "_generation_album_name"):
-                    delattr(settings, "_generation_album_name")
-            else:
-                settings._generation_album_name = original_album_name
+        # Faza 2: Pobieranie i selekcja zdjęć
+        assets_res = await _pipeline_retrieve_and_select_assets(ctx, module_selection)
+        if assets_res is None:
+            return None
+        client, page, page_items, photo_selection_trace = assets_res
 
-        source_asset, people_context = await _resolve_generation_source_context(
-            page=page,
-            result=result,
-            client=client,
-            task_id=task_id,
+        # Faza 3: Wykonanie modułu generowania
+        result = await _pipeline_execute_module(ctx, module_selection, page_items, client)
+
+        # Faza 4: Wzbogacanie metadanych i analiza wizyjna
+        source_asset, artifacts = await _pipeline_enrich_metadata(
+            ctx, module_selection, result, page, client, photo_selection_trace
         )
 
-        artifacts = await _build_generation_artifacts(
-            db=db,
-            client=client,
-            source_asset=source_asset,
-            people_context=people_context,
-            result=result,
-            module=module,
-            group_name=selected_group_name,
-            settings=settings,
-            task_id=task_id,
-            _task_update=_task_update,
-            _progress=_progress,
-            photo_selection_trace=photo_selection_trace,
-        )
+        output_path, image_url = _generation_output_paths(ctx.task_id)
 
-        return await _persist_generation_outputs(
-            db=db,
-            task_id=task_id,
-            result=result,
-            artifacts=artifacts,
-            output_path=output_path,
-            image_url=image_url,
-            schedule_id=schedule_id,
-            album_name=album_name,
-            notification_presets=notification_presets,
-            webhook_url=webhook_url,
-            pipeline_start_time=pipeline_start_time,
-            _task_update=_task_update,
-            _progress=_progress,
-        )
+        # Faza 5: Zapisanie wyników w bazie danych i na dysku
+        persist_res = await _pipeline_persist_result(ctx, result, artifacts, output_path, image_url)
+
+        # Faza 6: Powiadomienia (Telegram / Webhook)
+        await _pipeline_dispatch_notifications(ctx, result, image_url, artifacts)
+
+        return persist_res
+
     except AIUsageLimitExceededError as exc:
-        debug_log("Generation blocked by AI usage limit", task_id=task_id, module=selected_group_name, error=str(exc))
-        logger.warning("Generation blocked for task %s: %s", task_id, exc)
+        debug_log("Generation blocked by AI usage limit", task_id=ctx.task_id, module=ctx.selected_group_name, error=str(exc))
+        logger.warning("Generation blocked for task %s: %s", ctx.task_id, exc)
         _record_generation_failure(
             db=db,
-            task_id=task_id,
-            group_name=selected_group_name,
+            task_id=ctx.task_id,
+            group_name=ctx.selected_group_name,
             settings=settings,
             exc=exc,
-            current_progress=current_progress,
-            _task_update=_task_update,
+            current_progress=ctx.current_progress,
+            _task_update=ctx.task_update,
         )
         return None
     except Exception as exc:
-        debug_log("Generation cycle FAILED", task_id=task_id, module=selected_group_name, error=str(exc))
-        logger.exception("Generation cycle failed for task %s: %s", task_id, exc)
+        debug_log("Generation cycle FAILED", task_id=ctx.task_id, module=ctx.selected_group_name, error=str(exc))
+        logger.exception("Generation cycle failed for task %s: %s", ctx.task_id, exc)
         _record_generation_failure(
             db=db,
-            task_id=task_id,
-            group_name=selected_group_name,
+            task_id=ctx.task_id,
+            group_name=ctx.selected_group_name,
             settings=settings,
             exc=exc,
-            current_progress=current_progress,
-            _task_update=_task_update,
+            current_progress=ctx.current_progress,
+            _task_update=ctx.task_update,
         )
         return None
 
