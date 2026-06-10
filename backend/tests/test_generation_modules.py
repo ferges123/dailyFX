@@ -16,6 +16,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 from app.models.ai_effect import AIEffectModel
 from app.services.generation.ai_effects_builder import build_ai_module
 from app.services.generation.ai_image import generate_ai_image
+from app.services.generation.modules.collage import CollageModule
 from app.services.generation.modules.cyanotype import CyanotypeModule
 from app.services.generation.modules.paper_cutout import PaperCutoutModule
 from app.services.generation.modules.polaroid import PolaroidModule
@@ -51,6 +52,18 @@ def _fake_image_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def _fake_image_bytes_for_asset(asset_id: str) -> bytes:
+    colors = {
+        "asset-1": (128, 64, 32),
+        "asset-2": (32, 128, 64),
+        "asset-3": (64, 32, 128),
+        "asset-4": (128, 128, 32),
+    }
+    buffer = BytesIO()
+    Image.new("RGB", (160, 120), color=colors.get(asset_id, (80, 80, 80))).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 def _assert_png(result):
     assert result.image_bytes.startswith(b"\x89PNG\r\n\x1a\n")
     image = Image.open(BytesIO(result.image_bytes))
@@ -75,6 +88,47 @@ def test_new_art_modules_generate_png():
         assert result.generation_type == expected_type
         assert result.source_asset_ids == [asset.id]
         _assert_png(result)
+
+
+def test_collage_module_uses_four_distinct_assets_when_available():
+    assets = [_fake_asset(f"asset-{index}", f"photo-{index}.jpg") for index in range(1, 5)]
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(side_effect=lambda asset_id: _fake_image_bytes_for_asset(asset_id))
+    settings = MagicMock()
+
+    result = asyncio.run(
+        CollageModule().run(assets, {"styles": ["aden", "moon", "lark", "lofi"], "border": 8}, client, settings)
+    )
+
+    assert result.generation_type == "collage"
+    assert result.source_asset_ids == ["asset-1", "asset-2", "asset-3", "asset-4"]
+    assert [call.args[0] for call in client.get_asset_data.await_args_list] == [
+        "asset-1",
+        "asset-2",
+        "asset-3",
+        "asset-4",
+    ]
+    _assert_png(result)
+
+
+def test_collage_module_repeats_one_asset_when_less_than_four_candidates():
+    assets = [_fake_asset("asset-1", "photo-1.jpg"), _fake_asset("asset-2", "photo-2.jpg")]
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(side_effect=lambda asset_id: _fake_image_bytes_for_asset(asset_id))
+    settings = MagicMock()
+
+    result = asyncio.run(
+        CollageModule().run(assets, {"styles": ["aden", "moon", "lark", "lofi"], "border": 8}, client, settings)
+    )
+
+    assert result.source_asset_ids == ["asset-1", "asset-1", "asset-1", "asset-1"]
+    assert [call.args[0] for call in client.get_asset_data.await_args_list] == [
+        "asset-1",
+        "asset-1",
+        "asset-1",
+        "asset-1",
+    ]
+    _assert_png(result)
 
 
 def test_ai_modules_use_stubbed_ai_helper():

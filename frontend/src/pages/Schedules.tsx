@@ -63,6 +63,7 @@ type FormState = {
   ai_image_provider: string;
   ai_image_model: string;
   ai_prompt_enrichment: boolean;
+  ai_photo_selection_enabled: boolean;
 };
 
 const emptyForm: FormState = {
@@ -80,6 +81,7 @@ const emptyForm: FormState = {
   ai_image_provider: 'none',
   ai_image_model: 'gpt-image-1',
   ai_prompt_enrichment: false,
+  ai_photo_selection_enabled: false,
 };
 
 function normalizeModelSelection(
@@ -126,6 +128,7 @@ function scheduleToForm(schedule: Schedule): FormState {
       ['openrouter', 'byteplus', 'local'],
     ),
     ai_prompt_enrichment: schedule.ai_prompt_enrichment ?? false,
+    ai_photo_selection_enabled: schedule.ai_photo_selection_enabled ?? false,
   };
 }
 
@@ -279,6 +282,7 @@ export function SchedulesPage() {
         ai_image_provider: form.ai_image_provider,
         ai_image_model: form.ai_image_model,
         ai_prompt_enrichment: form.ai_prompt_enrichment,
+        ai_photo_selection_enabled: form.ai_photo_selection_enabled,
       };
       return editing && !isNew
         ? updateSchedule(editing.id, body)
@@ -312,6 +316,8 @@ export function SchedulesPage() {
         ai_image_provider: schedule.ai_image_provider,
         ai_image_model: schedule.ai_image_model,
         ai_prompt_enrichment: schedule.ai_prompt_enrichment ?? false,
+        ai_photo_selection_enabled:
+          schedule.ai_photo_selection_enabled ?? false,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedules'] }),
     onError: (e: Error) => setError(e.message),
@@ -805,6 +811,11 @@ export function SchedulesPage() {
                           Prompt enrichment on
                         </span>
                       )}
+                      {schedule.ai_photo_selection_enabled && (
+                        <span className="app-chip px-2 py-0.5">
+                          AI photo selection on
+                        </span>
+                      )}
                     </div>
                   </article>
                 );
@@ -1157,6 +1168,10 @@ export function SchedulesPage() {
                             const next = {
                               ...current,
                               ai_vision_provider: provider,
+                              ai_photo_selection_enabled:
+                                provider === 'none'
+                                  ? false
+                                  : current.ai_photo_selection_enabled,
                             };
                             if (provider !== 'openrouter') {
                               const opts = getVisionModelOptions(provider);
@@ -1275,6 +1290,32 @@ export function SchedulesPage() {
                             className="inline-flex items-center text-stone-400 transition hover:text-stone-600"
                           >
                             <HelpCircle size={12} />
+                          </span>
+                        </div>
+                      </label>
+                      <label
+                        className={`flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1.5 text-sm font-medium text-stone-800 shadow-xs ${
+                          form.ai_vision_provider === 'none' ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label="AI photo selection"
+                          checked={form.ai_photo_selection_enabled}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              ai_photo_selection_enabled: event.target.checked,
+                            }))
+                          }
+                          disabled={form.ai_vision_provider === 'none'}
+                          className="h-4 w-4 rounded-sm border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div className="grid gap-0.5">
+                          <span>AI photo selection</span>
+                          <span className="text-xs font-normal leading-5 text-stone-500">
+                            Pick the best photo from 4 candidates for
+                            single-image effects.
                           </span>
                         </div>
                       </label>
@@ -1471,6 +1512,10 @@ function ScheduleDetailPanel({
           <DetailRow
             label="Prompt enrichment"
             value={schedule.ai_prompt_enrichment ? 'On' : 'Off'}
+          />
+          <DetailRow
+            label="AI photo selection"
+            value={schedule.ai_photo_selection_enabled ? 'On' : 'Off'}
           />
           <DetailRow
             label="Notifications"

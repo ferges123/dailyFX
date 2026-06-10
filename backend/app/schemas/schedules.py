@@ -19,6 +19,7 @@ class ScheduleCreate(BaseModel):
     ai_image_provider: Literal["none", "openai", "gemini", "openrouter", "byteplus", "local"] = "none"
     ai_image_model: str = Field(default="gpt-image-1", max_length=100)
     ai_prompt_enrichment: bool = False
+    ai_photo_selection_enabled: bool = False
 
 
 class ScheduleUpdate(ScheduleCreate):
@@ -39,6 +40,7 @@ class ScheduleResponse(BaseModel):
     ai_image_provider: str
     ai_image_model: str
     ai_prompt_enrichment: bool
+    ai_photo_selection_enabled: bool
     last_run_at: datetime | None
     next_run_at: datetime | None
     last_tick_status: str | None
@@ -74,6 +76,7 @@ class ScheduleResponse(BaseModel):
             ai_image_provider=row.ai_image_provider,
             ai_image_model=row.ai_image_model,
             ai_prompt_enrichment=row.ai_prompt_enrichment,
+            ai_photo_selection_enabled=row.ai_photo_selection_enabled,
             last_run_at=row.last_run_at,
             next_run_at=row.next_run_at,
             last_tick_status=row.last_tick_status,

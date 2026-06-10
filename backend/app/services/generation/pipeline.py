@@ -4,13 +4,14 @@ import json
 import logging
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from sqlalchemy.orm import Session
 
 from app.immich.models import ImmichExifInfo, ImmichSearchFilters
 from app.models.settings import SettingsModel
 from app.services.generation.ai_budget import AIUsageLimitExceededError
+from app.services.generation.ai_vision import analyze_image, analyze_images
 from app.services.generation.exif_embedder import embed_exif_metadata
 from app.services.generation.history import append_history_trace, history_status_for_task_status, upsert_history_entry
 from app.services.generation.people_context import load_people_context
@@ -70,6 +71,16 @@ def _build_metadata_provenance() -> dict:
             "provider": None,
             "model": None,
             "error": None,
+        },
+        "photo_selection": {
+            "attempted": False,
+            "succeeded": False,
+            "provider": None,
+            "model": None,
+            "candidate_asset_ids": [],
+            "selected_asset_id": None,
+            "error": None,
+            "fallback_reason": None,
         },
         "final_vision": {
             "attempted": False,
@@ -191,12 +202,14 @@ def _resolve_schedule_ai_settings(db: Session, settings: SettingsModel, schedule
             settings.ai_image_provider = getattr(schedule, "ai_image_provider", "none")
             settings.ai_image_model = getattr(schedule, "ai_image_model", "")
             settings.ai_prompt_enrichment = getattr(schedule, "ai_prompt_enrichment", False)
+            settings.ai_photo_selection_enabled = getattr(schedule, "ai_photo_selection_enabled", False)
         else:
             settings.default_ai_provider = "none"
             settings.default_ai_model = ""
             settings.ai_image_provider = "none"
             settings.ai_image_model = ""
             settings.ai_prompt_enrichment = False
+            settings.ai_photo_selection_enabled = False
     except Exception:
         if not hasattr(settings, "default_ai_provider"):
             settings.default_ai_provider = "none"
@@ -208,6 +221,8 @@ def _resolve_schedule_ai_settings(db: Session, settings: SettingsModel, schedule
             settings.ai_image_model = ""
         if not hasattr(settings, "ai_prompt_enrichment"):
             settings.ai_prompt_enrichment = False
+        if not hasattr(settings, "ai_photo_selection_enabled"):
+            settings.ai_photo_selection_enabled = False
 
 
 def _select_generation_module(effects_config: dict) -> GenerationModuleSelection | None:
@@ -261,6 +276,13 @@ async def _search_assets_for_generation(
     return client, page
 
 
+def _search_filters_for_module(*, filters: ImmichSearchFilters, module, settings: SettingsModel) -> ImmichSearchFilters:
+    source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
+    ai_photo_selection_enabled = bool(getattr(settings, "ai_photo_selection_enabled", False))
+    random_size = 4 if source_asset_count > 1 or ai_photo_selection_enabled else 1
+    return replace(filters, random_size=random_size)
+
+
 def _select_page_items(
     *,
     page,
@@ -290,6 +312,140 @@ def _select_page_items(
             _task_update(status="failed", step="failed", error="No selected assets matched the current search results")
             return []
     return page_items
+
+
+def _dedupe_page_items(items: list) -> list:
+    unique_items = []
+    seen_ids = set()
+    for item in items:
+        asset_id = getattr(item, "id", None)
+        if not asset_id or asset_id in seen_ids:
+            continue
+        unique_items.append(item)
+        seen_ids.add(asset_id)
+    return unique_items
+
+
+def _prepare_page_items_for_module(
+    *,
+    page,
+    module,
+    selected_asset_ids: list[str] | None,
+    ai_photo_selection_enabled: bool,
+    task_id: str,
+    _task_update: Callable[..., None],
+) -> list | None:
+    page_items = _select_page_items(
+        page=page, selected_asset_ids=selected_asset_ids, task_id=task_id, _task_update=_task_update
+    )
+    if not page_items:
+        return None
+
+    unique_items = _dedupe_page_items(page_items)
+    if not unique_items:
+        return None
+
+    source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
+    if source_asset_count > 1:
+        return unique_items[:source_asset_count]
+    if ai_photo_selection_enabled:
+        return unique_items[:4]
+    return page_items
+
+
+def _parse_ranking_payload(result) -> dict:
+    candidates = [getattr(result, "summary", None), getattr(result, "title", None)]
+    for candidate in candidates:
+        if not isinstance(candidate, str):
+            continue
+        text = candidate.strip().replace("```json", "").replace("```", "").strip()
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+async def rank_source_assets_for_effect(
+    *,
+    client,
+    settings: SettingsModel,
+    candidates: list,
+    module,
+    task_id: str,
+    trace: dict,
+):
+    candidate_asset_ids = [getattr(asset, "id", None) for asset in candidates if getattr(asset, "id", None)]
+    trace.update(
+        attempted=True,
+        succeeded=False,
+        provider=getattr(settings, "default_ai_provider", None),
+        model=getattr(settings, "default_ai_model", None),
+        candidate_asset_ids=candidate_asset_ids,
+        selected_asset_id=candidate_asset_ids[0] if candidate_asset_ids else None,
+        error=None,
+        fallback_reason=None,
+        selection_reason=None,
+    )
+    if not candidates:
+        trace.update(error="No candidates available", fallback_reason="no_candidates")
+        return None
+
+    try:
+        effect_label = getattr(module, "label", getattr(module, "name", "selected effect"))
+        effect_description = getattr(module, "description", "")
+        total = min(4, len(candidates))
+        candidate_images = [await client.get_asset_data(asset.id) for asset in candidates[:4]]
+        prompt = (
+            "Compare these candidate source photos for a DailyFX effect. "
+            f"Effect/filter to apply: {effect_label}. Description: {effect_description}. "
+            f"There are {total} candidates, shown in order as Candidate 1 through Candidate {total}. "
+            "Choose which candidate will produce the best final result after applying this effect. "
+            "Consider composition, subject clarity, lighting, colors, and how well the selected filter/effect will work. "
+            "Return raw JSON only: selected_index (1-based), selected_asset_id if known, and "
+            "selection_reason: one short sentence explaining why it beats the other candidates."
+        )
+        result = await analyze_images(
+            settings,
+            candidate_images,
+            provider=getattr(settings, "default_ai_provider", None),
+            model=getattr(settings, "default_ai_model", None),
+            prompt=prompt,
+        )
+        parsed = _parse_ranking_payload(result)
+        selected_index = parsed.get("selected_index") or parsed.get("index")
+        if not isinstance(selected_index, int) or not 1 <= selected_index <= len(candidates[:4]):
+            selected_index = 1
+            trace["fallback_reason"] = "invalid_ranking_response"
+        selected = candidates[selected_index - 1]
+        selection_reason = parsed.get("selection_reason") or parsed.get("reason")
+        selection_reason = selection_reason if isinstance(selection_reason, str) else None
+        trace.update(
+            succeeded=True,
+            selected_asset_id=selected.id,
+            selection_reason=selection_reason,
+        )
+        debug_log(
+            "AI photo selection selected asset",
+            task_id=task_id,
+            selected_asset_id=selected.id,
+            candidate_asset_ids=candidate_asset_ids,
+            selection_reason=selection_reason,
+        )
+        return selected
+    except Exception as exc:
+        fallback = candidates[0]
+        trace.update(
+            succeeded=False,
+            selected_asset_id=getattr(fallback, "id", None),
+            error=str(exc),
+            fallback_reason="ranking_failed",
+        )
+        debug_log("AI photo selection failed, using first candidate", task_id=task_id, error=str(exc))
+        logger.warning("AI photo selection failed for %s, using first candidate: %s", task_id, exc)
+        return fallback
 
 
 def _initial_artifact_state(result) -> dict[str, object]:
@@ -620,9 +776,12 @@ async def _build_generation_artifacts(
     task_id: str,
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
+    photo_selection_trace: dict | None = None,
 ) -> GenerationArtifacts:
     state = _initial_artifact_state(result)
     metadata_provenance = _build_metadata_provenance()
+    if photo_selection_trace:
+        metadata_provenance["photo_selection"].update(photo_selection_trace)
 
     source_asset_id = getattr(source_asset, "id", None) if source_asset is not None else None
     if source_asset_id:
@@ -892,7 +1051,7 @@ async def run_generation_pipeline(
 
     client, page = await _search_assets_for_generation(
         settings=settings,
-        filters=filters,
+        filters=_search_filters_for_module(filters=filters, module=module, settings=settings),
         task_id=task_id,
         _task_update=_task_update,
         _progress=_progress,
@@ -918,14 +1077,44 @@ async def run_generation_pipeline(
     )
     logger.info(f"📸 Selected random asset, running module {selected_group_name} (task_id={task_id})")
 
-    page_items = _select_generation_page_items(
+    ai_photo_selection_enabled = bool(getattr(settings, "ai_photo_selection_enabled", False)) and int(
+        getattr(module, "source_asset_count", 1) or 1
+    ) == 1
+    page_items = _prepare_page_items_for_module(
         page=page,
+        module=module,
         selected_asset_ids=selected_asset_ids,
+        ai_photo_selection_enabled=ai_photo_selection_enabled,
         task_id=task_id,
         _task_update=_task_update,
     )
     if not page_items:
         return None
+    photo_selection_trace = None
+    if ai_photo_selection_enabled:
+        photo_selection_trace = {}
+        selected_asset = await rank_source_assets_for_effect(
+            client=client,
+            settings=settings,
+            candidates=page_items,
+            module=module,
+            task_id=task_id,
+            trace=photo_selection_trace,
+        )
+        if selected_asset is not None:
+            page_items = [selected_asset]
+        _trace_stage(
+            db,
+            task_id,
+            stage="photo_selection",
+            message="AI photo selection completed"
+            if photo_selection_trace.get("succeeded")
+            else "AI photo selection fell back to the first candidate",
+            step=current_step,
+            status="running",
+            progress=current_progress,
+            details=photo_selection_trace,
+        )
     _trace_stage(
         db,
         task_id,
@@ -985,6 +1174,7 @@ async def run_generation_pipeline(
             task_id=task_id,
             _task_update=_task_update,
             _progress=_progress,
+            photo_selection_trace=photo_selection_trace,
         )
 
         return await _persist_generation_outputs(

@@ -574,6 +574,7 @@ export type Schedule = {
   ai_image_provider: string;
   ai_image_model: string;
   ai_prompt_enrichment: boolean;
+  ai_photo_selection_enabled: boolean;
   last_run_at: string | null;
   next_run_at: string | null;
   last_tick_status: string | null;

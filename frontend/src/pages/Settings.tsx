@@ -751,7 +751,7 @@ export function SettingsPage() {
       </div>
 
       {/* Save */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl border border-stone-200/70 bg-[rgba(248,246,239,0.96)] p-2 shadow-sm sm:flex-row sm:items-center md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
         <button
           type="submit"
           className="app-button-primary h-9 w-full justify-center px-4 disabled:opacity-60 disabled:hover:bg-emerald-700 sm:w-auto"
@@ -770,7 +770,7 @@ export function SettingsPage() {
 
       {/* Version Footer for Mobile */}
       <div className="mt-6 border-t border-stone-200/50 pt-4 text-center text-[10px] text-stone-400 md:hidden">
-        DailyFX 0.2.0 · PolyForm Noncommercial License 1.0.0
+        DailyFX 0.2.6 · PolyForm Noncommercial License 1.0.0
       </div>
     </form>
   );

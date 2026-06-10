@@ -58,6 +58,10 @@ function AppShell() {
     queryClient.clear();
   }
 
+  if (location.pathname === '/') {
+    return <Navigate to="/history" replace />;
+  }
+
   return (
     <div className="app-shell md:grid md:min-h-screen md:grid-cols-[18rem_minmax(0,1fr)]">
       <header className="sticky top-0 z-20 border-b border-white/70 bg-[rgba(248,246,239,0.82)] backdrop-blur-xl md:hidden">
@@ -155,7 +159,7 @@ function AppShell() {
               title="Open DailyFX on GitHub"
             >
               <Bell size={13} />
-              DailyFX 0.2.0
+              DailyFX 0.2.6
             </a>
             <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
               <a
@@ -174,7 +178,6 @@ function AppShell() {
       <div className="min-w-0">
         <main className="grid gap-3 px-3 py-3 pb-32 md:gap-4 md:px-5 md:py-5 md:pb-6">
           <Routes>
-            <Route path="/" element={<Navigate to="/history" replace />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/history/:taskId" element={<HistoryPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />

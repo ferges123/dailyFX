@@ -10,6 +10,7 @@ class ModuleDefinition:
     label: str
     description: str
     default_weight: int = 1
+    source_asset_count: int = 1
     default_enabled: bool = True
     default_config: dict[str, Any] | None = None
     config_schema: list[dict[str, Any]] | None = None
@@ -32,6 +33,7 @@ class GenerationModule(Protocol):
     label: str
     description: str
     default_weight: int
+    source_asset_count: int
     default_config: dict[str, Any] | None
     config_schema: list[dict[str, Any]] | None
 

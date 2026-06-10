@@ -29,6 +29,8 @@ def _validate_presets(body: ScheduleCreate, db: Session) -> None:
         raise HTTPException(status_code=404, detail="Filter preset not found")
     if not db.get(EffectPresetModel, body.effect_preset_id):
         raise HTTPException(status_code=404, detail="Effect preset not found")
+    if body.ai_photo_selection_enabled and body.ai_vision_provider == "none":
+        raise HTTPException(status_code=422, detail="AI photo selection requires an AI Vision provider")
 
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ def create_schedule(body: ScheduleCreate, db: Session = Depends(get_db), _: None
         ai_image_provider=body.ai_image_provider,
         ai_image_model=body.ai_image_model,
         ai_prompt_enrichment=body.ai_prompt_enrichment,
+        ai_photo_selection_enabled=body.ai_photo_selection_enabled,
     )
     if body.enabled:
         row.next_run_at = _compute_next_run(body.schedule_expr, None)
@@ -108,6 +111,7 @@ def update_schedule(
     row.ai_image_provider = body.ai_image_provider
     row.ai_image_model = body.ai_image_model
     row.ai_prompt_enrichment = body.ai_prompt_enrichment
+    row.ai_photo_selection_enabled = body.ai_photo_selection_enabled
     row.next_run_at = _compute_next_run(body.schedule_expr, row.last_run_at) if body.enabled else None
     db.commit()
     db.refresh(row)

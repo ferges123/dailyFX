@@ -14,6 +14,11 @@ from app.models.generation_history import GenerationHistoryModel
 from app.models.schedule import ScheduleModel
 from app.services.generation.ai_vision import AIVisionResult
 from app.services.generation.engine import _merge_module_defaults, run_generation_cycle
+from app.services.generation.pipeline import (
+    _prepare_page_items_for_module,
+    _search_filters_for_module,
+    rank_source_assets_for_effect,
+)
 from app.services.immich import get_or_create_settings
 
 test_db = configure_contract_test_db("engine")
@@ -365,6 +370,160 @@ def test_run_generation_cycle_collage(tmp_path):
         assert Path(entry.output_path).exists()
     finally:
         db.close()
+
+
+def test_prepare_page_items_uses_four_collage_assets():
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 6)])
+    module = SimpleNamespace(source_asset_count=4, name="collage")
+
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=None,
+        ai_photo_selection_enabled=False,
+        task_id="task-collage-select",
+        _task_update=lambda **kwargs: None,
+    )
+
+    assert [asset.id for asset in selected] == ["asset-1", "asset-2", "asset-3", "asset-4"]
+
+
+def test_search_filters_request_four_assets_for_collage():
+    filters = _get_test_filters()
+    module = SimpleNamespace(source_asset_count=4, name="collage")
+    settings = MagicMock(ai_photo_selection_enabled=False)
+
+    updated = _search_filters_for_module(filters=filters, module=module, settings=settings)
+
+    assert updated.random_size == 4
+
+
+def test_search_filters_request_four_assets_for_ai_photo_selection():
+    filters = _get_test_filters()
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+    settings = MagicMock(ai_photo_selection_enabled=True)
+
+    updated = _search_filters_for_module(filters=filters, module=module, settings=settings)
+
+    assert updated.random_size == 4
+
+
+def test_search_filters_keep_single_asset_for_regular_single_image_effect():
+    filters = _get_test_filters()
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+    settings = MagicMock(ai_photo_selection_enabled=False)
+
+    updated = _search_filters_for_module(filters=filters, module=module, settings=settings)
+
+    assert updated.random_size == 1
+
+
+def test_prepare_page_items_preserves_single_image_default_without_ranking():
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 5)])
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=None,
+        ai_photo_selection_enabled=False,
+        task_id="task-single-select",
+        _task_update=lambda **kwargs: None,
+    )
+
+    assert [asset.id for asset in selected] == ["asset-1", "asset-2", "asset-3", "asset-4"]
+
+
+def test_prepare_page_items_uses_four_candidates_for_single_image_ranking():
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 6)])
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=None,
+        ai_photo_selection_enabled=True,
+        task_id="task-ranking-candidates",
+        _task_update=lambda **kwargs: None,
+    )
+
+    assert [asset.id for asset in selected] == ["asset-1", "asset-2", "asset-3", "asset-4"]
+
+
+def test_ai_photo_selection_ranks_candidates_with_vision():
+    assets = [_make_fake_asset(f"asset-{index}", f"photo-{index}.jpg") for index in range(1, 5)]
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
+    settings = MagicMock(default_ai_provider="local", default_ai_model="qwen2.5-vl")
+    module = SimpleNamespace(label="Instagram Filter", description="A warm filter")
+
+    async def fake_analyze_images(settings, image_bytes_list, prompt=None, **kwargs):
+        assert len(image_bytes_list) == 4
+        assert "Instagram Filter" in prompt
+        assert "why it beats the other candidates" in prompt
+        assert "which candidate will produce the best final result after applying this effect" in prompt
+        return AIVisionResult(
+            title="Choice",
+            summary='{"selected_index": 2, "selection_reason": "Sharper subject and warmer light than the other candidates."}',
+            provider="local",
+            model="qwen2.5-vl",
+        )
+
+    trace = {}
+    with (
+        patch("app.services.generation.pipeline.analyze_images", fake_analyze_images),
+        patch("app.services.generation.pipeline.analyze_image", side_effect=AssertionError("single-image ranking should not be used")),
+        patch("app.services.generation.pipeline.debug_log") as debug_log,
+    ):
+        selected = asyncio.run(
+            rank_source_assets_for_effect(
+                client=client,
+                settings=settings,
+                candidates=assets,
+                module=module,
+                task_id="task-ranking",
+                trace=trace,
+            )
+        )
+
+    assert selected.id == "asset-2"
+    assert trace["succeeded"] is True
+    assert trace["selected_asset_id"] == "asset-2"
+    assert trace["selection_reason"] == "Sharper subject and warmer light than the other candidates."
+    assert trace["candidate_asset_ids"] == ["asset-1", "asset-2", "asset-3", "asset-4"]
+    assert client.get_asset_data.await_count == 4
+    debug_log.assert_any_call(
+        "AI photo selection selected asset",
+        task_id="task-ranking",
+        selected_asset_id="asset-2",
+        candidate_asset_ids=["asset-1", "asset-2", "asset-3", "asset-4"],
+        selection_reason="Sharper subject and warmer light than the other candidates.",
+    )
+
+
+def test_ai_photo_selection_falls_back_to_first_candidate_on_error():
+    assets = [_make_fake_asset(f"asset-{index}", f"photo-{index}.jpg") for index in range(1, 5)]
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(side_effect=RuntimeError("vision failed"))
+    settings = MagicMock(default_ai_provider="local", default_ai_model="qwen2.5-vl")
+    module = SimpleNamespace(label="Instagram Filter", description="A warm filter")
+    trace = {}
+
+    selected = asyncio.run(
+        rank_source_assets_for_effect(
+            client=client,
+            settings=settings,
+            candidates=assets,
+            module=module,
+            task_id="task-ranking-fallback",
+            trace=trace,
+        )
+    )
+
+    assert selected.id == "asset-1"
+    assert trace["succeeded"] is False
+    assert trace["selected_asset_id"] == "asset-1"
+    assert "vision failed" in trace["error"]
 
 
 def test_effect_preset_random_selection():

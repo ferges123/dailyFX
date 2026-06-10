@@ -13,6 +13,7 @@ class CollageModule:
     label = "Collage"
     description = "Four-filter collage with enhanced borders and depth."
     default_weight = 5
+    source_asset_count = 4
     default_config = {"styles": ["random"], "border": 8}
     config_schema = [
         {
@@ -36,23 +37,41 @@ class CollageModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings=None) -> GenerationResult:
-        asset = random.choice(page_items)
-        image_bytes = await client.get_asset_data(asset.id)
+        tile_assets = _select_tile_assets(page_items)
+        image_bytes_list = [await client.get_asset_data(asset.id) for asset in tile_assets]
         styles = _pick_styles(config)
         border = max(0, min(16, int(config.get("border", 8) or 8)))
         canvas_size = (1600, 1200)
-        collage_bytes = _build_collage(image_bytes, styles, canvas_size, border)
+        collage_bytes = _build_collage(image_bytes_list, styles, canvas_size, border)
+        title_asset = tile_assets[0]
 
         return GenerationResult(
-            title=f"Collage: {asset.original_file_name or asset.id}",
+            title=f"Collage: {title_asset.original_file_name or title_asset.id}",
             summary="Four-filter collage with enhanced depth and borders.",
             image_bytes=collage_bytes,
             generation_type="collage",
             provider="local",
             model="pilgram+pil",
             config={"styles": styles, "border": border},
-            source_asset_ids=[asset.id],
+            source_asset_ids=[asset.id for asset in tile_assets],
         )
+
+
+def _select_tile_assets(page_items: list) -> list:
+    unique_assets = []
+    seen_ids = set()
+    for item in page_items:
+        asset_id = getattr(item, "id", None)
+        if asset_id in seen_ids:
+            continue
+        unique_assets.append(item)
+        seen_ids.add(asset_id)
+        if len(unique_assets) == 4:
+            break
+    if len(unique_assets) == 4:
+        return unique_assets
+    fallback = unique_assets[0] if unique_assets else random.choice(page_items)
+    return [fallback, fallback, fallback, fallback]
 
 
 def _pick_styles(config: dict) -> list[str]:
@@ -69,7 +88,7 @@ def _pick_styles(config: dict) -> list[str]:
     return repeated[:4]
 
 
-def _build_collage(image_bytes: bytes, styles: list[str], canvas_size: tuple[int, int], border: int) -> bytes:
+def _build_collage(image_bytes_list: list[bytes], styles: list[str], canvas_size: tuple[int, int], border: int) -> bytes:
     w, h = canvas_size
     tw, th = max(1, (w - border) // 2), max(1, (h - border) // 2)
 
@@ -77,6 +96,7 @@ def _build_collage(image_bytes: bytes, styles: list[str], canvas_size: tuple[int
     collage = Image.new("RGB", (tw * 2 + border, th * 2 + border), "#0a0a0a")
 
     for i, style in enumerate(styles[:4]):
+        image_bytes = image_bytes_list[i] if i < len(image_bytes_list) else image_bytes_list[0]
         filtered, _ = apply_instafilter(image_bytes, filter_name=style)
         tile = Image.open(BytesIO(filtered)).convert("RGB")
         tile = ImageOps.fit(tile, (tw, th), centering=(0.5, 0.5))

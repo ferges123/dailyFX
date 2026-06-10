@@ -41,6 +41,7 @@ class ScheduleModel(Base):
     ai_image_provider: Mapped[str] = mapped_column(String(50), nullable=False, default="none")
     ai_image_model: Mapped[str] = mapped_column(String(100), nullable=False, default="gpt-image-1")
     ai_prompt_enrichment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_photo_selection_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     next_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     last_tick_status: Mapped[str | None] = mapped_column(String(50), nullable=True)

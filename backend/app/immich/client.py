@@ -702,12 +702,14 @@ class ImmichClient:
             for person_ids in request_sets:
                 attempts = 3 if exclude_ids else 1
                 for _ in range(attempts):
-                    asset = await self._post_random_asset(client, filters, person_ids)
-                    if asset is None:
+                    assets = await self._post_random_assets(client, filters, person_ids)
+                    if not assets:
                         break
-                    if any(person.id in exclude_ids for person in asset.people):
+                    if exclude_ids:
+                        assets = [asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)]
+                    if not assets:
                         continue
-                    return [asset]
+                    return assets
         return []
 
     @staticmethod
@@ -730,20 +732,21 @@ class ImmichClient:
 
         return request_sets or [[]]
 
-    async def _post_random_asset(
+    async def _post_random_assets(
         self,
         client: httpx.AsyncClient,
         filters: ImmichSearchFilters,
         person_ids: list[str],
-    ) -> ImmichAssetSummary | None:
+    ) -> list[ImmichAssetSummary]:
         body = self._build_random_search_body(filters, person_ids)
         payload = await self._request_any_json("POST", "/search/random", client, json_payload=body)
         if not isinstance(payload, list):
             raise ImmichUnexpectedResponseError("Immich returned unexpected random asset search response")
-        for item in payload:
-            if isinstance(item, dict) and (summary := self._coerce_asset_summary(item)) is not None:
-                return summary
-        return None
+        return [
+            summary
+            for item in payload
+            if isinstance(item, dict) and (summary := self._coerce_asset_summary(item)) is not None
+        ]
 
     def _build_random_search_body(
         self,
@@ -751,7 +754,7 @@ class ImmichClient:
         person_ids: list[str],
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
-            "size": 1,
+            "size": max(1, min(4, int(getattr(filters, "random_size", 1) or 1))),
             "withDeleted": False,
             "withExif": False,
             "withPeople": True,

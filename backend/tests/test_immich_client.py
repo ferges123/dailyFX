@@ -151,6 +151,40 @@ def test_search_assets_applies_filters_and_sampling(monkeypatch: pytest.MonkeyPa
     assert [item.id for item in result.items] == ["asset-2"]
 
 
+def test_search_assets_uses_requested_random_size_and_returns_all_assets(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(json.loads(request.content.decode()))
+        return httpx.Response(
+            200,
+            json=[
+                {"id": "asset-1", "originalFileName": "a.jpg", "type": "IMAGE", "people": []},
+                {"id": "asset-2", "originalFileName": "b.jpg", "type": "IMAGE", "people": []},
+                {"id": "asset-3", "originalFileName": "c.jpg", "type": "IMAGE", "people": []},
+                {"id": "asset-4", "originalFileName": "d.jpg", "type": "IMAGE", "people": []},
+            ],
+        )
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+
+    result = asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").search_assets(
+            ImmichSearchFilters(random_size=4, media_type="photo")
+        )
+    )
+
+    assert requests[0]["size"] == 4
+    assert [item.id for item in result.items] == ["asset-1", "asset-2", "asset-3", "asset-4"]
+    assert result.count == 4
+
+
 def test_search_assets_parses_people_faces() -> None:
     payload = {
         "id": "asset-1",

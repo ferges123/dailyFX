@@ -99,6 +99,7 @@ class ImmichSearchFilters:
     taken_after: date | None = None
     taken_before: date | None = None
     media_type: str = "all"
+    random_size: int = 1
 
 
 @dataclass(frozen=True)
