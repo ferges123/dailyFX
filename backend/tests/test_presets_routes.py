@@ -175,6 +175,14 @@ def test_person_filter_mode_rejects_invalid_value():
         PersonFilterItem(personId="person-1", mode="maybe")
 
 
+def _clear_notification_preset_tables(db):
+    import sqlalchemy as sa
+    db.execute(sa.text("DELETE FROM preset_push_subscriptions"))
+    db.execute(sa.text("DELETE FROM push_subscriptions"))
+    db.execute(sa.text("DELETE FROM notification_presets"))
+    db.commit()
+
+
 def test_preset_push_subscriptions_relationship():
     init_db()
     db = SessionLocal()
@@ -182,9 +190,7 @@ def test_preset_push_subscriptions_relationship():
         from app.models.notification_preset import NotificationPresetModel
         from app.models.push import PushSubscriptionModel
 
-        db.query(PushSubscriptionModel).delete()
-        db.query(NotificationPresetModel).delete()
-        db.commit()
+        _clear_notification_preset_tables(db)
 
         sub = PushSubscriptionModel(
             endpoint="https://push.example.com/target-test-1",
@@ -206,5 +212,93 @@ def test_preset_push_subscriptions_relationship():
         assert loaded.push_subscriptions[0].device_label == "My Test Device"
     finally:
         db.close()
+
+
+def test_create_and_update_preset_with_push_subscriptions():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.models.push import PushSubscriptionModel
+    from app.models.notification_preset import NotificationPresetModel
+
+    init_db()
+    db = SessionLocal()
+    try:
+        _clear_notification_preset_tables(db)
+
+        sub1 = PushSubscriptionModel(endpoint="https://push.example/ep1", p256dh="dh1", auth="au1", device_label="Device A")
+        sub2 = PushSubscriptionModel(endpoint="https://push.example/ep2", p256dh="dh2", auth="au2", device_label="Device B")
+        db.add_all([sub1, sub2])
+        db.commit()
+
+        client = TestClient(app)
+
+        payload = {
+            "name": "Targeted Preset",
+            "provider": "web",
+            "push_subscription_ids": [sub1.id],
+        }
+        resp = client.post("/api/presets/notifications", json=payload)
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["push_subscription_ids"] == [sub1.id]
+
+        payload["push_subscription_ids"] = [sub2.id]
+        resp = client.put(f"/api/presets/notifications/{data['id']}", json=payload)
+        assert resp.status_code == 200
+        assert resp.json()["push_subscription_ids"] == [sub2.id]
+    finally:
+        db.close()
+
+
+def test_notification_preset_rejects_unknown_push_subscription_id():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.models.push import PushSubscriptionModel
+    from app.models.notification_preset import NotificationPresetModel
+
+    init_db()
+    db = SessionLocal()
+    try:
+        _clear_notification_preset_tables(db)
+
+        client = TestClient(app)
+
+        payload = {
+            "name": "Invalid Target Preset",
+            "provider": "web",
+            "push_subscription_ids": [999999],
+        }
+        resp = client.post("/api/presets/notifications", json=payload)
+        assert resp.status_code == 400
+        assert "Unknown push subscription" in resp.json()["detail"]
+    finally:
+        db.close()
+
+
+def test_notification_preset_allows_empty_push_subscription_targets():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.models.push import PushSubscriptionModel
+    from app.models.notification_preset import NotificationPresetModel
+
+    init_db()
+    db = SessionLocal()
+    try:
+        _clear_notification_preset_tables(db)
+
+        client = TestClient(app)
+
+        payload = {
+            "name": "No Target Preset",
+            "provider": "web",
+            "push_subscription_ids": [],
+        }
+        resp = client.post("/api/presets/notifications", json=payload)
+        assert resp.status_code == 201
+        assert resp.json()["push_subscription_ids"] == []
+    finally:
+        db.close()
+
+
 
 

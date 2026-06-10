@@ -8,6 +8,7 @@ from app.models.effect_preset import EffectPresetModel
 from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
 from app.models.schedule import ScheduleModel
+from app.models.push import PushSubscriptionModel
 from app.schemas.presets import (
     EffectPresetCreate,
     EffectPresetResponse,
@@ -21,6 +22,19 @@ from app.security import decrypt_secret, encrypt_secret, mask_secret, require_au
 from app.services.notifications import run_notification_preset_test
 
 router = APIRouter(prefix="/api/presets", tags=["presets"])
+
+
+def _load_push_subscriptions_or_400(db: Session, ids: list[int]) -> list[PushSubscriptionModel]:
+    if not ids:
+        return []
+    rows = db.query(PushSubscriptionModel).filter(PushSubscriptionModel.id.in_(ids)).all()
+    found_ids = {row.id for row in rows}
+    missing_ids = [item for item in ids if item not in found_ids]
+    if missing_ids:
+        raise HTTPException(status_code=400, detail=f"Unknown push subscription id(s): {missing_ids}")
+    rows_by_id = {row.id: row for row in rows}
+    return [rows_by_id[item] for item in ids]
+
 
 
 def _preset_in_use(db: Session, preset_id: int, fk_field: str) -> bool:
@@ -173,6 +187,7 @@ def create_notification_preset(
         encrypted_token=encrypt_secret(body.token) if body.token else None,
         webhook_url=body.webhook_url,
     )
+    row.push_subscriptions = _load_push_subscriptions_or_400(db, body.push_subscription_ids)
     db.add(row)
     db.commit()
     db.refresh(row)
@@ -206,9 +221,11 @@ def update_notification_preset(
         if body.token != existing_masked:
             row.encrypted_token = encrypt_secret(body.token)
     row.webhook_url = body.webhook_url
+    row.push_subscriptions = _load_push_subscriptions_or_400(db, body.push_subscription_ids)
     db.commit()
     db.refresh(row)
     return NotificationPresetResponse.from_model(row, token_masked=_masked_token(row))
+
 
 
 @router.delete("/notifications/{preset_id}", status_code=204)

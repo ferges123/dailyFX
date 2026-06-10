@@ -100,6 +100,16 @@ class NotificationPresetCreate(BaseModel):
     topic: str | None = Field(default=None, max_length=255)
     token: str | None = Field(default=None, max_length=4096)  # plain text — encrypted on save
     webhook_url: str | None = Field(default=None, max_length=2048)
+    push_subscription_ids: list[int] = Field(default_factory=list)
+
+    @field_validator("push_subscription_ids")
+    @classmethod
+    def validate_push_subscription_ids(cls, value: list[int]) -> list[int]:
+        if any(item <= 0 for item in value):
+            raise ValueError("push_subscription_ids must contain positive integers")
+        if len(value) != len(set(value)):
+            raise ValueError("push_subscription_ids must not contain duplicates")
+        return value
 
     @field_validator("provider", mode="before")
     @classmethod
@@ -146,6 +156,7 @@ class NotificationPresetResponse(BaseModel):
     token_masked: str | None = None
     webhook_url: str | None
     created_at: datetime
+    push_subscription_ids: list[int] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
@@ -165,7 +176,9 @@ class NotificationPresetResponse(BaseModel):
             token_masked=token_masked,
             webhook_url=row.webhook_url,
             created_at=row.created_at,
+            push_subscription_ids=[sub.id for sub in row.push_subscriptions] if hasattr(row, "push_subscriptions") else [],
         )
+
 
 
 class NotificationPresetTestResponse(BaseModel):
