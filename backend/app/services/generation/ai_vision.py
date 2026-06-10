@@ -170,6 +170,223 @@ async def analyze_image(
     raise AIVisionError(f"Unsupported AI provider: {provider}")
 
 
+async def analyze_images(
+    settings: SettingsModel,
+    image_bytes_list: list[bytes],
+    provider: str | None = None,
+    model: str | None = None,
+    prompt: str | None = None,
+) -> AIVisionResult:
+    if provider is None:
+        provider = getattr(settings, "default_ai_provider", "none") or "none"
+    provider = provider.strip().lower()
+    if provider == "none":
+        return AIVisionResult(title="Untitled", summary="AI analysis skipped (provider set to none)")
+
+    images = [image_bytes for image_bytes in image_bytes_list[:4] if image_bytes]
+    if not images:
+        raise AIVisionError("No images provided for AI vision analysis")
+
+    api_key = _decrypt_provider_key(settings, provider)
+    b64_images = [_normalize_image_for_vision(image_bytes) for image_bytes in images]
+
+    if model is None:
+        model = getattr(settings, "default_ai_model", "")
+    model = (model or "").strip()
+    prompt = prompt or DEFAULT_VISION_PROMPT
+
+    reserve_ai_usage(
+        "vision",
+        limit=getattr(settings, "ai_vision_hourly_limit", 30),
+        provider=provider,
+        model=model or None,
+    )
+
+    if provider == "openai":
+        return await _analyze_images_with_openai(api_key, b64_images, prompt, model or OPENAI_VISION_MODEL)
+    if provider == "gemini":
+        return await _analyze_images_with_gemini(api_key, b64_images, prompt, model or GEMINI_VISION_MODEL)
+    if provider == "openrouter":
+        return await _analyze_images_with_openrouter(api_key, b64_images, prompt, model or "google/gemini-2.5-flash")
+    if provider == "xiaomi":
+        xiaomi_model = model or XIAOMI_VISION_MODEL
+        _validate_xiaomi_image_model(xiaomi_model)
+        return await _analyze_images_with_xiaomi(api_key, b64_images, prompt, xiaomi_model)
+    if provider == "local":
+        return await _analyze_images_with_local(settings, api_key, b64_images, prompt, model or "")
+
+    raise AIVisionError(f"Unsupported AI provider: {provider}")
+
+
+def _chat_image_content(prompt: str, b64_images: list[str]) -> list[dict[str, object]]:
+    content: list[dict[str, object]] = [{"type": "text", "text": prompt}]
+    for index, b64_image in enumerate(b64_images, start=1):
+        content.append({"type": "text", "text": f"Candidate {index}"})
+        content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}})
+    return content
+
+
+def _vision_result_from_chat_json(data: dict, *, provider: str, model: str) -> AIVisionResult:
+    content = data["choices"][0]["message"]["content"]
+    parsed = json.loads(content.strip().replace("```json", "").replace("```", "").strip())
+    return AIVisionResult(
+        title=parsed.get("title", "Ranking"),
+        summary=json.dumps(parsed),
+        tags=[t for t in parsed.get("tags", []) if isinstance(t, str)],
+        token_count=data.get("usage", {}).get("total_tokens"),
+        provider=provider,
+        model=model,
+    )
+
+
+async def _analyze_images_with_openai(
+    api_key: str,
+    b64_images: list[str],
+    prompt: str,
+    model: str = OPENAI_VISION_MODEL,
+) -> AIVisionResult:
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": _chat_image_content(prompt, b64_images)}],
+        "max_tokens": 300,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return _vision_result_from_chat_json(response.json(), provider="openai", model=model)
+        except Exception as exc:
+            logger.error("OpenAI multi-image vision error: %s", exc)
+            raise AIVisionError(f"OpenAI multi-image analysis failed: {exc}") from exc
+
+
+async def _analyze_images_with_gemini(
+    api_key: str,
+    b64_images: list[str],
+    prompt: str,
+    model: str = GEMINI_VISION_MODEL,
+) -> AIVisionResult:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
+    parts: list[dict[str, object]] = [{"text": prompt}]
+    for index, b64_image in enumerate(b64_images, start=1):
+        parts.append({"text": f"Candidate {index}"})
+        parts.append({"inline_data": {"mime_type": "image/jpeg", "data": b64_image}})
+    payload = {"contents": [{"parts": parts}]}
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            text_response = data["candidates"][0]["content"]["parts"][0]["text"]
+            parsed = json.loads(text_response.strip().replace("```json", "").replace("```", "").strip())
+            return AIVisionResult(
+                title=parsed.get("title", "Ranking"),
+                summary=json.dumps(parsed),
+                provider="gemini",
+                model=model,
+            )
+        except Exception as exc:
+            logger.error("Gemini multi-image vision error: %s", exc)
+            raise AIVisionError(f"Gemini multi-image analysis failed: {exc}") from exc
+
+
+async def _analyze_images_with_openrouter(
+    api_key: str,
+    b64_images: list[str],
+    prompt: str,
+    model: str,
+) -> AIVisionResult:
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "HTTP-Referer": "https://github.com/YOUR_USERNAME/DailyFX-for-immich",
+        "X-Title": "dailyFX",
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": _chat_image_content(prompt, b64_images)}],
+        "max_tokens": 300,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return _vision_result_from_chat_json(response.json(), provider="openrouter", model=model)
+        except Exception as exc:
+            logger.error("OpenRouter multi-image vision error: %s", exc)
+            raise AIVisionError(f"OpenRouter multi-image analysis failed: {exc}") from exc
+
+
+async def _analyze_images_with_xiaomi(
+    api_key: str,
+    b64_images: list[str],
+    prompt: str,
+    model: str = XIAOMI_VISION_MODEL,
+) -> AIVisionResult:
+    _validate_xiaomi_image_model(model)
+    url = f"{XIAOMI_API_BASE_URL}/chat/completions"
+    headers = {"Content-Type": "application/json", "api-key": api_key}
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": _chat_image_content(prompt, b64_images)}],
+        "max_completion_tokens": 300,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return _vision_result_from_chat_json(response.json(), provider="xiaomi", model=model)
+        except httpx.TimeoutException as exc:
+            logger.error("Xiaomi multi-image vision error (timeout)", exc_info=True)
+            raise AIVisionError("Xiaomi multi-image analysis failed: Request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            logger.error("Xiaomi multi-image vision error (HTTP error)", exc_info=True)
+            raise AIVisionError(f"Xiaomi multi-image analysis failed: HTTP error {exc.response.status_code}") from exc
+        except Exception as exc:
+            logger.error("Xiaomi multi-image vision error", exc_info=True)
+            raise AIVisionError(f"Xiaomi multi-image analysis failed: {repr(exc)}") from exc
+
+
+async def _analyze_images_with_local(
+    settings: SettingsModel,
+    api_key: str | None,
+    b64_images: list[str],
+    prompt: str,
+    model: str,
+) -> AIVisionResult:
+    if not model:
+        raise AIVisionError("Local AI model is not configured")
+    try:
+        base_url = get_local_ai_base_url(settings)
+    except LocalAIConfigurationError as exc:
+        raise AIVisionError(str(exc)) from exc
+    url = f"{base_url}/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": _chat_image_content(prompt, b64_images)}],
+        "max_tokens": 300,
+        "response_format": {"type": "json_object"},
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return _vision_result_from_chat_json(response.json(), provider="local", model=model)
+        except Exception as exc:
+            logger.error("Local AI multi-image vision error: %s", exc)
+            raise AIVisionError(f"Local AI multi-image analysis failed: {exc}") from exc
+
+
 async def _analyze_with_openai(
     api_key: str,
     b64_image: str,
@@ -379,9 +596,15 @@ async def _analyze_with_xiaomi(
                 provider="xiaomi",
                 model=model,
             )
+        except httpx.TimeoutException as exc:
+            logger.error("Xiaomi vision error (timeout)", exc_info=True)
+            raise AIVisionError("Xiaomi analysis failed: Request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            logger.error("Xiaomi vision error (HTTP error)", exc_info=True)
+            raise AIVisionError(f"Xiaomi analysis failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
-            logger.error("Xiaomi vision error: %s", exc)
-            raise AIVisionError(f"Xiaomi analysis failed: {exc}") from exc
+            logger.error("Xiaomi vision error", exc_info=True)
+            raise AIVisionError(f"Xiaomi analysis failed: {repr(exc)}") from exc
 
 
 async def _analyze_with_local(
@@ -608,9 +831,15 @@ async def _get_text_desc_xiaomi(
             response.raise_for_status()
             data = response.json()
             return data["choices"][0]["message"]["content"].strip()
+        except httpx.TimeoutException as exc:
+            logger.error("Xiaomi description error (timeout)", exc_info=True)
+            raise AIVisionError("Xiaomi description failed: Request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            logger.error("Xiaomi description error (HTTP error)", exc_info=True)
+            raise AIVisionError(f"Xiaomi description failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
-            logger.error("Xiaomi description error: %s", exc)
-            raise AIVisionError(f"Xiaomi description failed: {exc}") from exc
+            logger.error("Xiaomi description error", exc_info=True)
+            raise AIVisionError(f"Xiaomi description failed: {repr(exc)}") from exc
 
 
 async def _get_text_desc_local(
@@ -779,9 +1008,15 @@ async def _fuse_xiaomi(api_key: str, prompt: str, model: str) -> str:
             response.raise_for_status()
             data = response.json()
             return data["choices"][0]["message"]["content"].strip()
+        except httpx.TimeoutException as exc:
+            logger.error("Xiaomi prompt fusion error (timeout)", exc_info=True)
+            raise AIVisionError("Xiaomi prompt fusion failed: Request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            logger.error("Xiaomi prompt fusion error (HTTP error)", exc_info=True)
+            raise AIVisionError(f"Xiaomi prompt fusion failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
-            logger.error("Xiaomi prompt fusion error: %s", exc)
-            raise AIVisionError(f"Xiaomi prompt fusion failed: {exc}") from exc
+            logger.error("Xiaomi prompt fusion error", exc_info=True)
+            raise AIVisionError(f"Xiaomi prompt fusion failed: {repr(exc)}") from exc
 
 
 async def _fuse_local(settings: SettingsModel, api_key: str | None, prompt: str, model: str) -> str:
