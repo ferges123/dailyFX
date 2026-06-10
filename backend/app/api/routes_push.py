@@ -73,3 +73,22 @@ def subscribe(payload: PushSubscribeRequest, db: Session = Depends(get_db), _: N
 def unsubscribe(payload: PushSubscribeRequest, db: Session = Depends(get_db), _: None = Depends(require_auth)) -> dict:
     delete_subscription(db, payload.endpoint)
     return {"ok": True}
+
+
+@router.post("/subscriptions/{sub_id}/test")
+async def test_subscription(sub_id: int, db: Session = Depends(get_db), _: None = Depends(require_auth)) -> dict:
+    row = db.query(PushSubscriptionModel).filter_by(id=sub_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    from app.notifications.vapid import send_push_to_all
+
+    await send_push_to_all(
+        db,
+        title="dailyFX test",
+        body="Web Push works on this device.",
+        url="/",
+        subscription_ids=[row.id],
+    )
+    return {"ok": True, "subscription_id": row.id}
+

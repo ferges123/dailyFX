@@ -189,6 +189,7 @@ def test_notification_presets_contract():
             "token_masked": "tel...1234",
             "webhook_url": None,
             "created_at": "2026-05-12T10:25:00Z",
+            "push_subscription_ids": [],
         }
 
         listed = list_notification_presets(db)

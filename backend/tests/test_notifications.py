@@ -523,3 +523,56 @@ def test_web_notifications_do_not_send_without_explicit_targets(monkeypatch):
         db.close()
 
 
+def test_test_subscription_endpoint_targets_one_subscription(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.database import SessionLocal, init_db
+    from app.models.push import PushSubscriptionModel
+
+    init_db()
+    db = SessionLocal()
+    try:
+        db.query(PushSubscriptionModel).delete()
+        db.commit()
+
+        sub = PushSubscriptionModel(
+            endpoint="https://push.example/test-sub",
+            p256dh="p1",
+            auth="a1",
+            device_label="Direct Test Device",
+        )
+        db.add(sub)
+        db.commit()
+
+        sent_endpoints = []
+
+        def fake_webpush(subscription_info, data, vapid_private_key, vapid_claims):
+            sent_endpoints.append(subscription_info["endpoint"])
+            return {}
+
+        import pywebpush
+
+        monkeypatch.setattr(pywebpush, "webpush", fake_webpush)
+
+        client = TestClient(app)
+        resp = client.post(f"/api/notifications/subscriptions/{sub.id}/test")
+
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+        assert resp.json()["subscription_id"] == sub.id
+        assert sent_endpoints == ["https://push.example/test-sub"]
+    finally:
+        db.close()
+
+
+def test_test_subscription_endpoint_returns_404_for_unknown_subscription():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+    resp = client.post("/api/notifications/subscriptions/999999/test")
+    assert resp.status_code == 404
+
+
+
+

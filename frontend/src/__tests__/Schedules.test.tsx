@@ -128,6 +128,7 @@ describe('SchedulesPage', () => {
         token_masked: null,
         webhook_url: null,
         created_at: '2026-05-30T04:00:00.000Z',
+        push_subscription_ids: [],
       },
     ]);
 
@@ -219,6 +220,7 @@ describe('SchedulesPage', () => {
         token_masked: null,
         webhook_url: null,
         created_at: '2026-05-30T04:00:00.000Z',
+        push_subscription_ids: [],
       },
     ]);
 
@@ -303,6 +305,7 @@ describe('SchedulesPage', () => {
         token_masked: null,
         webhook_url: null,
         created_at: '2026-05-30T04:00:00.000Z',
+        push_subscription_ids: [],
       },
     ]);
 
@@ -382,6 +385,7 @@ describe('SchedulesPage', () => {
         token_masked: null,
         webhook_url: null,
         created_at: '2026-05-30T04:00:00.000Z',
+        push_subscription_ids: [],
       },
     ]);
 
@@ -457,6 +461,7 @@ describe('SchedulesPage', () => {
         token_masked: null,
         webhook_url: null,
         created_at: '2026-05-30T04:00:00.000Z',
+        push_subscription_ids: [],
       },
     ]);
     vi.mocked(client.updateSchedule).mockResolvedValue(schedule);
@@ -529,6 +534,7 @@ describe('SchedulesPage', () => {
         token_masked: null,
         webhook_url: null,
         created_at: '2026-05-30T04:00:00.000Z',
+        push_subscription_ids: [],
       },
     ]);
     vi.mocked(client.updateSchedule).mockResolvedValue({

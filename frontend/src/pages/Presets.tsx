@@ -28,6 +28,7 @@ import {
   updateNotificationPreset,
   deleteNotificationPreset,
   testNotificationPreset,
+  testPushSubscription,
   getImmichFilterOptions,
   getGenerationModules,
   getGenerationExamples,
@@ -1299,6 +1300,7 @@ function NotificationPresetsTab() {
     topic: '',
     token: '',
     webhook_url: '',
+    push_subscription_ids: [] as number[],
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -1332,6 +1334,7 @@ function NotificationPresetsTab() {
         topic: form.topic || null,
         token: form.token || null,
         webhook_url: form.webhook_url || null,
+        push_subscription_ids: form.push_subscription_ids,
       };
       return editing && !isNew
         ? updateNotificationPreset(editing.id, body)
@@ -1378,6 +1381,7 @@ function NotificationPresetsTab() {
       topic: '',
       token: '',
       webhook_url: '',
+      push_subscription_ids: [],
     });
     setEditing(null);
     setIsNew(true);
@@ -1393,6 +1397,7 @@ function NotificationPresetsTab() {
       topic: p.topic ?? '',
       token: '',
       webhook_url: p.webhook_url ?? '',
+      push_subscription_ids: p.push_subscription_ids ?? [],
     });
     setEditing(p);
     setIsNew(false);
@@ -1458,6 +1463,60 @@ function NotificationPresetsTab() {
   const [pushStatus, setPushStatus] = useState<
     'idle' | 'pending' | 'subscribed' | 'error'
   >('idle');
+
+  const webPushSupport = {
+    hasNotification: typeof window !== 'undefined' && 'Notification' in window,
+    hasServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
+    hasPushManager: typeof window !== 'undefined' && 'PushManager' in window,
+    isSecureContext: typeof window !== 'undefined' && window.isSecureContext,
+  };
+
+  const [notificationPermission, setNotificationPermission] = useState<string>(
+    webPushSupport.hasNotification ? Notification.permission : 'unsupported'
+  );
+
+  const requestNotificationPermission = async () => {
+    if (!webPushSupport.hasNotification) return;
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+    } catch (err) {
+      console.error('Failed to request permission', err);
+    }
+  };
+
+  const canSubscribeToPush =
+    webPushSupport.hasNotification &&
+    webPushSupport.hasServiceWorker &&
+    webPushSupport.hasPushManager &&
+    webPushSupport.isSecureContext &&
+    notificationPermission !== 'denied';
+
+  const [testSubResult, setTestSubResult] = useState<{ id: number; ok: boolean; msg: string } | null>(null);
+
+  const testSubMutation = useMutation({
+    mutationFn: (subId: number) => testPushSubscription(subId),
+    onSuccess: (data, subId) => {
+      setTestSubResult({ id: subId, ok: true, msg: 'Wysłano test' });
+      setTimeout(() => setTestSubResult(null), 5000);
+    },
+    onError: (e: Error, subId) => {
+      setTestSubResult({ id: subId, ok: false, msg: `Błąd: ${e.message}` });
+      setTimeout(() => setTestSubResult(null), 5000);
+    },
+  });
+
+  function togglePushSubscriptionTarget(id: number, checked: boolean) {
+    setForm((prev) => {
+      const current = prev.push_subscription_ids ?? [];
+      return {
+        ...prev,
+        push_subscription_ids: checked
+          ? Array.from(new Set([...current, id]))
+          : current.filter((item) => item !== id),
+      };
+    });
+  }
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -1597,15 +1656,59 @@ function NotificationPresetsTab() {
           {hasWeb && (
             <SectionCard
               title="Web Push"
-              description="Manage browser subscriptions for this preset."
+              description="Manage browser subscriptions and device targets for this preset."
             >
-              <div className="grid gap-3">
+              <div className="grid gap-4">
+                {/* Diagnostics Status Badge */}
+                {(() => {
+                  let diagnosticsText = '';
+                  let diagnosticsColor = 'text-stone-500 bg-stone-100 border-stone-200';
+                  let showPermissionButton = false;
+
+                  if (!webPushSupport.hasNotification || !webPushSupport.hasServiceWorker || !webPushSupport.hasPushManager) {
+                    diagnosticsText = 'Ta przeglądarka nie obsługuje Web Push';
+                    diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
+                  } else if (!webPushSupport.isSecureContext) {
+                    diagnosticsText = 'Web Push wymaga HTTPS albo lokalnego localhost';
+                    diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
+                  } else if (notificationPermission === 'default') {
+                    diagnosticsText = 'Wymaga zgody';
+                    diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
+                    showPermissionButton = true;
+                  } else if (notificationPermission === 'denied') {
+                    diagnosticsText = 'Zablokowane w ustawieniach przeglądarki';
+                    diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
+                  } else if (notificationPermission === 'granted') {
+                    diagnosticsText = 'Powiadomienia włączone';
+                    diagnosticsColor = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+                  }
+
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${diagnosticsColor}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        Status: {diagnosticsText}
+                      </div>
+                      {showPermissionButton && (
+                        <button
+                          type="button"
+                          onClick={requestNotificationPermission}
+                          className="app-button-secondary h-6 px-2.5 text-[10px] font-semibold"
+                        >
+                          Udziel zgody
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Local Browser Subscription Controls */}
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <button
                     type="button"
                     onClick={handlePushToggle}
                     disabled={
-                      pushStatus === 'pending' || !('PushManager' in window)
+                      pushStatus === 'pending' || !canSubscribeToPush
                     }
                     className="app-button-secondary h-8 w-full px-3 text-xs disabled:opacity-50 sm:w-auto"
                   >
@@ -1626,9 +1729,21 @@ function NotificationPresetsTab() {
                     </span>
                   )}
                 </div>
+
+                {/* Warn if no device is targeted */}
+                {(form.push_subscription_ids ?? []).length === 0 && (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
+                    Ten preset nie wyśle Web Push, dopóki nie wybierzesz urządzenia.
+                  </div>
+                )}
+
+                {/* Subscriptions List with Checkboxes */}
                 {subscriptions.data &&
-                  subscriptions.data.subscriptions.length > 0 && (
+                  subscriptions.data.subscriptions.length > 0 ? (
                     <div className="grid gap-2">
+                      <div className="text-xs font-semibold text-stone-500">
+                        Wybierz urządzenia, do których ma być wysyłane powiadomienie:
+                      </div>
                       {subscriptions.data.subscriptions.map((sub) => {
                         const label =
                           sub.device_label ||
@@ -1637,36 +1752,81 @@ function NotificationPresetsTab() {
                         const isMobile = /mobile|android|iphone|ipad/i.test(
                           label,
                         );
+                        const isChecked = (form.push_subscription_ids ?? []).includes(sub.id);
+                        const isTesting = testSubMutation.isPending && testSubMutation.variables === sub.id;
+                        const testStatus = testSubResult && testSubResult.id === sub.id ? testSubResult : null;
+
                         return (
                           <div
                             key={sub.id}
-                            className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-2.5 py-2"
+                            className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 hover:bg-stone-100 transition-colors"
                           >
-                            {isMobile ? (
-                              <Smartphone
-                                size={14}
-                                className="shrink-0 text-stone-400"
-                              />
-                            ) : (
-                              <Monitor
-                                size={14}
-                                className="shrink-0 text-stone-400"
-                              />
+                            <input
+                              type="checkbox"
+                              id={`push-sub-${sub.id}`}
+                              checked={isChecked}
+                              onChange={(e) => togglePushSubscriptionTarget(sub.id, e.target.checked)}
+                              className="h-4 w-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
+                            />
+                            <label
+                              htmlFor={`push-sub-${sub.id}`}
+                              className="flex flex-1 items-center gap-2 cursor-pointer"
+                            >
+                              {isMobile ? (
+                                <Smartphone
+                                  size={14}
+                                  className="shrink-0 text-stone-400"
+                                />
+                              ) : (
+                                <Monitor
+                                  size={14}
+                                  className="shrink-0 text-stone-400"
+                                />
+                              )}
+                              <span className="flex-1 truncate text-xs text-stone-700 font-medium">
+                                {label}
+                              </span>
+                            </label>
+
+                            {testStatus && (
+                              <span className={`text-[10px] font-medium transition-opacity duration-300 ${testStatus.ok ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {testStatus.msg}
+                              </span>
                             )}
-                            <span className="flex-1 truncate text-xs text-stone-700">
-                              {label}
-                            </span>
+
                             <button
                               type="button"
-                              onClick={() => deleteSubMutation.mutate(sub.id)}
+                              onClick={() => testSubMutation.mutate(sub.id)}
+                              disabled={isTesting}
+                              className="shrink-0 text-[10px] font-semibold text-stone-600 hover:text-stone-900 bg-stone-200 hover:bg-stone-300 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-50"
+                            >
+                              {isTesting ? 'Testowanie...' : 'Testuj'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm('Usunięcie tej subskrypcji usunie ją ze wszystkich presetów. Kontynuować?')) {
+                                  deleteSubMutation.mutate(sub.id);
+                                  setForm((f) => ({
+                                    ...f,
+                                    push_subscription_ids: (f.push_subscription_ids ?? []).filter((id) => id !== sub.id),
+                                  }));
+                                }
+                              }}
                               disabled={deleteSubMutation.isPending}
-                              className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50"
+                              className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50 transition-colors"
+                              title="Delete globally"
                             >
                               <Trash2 size={14} />
                             </button>
                           </div>
                         );
                       })}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-stone-500 italic">
+                      Brak zarejestrowanych urządzeń. Zarejestruj to urządzenie powyżej.
                     </div>
                   )}
               </div>
