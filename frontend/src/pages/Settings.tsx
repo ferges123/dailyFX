@@ -770,7 +770,7 @@ export function SettingsPage() {
 
       {/* Version Footer for Mobile */}
       <div className="mt-6 border-t border-stone-200/50 pt-4 text-center text-[10px] text-stone-400 md:hidden">
-        DailyFX 0.2.7 · PolyForm Noncommercial License 1.0.0
+        DailyFX 0.2.8 · PolyForm Noncommercial License 1.0.0
       </div>
     </form>
   );
