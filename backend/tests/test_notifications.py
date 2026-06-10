@@ -456,3 +456,70 @@ def test_send_slack_notification(monkeypatch):
     assert json_data["blocks"][2]["image_url"] == "https://dailyfx.local/thumbnail.png"
     assert json_data["blocks"][3]["elements"][0]["url"] == "https://dailyfx.local/review"
 
+
+def test_send_targeted_web_notifications(monkeypatch):
+    from app.database import SessionLocal, init_db
+    from app.models.push import PushSubscriptionModel
+    from app.notifications.vapid import send_push_to_all
+
+    init_db()
+    db = SessionLocal()
+    try:
+        db.query(PushSubscriptionModel).delete()
+        db.commit()
+
+        sub1 = PushSubscriptionModel(endpoint="https://push.example/t1", p256dh="p1", auth="a1", device_label="Dev 1")
+        sub2 = PushSubscriptionModel(endpoint="https://push.example/t2", p256dh="p2", auth="a2", device_label="Dev 2")
+        db.add_all([sub1, sub2])
+        db.commit()
+
+        sent_endpoints = []
+
+        def fake_webpush(subscription_info, data, vapid_private_key, vapid_claims):
+            sent_endpoints.append(subscription_info["endpoint"])
+            return {}
+
+        import pywebpush
+
+        monkeypatch.setattr(pywebpush, "webpush", fake_webpush)
+
+        asyncio.run(send_push_to_all(db, "Title", "Body", subscription_ids=[sub1.id]))
+
+        assert sent_endpoints == ["https://push.example/t1"]
+    finally:
+        db.close()
+
+
+def test_web_notifications_do_not_send_without_explicit_targets(monkeypatch):
+    from app.database import SessionLocal, init_db
+    from app.models.push import PushSubscriptionModel
+    from app.notifications.vapid import send_push_to_all
+
+    init_db()
+    db = SessionLocal()
+    try:
+        db.query(PushSubscriptionModel).delete()
+        db.commit()
+
+        sub = PushSubscriptionModel(endpoint="https://push.example/all", p256dh="p1", auth="a1", device_label="Dev")
+        db.add(sub)
+        db.commit()
+
+        sent_endpoints = []
+
+        def fake_webpush(subscription_info, data, vapid_private_key, vapid_claims):
+            sent_endpoints.append(subscription_info["endpoint"])
+            return {}
+
+        import pywebpush
+
+        monkeypatch.setattr(pywebpush, "webpush", fake_webpush)
+
+        asyncio.run(send_push_to_all(db, "Title", "Body", subscription_ids=None))
+        asyncio.run(send_push_to_all(db, "Title", "Body", subscription_ids=[]))
+
+        assert sent_endpoints == []
+    finally:
+        db.close()
+
+

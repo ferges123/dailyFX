@@ -89,14 +89,23 @@ def delete_subscription(db: Session, endpoint: str) -> None:
 
 
 async def send_push_to_all(
-    db: Session, title: str, body: str, url: str | None = None, image: str | None = None
+    db: Session,
+    title: str,
+    body: str,
+    url: str | None = None,
+    image: str | None = None,
+    subscription_ids: list[int] | None = None,
 ) -> None:
     import asyncio
 
     from pywebpush import WebPushException, webpush  # type: ignore
 
+    if not subscription_ids:
+        logger.info("Skipping web push because no explicit subscription targets were provided")
+        return
+
     keys = get_or_create_vapid_keys(db)
-    subscriptions = db.query(PushSubscriptionModel).all()
+    subscriptions = db.query(PushSubscriptionModel).filter(PushSubscriptionModel.id.in_(subscription_ids)).all()
     if not subscriptions:
         return
 
@@ -147,3 +156,4 @@ async def send_push_to_all(
     if stale:
         db.query(PushSubscriptionModel).filter(PushSubscriptionModel.id.in_(stale)).delete(synchronize_session=False)
         db.commit()
+

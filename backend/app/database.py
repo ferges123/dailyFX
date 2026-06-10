@@ -84,16 +84,27 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+_initialized_databases: set[str] = set()
+
+
 def init_db() -> None:
+    global _initialized_databases
+    _ensure_engine()
+    database_url = get_settings().database_url
+    if database_url in _initialized_databases:
+        return
+
     from alembic import command
     from alembic.config import Config
 
     import app.models  # noqa: F401
     from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 
-    _ensure_engine()
     alembic_cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "app" / "migrations"))
 
     command.upgrade(alembic_cfg, "head")
     bootstrap_builtin_ai_effects()
+    _initialized_databases.add(database_url)
+
+

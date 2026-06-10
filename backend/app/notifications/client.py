@@ -28,18 +28,11 @@ def _extract_json_response(response: httpx.Response, provider: str) -> dict:
 
 
 async def test_web_notification() -> NotificationTestResult:
-    from app.database import SessionLocal
-    from app.notifications.vapid import send_push_to_all
-
-    db = SessionLocal()
-    try:
-        await send_push_to_all(db, title="dailyFX test", body="Web push is working!")
-    finally:
-        db.close()
     return NotificationTestResult(
         ok=True,
         provider="web",
-        message="Web notification test succeeded",
+        message="Web notification test requires a selected device target",
+        detail="Use the single-device test button from the Web Push device list.",
     )
 
 
@@ -49,6 +42,7 @@ async def send_web_notification(
     detail: str | None = None,
     url: str | None = None,
     image: str | None = None,
+    subscription_ids: list[int] | None = None,
 ) -> NotificationTestResult:
     from app.database import SessionLocal
     from app.notifications.vapid import send_push_to_all
@@ -57,13 +51,14 @@ async def send_web_notification(
     db = SessionLocal()
     try:
         try:
-            await send_push_to_all(db, title=title, body=body, url=url, image=image)
+            await send_push_to_all(db, title=title, body=body, url=url, image=image, subscription_ids=subscription_ids)
         except Exception:
             # Web push is best-effort in development/test environments.
             pass
     finally:
         db.close()
     return NotificationTestResult(ok=True, provider="web", message=message, detail=detail)
+
 
 
 async def test_ntfy_notification(

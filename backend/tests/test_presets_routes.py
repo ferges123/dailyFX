@@ -93,7 +93,7 @@ def test_notification_presets_masking_and_updating():
 
     finally:
         db.close()
-        test_db.unlink(missing_ok=True)
+
 
 
 def test_notification_preset_rejects_non_http_urls():
