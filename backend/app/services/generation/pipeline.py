@@ -54,6 +54,34 @@ class GenerationPipelineContext:
     selected_group_name: str = "manual"
     pipeline_start_time: float = 0.0
 
+    def task_update(
+        self,
+        *,
+        status: str | None = None,
+        step: str | None = None,
+        progress: float | None = None,
+        error: str | None = None
+    ) -> None:
+        if step is not None:
+            self.current_step = step
+        if progress is not None:
+            self.current_progress = progress
+        update_task(
+            self.db,
+            self.task_id,
+            status=status or "running",
+            step=self.current_step,
+            progress=self.current_progress,
+            error=error,
+        )
+        if status != "succeeded":
+            history_status = history_status_for_task_status(status) or "RUNNING"
+            upsert_history_entry(self.db, self.task_id, status=history_status, task_step=self.current_step)
+
+    def progress_msg(self, msg: str) -> None:
+        if self.on_progress:
+            self.on_progress(msg)
+
 
 @dataclass(frozen=True)
 class GenerationModuleSelection:
@@ -950,6 +978,172 @@ async def _build_generation_artifacts(
         final_bytes=final_bytes,
         source_asset=source_asset,
     )
+
+
+def _pipeline_setup_and_planning(ctx: GenerationPipelineContext) -> GenerationModuleSelection | None:
+    ctx.source = "MANUAL" if ctx.force else "AUTOMATION"
+    logger.info(f"🔵 run_generation_cycle START - task_id={ctx.task_id}, source={ctx.source}")
+    ctx.pipeline_start_time = time.time()
+
+    _resolve_schedule_ai_settings(ctx.db, ctx.settings, ctx.schedule_id)
+    set_debug_mode(ctx.settings.debug_mode)
+
+    ctx.selected_group_name = ctx.source.lower()
+    ctx.task_update(status="running", step="running", progress=0.0)
+
+    upsert_history_entry(
+        ctx.db,
+        ctx.task_id,
+        generation_type=ctx.selected_group_name,
+        status="RUNNING",
+        title=f"{ctx.source.title()} generation running",
+        summary="Generation is in progress",
+        source_asset_ids="[]",
+        config_json=json.dumps({"state": "running"}),
+        task_step=ctx.current_step,
+        schedule_id=ctx.schedule_id,
+        album_name=ctx.album_name,
+    )
+    _trace_stage(
+        ctx.db, ctx.task_id, stage="start", message="Generation started", step="running", status="running", progress=0.0
+    )
+    debug_log(
+        "Generation cycle started",
+        task_id=ctx.task_id,
+        source=ctx.source,
+        schedule_id=ctx.schedule_id,
+        album_name=ctx.album_name,
+        ai_provider=ctx.settings.default_ai_provider,
+        ai_model=ctx.settings.default_ai_model,
+        ai_image_provider=ctx.settings.ai_image_provider,
+        ai_image_model=ctx.settings.ai_image_model,
+        debug_mode=ctx.settings.debug_mode,
+    )
+
+    if ctx.effects_config is None:
+        debug_log("Skipping: no effects_config provided", task_id=ctx.task_id)
+        logger.warning("No effects_config provided, skipping.")
+        ctx.task_update(status="failed", step="failed", error="No effects_config provided")
+        return None
+
+    try:
+        module_selection = _select_generation_module(ctx.effects_config)
+    except ValueError as exc:
+        debug_log("ERROR: unknown module", task_id=ctx.task_id, module=str(exc))
+        logger.error("%s", exc)
+        ctx.task_update(status="failed", step="failed", error=str(exc))
+        return None
+
+    if module_selection is None:
+        debug_log("Skipping: no active modules", task_id=ctx.task_id)
+        logger.info("No active modification groups, skipping.")
+        ctx.task_update(status="failed", step="failed", error="No active modification groups")
+        return None
+
+    ctx.selected_group_name = module_selection.name
+    debug_log("Module selected", task_id=ctx.task_id, module=ctx.selected_group_name, config=module_selection.config.get("config", {}))
+    logger.info(f"🎯 Selected generation group: {ctx.selected_group_name} (task_id={ctx.task_id})")
+    _trace_stage(
+        ctx.db,
+        ctx.task_id,
+        stage="module_selected",
+        message=f"Selected generation group {ctx.selected_group_name}",
+        step=ctx.current_step,
+        status="running",
+        progress=ctx.current_progress,
+        details={"group": ctx.selected_group_name, "label": getattr(module_selection.module, "label", ctx.selected_group_name)},
+    )
+    return module_selection
+
+
+async def _pipeline_retrieve_and_select_assets(
+    ctx: GenerationPipelineContext,
+    module_selection: GenerationModuleSelection,
+) -> tuple[object, list[object], dict | None] | None:
+    if ctx.filters is None:
+        debug_log("Skipping: no filters provided", task_id=ctx.task_id)
+        logger.warning("No filters provided, skipping.")
+        ctx.task_update(status="failed", step="failed", error="No filters provided")
+        return None
+
+    client, page = await _search_assets_for_generation(
+        settings=ctx.settings,
+        filters=_search_filters_for_module(filters=ctx.filters, module=module_selection.module, settings=ctx.settings),
+        task_id=ctx.task_id,
+        _task_update=ctx.task_update,
+        _progress=ctx.progress_msg,
+    )
+    _trace_stage(
+        ctx.db,
+        ctx.task_id,
+        stage="assets_found",
+        message=f"Found {len(page.items)} candidate assets",
+        step=ctx.current_step,
+        status="running",
+        progress=ctx.current_progress,
+        details={"asset_count": len(page.items)},
+    )
+    if not page.items:
+        debug_log("Skipping: no assets found", task_id=ctx.task_id)
+        logger.warning("No assets found for the given automation filter.")
+        ctx.task_update(status="failed", step="failed", error="No assets found for the given automation filter")
+        return None
+
+    debug_log(
+        "Random asset selected", task_id=ctx.task_id, count=len(page.items), asset_ids=[a.id for a in page.items[:10]]
+    )
+    logger.info(f"📸 Selected random asset, running module {ctx.selected_group_name} (task_id={ctx.task_id})")
+
+    ai_photo_selection_enabled = bool(getattr(ctx.settings, "ai_photo_selection_enabled", False)) and int(
+        getattr(module_selection.module, "source_asset_count", 1) or 1
+    ) == 1
+    page_items = _prepare_page_items_for_module(
+        page=page,
+        module=module_selection.module,
+        selected_asset_ids=ctx.selected_asset_ids,
+        ai_photo_selection_enabled=ai_photo_selection_enabled,
+        task_id=ctx.task_id,
+        _task_update=ctx.task_update,
+    )
+    if not page_items:
+        return None
+
+    photo_selection_trace = None
+    if ai_photo_selection_enabled:
+        photo_selection_trace = {}
+        selected_asset = await rank_source_assets_for_effect(
+            client=client,
+            settings=ctx.settings,
+            candidates=page_items,
+            module=module_selection.module,
+            task_id=ctx.task_id,
+            trace=photo_selection_trace,
+        )
+        if selected_asset is not None:
+            page_items = [selected_asset]
+        _trace_stage(
+            ctx.db,
+            ctx.task_id,
+            stage="photo_selection",
+            message="AI photo selection completed"
+            if photo_selection_trace.get("succeeded")
+            else "AI photo selection fell back to the first candidate",
+            step=ctx.current_step,
+            status="running",
+            progress=ctx.current_progress,
+            details=photo_selection_trace,
+        )
+    _trace_stage(
+        ctx.db,
+        ctx.task_id,
+        stage="assets_selected",
+        message=f"Selected {len(page_items)} asset(s) for generation",
+        step=ctx.current_step,
+        status="running",
+        progress=ctx.current_progress,
+        details={"selected_asset_ids": [a.id for a in page_items]},
+    )
+    return client, page_items, photo_selection_trace
 
 
 async def run_generation_pipeline(
