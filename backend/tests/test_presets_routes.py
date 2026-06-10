@@ -173,3 +173,38 @@ def test_filter_preset_rejects_invalid_dates_and_long_names():
 def test_person_filter_mode_rejects_invalid_value():
     with pytest.raises(ValueError, match="Input should be 'optional', 'obligatory' or 'exclude'"):
         PersonFilterItem(personId="person-1", mode="maybe")
+
+
+def test_preset_push_subscriptions_relationship():
+    init_db()
+    db = SessionLocal()
+    try:
+        from app.models.notification_preset import NotificationPresetModel
+        from app.models.push import PushSubscriptionModel
+
+        db.query(PushSubscriptionModel).delete()
+        db.query(NotificationPresetModel).delete()
+        db.commit()
+
+        sub = PushSubscriptionModel(
+            endpoint="https://push.example.com/target-test-1",
+            p256dh="key1",
+            auth="auth1",
+            device_label="My Test Device",
+        )
+        db.add(sub)
+        db.commit()
+
+        preset = NotificationPresetModel(name="Targeting Test Preset", provider="web")
+        preset.push_subscriptions.append(sub)
+        db.add(preset)
+        db.commit()
+
+        loaded = db.query(NotificationPresetModel).filter_by(name="Targeting Test Preset").first()
+        assert loaded is not None
+        assert len(loaded.push_subscriptions) == 1
+        assert loaded.push_subscriptions[0].device_label == "My Test Device"
+    finally:
+        db.close()
+
+
