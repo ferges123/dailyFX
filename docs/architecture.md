@@ -18,7 +18,7 @@ DailyFX is split into a small set of layers so the API contract, generation flow
   - Handles validation, response models, and request/response shape.
   - Should not contain core generation or persistence logic.
 - `app/services/generation/`
-  - `pipeline.py` orchestrates the generation run.
+  - `pipeline.py` orchestrates the generation run using an explicit, decoupled staged pipeline (Planning, Asset Retrieval, Module Execution, Metadata Enrichment, Persistence, and Notification Dispatch).
   - `engine.py` preserves compatibility for tests and shared entry points.
   - `persistence.py` writes the generated file and history entry.
   - `output.py` dispatches notifications and webhook calls.
@@ -46,19 +46,14 @@ This keeps JSON shape changes explicit and testable.
 
 ## Generation Flow
 
-The generation pipeline is intentionally staged:
+The generation pipeline is decoupled into six explicit, testable stages defined in [pipeline.py](file:///home/ferges/Projects/dailyFX/backend/app/services/generation/pipeline.py), sharing state via the `GenerationPipelineContext` structure:
 
-- select a generation module from the enabled preset groups,
-- search Immich for matching assets,
-- pick the final asset set,
-- run the selected module,
-- resolve source asset context and people context,
-- run source Vision when enabled,
-- run final Vision for `ai_*` modules,
-- inject tags and capture provenance,
-- embed EXIF metadata,
-- persist the file and history entry,
-- dispatch notifications and webhooks.
+1. **Setup & Planning (`_pipeline_setup_and_planning`):** Resolves schedule settings, sets up debug logging, updates task status to running, and selects the generation module to run based on preset weights.
+2. **Asset Retrieval & Selection (`_pipeline_retrieve_and_select_assets`):** Connects to Immich to search for candidate assets matching the filter presets and performs AI-driven selection/ranking if enabled.
+3. **Module Execution (`_pipeline_execute_module`):** Runs the selected creative module (OpenCV/Pillow filters) or calls generative AI models (BytePlus/etc.).
+4. **Metadata & Vision Enrichment (`_pipeline_enrich_metadata`):** Resolves people and source contexts, runs prompt enrichment, and generates final vision metadata (titles, summaries, tags).
+5. **Post-Processing & Persistence (`_pipeline_persist_result`):** Encapsulates task completion tracking, writes the generated image to disk, embeds EXIF metadata, and saves the history entry.
+6. **Notification Dispatch (`_pipeline_dispatch_notifications`):** Sends Telegram alerts and triggers configured webhooks.
 
 The visible timeline for a task comes from history trace entries, not from logs alone.
 
