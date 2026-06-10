@@ -66,7 +66,7 @@ describe('SchedulesPage', () => {
     expect(await screen.findByText('No schedules yet')).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: 'New schedule' }),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
   });
 
   it('renders schedule status and run metadata', async () => {
@@ -133,15 +133,12 @@ describe('SchedulesPage', () => {
 
     renderSchedules();
 
-    expect(await screen.findAllByText('Morning run')).toHaveLength(3);
+    expect(await screen.findAllByText('Morning run')).toHaveLength(2);
     expect(screen.getAllByText('Next run').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Last run').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Last result').length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole('button', { name: 'Run now' }).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('error · timeout').length).toBeGreaterThan(0);
-    expect(screen.getByText('Vision model')).toBeInTheDocument();
     expect(screen.getByText('Vision: local (qwen2.5-vl)')).toBeInTheDocument();
     expect(screen.getByText('Image: local (flux.1)')).toBeInTheDocument();
     expect(screen.getAllByText('AI photo selection on').length).toBeGreaterThan(0);

@@ -256,9 +256,7 @@ export function SchedulesPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<number | null>(null);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(
-    null,
-  );
+
   const [search, setSearch] = useState('');
   const formPanelRef = useRef<HTMLElement | null>(null);
 
@@ -347,7 +345,6 @@ export function SchedulesPage() {
   }
 
   function openEdit(schedule: Schedule) {
-    setSelectedScheduleId(schedule.id);
     setError(null);
     navigate(`/schedules/${schedule.id}/edit`);
   }
@@ -393,7 +390,6 @@ export function SchedulesPage() {
           setIsNew(false);
           setError(null);
         }
-        setSelectedScheduleId(found.id);
       } else if (schedules.data) {
         setEditing(null);
         setIsNew(false);
@@ -407,13 +403,7 @@ export function SchedulesPage() {
     }
   }, [editing, isNew, routeEditId, routeIsNew, schedules.data]);
 
-  useEffect(() => {
-    if (routeIsNew || routeEditId) return;
-    if (selectedScheduleId !== null) return;
-    if (schedules.data?.length) {
-      setSelectedScheduleId(schedules.data[0].id);
-    }
-  }, [routeEditId, routeIsNew, schedules.data, selectedScheduleId]);
+
 
   const validationIssues: string[] = [];
   if (!form.name.trim()) validationIssues.push('Schedule name is required.');
@@ -471,22 +461,9 @@ export function SchedulesPage() {
   }, [search, scheduleItems]);
   const noSchedules = scheduleItems.length === 0;
 
-  const selectedSchedule = useMemo(() => {
-    if (!scheduleItems.length) return null;
-    if (selectedScheduleId !== null) {
-      const found = scheduleItems.find(
-        (schedule) => schedule.id === selectedScheduleId,
-      );
-      if (found) return found;
-    }
-    return filteredSchedules[0] ?? scheduleItems[0] ?? null;
-  }, [filteredSchedules, scheduleItems, selectedScheduleId]);
 
-  useEffect(() => {
-    if (!selectedSchedule && scheduleItems.length > 0) {
-      setSelectedScheduleId(scheduleItems[0].id);
-    }
-  }, [scheduleItems, selectedSchedule]);
+
+
 
   useEffect(() => {
     if (!showForm) return;
@@ -632,34 +609,14 @@ export function SchedulesPage() {
           </div>
         )}
 
-        <div
-          className={`grid gap-2.5 lg:items-start ${
-            showForm
-              ? ''
-              : 'lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.85fr)]'
-          }`}
-        >
+        <div className="grid gap-2.5 lg:items-start">
           {!showForm && (
             <div className="grid gap-2">
               {filteredSchedules.map((schedule) => {
-                const isSelected = selectedSchedule?.id === schedule.id;
                 return (
                   <article
                     key={schedule.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedScheduleId(schedule.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setSelectedScheduleId(schedule.id);
-                      }
-                    }}
-                    className={`group w-full cursor-pointer rounded-xl border px-2.5 py-2 text-left transition ${scheduleEnabledClass(schedule.enabled)} ${
-                      isSelected
-                        ? 'ring-2 ring-emerald-500/30'
-                        : 'hover:border-emerald-500/30'
-                    }`}
+                    className={`group w-full rounded-xl border px-2.5 py-2 text-left transition ${scheduleEnabledClass(schedule.enabled)} hover:border-emerald-500/30`}
                   >
                     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
@@ -849,7 +806,7 @@ export function SchedulesPage() {
             </div>
           )}
 
-          {showForm ? (
+          {showForm && (
             <aside
               ref={formPanelRef}
               aria-label="Schedule form panel"
@@ -1344,45 +1301,10 @@ export function SchedulesPage() {
                 </button>
               </div>
             </aside>
-          ) : (
-            <ScheduleDetailPanel
-              schedule={selectedSchedule}
-              onCreate={openNew}
-              onEdit={() => {
-                if (selectedSchedule) openEdit(selectedSchedule);
-              }}
-              onRunNow={() => {
-                if (selectedSchedule) runMutation.mutate(selectedSchedule.id);
-              }}
-              onToggle={() => {
-                if (selectedSchedule) toggleMutation.mutate(selectedSchedule);
-              }}
-              onDelete={() => {
-                if (
-                  selectedSchedule &&
-                  confirm(`Delete "${selectedSchedule.name}"?`)
-                ) {
-                  deleteMutation.mutate(selectedSchedule.id);
-                }
-              }}
-              running={
-                selectedSchedule ? runningId === selectedSchedule.id : false
-              }
-              togglePending={toggleMutation.isPending}
-            />
           )}
         </div>
       </div>
     </section>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-stone-200 bg-white/80 px-2.5 py-2 text-xs text-stone-600">
-      <div className="font-semibold text-stone-900">{label}</div>
-      <div className="mt-0.5">{value}</div>
-    </div>
   );
 }
 
@@ -1391,240 +1313,6 @@ function CompactMeta({ label, value }: { label: string; value: string }) {
     <div className="min-w-0">
       <span className="font-semibold text-stone-900">{label}: </span>
       <span className="text-stone-600">{value}</span>
-    </div>
-  );
-}
-
-function ScheduleDetailPanel({
-  schedule,
-  onCreate,
-  onEdit,
-  onRunNow,
-  onToggle,
-  onDelete,
-  running,
-  togglePending,
-}: {
-  schedule: Schedule | null;
-  onCreate: () => void;
-  onEdit: () => void;
-  onRunNow: () => void;
-  onToggle: () => void;
-  onDelete: () => void;
-  running: boolean;
-  togglePending: boolean;
-}) {
-  if (!schedule) {
-    return (
-      <div className="app-panel-soft flex min-h-96 flex-col items-center justify-center gap-3 border-dashed border-stone-200 p-6 text-center text-stone-500">
-        <CalendarDays size={34} className="text-stone-300" />
-        <div className="grid gap-1">
-          <h3 className="text-base font-semibold text-stone-900">
-            Select a schedule
-          </h3>
-          <p className="max-w-xs text-sm leading-6 text-stone-500">
-            Choose any item from the list to inspect its configuration, run
-            history, and actions.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="app-button-primary px-4 py-2 text-sm"
-        >
-          <Plus size={14} />
-          New schedule
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <aside className="app-panel grid gap-4 p-3 md:p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid gap-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-xl font-semibold text-stone-950">
-              {schedule.name}
-            </h3>
-            <span
-              className={`app-chip px-2.5 py-0.5 text-[11px] font-medium ${schedule.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'text-stone-500'}`}
-            >
-              {schedule.enabled ? 'Active' : 'Disabled'}
-            </span>
-          </div>
-          <p className="text-sm leading-6 text-stone-500">
-            {describeAutomationSchedule(
-              parseAutomationSchedule(schedule.schedule_expr),
-            )}
-            {' · '}
-            Album: {schedule.album_name}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={togglePending}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 shadow-xs transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
-        >
-          {schedule.enabled ? (
-            <ToggleRight size={16} />
-          ) : (
-            <ToggleLeft size={16} />
-          )}
-          {schedule.enabled ? 'On' : 'Off'}
-        </button>
-      </div>
-
-      <div className="grid gap-3">
-        <div className="grid gap-2 rounded-2xl border border-stone-200/70 bg-white/80 p-3">
-          <DetailRow
-            label="Schedule"
-            value={describeAutomationSchedule(
-              parseAutomationSchedule(schedule.schedule_expr),
-            )}
-          />
-          <DetailRow label="Album" value={schedule.album_name} />
-          <DetailRow
-            label="Filter"
-            value={schedule.filter_preset_name ?? 'Not selected'}
-          />
-          <DetailRow
-            label="Effect"
-            value={schedule.effect_preset_name ?? 'Not selected'}
-          />
-          <DetailRow
-            label="Vision model"
-            value={
-              schedule.ai_vision_provider !== 'none'
-                ? `${schedule.ai_vision_provider} (${schedule.ai_vision_model})`
-                : 'Disabled'
-            }
-          />
-          <DetailRow
-            label="Image model"
-            value={
-              schedule.ai_image_provider !== 'none'
-                ? `${schedule.ai_image_provider} (${schedule.ai_image_model})`
-                : 'Disabled'
-            }
-          />
-          <DetailRow
-            label="Prompt enrichment"
-            value={schedule.ai_prompt_enrichment ? 'On' : 'Off'}
-          />
-          <DetailRow
-            label="AI photo selection"
-            value={schedule.ai_photo_selection_enabled ? 'On' : 'Off'}
-          />
-          <DetailRow
-            label="Notifications"
-            value={
-              schedule.notification_preset_names?.length
-                ? schedule.notification_preset_names.join(', ')
-                : 'None'
-            }
-          />
-          <DetailRow
-            label="Created"
-            value={
-              schedule.created_at
-                ? formatDateTime(schedule.created_at)
-                : 'Unknown'
-            }
-          />
-          {schedule.last_run_at && (
-            <DetailRow
-              label="Last run"
-              value={formatDateTime(schedule.last_run_at)}
-            />
-          )}
-          {schedule.next_run_at && (
-            <DetailRow
-              label="Next run"
-              value={formatDateTime(schedule.next_run_at)}
-            />
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onRunNow}
-            disabled={running}
-            className="app-button-primary px-4 py-2 text-sm disabled:opacity-50"
-          >
-            {running ? (
-              <RefreshCw size={14} className="animate-spin" />
-            ) : (
-              <Play size={14} />
-            )}
-            Run now
-          </button>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="app-button-secondary px-4 py-2 text-sm"
-          >
-            <Pencil size={14} />
-            Edit schedule
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="app-button-secondary px-4 py-2 text-sm text-rose-700"
-          >
-            <Trash2 size={14} />
-            Delete
-          </button>
-        </div>
-
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
-            <HelpCircle size={15} />
-            Tip
-          </div>
-          <p className="mt-2 text-sm leading-6 text-blue-900">
-            Run a schedule now to verify the configuration before waiting for
-            the next automatic run.
-          </p>
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-3">
-          <InfoTile
-            label="Next run"
-            value={
-              schedule.next_run_at
-                ? formatDateTime(schedule.next_run_at)
-                : 'Not scheduled'
-            }
-          />
-          <InfoTile
-            label="Last run"
-            value={
-              schedule.last_run_at
-                ? formatDateTime(schedule.last_run_at)
-                : 'No runs yet'
-            }
-          />
-          <InfoTile
-            label="Last result"
-            value={tickSummary(
-              schedule.last_tick_status,
-              schedule.last_tick_reason,
-            )}
-          />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[10rem_minmax(0,1fr)] gap-3 border-b border-stone-100 py-2 text-sm last:border-b-0">
-      <span className="text-stone-500">{label}</span>
-      <span className="min-w-0 font-medium text-stone-900">{value}</span>
     </div>
   );
 }
