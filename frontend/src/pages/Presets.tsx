@@ -1497,11 +1497,11 @@ function NotificationPresetsTab() {
   const testSubMutation = useMutation({
     mutationFn: (subId: number) => testPushSubscription(subId),
     onSuccess: (data, subId) => {
-      setTestSubResult({ id: subId, ok: true, msg: 'Wysłano test' });
+      setTestSubResult({ id: subId, ok: true, msg: 'Test sent' });
       setTimeout(() => setTestSubResult(null), 5000);
     },
     onError: (e: Error, subId) => {
-      setTestSubResult({ id: subId, ok: false, msg: `Błąd: ${e.message}` });
+      setTestSubResult({ id: subId, ok: false, msg: `Error: ${e.message}` });
       setTimeout(() => setTestSubResult(null), 5000);
     },
   });
@@ -1666,20 +1666,20 @@ function NotificationPresetsTab() {
                   let showPermissionButton = false;
 
                   if (!webPushSupport.hasNotification || !webPushSupport.hasServiceWorker || !webPushSupport.hasPushManager) {
-                    diagnosticsText = 'Ta przeglądarka nie obsługuje Web Push';
+                    diagnosticsText = 'This browser does not support Web Push';
                     diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
                   } else if (!webPushSupport.isSecureContext) {
-                    diagnosticsText = 'Web Push wymaga HTTPS albo lokalnego localhost';
+                    diagnosticsText = 'Web Push requires HTTPS or a local localhost context';
                     diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
                   } else if (notificationPermission === 'default') {
-                    diagnosticsText = 'Wymaga zgody';
+                    diagnosticsText = 'Requires permission';
                     diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
                     showPermissionButton = true;
                   } else if (notificationPermission === 'denied') {
-                    diagnosticsText = 'Zablokowane w ustawieniach przeglądarki';
+                    diagnosticsText = 'Blocked in browser settings';
                     diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
                   } else if (notificationPermission === 'granted') {
-                    diagnosticsText = 'Powiadomienia włączone';
+                    diagnosticsText = 'Notifications enabled';
                     diagnosticsColor = 'text-emerald-700 bg-emerald-50 border-emerald-200';
                   }
 
@@ -1695,7 +1695,7 @@ function NotificationPresetsTab() {
                           onClick={requestNotificationPermission}
                           className="app-button-secondary h-6 px-2.5 text-[10px] font-semibold"
                         >
-                          Udziel zgody
+                          Grant permission
                         </button>
                       )}
                     </div>
@@ -1733,7 +1733,7 @@ function NotificationPresetsTab() {
                 {/* Warn if no device is targeted */}
                 {(form.push_subscription_ids ?? []).length === 0 && (
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
-                    Ten preset nie wyśle Web Push, dopóki nie wybierzesz urządzenia.
+                    This preset will not send Web Push notifications until you select at least one device.
                   </div>
                 )}
 
@@ -1742,7 +1742,7 @@ function NotificationPresetsTab() {
                   subscriptions.data.subscriptions.length > 0 ? (
                     <div className="grid gap-2">
                       <div className="text-xs font-semibold text-stone-500">
-                        Wybierz urządzenia, do których ma być wysyłane powiadomienie:
+                        Select devices to target with this preset:
                       </div>
                       {subscriptions.data.subscriptions.map((sub) => {
                         const label =
@@ -1800,13 +1800,13 @@ function NotificationPresetsTab() {
                               disabled={isTesting}
                               className="shrink-0 text-[10px] font-semibold text-stone-600 hover:text-stone-900 bg-stone-200 hover:bg-stone-300 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-50"
                             >
-                              {isTesting ? 'Testowanie...' : 'Testuj'}
+                              {isTesting ? 'Testing...' : 'Test'}
                             </button>
 
                             <button
                               type="button"
                               onClick={() => {
-                                if (confirm('Usunięcie tej subskrypcji usunie ją ze wszystkich presetów. Kontynuować?')) {
+                                if (confirm('Deleting this subscription will remove it from all preset targets. Continue?')) {
                                   deleteSubMutation.mutate(sub.id);
                                   setForm((f) => ({
                                     ...f,
@@ -1826,7 +1826,7 @@ function NotificationPresetsTab() {
                     </div>
                   ) : (
                     <div className="text-xs text-stone-500 italic">
-                      Brak zarejestrowanych urządzeń. Zarejestruj to urządzenie powyżej.
+                      No registered devices found. Register this browser above.
                     </div>
                   )}
               </div>
