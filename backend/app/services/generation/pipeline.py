@@ -1146,6 +1146,72 @@ async def _pipeline_retrieve_and_select_assets(
     return client, page_items, photo_selection_trace
 
 
+async def _pipeline_execute_module(
+    ctx: GenerationPipelineContext,
+    module_selection: GenerationModuleSelection,
+    page_items: list[object],
+    client: object,
+) -> object:
+    original_album_name = getattr(ctx.settings, "_generation_album_name", _ALBUM_NAME_SENTINEL)
+    if ctx.album_name is not None:
+        ctx.settings._generation_album_name = ctx.album_name
+    elif hasattr(ctx.settings, "_generation_album_name"):
+        delattr(ctx.settings, "_generation_album_name")
+
+    try:
+        result = await _run_selected_module(
+            db=ctx.db,
+            module=module_selection.module,
+            group_name=module_selection.name,
+            group_config=module_selection.config,
+            page_items=page_items,
+            client=client,
+            settings=ctx.settings,
+            task_id=ctx.task_id,
+            _task_update=ctx.task_update,
+            _progress=ctx.progress_msg,
+        )
+        return result
+    finally:
+        if original_album_name is _ALBUM_NAME_SENTINEL:
+            if hasattr(ctx.settings, "_generation_album_name"):
+                delattr(ctx.settings, "_generation_album_name")
+        else:
+            ctx.settings._generation_album_name = original_album_name
+
+
+async def _pipeline_enrich_metadata(
+    ctx: GenerationPipelineContext,
+    module_selection: GenerationModuleSelection,
+    result: object,
+    page: object,
+    client: object,
+    photo_selection_trace: dict | None,
+) -> tuple[object, GenerationArtifacts]:
+    source_asset, people_context = await _resolve_generation_source_context(
+        page=page,
+        result=result,
+        client=client,
+        task_id=ctx.task_id,
+    )
+
+    artifacts = await _build_generation_artifacts(
+        db=ctx.db,
+        client=client,
+        source_asset=source_asset,
+        people_context=people_context,
+        result=result,
+        module=module_selection.module,
+        group_name=module_selection.name,
+        settings=ctx.settings,
+        task_id=ctx.task_id,
+        _task_update=ctx.task_update,
+        _progress=ctx.progress_msg,
+        photo_selection_trace=photo_selection_trace,
+    )
+    return source_asset, artifacts
+
+
 async def run_generation_pipeline(
     db: Session,
     settings: SettingsModel,
