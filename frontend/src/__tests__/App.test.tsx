@@ -24,6 +24,7 @@ vi.mock('../api/client', async (importOriginal) => {
     getSchedules: () => Promise.resolve([]),
     getImmichFilterOptions: () => Promise.resolve({ albums: [], people: [] }),
     getGenerationModules: () => Promise.resolve([]),
+    getStudioModules: () => Promise.resolve([]),
     getGenerationExamples: () => Promise.resolve([]),
   };
 });
@@ -104,5 +105,19 @@ describe('App', () => {
 
     expect(await screen.findByText('Page not found')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/not-a-real-route');
+  });
+
+  it('renders Studio navigation link and navigates to Studio page', async () => {
+    const { container } = renderApp('/history');
+
+    expect(await screen.findAllByText('Studio')).not.toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.click(container.querySelector('a[href="/studio"]')!);
+    });
+
+    expect(await screen.findByText('Choose image')).toBeInTheDocument();
+    expect(container.querySelector('a[href="/studio"]')).toHaveAttribute('aria-current', 'page');
+    expect(window.location.pathname).toBe('/studio');
   });
 });

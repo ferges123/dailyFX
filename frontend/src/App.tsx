@@ -3,11 +3,13 @@ import { type ReactNode } from 'react';
 import {
   Bell,
   CalendarDays,
+  Camera,
   History,
   LogOut,
   Settings,
   Sparkles,
 } from 'lucide-react';
+import { StudioPage } from './pages/StudioPage';
 import {
   BrowserRouter,
   Link,
@@ -49,6 +51,7 @@ function AppShell() {
   }
 
   const isHistoryRoute = location.pathname.startsWith('/history');
+  const isStudioRoute = location.pathname.startsWith('/studio');
   const isSchedulesRoute = location.pathname.startsWith('/schedules');
   const isPresetsRoute = location.pathname.startsWith('/presets');
   const isSettingsRoute = location.pathname.startsWith('/settings');
@@ -116,6 +119,13 @@ function AppShell() {
             History
           </SidebarNavLink>
           <SidebarNavLink
+            to="/studio"
+            active={isStudioRoute}
+            icon={<Camera size={17} />}
+          >
+            Studio
+          </SidebarNavLink>
+          <SidebarNavLink
             to="/schedules"
             active={isSchedulesRoute}
             icon={<CalendarDays size={17} />}
@@ -180,6 +190,7 @@ function AppShell() {
           <Routes>
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/history/:taskId" element={<HistoryPage />} />
+            <Route path="/studio" element={<StudioPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/schedules/new" element={<SchedulesPage />} />
             <Route
@@ -205,6 +216,9 @@ function AppShell() {
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-white/70 bg-[rgba(248,246,239,0.88)] px-2 py-1.5 shadow-[0_-8px_30px_rgba(36,29,16,0.08)] backdrop-blur-xl md:hidden">
         <BottomNavLink to="/history" active={isHistoryRoute} label="History">
           <History size={18} />
+        </BottomNavLink>
+        <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
+          <Camera size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/schedules"
