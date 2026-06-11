@@ -16,6 +16,8 @@ from app.services.immich import get_or_create_settings
 from app.services.generation.modules import MODULES
 from app.services.generation.stream import record_history_snapshot
 from app.services.generation.ai_vision import analyze_image
+from app.schemas.generation import GenerationModuleResponse
+from app.services.generation.ai_effects import get_seed_hidden_map
 from app.services.studio.local_asset import StudioLocalAssetClient, build_studio_asset
 from app.services.studio.validation import (
     StudioUploadValidationError,
@@ -170,3 +172,25 @@ async def create_studio_preview(
         "title": row.title,
         "summary": row.summary,
     }
+
+
+@router.get("/modules", response_model=list[GenerationModuleResponse])
+async def list_studio_modules(_: None = Depends(require_auth)) -> list[GenerationModuleResponse]:
+    hidden_map = get_seed_hidden_map()
+    modules = []
+    for module in MODULES.values():
+        if getattr(module, "source_asset_count", 1) != 1:
+            continue
+        if getattr(module, "source", None) == "builtin" and hidden_map.get(module.name, False):
+            continue
+        modules.append(
+            GenerationModuleResponse(
+                name=module.name,
+                label=module.label,
+                description=module.description,
+                default_weight=module.default_weight,
+                default_config=module.default_config or {},
+                config_schema=getattr(module, "config_schema", None) or [],
+            )
+        )
+    return modules

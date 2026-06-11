@@ -223,3 +223,13 @@ def test_studio_preview_prompt_enrichment_is_request_scoped(
     row = db_session.query(GenerationHistoryModel).filter_by(task_id=response.json()["task_id"]).one()
     assert json.loads(row.config_json)["prompt_enrichment_context"]["context_hint"] == "local source context"
 
+
+def test_studio_modules_include_ai_and_exclude_multisource(authenticated_client: TestClient) -> None:
+    response = authenticated_client.get("/api/studio/modules")
+
+    assert response.status_code == 200
+    names = {item["name"] for item in response.json()}
+    assert "collage" not in names
+    assert any(name.startswith("ai_") for name in names)
+
+
