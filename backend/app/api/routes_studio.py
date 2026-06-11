@@ -15,6 +15,7 @@ from app.security import require_auth
 from app.services.immich import get_or_create_settings
 from app.services.generation.modules import MODULES
 from app.services.generation.stream import record_history_snapshot
+from app.services.generation.ai_vision import analyze_image
 from app.services.studio.local_asset import StudioLocalAssetClient, build_studio_asset
 from app.services.studio.validation import (
     StudioUploadValidationError,
@@ -48,6 +49,12 @@ def _parse_config(raw: str) -> dict:
     return parsed
 
 
+def _parse_bool_form(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _get_supported_module(effect_id: str):
     module = MODULES.get(effect_id)
     if module is None:
@@ -62,6 +69,8 @@ async def create_studio_preview(
     file: UploadFile = File(...),
     effect_id: str = Form(...),
     config: str = Form("{}"),
+    ai_vision_enabled: str | None = Form(None),
+    prompt_enrichment_enabled: str | None = Form(None),
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
 ):
@@ -102,6 +111,10 @@ async def create_studio_preview(
     )
     local_client = StudioLocalAssetClient(temp_root=temp_root, assets={asset.id: asset})
 
+    original_prompt_enrichment = getattr(settings, "ai_prompt_enrichment", False)
+    prompt_enrichment_requested = _parse_bool_form(prompt_enrichment_enabled)
+    settings.ai_prompt_enrichment = prompt_enrichment_requested and effect_id.startswith("ai_")
+
     try:
         result = await module.run([asset_summary], module_config, local_client, settings)
     except HTTPException:
@@ -109,6 +122,8 @@ async def create_studio_preview(
     except Exception as exc:
         logger.exception("Studio preview failed for effect %s: %s", effect_id, exc)
         raise HTTPException(status_code=500, detail=f"Studio preview failed: {exc}") from exc
+    finally:
+        settings.ai_prompt_enrichment = original_prompt_enrichment
 
     task_id = f"studio-{uuid.uuid4().hex}"
     output_dir = get_settings().data_dir / "outputs"
@@ -116,19 +131,31 @@ async def create_studio_preview(
     output_path = output_dir / f"{task_id}.png"
     output_path.write_bytes(result.image_bytes)
 
+    vision_result = None
+    if _parse_bool_form(ai_vision_enabled):
+        vision_result = await analyze_image(settings, result.image_bytes)
+
+    title = vision_result.title if vision_result else result.title
+    summary = vision_result.summary if vision_result else result.summary
+    tags = vision_result.tags if vision_result else []
+    total_token_count = vision_result.token_count if vision_result else None
+    provider = vision_result.provider if vision_result and vision_result.provider else result.provider
+    model = vision_result.model if vision_result and vision_result.model else result.model
+
     row = GenerationHistoryModel(
         task_id=task_id,
         generation_type=result.generation_type or effect_id,
         status="PENDING_REVIEW",
-        title=result.title,
-        summary=result.summary,
+        title=title,
+        summary=summary,
         source_asset_ids=json.dumps(result.source_asset_ids or [asset.id]),
         output_path=str(output_path),
         image_url=f"/api/generation/history/{task_id}/image",
-        provider=result.provider,
-        model=result.model,
+        provider=provider,
+        model=model,
+        total_token_count=total_token_count,
         config_json=json.dumps(result.config or module_config),
-        tags_json=json.dumps([]),
+        tags_json=json.dumps(tags),
     )
     db.add(row)
     db.commit()

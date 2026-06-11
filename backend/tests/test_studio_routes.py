@@ -133,3 +133,93 @@ def test_studio_preview_creates_history_entry(authenticated_client: TestClient, 
     assert row.output_path
     assert Path(row.output_path).exists()
     assert json.loads(row.source_asset_ids)[0].startswith("studio://")
+
+
+from unittest.mock import AsyncMock, patch
+from app.services.generation.ai_vision import AIVisionResult
+
+
+def test_studio_preview_ai_vision_updates_history_metadata(
+    authenticated_client: TestClient,
+    db_session,
+) -> None:
+    vision_result = AIVisionResult(
+        title="Vision Studio Title",
+        summary="Vision summary for the generated preview.",
+        tags=["studio", "vision", "preview"],
+        token_count=42,
+        provider="openai",
+        model="gpt-4o-mini",
+    )
+
+    with patch(
+        "app.api.routes_studio.analyze_image",
+        AsyncMock(return_value=vision_result),
+    ) as analyze_mock:
+        response = authenticated_client.post(
+            "/api/studio/preview",
+            files={"file": ("sample.jpg", jpeg_upload_bytes(), "image/jpeg")},
+            data={
+                "effect_id": "pencil_sketch",
+                "config": "{}",
+                "ai_vision_enabled": "true",
+            },
+        )
+
+    assert response.status_code == 200
+    row = db_session.query(GenerationHistoryModel).filter_by(task_id=response.json()["task_id"]).one()
+    assert row.title == "Vision Studio Title"
+    assert row.summary == "Vision summary for the generated preview."
+    assert json.loads(row.tags_json) == ["studio", "vision", "preview"]
+    assert row.total_token_count == 42
+    assert row.provider == "openai"
+    assert row.model == "gpt-4o-mini"
+    analyze_mock.assert_awaited_once()
+
+
+def test_studio_preview_prompt_enrichment_is_request_scoped(
+    authenticated_client: TestClient,
+    db_session,
+) -> None:
+    captured = {}
+
+    class FakeAIModule:
+        name = "ai_fake"
+        label = "AI Fake"
+        description = "Fake AI module"
+        default_weight = 1
+        source_asset_count = 1
+        default_config = {}
+        config_schema = []
+
+        async def run(self, page_items, config, client, settings):
+            captured["ai_prompt_enrichment"] = getattr(settings, "ai_prompt_enrichment", False)
+            from app.services.generation.modules.base import GenerationResult
+
+            return GenerationResult(
+                title="AI Fake",
+                summary="AI fake summary",
+                image_bytes=jpeg_upload_bytes(),
+                generation_type="ai_fake",
+                provider="local",
+                model="fake",
+                config={"prompt_enrichment_context": {"context_hint": "local source context"}},
+                source_asset_ids=[page_items[0].id],
+            )
+
+    with patch("app.api.routes_studio.MODULES.get", return_value=FakeAIModule()):
+        response = authenticated_client.post(
+            "/api/studio/preview",
+            files={"file": ("sample.jpg", jpeg_upload_bytes(), "image/jpeg")},
+            data={
+                "effect_id": "ai_fake",
+                "config": "{}",
+                "prompt_enrichment_enabled": "true",
+            },
+        )
+
+    assert response.status_code == 200
+    assert captured["ai_prompt_enrichment"] is True
+    row = db_session.query(GenerationHistoryModel).filter_by(task_id=response.json()["task_id"]).one()
+    assert json.loads(row.config_json)["prompt_enrichment_context"]["context_hint"] == "local source context"
+
