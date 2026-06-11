@@ -115,6 +115,15 @@ export type GenerationModuleInfo = {
   config_schema: GenerationModuleConfigField[];
 };
 
+export type StudioPreviewResponse = {
+  task_id: string;
+  history_url: string;
+  image_url: string;
+  module_name: string;
+  title: string;
+  summary: string;
+};
+
 export type GenerationExampleInfo = {
   module_name: string;
   label: string;
@@ -280,6 +289,51 @@ export function getImmichFilterOptions() {
 
 export function getGenerationModules() {
   return request<GenerationModuleInfo[]>('/api/generation/modules');
+}
+
+export function getStudioModules() {
+  return request<GenerationModuleInfo[]>('/api/studio/modules');
+}
+
+export async function createStudioPreview(
+  file: File,
+  effectId: string,
+  config: Record<string, unknown>,
+  options: { aiVisionEnabled?: boolean; promptEnrichmentEnabled?: boolean } = {},
+): Promise<StudioPreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('effect_id', effectId);
+  formData.append('config', JSON.stringify(config));
+  formData.append('ai_vision_enabled', options.aiVisionEnabled ? 'true' : 'false');
+  formData.append(
+    'prompt_enrichment_enabled',
+    options.promptEnrichmentEnabled ? 'true' : 'false',
+  );
+
+  const response = await fetch(`${apiBase}/api/studio/preview`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeader(),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `API request failed: ${response.status}`;
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (payload.detail) detail = payload.detail;
+    } catch {
+      // ignore
+    }
+    if (response.status === 401) {
+      onUnauthorizedCallback?.();
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  return response.json() as Promise<StudioPreviewResponse>;
 }
 
 export function getGenerationExamples() {
