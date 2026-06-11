@@ -119,13 +119,6 @@ function AppShell() {
             History
           </SidebarNavLink>
           <SidebarNavLink
-            to="/studio"
-            active={isStudioRoute}
-            icon={<Camera size={17} />}
-          >
-            Studio
-          </SidebarNavLink>
-          <SidebarNavLink
             to="/schedules"
             active={isSchedulesRoute}
             icon={<CalendarDays size={17} />}
@@ -138,6 +131,13 @@ function AppShell() {
             icon={<Sparkles size={17} />}
           >
             Presets
+          </SidebarNavLink>
+          <SidebarNavLink
+            to="/studio"
+            active={isStudioRoute}
+            icon={<Camera size={17} />}
+          >
+            Studio
           </SidebarNavLink>
           <SidebarNavLink
             to="/settings"
@@ -217,9 +217,6 @@ function AppShell() {
         <BottomNavLink to="/history" active={isHistoryRoute} label="History">
           <History size={18} />
         </BottomNavLink>
-        <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
-          <Camera size={18} />
-        </BottomNavLink>
         <BottomNavLink
           to="/schedules"
           active={isSchedulesRoute}
@@ -229,6 +226,9 @@ function AppShell() {
         </BottomNavLink>
         <BottomNavLink to="/presets" active={isPresetsRoute} label="Presets">
           <Sparkles size={18} />
+        </BottomNavLink>
+        <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
+          <Camera size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/settings"

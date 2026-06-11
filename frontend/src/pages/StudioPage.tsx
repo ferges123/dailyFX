@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ImagePlus, WandSparkles, History } from 'lucide-react';
 
@@ -20,6 +20,47 @@ export function StudioPage() {
   const [aiVisionEnabled, setAiVisionEnabled] = useState(false);
   const [promptEnrichmentEnabled, setPromptEnrichmentEnabled] = useState(false);
   const [preview, setPreview] = useState<StudioPreviewResponse | null>(null);
+
+  const [dragActive, setDragActive] = useState(false);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const nameLower = file.name.toLowerCase();
+    const isHeic = nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+    if (isHeic) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setFilePreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0]);
+      setPreview(null);
+    }
+  };
 
   const modulesQuery = useQuery({
     queryKey: ['studio-modules'],
@@ -67,7 +108,15 @@ export function StudioPage() {
         description="Upload a local image, choose an effect, and create a History preview."
       >
         <div className="grid gap-4">
-          <label className="grid min-h-40 cursor-pointer place-items-center rounded-xl border border-dashed border-stone-300 bg-white/70 px-4 py-6 text-center transition hover:border-emerald-700">
+          <label
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            className={`grid min-h-40 cursor-pointer place-items-center rounded-xl border border-dashed px-4 py-6 text-center transition ${
+              dragActive ? 'border-emerald-700 bg-emerald-50/50' : 'border-stone-300 bg-white/70 hover:border-emerald-700'
+            }`}
+          >
             <input
               type="file"
               accept="image/png,image/jpeg,image/jpg,image/gif,image/heic,image/heif"
@@ -77,13 +126,40 @@ export function StudioPage() {
                 setPreview(null);
               }}
             />
-            <span className="grid justify-items-center gap-2 text-sm text-stone-600">
-              <ImagePlus size={24} />
-              <span className="font-semibold text-stone-900">
-                {file ? file.name : 'Choose image'}
+            {filePreviewUrl ? (
+              <div className="grid justify-items-center gap-2">
+                <img
+                  src={filePreviewUrl}
+                  alt="Source preview"
+                  className="max-h-32 rounded-lg object-contain shadow-sm border border-stone-200"
+                />
+                <span className="font-semibold text-stone-900 text-sm">
+                  {file?.name}
+                </span>
+                <span className="text-xs text-stone-500">
+                  {file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB (Click or drag to change)
+                </span>
+              </div>
+            ) : file ? (
+              <span className="grid justify-items-center gap-2 text-sm text-stone-600">
+                <ImagePlus size={24} className="text-emerald-600" />
+                <span className="font-semibold text-stone-900">
+                  {file.name}
+                </span>
+                <span className="text-xs text-stone-500">
+                  {(file.size / (1024 * 1024)).toFixed(2)} MB {file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif') ? '(HEIC format - preview not available)' : ''}
+                </span>
+                <span className="text-xs text-stone-400">Click or drag to change</span>
               </span>
-              <span>PNG, JPG, GIF, HEIC up to 25 MB</span>
-            </span>
+            ) : (
+              <span className="grid justify-items-center gap-2 text-sm text-stone-600">
+                <ImagePlus size={24} />
+                <span className="font-semibold text-stone-900">
+                  Choose image
+                </span>
+                <span>PNG, JPG, GIF, HEIC up to 25 MB</span>
+              </span>
+            )}
           </label>
 
           <label className="grid gap-1.5 text-sm font-semibold text-stone-700">
@@ -182,3 +258,4 @@ export function StudioPage() {
     </section>
   );
 }
+

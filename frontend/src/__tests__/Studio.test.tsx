@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { StudioPage } from '../pages/StudioPage';
 
@@ -29,6 +29,17 @@ vi.mock('../api/client', async () => {
   };
 });
 
+// Mock URL.createObjectURL and URL.revokeObjectURL
+const createObjectURLMock = vi.fn(() => 'mock-object-url');
+const revokeObjectURLMock = vi.fn();
+beforeEach(() => {
+  window.URL.createObjectURL = createObjectURLMock;
+  window.URL.revokeObjectURL = revokeObjectURLMock;
+});
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
 function renderStudio() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -50,5 +61,28 @@ describe('StudioPage', () => {
     expect(screen.getByLabelText('AI Vision metadata')).toBeInTheDocument();
     expect(screen.getByLabelText('AI prompt enrichment')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create preview/i })).toBeDisabled();
+  });
+
+  it('renders source image preview and handles drag and drop', async () => {
+    renderStudio();
+    const dropzone = await screen.findByText('Choose image');
+
+    // Simulate drag over
+    fireEvent.dragOver(dropzone);
+    
+    // Simulate drop
+    const file = new File(['dummy content'], 'test-image.jpg', { type: 'image/jpeg' });
+    fireEvent.drop(dropzone, {
+      dataTransfer: {
+        files: [file]
+      }
+    });
+
+    // Expect the preview image to render using the mocked object URL
+    const previewImg = await screen.findByAltText('Source preview');
+    expect(previewImg).toBeInTheDocument();
+    expect(previewImg).toHaveAttribute('src', 'mock-object-url');
+    expect(screen.getByText('test-image.jpg')).toBeInTheDocument();
+    expect(createObjectURLMock).toHaveBeenCalledWith(file);
   });
 });
