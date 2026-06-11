@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, type ReactNode } from 'react';
+import { useState, useEffect, useRef, Fragment, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
@@ -562,6 +562,7 @@ function FilterPresetsTab() {
   const [albumSearch, setAlbumSearch] = useState('');
   const [personSearch, setPersonSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const formPanelRef = useRef<HTMLDivElement | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -640,6 +641,14 @@ function FilterPresetsTab() {
   const selectedAlbumCount = form.album_ids.length;
   const selectedPersonCount = form.person_filters.length;
 
+  useEffect(() => {
+    if (!showForm) return;
+    formPanelRef.current?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, [showForm, isNew, editing?.id]);
+
   if (isLoading) {
     return <InlineSpinner />;
   }
@@ -675,7 +684,10 @@ function FilterPresetsTab() {
       )}
 
       {showForm && (
-        <div className="app-panel grid gap-3 p-3 md:gap-4 md:p-4">
+        <div
+          ref={formPanelRef}
+          className="app-panel grid gap-3 p-3 md:gap-4 md:p-4"
+        >
           <div className="grid gap-0.5 md:gap-1">
             <div className="text-sm font-semibold text-stone-900">
               {isNew ? 'New filter preset' : `Editing: ${editing?.name}`}
@@ -842,7 +854,7 @@ function FilterPresetsTab() {
         </div>
       )}
 
-      <div className="grid gap-2">
+      <div aria-label="Filter presets list" className="grid gap-2 lg:grid-cols-2">
         {(() => {
           const albumNames = new Map(
             (options.data?.albums ?? []).map((a) => [a.id, a.album_name]),
@@ -914,6 +926,7 @@ function EffectPresetsTab() {
   const [expandedPreviews, setExpandedPreviews] = useState<
     Record<string, boolean>
   >({});
+  const formPanelRef = useRef<HTMLDivElement | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -982,6 +995,14 @@ function EffectPresetsTab() {
     validationIssues.push('Enable at least one effect before saving.');
   const canSave = validationIssues.length === 0;
 
+  useEffect(() => {
+    if (!showForm) return;
+    formPanelRef.current?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, [showForm, isNew, editing?.id]);
+
   if (isLoading) {
     return <InlineSpinner />;
   }
@@ -1017,7 +1038,10 @@ function EffectPresetsTab() {
       )}
 
       {showForm && (
-        <div className="app-panel grid gap-2.5 p-3 md:gap-3 md:p-4">
+        <div
+          ref={formPanelRef}
+          className="app-panel grid gap-2.5 p-3 md:gap-3 md:p-4"
+        >
           <div className="text-sm font-semibold text-stone-900">
             {isNew ? 'New effect preset' : `Editing: ${editing?.name}`}
           </div>
@@ -1202,7 +1226,7 @@ function EffectPresetsTab() {
         </div>
       )}
 
-      <div className="grid gap-2 xl:grid-cols-2">
+      <div aria-label="Effect presets list" className="grid gap-2 lg:grid-cols-2">
         {presets.data?.map((p) => {
           const enabledEntries = Object.entries(p.groups).filter(
             ([, g]) => g.enabled,
@@ -1463,6 +1487,7 @@ function NotificationPresetsTab() {
   const [pushStatus, setPushStatus] = useState<
     'idle' | 'pending' | 'subscribed' | 'error'
   >('idle');
+  const formPanelRef = useRef<HTMLDivElement | null>(null);
 
   const webPushSupport = {
     hasNotification: typeof window !== 'undefined' && 'Notification' in window,
@@ -1560,6 +1585,14 @@ function NotificationPresetsTab() {
   const isLoading = presets.isLoading && !presets.data;
   const isError = presets.isError && !presets.data;
 
+  useEffect(() => {
+    if (!showForm) return;
+    formPanelRef.current?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, [showForm, isNew, editing?.id]);
+
   if (isLoading) {
     return <InlineSpinner />;
   }
@@ -1586,7 +1619,7 @@ function NotificationPresetsTab() {
       )}
 
       {showForm && (
-        <div className="app-panel grid gap-4 p-4">
+        <div ref={formPanelRef} className="app-panel grid gap-4 p-4">
           <div className="grid gap-0.5 md:gap-1">
             <div className="text-sm font-semibold text-stone-900">
               {isNew ? 'New notification preset' : `Editing: ${editing?.name}`}
@@ -2026,7 +2059,7 @@ function NotificationPresetsTab() {
         </div>
       )}
 
-      <div className="grid gap-2 xl:grid-cols-2">
+      <div aria-label="Notification presets list" className="grid gap-2 lg:grid-cols-2">
         {presets.data?.map((p) => (
           <NotificationPresetCard
             key={p.id}

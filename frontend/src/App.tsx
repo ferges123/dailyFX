@@ -159,7 +159,7 @@ function AppShell() {
               title="Open DailyFX on GitHub"
             >
               <Bell size={13} />
-              DailyFX 0.2.8
+              DailyFX 0.2.12
             </a>
             <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
               <a

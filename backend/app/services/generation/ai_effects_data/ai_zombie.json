@@ -1,0 +1,8 @@
+{
+  "id": "ai_zombie",
+  "title": "AI Zombie",
+  "description": "Uses the default AI provider to create a cinematic zombie transformation.",
+  "positive_prompt": "Cinematic zombie apocalypse portrait, realistic undead transformation, dramatic horror movie atmosphere, detailed zombie makeup effects, haunting expression, abandoned urban environment, cinematic lighting, highly detailed skin textures, realistic special effects, premium horror production quality, photorealistic, sharp focus, immersive post-apocalyptic scene",
+  "negative_prompt": "cartoon, anime, low quality, blurry, extra limbs, extra fingers, duplicate body parts, bad anatomy, watermark, logo, text, extreme gore, exposed organs, dismemberment, excessive blood, graphic violence, distorted face, pixelated, low detail, cropped subject",
+  "custom_prompt_placeholder": "e.g. abandoned mall, cinematic horror lighting..."
+}

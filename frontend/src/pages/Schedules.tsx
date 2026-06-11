@@ -611,7 +611,7 @@ export function SchedulesPage() {
 
         <div className="grid gap-2.5 lg:items-start">
           {!showForm && (
-            <div className="grid gap-2">
+            <div aria-label="Schedules list" className="grid gap-2 lg:grid-cols-2">
               {filteredSchedules.map((schedule) => {
                 return (
                   <article

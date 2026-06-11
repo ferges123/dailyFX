@@ -52,8 +52,63 @@
       "hidden": false
     },
     {
+      "id": "ai_yearbook_90s",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_celebrity_red_carpet",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
       "id": "ai_film_noir_portrait",
       "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_mugshot",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_celebrity_mugshot",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_gangster_mugshot",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_space_explorer",
+      "display_group": "Sci-Fi",
+      "hidden": false
+    },
+    {
+      "id": "ai_superhero",
+      "display_group": "Pop Culture",
+      "hidden": false
+    },
+    {
+      "id": "ai_post_apocalyptic",
+      "display_group": "Cinematic",
+      "hidden": false
+    },
+    {
+      "id": "ai_low_poly_3d",
+      "display_group": "3D / Toy",
+      "hidden": false
+    },
+    {
+      "id": "ai_zombie",
+      "display_group": "Horror",
+      "hidden": false
+    },
+    {
+      "id": "ai_caveman",
+      "display_group": "Historical",
       "hidden": false
     },
     {

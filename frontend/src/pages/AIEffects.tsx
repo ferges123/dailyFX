@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Copy,
@@ -33,6 +33,10 @@ const AI_EFFECT_GROUP_ORDER = [
   'Poster',
   '3D / Toy',
   'Pop Culture',
+  'Cinematic',
+  'Sci-Fi',
+  'Horror',
+  'Historical',
   'Ungrouped',
 ];
 
@@ -229,6 +233,7 @@ export function AIEffectsPage() {
   const qc = useQueryClient();
   const effects = useQuery({ queryKey: ['ai-effects'], queryFn: getAIEffects });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const formPanelRef = useRef<HTMLDivElement | null>(null);
 
   const [editing, setEditing] = useState<AIEffect | null>(null);
   const [isNew, setIsNew] = useState(false);
@@ -431,6 +436,14 @@ export function AIEffectsPage() {
   const isError = effects.isError && !effects.data;
   const showForm = isNew || editing !== null;
 
+  useEffect(() => {
+    if (!showForm) return;
+    formPanelRef.current?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, [showForm, isNew, editing?.id]);
+
   if (isLoading) {
     return <InlineSpinner />;
   }
@@ -448,59 +461,55 @@ export function AIEffectsPage() {
   return (
     <div className="grid gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-sm font-semibold text-stone-900">AI effects</div>
-          <div className="text-xs text-stone-500">
-            Built-in seeds are synced from JSON into the database. Runtime edits
-            stay local.
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 sm:items-end">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={openNew}
-              className="app-button-primary px-3 py-2 text-sm"
-            >
-              <Plus size={14} /> New effect
-            </button>
-            <button
-              type="button"
-              onClick={() => exportMutation.mutate()}
-              className="app-button-secondary px-3 py-2 text-sm"
-            >
-              <Download size={14} /> Export
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              className="app-button-secondary px-3 py-2 text-sm disabled:opacity-50"
-            >
-              <Upload size={14} /> Import
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => handleImportFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
-          <div className="w-full sm:w-72">
-            <SelectField
-              label="Filter by group"
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-            >
-              <option value="all">All groups</option>
-              {groupOptions.map((group) => (
-                <option key={group} value={group}>
-                  {group}
-                </option>
-              ))}
-            </SelectField>
-          </div>
+        <span className="text-sm text-stone-500">
+          {effects.data?.length ?? 0} preset(s)
+        </span>
+        <div
+          aria-label="AI effects header actions"
+          className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
+        >
+          <select
+            aria-label="AI effects group filter"
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="app-control h-9 w-full px-3 py-1.5 text-sm sm:w-48"
+          >
+            <option value="all">All groups</option>
+            {groupOptions.map((group) => (
+              <option key={group} value={group}>
+                {group}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={openNew}
+            className="app-button-primary w-full justify-center px-3 py-2 text-sm sm:w-auto sm:py-1.5"
+          >
+            <Plus size={14} /> New effect
+          </button>
+          <button
+            type="button"
+            onClick={() => exportMutation.mutate()}
+            className="app-button-secondary w-full justify-center px-3 py-2 text-sm sm:w-auto sm:py-1.5"
+          >
+            <Download size={14} /> Export
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="app-button-secondary w-full justify-center px-3 py-2 text-sm disabled:opacity-50 sm:w-auto sm:py-1.5"
+          >
+            <Upload size={14} /> Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => handleImportFile(e.target.files?.[0] ?? null)}
+          />
         </div>
       </div>
 
@@ -517,7 +526,7 @@ export function AIEffectsPage() {
       )}
 
       {showForm && (
-        <div className="app-panel grid gap-4 p-4">
+        <div ref={formPanelRef} className="app-panel grid gap-4 p-4">
           <div className="flex items-center gap-1.5">
             <div className="text-sm font-semibold text-stone-900">
               {isNew ? 'New AI effect' : `Editing: ${editing?.title}`}
@@ -672,7 +681,10 @@ export function AIEffectsPage() {
             title={groupName}
             description={`${items.length} effect${items.length === 1 ? '' : 's'}`}
           >
-            <div className="grid gap-2">
+            <div
+              aria-label={`AI effects list: ${groupName}`}
+              className="grid gap-2 lg:grid-cols-2"
+            >
               {items.map((effect) => (
                 <AIEffectCard
                   key={effect.id}

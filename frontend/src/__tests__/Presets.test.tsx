@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -99,6 +99,46 @@ describe('Presets pages', () => {
     expect(screen.getByRole('button', { name: /Save/ })).toBeDisabled();
   });
 
+  it('uses a two-column list and scrolls to the filter preset edit form', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.mocked(client.getFilterPresets).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Trip filters',
+        album_ids: ['album-1'],
+        person_filters: [],
+        start_date: null,
+        end_date: null,
+        media_type: 'photo',
+        created_at: '2026-06-10T04:00:00.000Z',
+      },
+    ]);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue({
+      albums: [
+        {
+          id: 'album-1',
+          album_name: 'Travel',
+          asset_count: 12,
+          thumbnail_asset_id: null,
+        },
+      ],
+      people: [],
+    });
+
+    renderPage(<FilterPresetsPage />);
+
+    expect(await screen.findByText('Trip filters')).toBeInTheDocument();
+    expect(screen.getByLabelText('Filter presets list')).toHaveClass(
+      'lg:grid-cols-2',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(await screen.findByText('Editing: Trip filters')).toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  });
+
   it('shows the effect presets empty state', async () => {
     vi.mocked(client.getEffectPresets).mockResolvedValue([]);
     vi.mocked(client.getGenerationModules).mockResolvedValue([]);
@@ -111,6 +151,26 @@ describe('Presets pages', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'New preset' })).toHaveLength(
       2,
+    );
+  });
+
+  it('uses a two-column list for effect presets', async () => {
+    vi.mocked(client.getEffectPresets).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Daily effects',
+        groups: {},
+        created_at: '2026-06-10T04:00:00.000Z',
+      },
+    ]);
+    vi.mocked(client.getGenerationModules).mockResolvedValue([]);
+    vi.mocked(client.getGenerationExamples).mockResolvedValue([]);
+
+    renderPage(<EffectPresetsPage />);
+
+    expect(await screen.findByText('Daily effects')).toBeInTheDocument();
+    expect(screen.getByLabelText('Effect presets list')).toHaveClass(
+      'lg:grid-cols-2',
     );
   });
 
@@ -131,6 +191,34 @@ describe('Presets pages', () => {
     expect(screen.getByText('New notification preset')).toBeInTheDocument();
     expect(screen.getByText('Preset name is required.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save/ })).toBeDisabled();
+  });
+
+  it('keeps notification presets on the shared two-column list', async () => {
+    vi.mocked(client.getNotificationPresets).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Phone',
+        provider: 'web',
+        url: null,
+        topic: null,
+        has_token: false,
+        token_masked: null,
+        webhook_url: null,
+        created_at: '2026-06-10T04:00:00.000Z',
+        push_subscription_ids: [],
+      },
+    ]);
+    vi.mocked(client.getPushSubscriptions).mockResolvedValue({
+      count: 0,
+      subscriptions: [],
+    });
+
+    renderPage(<NotificationPresetsPage />);
+
+    expect(await screen.findByText('Phone')).toBeInTheDocument();
+    expect(screen.getByLabelText('Notification presets list')).toHaveClass(
+      'lg:grid-cols-2',
+    );
   });
 
   it('keeps secondary AI effect actions behind a compact action menu', async () => {
@@ -177,5 +265,130 @@ describe('Presets pages', () => {
     expect(
       screen.getByRole('button', { name: 'Delete AI Caricature' }),
     ).toBeInTheDocument();
+  });
+
+  it('uses a two-column list and scrolls to the AI effect edit form', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.mocked(client.getAIEffects).mockResolvedValue([
+      {
+        id: 'ai_caricature',
+        title: 'AI Caricature',
+        description: 'Turns a portrait into a caricature.',
+        display_group: 'Portrait',
+        positive_prompt: 'Make a caricature.',
+        negative_prompt: '',
+        custom_prompt_placeholder: null,
+        enabled: true,
+        hidden: false,
+        source: 'builtin',
+        builtin_hash: 'abc',
+        latest_builtin_hash: 'abc',
+        user_modified_at: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        updated_at: '2026-05-30T04:00:00.000Z',
+      },
+    ]);
+
+    renderPage(<AIEffectsPage />);
+
+    expect(await screen.findByText('AI Caricature')).toBeInTheDocument();
+    expect(screen.getByLabelText('AI effects list: Portrait')).toHaveClass(
+      'lg:grid-cols-2',
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit AI Caricature' }),
+    );
+
+    expect(await screen.findByText('Editing: AI Caricature')).toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  });
+
+  it('matches preset tab header controls for AI effects', async () => {
+    vi.mocked(client.getAIEffects).mockResolvedValue([
+      {
+        id: 'ai_caricature',
+        title: 'AI Caricature',
+        description: 'Turns a portrait into a caricature.',
+        display_group: 'Portrait',
+        positive_prompt: 'Make a caricature.',
+        negative_prompt: '',
+        custom_prompt_placeholder: null,
+        enabled: true,
+        hidden: false,
+        source: 'builtin',
+        builtin_hash: 'abc',
+        latest_builtin_hash: 'abc',
+        user_modified_at: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        updated_at: '2026-05-30T04:00:00.000Z',
+      },
+      {
+        id: 'ai_anime',
+        title: 'AI Anime',
+        description: 'Anime style.',
+        display_group: 'Illustration',
+        positive_prompt: 'Make anime.',
+        negative_prompt: '',
+        custom_prompt_placeholder: null,
+        enabled: true,
+        hidden: false,
+        source: 'builtin',
+        builtin_hash: 'def',
+        latest_builtin_hash: 'def',
+        user_modified_at: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        updated_at: '2026-05-30T04:00:00.000Z',
+      },
+      {
+        id: 'ai_comic',
+        title: 'AI Comic',
+        description: 'Comic style.',
+        display_group: 'Illustration',
+        positive_prompt: 'Make comic.',
+        negative_prompt: '',
+        custom_prompt_placeholder: null,
+        enabled: true,
+        hidden: false,
+        source: 'builtin',
+        builtin_hash: 'ghi',
+        latest_builtin_hash: 'ghi',
+        user_modified_at: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        updated_at: '2026-05-30T04:00:00.000Z',
+      },
+      {
+        id: 'ai_custom',
+        title: 'AI Custom',
+        description: 'Custom style.',
+        display_group: null,
+        positive_prompt: 'Make custom.',
+        negative_prompt: '',
+        custom_prompt_placeholder: null,
+        enabled: true,
+        hidden: false,
+        source: 'custom',
+        builtin_hash: null,
+        latest_builtin_hash: null,
+        user_modified_at: null,
+        created_at: '2026-05-30T04:00:00.000Z',
+        updated_at: '2026-05-30T04:00:00.000Z',
+      },
+    ]);
+
+    renderPage(<AIEffectsPage />);
+
+    expect(await screen.findByText('4 preset(s)')).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Built-in seeds are synced from JSON into the database. Runtime edits stay local.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Filter by group')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('AI effects group filter')).toBeInTheDocument();
+    expect(screen.getByLabelText('AI effects header actions')).toHaveClass(
+      'sm:flex-row',
+    );
   });
 });

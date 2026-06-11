@@ -182,6 +182,43 @@ def test_builtin_ai_effects_are_seeded_and_listed():
         db.close()
 
 
+def test_planned_ai_photo_effect_prompts_are_builtin_seed_files():
+    expected_ids = {
+        "ai_yearbook_90s",
+        "ai_celebrity_red_carpet",
+        "ai_space_explorer",
+        "ai_superhero",
+        "ai_post_apocalyptic",
+        "ai_low_poly_3d",
+        "ai_zombie",
+        "ai_caveman",
+        "ai_mugshot",
+        "ai_celebrity_mugshot",
+        "ai_gangster_mugshot",
+    }
+
+    init_db()
+    db = SessionLocal()
+    try:
+        seed_dir = get_seed_dir()
+        manifest = load_seed_manifest()
+        manifest_ids = {entry.id for entry in manifest.effects}
+        assert expected_ids.issubset(manifest_ids)
+        assert all((seed_dir / f"{effect_id}.json").exists() for effect_id in expected_ids)
+
+        listed = list_ai_effects(db)
+        listed_by_id = {item.id: item for item in listed}
+        assert expected_ids.issubset(listed_by_id)
+        assert listed_by_id["ai_yearbook_90s"].title == "AI Yearbook 90s"
+        assert listed_by_id["ai_low_poly_3d"].display_group == "3D / Toy"
+
+        modules = asyncio.run(list_generation_modules())
+        module_names = {item.name for item in modules}
+        assert expected_ids.issubset(module_names)
+    finally:
+        db.close()
+
+
 def test_hidden_builtins_do_not_hide_custom_overrides(monkeypatch):
     init_db()
     db = SessionLocal()

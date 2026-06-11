@@ -145,6 +145,46 @@ describe('SchedulesPage', () => {
     expect(screen.getAllByText('AI photo selection on').length).toBeGreaterThan(0);
   });
 
+  it('uses a two-column schedule list', async () => {
+    vi.mocked(client.getSchedules).mockResolvedValue([
+      {
+        id: 1,
+        name: 'Morning run',
+        enabled: true,
+        schedule_expr: 'daily@08:00',
+        filter_preset_id: 2,
+        effect_preset_id: 3,
+        notification_preset_ids: [4],
+        album_name: 'AI Photos',
+        ai_vision_provider: 'local',
+        ai_vision_model: 'qwen2.5-vl',
+        ai_image_provider: 'local',
+        ai_image_model: 'flux.1',
+        ai_prompt_enrichment: true,
+        ai_photo_selection_enabled: false,
+        last_run_at: null,
+        next_run_at: null,
+        last_tick_status: null,
+        last_tick_reason: null,
+        last_task_id: null,
+        created_at: '2026-06-10T04:00:00.000Z',
+        filter_preset_name: 'Default filter',
+        effect_preset_name: 'Default effect',
+        notification_preset_names: ['Phone'],
+      },
+    ]);
+    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+    vi.mocked(client.getEffectPresets).mockResolvedValue([]);
+    vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
+
+    renderSchedules();
+
+    expect(await screen.findByText('Morning run')).toBeInTheDocument();
+    expect(screen.getByLabelText('Schedules list')).toHaveClass(
+      'lg:grid-cols-2',
+    );
+  });
+
   it('opens the create form when loaded on the new schedule route', async () => {
     window.history.pushState({}, '', '/schedules/new');
     vi.mocked(client.getSchedules).mockResolvedValue([]);
