@@ -27,4 +27,5 @@ data/scheduler.health
 docs/plans/
 data/outputs/
 data/temp/
+data/tests/
 backend/data/

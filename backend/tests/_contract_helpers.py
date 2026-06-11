@@ -10,8 +10,11 @@ from starlette.datastructures import QueryParams
 def configure_contract_test_db(stem: str) -> Path:
     os.environ["APP_ENV"] = "development"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
-    os.environ["DATA_DIR"] = "/tmp"
-    test_db = Path(f"/tmp/immich_ai_creator_test_{stem}.db")
+    project_root = Path(__file__).resolve().parents[2]
+    test_data_dir = project_root / "data" / "tests" / stem
+    test_data_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["DATA_DIR"] = str(test_data_dir)
+    test_db = test_data_dir / "app.db"
     test_db.unlink(missing_ok=True)
     os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     return test_db
