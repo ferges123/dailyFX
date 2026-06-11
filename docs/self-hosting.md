@@ -95,6 +95,14 @@ docker compose up -d api web
 - Use HTTPS and a reverse proxy if you publish the service to the internet
 - Restrict `CORS_ORIGINS` to trusted origins when using a custom domain
 
+### Running as Non-Root / File Permissions
+To ensure security, the backend container runs under the unprivileged `nobody` user by default (defined in the [Dockerfile](file:///opt/dailyFX/backend/Dockerfile)).
+
+However, during local development or self-hosting, when using a bind mount for the `data/` directory (`- ./data:/data`), files created inside the container might be written with different permissions or become owned by root. To prevent this:
+1. In [docker-compose.yml](file:///opt/dailyFX/docker-compose.yml), the `api` service is configured with `user: "${UID:-1000}:${GID:-1000}"`. This maps the container process to your local host user's UID and GID so that files written to `./data` remain owned by you.
+2. If you are deploying in a production environment (such as Kubernetes or a hardened server) without bind mounts, the container will run securely as the `nobody` user (UID `65534`).
+
+
 ## Troubleshooting
 - If the backend exits immediately, check the logs for the preflight error; it will name the invalid setting or unwritable path.
 - If the UI cannot reach Immich, re-check the URL and API key in **Settings**, then rerun the connection test.
