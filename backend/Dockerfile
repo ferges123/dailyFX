@@ -13,7 +13,10 @@ COPY run_opencv_tests.py ./
 COPY tests ./tests
 COPY app ./app
 COPY start.sh ./
-RUN chmod +x start.sh
+RUN chmod +x start.sh && chmod -R o+rX /app
+
+ENV HOME=/tmp
+USER nobody
 
 CMD ["./start.sh"]
 
