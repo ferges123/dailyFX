@@ -18,6 +18,7 @@ The frontend has been upgraded to the following modern technologies:
 - `History`: review generated results, see queued and running schedule runs, search by title/summary/provider, inspect metadata, and accept, reject, retry, or download images. Supports dynamic **Before/After Image Comparison** toggles (switching between the original photo and the styled AI result) in both the details panel and the full-screen lightbox view.
 - `Schedules`: create and edit automated jobs by combining filter presets, effect presets, notification presets, and AI vision/image provider settings.
 - `Presets`: manage filter presets, effect presets, notification presets, and web push subscriptions.
+- `Studio`: upload a local photo, select a compatible single-source effect, configure parameters, view a live generation preview, and persist it to history. Features drag-and-drop file ingestion and a memory-safe source image thumbnail preview.
 - `Settings`: configure Immich access, API keys, AI budgets, and the default AI prompt.
 - `Login`: shown only when `APP_ACCESS_TOKEN` is enabled on the backend.
 
