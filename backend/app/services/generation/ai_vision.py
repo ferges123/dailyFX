@@ -338,7 +338,7 @@ async def _analyze_images_with_xiaomi(
         "max_completion_tokens": 300,
         "response_format": {"type": "json_object"},
     }
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -579,7 +579,7 @@ async def _analyze_with_xiaomi(
         "response_format": {"type": "json_object"},
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -825,7 +825,7 @@ async def _get_text_desc_xiaomi(
         ],
         "max_completion_tokens": 300,
     }
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1002,7 +1002,7 @@ async def _fuse_xiaomi(api_key: str, prompt: str, model: str) -> str:
         "messages": [{"role": "user", "content": prompt}],
         "max_completion_tokens": 300,
     }
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
