@@ -35,10 +35,20 @@ The frontend has been upgraded to the following modern technologies:
 - Service worker: `frontend/src/sw.js` (compiled to `dist/sw.js` via `vite-plugin-pwa`) enables both PWA offline shell assets caching (precaching) and web push notifications.
 
 ## Frontend Structure
-- `frontend/src/App.tsx`: shell layout, mobile navigation, and view switching.
+- `frontend/src/App.tsx`: shell layout, mobile navigation, route definition with lazy loading, and view switching.
 - `frontend/src/pages/`: page-level screens and helpers.
+  - `History/`: contains `HistoryPage` and related details/lightbox controls.
+  - `Presets/`: modular split of tabs (`EffectPresetsPage.tsx`, `FilterPresetsPage.tsx`, `NotificationPresetsPage.tsx`) under a common `PresetHeader`.
+  - `Schedules/`: split of form details (`ScheduleForm.tsx`, `ScheduleSummaryCard.tsx`) to improve maintainability.
+  - `Settings/`: contains configuration sections (`AIProviderSettingsSection.tsx`, `ConnectionTestsSection.tsx`, `RuntimeStatusSection.tsx`) and settings validation helpers.
 - `frontend/src/components/`: reusable UI controls and image handling.
+  - `RouteErrorBoundary.tsx`: route-level boundary displaying localized error UI instead of crashing the app shell.
 - `frontend/src/api/`: typed API client and auth helpers.
+- `frontend/src/version.ts`: single source of truth for the application version, imported by the desktop sidebar and mobile settings footer.
+
+## Application Reliability
+- **Lazy Loading**: Route-level components are imported dynamically via `React.lazy()` and wrapped in `Suspense` with a graceful loading fallback to optimize bundle size.
+- **Error Boundaries**: Every page view is wrapped in a `RouteErrorBoundary` component. This prevents UI-level JavaScript runtime failures on one page from taking down the entire application workspace.
 
 ## Development
 - `cd frontend && npm run dev` starts the UI on port `8439`.
