@@ -13,7 +13,7 @@
 | Task 9: extract pipeline stages | Not Started | Split pipeline execution into separate files. |
 | Task 10: split notification providers | Completed | Split into provider-specific adapter modules under notifications/providers/ |
 | Task 11: rate limits | Not Started | Apply per-endpoint rate limits. |
-| Task 12: Content Security Policy | Not Started | Add CSP to frontend Nginx. |
+| Task 12: Content Security Policy | Completed | Added CSP headers to Nginx frontend config. |
 | Task 13: comparator in history | Rejected | Decided not to implement. |
 | Task 14: bulk actions | Rejected | Decided not to implement. |
 
