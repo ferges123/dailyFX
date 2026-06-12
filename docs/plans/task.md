@@ -6,7 +6,7 @@
 | Task 2: lazy routes and error boundaries | Completed | Added React.lazy imports and RouteErrorBoundary in App.tsx. |
 | Task 3: shallow Docker healthcheck cleanup | Completed | Moved healthcheck from inline python to healthcheck.py and updated compose config. |
 | Task 4: split `Presets.tsx` | Completed | Split Presets.tsx into multiple files by tab component boundaries. |
-| Task 5: split `Schedules.tsx` | In Progress | Split Schedules.tsx after setting up unit tests. |
+| Task 5: split `Schedules.tsx` | Completed | Split Schedules.tsx into modular sub-components in Schedules/. |
 | Task 6: split `Settings.tsx` | Completed | Split Settings.tsx into sections. |
 | Task 7: API-boundary effect config validation | Completed | Created validation service and enforced it at preset and studio routes. |
 | Task 8: split `ai_vision.py` | Completed | Split into provider-specific adapter package and refactored tests. |
