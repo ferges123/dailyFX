@@ -14,6 +14,7 @@
 | Task 10: split notification providers | Completed | Split into provider-specific adapter modules under notifications/providers/ |
 | Task 11: rate limits | Not Started | Apply per-endpoint rate limits. |
 | Task 12: Content Security Policy | Not Started | Add CSP to frontend Nginx. |
-| Task 13: comparator in history | Not Started | Add before/after image comparator. |
-| Task 14: bulk actions | Not Started | Add bulk accept/reject endpoints and UI. |
+| Task 13: comparator in history | Rejected | Decided not to implement. |
+| Task 14: bulk actions | Rejected | Decided not to implement. |
+
 | Task 15: metrics and structured logging | Completed | Added Prometheus metrics endpoint and structured JSON logging. |
