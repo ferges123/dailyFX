@@ -17,6 +17,8 @@ from app.api.routes_push import router as push_router
 from app.api.routes_schedules import router as schedules_router
 from app.api.routes_settings import router as settings_router
 from app.api.routes_studio import router as studio_router
+from app.api.routes_metrics import router as metrics_router
+
 from app.config import get_settings
 from app.database import init_db
 from app.observability.logging import setup_logging
@@ -72,3 +74,5 @@ app.include_router(presets_router)
 app.include_router(ai_effects_router)
 app.include_router(schedules_router)
 app.include_router(studio_router)
+app.include_router(metrics_router)
+
