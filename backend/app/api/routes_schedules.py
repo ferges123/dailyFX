@@ -1,7 +1,9 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.limiter import limiter
+
 from app.models.effect_preset import EffectPresetModel
 from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
@@ -133,7 +135,9 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), _: None = D
 
 
 @router.post("/{schedule_id}/run-now", response_model=ScheduleRunNowResponse)
+@limiter.limit("10/minute")
 async def trigger_schedule_now(
+    request: Request,
     schedule_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),

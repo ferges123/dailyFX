@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.limiter import limiter
+
 from app.immich.errors import (
     ImmichAuthenticationError,
     ImmichConfigurationError,
@@ -81,7 +83,9 @@ def read_settings(db: Session = Depends(get_db), _: None = Depends(require_auth)
 
 
 @router.put("", response_model=SettingsResponse)
+@limiter.limit("10/minute")
 def update_settings(
+    request: Request,
     payload: SettingsUpdate, db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> SettingsResponse:
     row = get_or_create_settings(db)
@@ -106,7 +110,9 @@ def update_settings(
 
 
 @router.post("/test-immich", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_immich_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
@@ -134,7 +140,9 @@ async def test_immich_connection(
 
 
 @router.post("/test-openai", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_openai_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
@@ -142,7 +150,9 @@ async def test_openai_connection(
 
 
 @router.post("/test-gemini", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_gemini_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
@@ -150,7 +160,9 @@ async def test_gemini_connection(
 
 
 @router.post("/test-openrouter", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_openrouter_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
@@ -158,7 +170,9 @@ async def test_openrouter_connection(
 
 
 @router.post("/test-byteplus", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_byteplus_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
@@ -166,7 +180,9 @@ async def test_byteplus_connection(
 
 
 @router.post("/test-xiaomi", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_xiaomi_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
@@ -174,7 +190,9 @@ async def test_xiaomi_connection(
 
 
 @router.post("/test-local-ai", response_model=ConnectionTestResponse)
+@limiter.limit("10/minute")
 async def test_local_ai_connection(
+    request: Request,
     db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)

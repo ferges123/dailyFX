@@ -1,17 +1,18 @@
-from __future__ import annotations
 
 import json
 import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
+from app.limiter import limiter
 from app.models.generation_history import GenerationHistoryModel
 from app.security import require_auth
+
 from app.services.immich import get_or_create_settings
 from app.services.generation.modules import MODULES
 from app.services.generation.stream import record_history_snapshot
@@ -67,7 +68,11 @@ def _get_supported_module(effect_id: str):
 
 
 @router.post("/preview")
+@limiter.limit("5/minute")
 async def create_studio_preview(
+    request: Request,
+
+
     file: UploadFile = File(...),
     effect_id: str = Form(...),
     config: str = Form("{}"),
