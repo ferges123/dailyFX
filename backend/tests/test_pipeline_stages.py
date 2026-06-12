@@ -29,12 +29,13 @@ def test_pipeline_setup_and_planning_basic():
     )
 
     with (
-        patch("app.services.generation.pipeline._resolve_schedule_ai_settings"),
-        patch("app.services.generation.pipeline.set_debug_mode"),
-        patch("app.services.generation.pipeline.upsert_history_entry"),
-        patch("app.services.generation.pipeline._trace_stage"),
-        patch("app.services.generation.pipeline.debug_log"),
-        patch("app.services.generation.pipeline.update_task"),
+        patch("app.services.generation.pipeline.planning._resolve_schedule_ai_settings"),
+        patch("app.services.generation.pipeline.planning.set_debug_mode"),
+        patch("app.services.generation.pipeline.planning.upsert_history_entry"),
+        patch("app.services.generation.pipeline.shared.upsert_history_entry"),
+        patch("app.services.generation.pipeline.planning._trace_stage"),
+        patch("app.services.generation.pipeline.planning.debug_log"),
+        patch("app.services.generation.pipeline.shared.update_task"),
         patch("app.services.generation.ai_effects_repository.list_ai_effect_rows", return_value=[]),
     ):
         module_selection = _pipeline_setup_and_planning(ctx)
