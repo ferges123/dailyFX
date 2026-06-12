@@ -21,6 +21,7 @@
 | **Task 6** | Split `Settings.tsx` Into Sections | Antigravity | Completed |
 | **Task 7** | Validate Effect Configs At API Boundaries | Antigravity | Completed |
 | **Task 8** | Split `ai_vision.py` Into Provider Adapters | Antigravity | Completed |
+| **Task 10** | Split Notification Providers | Antigravity | Completed |
 
 ---
 
@@ -264,10 +265,10 @@ This file replaces the original read-only audit from 2026-06-12 with an executio
 - Test: `backend/tests/test_notifications.py`
 - Test: `backend/tests/test_notification_preset_tests.py`
 
-- [ ] Extract shared request/error helpers first.
-- [ ] Move one notification provider at a time.
-- [ ] Preserve existing function names exported by `client.py` until all call sites are migrated.
-- [ ] Run notification tests after each provider move.
+- [x] Extract shared request/error helpers first.
+- [x] Move one notification provider at a time.
+- [x] Preserve existing function names exported by `client.py` until all call sites are migrated.
+- [x] Run notification tests after each provider move.
 
 ## Phase 4: Security, UX, And Monitoring
 

@@ -11,7 +11,7 @@
 | Task 7: API-boundary effect config validation | Completed | Created validation service and enforced it at preset and studio routes. |
 | Task 8: split `ai_vision.py` | Completed | Split into provider-specific adapter package and refactored tests. |
 | Task 9: extract pipeline stages | Not Started | Split pipeline execution into separate files. |
-| Task 10: split notification providers | Not Started | Extract notification providers from client.py. |
+| Task 10: split notification providers | Completed | Split into provider-specific adapter modules under notifications/providers/ |
 | Task 11: rate limits | Not Started | Apply per-endpoint rate limits. |
 | Task 12: Content Security Policy | Not Started | Add CSP to frontend Nginx. |
 | Task 13: comparator in history | Not Started | Add before/after image comparator. |
