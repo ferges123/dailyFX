@@ -4,6 +4,7 @@ from .shared import (
     GenerationArtifacts,
     _trace_stage,
     _record_generation_failure,
+    _failed_history_provider,
 )
 
 # Expose standard modules/functions imported in pipeline for test patching compatibility
@@ -50,13 +51,18 @@ from .metadata import (
     FINAL_AI_VISION_PROMPT,
 )
 
-# Temporarily delegate remaining functions to pipeline_old
-from ..pipeline_old import (
-    _format_duration,
-    _generation_output_paths,
-    _persist_generation_outputs,
+# Import Stage 5 (persistence)
+from .persistence import (
     _pipeline_persist_result,
+    _generation_output_paths,
+)
+
+# Import Stage 6 (notifications)
+from .notifications import (
     _pipeline_dispatch_notifications,
+)
+
+# Temporarily delegate the main orchestrator to pipeline_old
+from ..pipeline_old import (
     run_generation_pipeline,
-    _failed_history_provider,
 )
