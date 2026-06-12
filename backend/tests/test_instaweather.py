@@ -54,7 +54,13 @@ class MockImmichClient:
         return ImmichClient._coerce_face_summary(payload)
 
 
-def test_instaweather_module_run_time_mode():
+def test_instaweather_module_run_time_mode(monkeypatch):
+    async def mock_fetch_weather(lat, lon, dt):
+        return None
+
+    from app.services.generation.modules import instaweather
+    monkeypatch.setattr(instaweather, "fetch_weather", mock_fetch_weather)
+
     module = InstaWeatherModule()
     client = MockImmichClient(exif_data={})
     settings = SettingsModel()
@@ -178,6 +184,5 @@ def test_collision_avoidance():
     )
     assert res is not None
     assert res.size == (1000, 1000)
-
 
 

@@ -70,9 +70,6 @@ def _get_supported_module(effect_id: str):
 @router.post("/preview")
 @limiter.limit("5/minute")
 async def create_studio_preview(
-    request: Request,
-
-
     file: UploadFile = File(...),
     effect_id: str = Form(...),
     config: str = Form("{}"),
@@ -80,6 +77,7 @@ async def create_studio_preview(
     prompt_enrichment_enabled: str | None = Form(None),
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    request: Request = None,
 ):
     settings = get_or_create_settings(db)
 

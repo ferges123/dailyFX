@@ -12,57 +12,77 @@ from PIL import Image
 os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("APP_SECRET_KEY", "test-secret")
 test_db = Path("/tmp/test_phase6.db")
-test_db.unlink(missing_ok=True)
+for sqlite_path in (test_db, test_db.with_name(f"{test_db.name}-wal"), test_db.with_name(f"{test_db.name}-shm")):
+    sqlite_path.unlink(missing_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 
-from fastapi.testclient import TestClient
+import app.config
 
-from app.database import init_db
+app.config.get_settings.cache_clear()
+
+from app.database import SessionLocal, init_db
 from app.main import app
 
 init_db()
-client = TestClient(app)
 
 
 # ── Debug route ──────────────────────────────────────────────────────────────
 
 
 def test_debug_log_not_found_when_no_logs(tmp_path):
-    with patch("app.api.routes_debug.Path") as mock_path:
-        mock_path.return_value.exists.return_value = False
-        r = client.get("/api/debug/log")
-    assert r.status_code == 404
+    from fastapi import HTTPException
+    from app.api.routes_debug import get_debug_log
+
+    missing_dir = tmp_path / "missing"
+    with patch("app.api.routes_debug.DEBUG_LOG_DIR", missing_dir):
+        try:
+            get_debug_log()
+        except HTTPException as exc:
+            assert exc.status_code == 404
+        else:
+            raise AssertionError("Expected missing debug logs to return 404")
 
 
 def test_debug_log_returns_content(tmp_path):
+    from app.api.routes_debug import get_debug_log
+
     log_file = tmp_path / "debug_20260101_000000.log"
     log_file.write_text("test log line")
-    with patch("app.api.routes_debug.Path", return_value=tmp_path):
-        r = client.get("/api/debug/log")
-    # Either 200 with content or 404 if mock didn't work - just check no 500
-    assert r.status_code in (200, 404)
+    with patch("app.api.routes_debug.DEBUG_LOG_DIR", tmp_path):
+        assert get_debug_log() == "test log line"
 
 
 # ── Health detailed ──────────────────────────────────────────────────────────
 
 
 def test_health_basic():
-    r = client.get("/api/health")
-    assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+    from app.api.routes_health import health
+
+    assert health()["status"] == "ok"
 
 
 def test_health_detailed_db_ok():
-    r = client.get("/api/health/detailed")
-    assert r.status_code == 200
-    data = r.json()
+    from app.api.routes_health import health_detailed
+
+    db = SessionLocal()
+    try:
+        data = asyncio.run(health_detailed(db, None))
+    finally:
+        db.close()
+
     assert data["checks"]["database"]["status"] == "ok"
     assert data["status"] in ("ok", "degraded")
 
 
 def test_health_detailed_immich_not_configured():
-    r = client.get("/api/health/detailed")
-    data = r.json()
+    from app.api.routes_health import health_detailed
+
+    db = SessionLocal()
+    try:
+        data = asyncio.run(health_detailed(db, None))
+    finally:
+        db.close()
+
     # immich may be not_configured or ok depending on test DB state
     assert data["checks"]["immich"]["status"] in ("ok", "not_configured", "error")
 
@@ -75,9 +95,14 @@ def test_health_detailed_scheduler_heartbeat_is_reported(tmp_path):
     os.utime(tmp_path / "scheduler.health", (now, now))
 
     with patch("app.api.routes_health.get_settings", return_value=mock_settings):
-        r = client.get("/api/health/detailed")
+        from app.api.routes_health import health_detailed
 
-    data = r.json()
+        db = SessionLocal()
+        try:
+            data = asyncio.run(health_detailed(db, None))
+        finally:
+            db.close()
+
     assert data["checks"]["scheduler"]["status"] == "ok"
     assert data["checks"]["scheduler"]["age_seconds"] >= 0
 

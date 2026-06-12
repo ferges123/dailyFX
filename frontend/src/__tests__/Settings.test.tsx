@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsPage, XIAOMI_VISION_MODELS } from '../pages/Settings';
 import * as client from '../api/client';
+import { APP_VERSION } from '../version';
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>();
@@ -39,7 +40,7 @@ const mockSettings = {
   local_ai_api_key_masked: null,
 };
 
-const mockHealth = { status: 'ok', version: '0.1.0', auth_enabled: false };
+const mockHealth = { status: 'ok', version: APP_VERSION, auth_enabled: false };
 const mockDetailedHealth = {
   status: 'ok',
   checks: {

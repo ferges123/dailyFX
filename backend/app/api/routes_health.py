@@ -11,6 +11,7 @@ from app.security import decrypt_secret, require_auth
 from app.services.generation.ai_vision import XIAOMI_API_BASE_URL
 from app.services.immich import build_immich_client, get_or_create_settings
 from app.services.local_ai import LocalAIConfigurationError, get_local_ai_api_key, get_local_ai_base_url
+from app.version import APP_VERSION
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api", tags=["health"])
 def health() -> dict:
     return {
         "status": "ok",
-        "version": "0.1.0",
+        "version": APP_VERSION,
         "auth_enabled": bool(get_settings().app_access_token),
     }
 

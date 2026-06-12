@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -e .
 
 COPY alembic.ini ./
 COPY run_opencv_tests.py ./
+COPY healthcheck.py ./
 COPY tests ./tests
 COPY app ./app
 COPY start.sh ./

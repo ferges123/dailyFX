@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import {
   Bell,
   CalendarDays,
@@ -9,7 +9,6 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react';
-import { StudioPage } from './pages/StudioPage';
 import {
   BrowserRouter,
   Link,
@@ -20,20 +19,70 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom';
-import HistoryPage from './pages/History/HistoryPage';
-import { SettingsPage } from './pages/Settings';
-import {
-  FilterPresetsPage,
-  EffectPresetsPage,
-  NotificationPresetsPage,
-} from './pages/Presets';
-import { AIEffectsPage } from './pages/AIEffects';
-import { SchedulesPage } from './pages/Schedules';
-import { LoginPage } from './pages/Login';
 import { getHealth } from './api/client';
 import { AuthProvider, useAuth } from './api/AuthContext';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { APP_VERSION } from './version';
 
 const GITHUB_URL = 'https://github.com/ferges123/dailyFX';
+
+const HistoryPage = lazy(() => import('./pages/History/HistoryPage'));
+const StudioPage = lazy(() =>
+  import('./pages/StudioPage').then((module) => ({
+    default: module.StudioPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import('./pages/Settings').then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+const FilterPresetsPage = lazy(() =>
+  import('./pages/Presets').then((module) => ({
+    default: module.FilterPresetsPage,
+  })),
+);
+const EffectPresetsPage = lazy(() =>
+  import('./pages/Presets').then((module) => ({
+    default: module.EffectPresetsPage,
+  })),
+);
+const NotificationPresetsPage = lazy(() =>
+  import('./pages/Presets').then((module) => ({
+    default: module.NotificationPresetsPage,
+  })),
+);
+const AIEffectsPage = lazy(() =>
+  import('./pages/AIEffects').then((module) => ({
+    default: module.AIEffectsPage,
+  })),
+);
+const SchedulesPage = lazy(() =>
+  import('./pages/Schedules').then((module) => ({
+    default: module.SchedulesPage,
+  })),
+);
+const LoginPage = lazy(() =>
+  import('./pages/Login').then((module) => ({
+    default: module.LoginPage,
+  })),
+);
+
+function PageLoadingFallback() {
+  return (
+    <div className="rounded-lg border border-stone-200 bg-white/70 px-4 py-4 text-sm font-medium text-stone-600">
+      Loading page...
+    </div>
+  );
+}
+
+function RouteView({ children }: { children: ReactNode }) {
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<PageLoadingFallback />}>{children}</Suspense>
+    </RouteErrorBoundary>
+  );
+}
 
 function AppShell() {
   const { isAuthenticated, setToken } = useAuth();
@@ -47,7 +96,11 @@ function AppShell() {
 
   const authRequiredByBackend = health.data?.auth_enabled;
   if (authRequiredByBackend && !isAuthenticated) {
-    return <LoginPage />;
+    return (
+      <RouteView>
+        <LoginPage />
+      </RouteView>
+    );
   }
 
   const isHistoryRoute = location.pathname.startsWith('/history');
@@ -169,7 +222,7 @@ function AppShell() {
               title="Open DailyFX on GitHub"
             >
               <Bell size={13} />
-              DailyFX 0.2.14
+              DailyFX {APP_VERSION}
             </a>
             <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
               <a
@@ -188,26 +241,97 @@ function AppShell() {
       <div className="min-w-0">
         <main className="grid gap-3 px-3 py-3 pb-32 md:gap-4 md:px-5 md:py-5 md:pb-6">
           <Routes>
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/history/:taskId" element={<HistoryPage />} />
-            <Route path="/studio" element={<StudioPage />} />
-            <Route path="/schedules" element={<SchedulesPage />} />
-            <Route path="/schedules/new" element={<SchedulesPage />} />
+            <Route
+              path="/history"
+              element={
+                <RouteView>
+                  <HistoryPage />
+                </RouteView>
+              }
+            />
+            <Route
+              path="/history/:taskId"
+              element={
+                <RouteView>
+                  <HistoryPage />
+                </RouteView>
+              }
+            />
+            <Route
+              path="/studio"
+              element={
+                <RouteView>
+                  <StudioPage />
+                </RouteView>
+              }
+            />
+            <Route
+              path="/schedules"
+              element={
+                <RouteView>
+                  <SchedulesPage />
+                </RouteView>
+              }
+            />
+            <Route
+              path="/schedules/new"
+              element={
+                <RouteView>
+                  <SchedulesPage />
+                </RouteView>
+              }
+            />
             <Route
               path="/schedules/:scheduleId/edit"
-              element={<SchedulesPage />}
+              element={
+                <RouteView>
+                  <SchedulesPage />
+                </RouteView>
+              }
             />
             <Route path="/presets" element={<PresetsLayout />}>
               <Route index element={<Navigate to="filters" replace />} />
-              <Route path="filters" element={<FilterPresetsPage />} />
-              <Route path="effects" element={<EffectPresetsPage />} />
-              <Route path="ai-effects" element={<AIEffectsPage />} />
+              <Route
+                path="filters"
+                element={
+                  <RouteView>
+                    <FilterPresetsPage />
+                  </RouteView>
+                }
+              />
+              <Route
+                path="effects"
+                element={
+                  <RouteView>
+                    <EffectPresetsPage />
+                  </RouteView>
+                }
+              />
+              <Route
+                path="ai-effects"
+                element={
+                  <RouteView>
+                    <AIEffectsPage />
+                  </RouteView>
+                }
+              />
               <Route
                 path="notifications"
-                element={<NotificationPresetsPage />}
+                element={
+                  <RouteView>
+                    <NotificationPresetsPage />
+                  </RouteView>
+                }
               />
             </Route>
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/settings"
+              element={
+                <RouteView>
+                  <SettingsPage />
+                </RouteView>
+              }
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

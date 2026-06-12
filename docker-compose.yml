@@ -9,7 +9,7 @@ services:
     ports:
       - "8438:8438"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request, os, time; urllib.request.urlopen('http://localhost:8438/api/health'); f='/data/scheduler.health'; assert os.path.exists(f) and time.time()-os.path.getmtime(f)<120"]
+      test: ["CMD", "python", "healthcheck.py"]
       interval: 30s
       timeout: 5s
       retries: 3

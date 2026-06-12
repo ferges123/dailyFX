@@ -1,13 +1,14 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import App from '../App';
+import { APP_VERSION } from '../version';
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>();
   return {
     ...actual,
-    getHealth: () => Promise.resolve({ status: 'ok', version: '0.1.0', auth_enabled: false }),
+    getHealth: () => Promise.resolve({ status: 'ok', version: '0.2.14', auth_enabled: false }),
     getDetailedHealth: () => Promise.resolve({
       status: 'ok',
       checks: {
@@ -56,6 +57,20 @@ describe('App', () => {
   it('shows DailyFX for immich title after loading', async () => {
     renderApp();
     expect(await screen.findAllByText('DailyFX for immich')).toHaveLength(2);
+  });
+
+  it('shows the shared frontend app version in desktop and mobile chrome', async () => {
+    renderApp('/settings');
+
+    await waitFor(() => {
+      expect(screen.getAllByText(new RegExp(`DailyFX ${APP_VERSION}`))).toHaveLength(2);
+    });
+  });
+
+  it('shows a route loading fallback while lazy page modules load', () => {
+    renderApp('/schedules');
+
+    expect(screen.getByText('Loading page...')).toBeInTheDocument();
   });
 
   it('redirects from / to history', async () => {

@@ -4,12 +4,13 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
+DEBUG_LOG_DIR = Path("/data/logs")
 
 
 @router.get("/log", response_class=PlainTextResponse)
 def get_debug_log() -> str:
     """Get the latest debug log file content."""
-    log_dir = Path("/data/logs")
+    log_dir = DEBUG_LOG_DIR
 
     if not log_dir.exists():
         raise HTTPException(status_code=404, detail="No debug logs found")

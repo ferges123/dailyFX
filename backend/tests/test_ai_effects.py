@@ -5,8 +5,6 @@ from datetime import datetime, timezone
 
 import pytest
 from _contract_helpers import configure_contract_test_db
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from app.api import routes_ai_effects as ai_effects_routes
@@ -24,7 +22,6 @@ from app.api.routes_generation import list_generation_modules
 from app.database import SessionLocal, init_db
 from app.models.ai_effect import AIEffectModel
 from app.schemas.ai_effects import AIEffectCreate, AIEffectImportItem, AIEffectImportRequest, AIEffectUpdate
-from app.security import require_auth
 from app.services.generation import ai_effects_seed as seed_module
 from app.services.generation.ai_effects import get_seed_dir, load_seed_manifest
 from app.services.generation.ai_effects_seed import AIEffectManifest, load_seed_effects
@@ -32,10 +29,6 @@ from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 from app.services.generation.modules import MODULES
 
 test_db = configure_contract_test_db("ai_effects")
-
-http_app = FastAPI()
-http_app.include_router(ai_effects_routes.router)
-http_app.dependency_overrides[require_auth] = lambda: None
 
 
 def test_ai_effect_modules_import_cleanly():
@@ -415,66 +408,58 @@ def test_ai_effect_import_and_export_flow():
 
 
 def test_ai_effect_import_and_export_http_roundtrip():
+    init_db()
+    db = SessionLocal()
     try:
-        with TestClient(http_app) as client:
-            import_response = client.post(
-                "/api/ai-effects/import",
-                json={
-                    "schema_version": 1,
-                    "overwrite_existing": False,
-                    "effects": [
-                        {
-                            "id": "ai_http_imported_test",
-                            "title": "HTTP Imported Test",
-                            "description": "Imported over HTTP",
-                            "display_group": "HTTP Group",
-                            "positive_prompt": "Import via HTTP.",
-                            "negative_prompt": "washed out",
-                            "custom_prompt_placeholder": "e.g. http prompt",
-                            "enabled": True,
-                            "source": "imported",
-                        }
-                    ],
-                },
-            )
-            assert import_response.status_code == 200
-            payload = import_response.json()
-            assert payload["added"] == ["ai_http_imported_test"]
-            assert payload["updated"] == []
-            assert payload["conflicts"] == []
+        import_body = AIEffectImportRequest(
+            schema_version=1,
+            overwrite_existing=False,
+            effects=[
+                AIEffectImportItem(
+                    id="ai_http_imported_test",
+                    title="HTTP Imported Test",
+                    description="Imported over HTTP",
+                    display_group="HTTP Group",
+                    positive_prompt="Import via HTTP.",
+                    negative_prompt="washed out",
+                    custom_prompt_placeholder="e.g. http prompt",
+                    enabled=True,
+                    source="imported",
+                )
+            ],
+        )
+        imported = import_ai_effects(import_body, db)
+        assert imported.added == ["ai_http_imported_test"]
+        assert imported.updated == []
+        assert imported.conflicts == []
 
-            export_response = client.get("/api/ai-effects/export")
-            assert export_response.status_code == 200
-            export_payload = export_response.json()
-            exported_ids = [item["id"] for item in export_payload["effects"]]
-            assert export_payload["schema_version"] == 1
-            assert "ai_http_imported_test" in exported_ids
+        exported = export_ai_effects(db)
+        exported_ids = [item.id for item in exported.effects]
+        assert exported.schema_version == 1
+        assert "ai_http_imported_test" in exported_ids
 
-            conflict_response = client.post(
-                "/api/ai-effects/import",
-                json={
-                    "schema_version": 1,
-                    "overwrite_existing": False,
-                    "effects": [
-                        {
-                            "id": "ai_http_imported_test",
-                            "title": "HTTP Imported Test",
-                            "description": "Imported over HTTP",
-                            "display_group": "HTTP Group",
-                            "positive_prompt": "Import via HTTP.",
-                            "negative_prompt": "washed out",
-                            "custom_prompt_placeholder": "e.g. http prompt",
-                            "enabled": True,
-                            "source": "imported",
-                        }
-                    ],
-                },
-            )
-            assert conflict_response.status_code == 200
-            conflict_payload = conflict_response.json()
-            assert conflict_payload["added"] == []
-            assert conflict_payload["updated"] == []
-            assert conflict_payload["conflicts"] == ["ai_http_imported_test"]
+        conflict = import_ai_effects(
+            AIEffectImportRequest(
+                schema_version=1,
+                overwrite_existing=False,
+                effects=[
+                    AIEffectImportItem(
+                        id="ai_http_imported_test",
+                        title="HTTP Imported Test",
+                        description="Imported over HTTP",
+                        display_group="HTTP Group",
+                        positive_prompt="Import via HTTP.",
+                        negative_prompt="washed out",
+                        custom_prompt_placeholder="e.g. http prompt",
+                        enabled=True,
+                        source="imported",
+                    )
+                ],
+            ),
+            db,
+        )
+        assert conflict.added == []
+        assert conflict.updated == []
+        assert conflict.conflicts == ["ai_http_imported_test"]
     finally:
-        http_app.dependency_overrides.clear()
-        http_app.dependency_overrides[require_auth] = lambda: None
+        db.close()

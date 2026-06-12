@@ -137,10 +137,10 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), _: None = D
 @router.post("/{schedule_id}/run-now", response_model=ScheduleRunNowResponse)
 @limiter.limit("10/minute")
 async def trigger_schedule_now(
-    request: Request,
     schedule_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    request: Request = None,
 ):
     return await trigger_schedule_run_now(db, schedule_id)
