@@ -28,7 +28,11 @@ Some read-only review endpoints remain public and are noted below.
 
 ## Response notes
 
-- Rate limit: `120/minute` per client IP
+- Rate limit: `120/minute` per client IP by default.
+  - Strict rate limits apply to sensitive endpoints:
+    - `POST /api/settings/test-*`: `10/minute`
+    - `POST /api/schedules/{schedule_id}/run-now`: `10/minute`
+    - `POST /api/studio/preview`: `5/minute`
 - Errors are returned as JSON with a `detail` field
 - Some endpoints return binary content such as PNG, JPEG, HTML, or plain text
 
@@ -42,6 +46,7 @@ Some read-only review endpoints remain public and are noted below.
 | Presets | CRUD for `filters`, `effects`, `notifications` |
 | Schedules | CRUD plus `POST /api/schedules/{schedule_id}/run-now` |
 | Generation | `GET /api/generation/stream`, `GET /api/generation/task/{task_id}/status`, `GET /api/generation/modules`, `GET /api/generation/examples`, `GET /api/generation/examples/{module_name}`, history/review/accept/reject |
+| Studio | `GET /api/studio/modules`, `POST /api/studio/preview` |
 | Notifications | `GET /api/notifications/vapid-public-key`, `GET /api/notifications/subscriptions`, `DELETE /api/notifications/subscriptions/{sub_id}`, `POST /api/notifications/subscribe`, `POST /api/notifications/unsubscribe` |
 | Debug | `GET /api/debug/log` |
 
@@ -159,7 +164,7 @@ The payload keeps the Immich field names used by the rest of the backend and fro
 
 ## Presets
 
-All preset endpoints require authentication.
+All preset endpoints require authentication. Preset creation and updates undergo parameter configuration schema constraint validation.
 
 ### Filter presets
 
@@ -341,6 +346,22 @@ All notification endpoints require authentication.
 - `POST /api/notifications/unsubscribe`
 
 `POST /api/notifications/subscribe` expects a push subscription payload with fields such as `endpoint`, `p256dh`, `auth`, `device_label`, and `user_agent`.
+
+---
+
+## Studio
+
+All studio endpoints require authentication.
+
+### `GET /api/studio/modules`
+
+Returns all compatible single-source creative modules supported by the studio page.
+
+### `POST /api/studio/preview`
+
+Rate limit: `5/minute`.
+
+Validates the submitted effect configuration against its schema and applies the creative filter to a locally uploaded image (`file`). Generates a temporary rendering session under the `data/temp/studio` workspace, commits a pending review entry into the database history, and returns the newly generated `task_id` along with image URLs.
 
 ---
 
