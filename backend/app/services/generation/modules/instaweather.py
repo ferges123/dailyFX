@@ -486,7 +486,10 @@ def draw_thunderstorm(draw: ImageDraw.ImageDraw, x: float, y: float, size: float
 def draw_main_weather_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, code: int):
     if code == 0:
         draw_sun(draw, x, y, size)
-    elif code in (1, 2, 3, 45, 48):
+    elif code in (1, 2):
+        draw_sun(draw, x - size * 0.12, y - size * 0.08, size * 0.72)
+        draw_cloud(draw, x, y, size)
+    elif code in (3, 45, 48):
         draw_cloud(draw, x, y, size)
     elif code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
         draw_rain(draw, x, y, size)
@@ -725,7 +728,7 @@ def _draw_graphics_overlay(
     else:
         cloud_str = "HIGH"
 
-    icon_sz = int(80 * scale)
+    icon_sz = int(130 * scale)
     w_temp, h_temp = get_text_size(temp_str, font_temp, temp_draw)
     div_len = int(0.3 * width)
 
@@ -740,14 +743,15 @@ def _draw_graphics_overlay(
             int(4 * scale) +
             gap_y +
             h_label_feels + int(2 * scale) + h_val_feels + gap_y +
-            h_label_cloud + int(2 * scale) + h_val_cloud)
+            h_label_cloud + int(2 * scale) + h_val_cloud +
+            gap_y + int(2 * scale))
     w_lm = max(icon_sz, w_temp, div_len)
 
     # 3. Sunrise & Sunset Block (Top-Right)
     sunrise_time = weather_info.get("sunrise", "05:12") if weather_info else "05:12"
     sunset_time = weather_info.get("sunset", "20:45") if weather_info else "20:45"
     
-    icon_sz_sec = int(22 * scale)
+    icon_sz_sec = int(28 * scale)
     w_sr_t, h_sr_t = get_text_size(sunrise_time, font_metric, temp_draw)
     w_ss_t, h_ss_t = get_text_size(sunset_time, font_metric, temp_draw)
     
@@ -778,13 +782,18 @@ def _draw_graphics_overlay(
     wind_spd = weather_info.get("wind_speed", 10.0) if weather_info else 10.0
     wind_dir = weather_info.get("wind_dir", "N") if weather_info else "N"
     
-    hum_str = f"HUMIDITY {int(hum_val)}%"
-    wind_str = f"WIND {int(wind_spd)} KM/H {wind_dir}"
+    hum_label_str = "HUMIDITY"
+    hum_val_str = f"{int(hum_val)}%"
+    wind_label_str = "WIND"
+    wind_val_str = f"{int(wind_spd)} KM/H {wind_dir}"
     
-    w_hum, h_hum = get_text_size(hum_str, font_metric, temp_draw)
-    w_wind, h_wind = get_text_size(wind_str, font_metric, temp_draw)
-    w_br = icon_sz_sec + int(10 * scale) + max(w_hum, w_wind)
-    h_br = row_height * 2 + gap_y
+    w_hum_label, h_hum_label = get_text_size(hum_label_str, font_label, temp_draw)
+    w_hum_val, h_hum_val = get_text_size(hum_val_str, font_date, temp_draw)
+    w_wind_label, h_wind_label = get_text_size(wind_label_str, font_label, temp_draw)
+    w_wind_val, h_wind_val = get_text_size(wind_val_str, font_date, temp_draw)
+    w_br = icon_sz_sec + int(10 * scale) + max(w_hum_label, w_hum_val, w_wind_label, w_wind_val)
+    h_br = (row_height + int(2 * scale) + h_hum_val + gap_y +
+            row_height + int(2 * scale) + h_wind_val)
 
     # Helper function to check collision with faces
     def check_collision(box):
@@ -933,10 +942,13 @@ def _draw_graphics_overlay(
             draw.text((x, y + 1), text, font=font, fill=text_color)
             draw.text((x + 1, y + 1), text, font=font, fill=text_color)
 
-    def draw_dotted_line(x1, y, x2, color=(255, 255, 255, 120), width=1.5):
-        step = int(6 * width)
-        for cx in range(int(x1), int(x2), step):
-            draw.ellipse([cx - width/2, y - width/2, cx + width/2, y + width/2], fill=color)
+    def draw_dashed_line(x1, y, x2, color=(255, 255, 255, 160), line_width=2, dash_len=10, gap_len=8):
+        cx = int(x1)
+        end = int(x2)
+        while cx < end:
+            seg_end = min(cx + dash_len, end)
+            draw.line([(cx, y), (seg_end, y)], fill=color, width=max(1, int(line_width)))
+            cx = seg_end + gap_len
 
     # Render Top-Left (Day/Date)
     if not tl_hidden:
@@ -946,86 +958,88 @@ def _draw_graphics_overlay(
     # Render Top-Right (Sunrise/Sunset)
     if not tr_hidden:
         time_x = tr_x + icon_sz_sec + int(10 * scale)
-        
-        # Row 1: Sunrise
-        sr_y = tr_y + (row_height - icon_sz_sec) // 2
-        draw_sunrise_icon(draw, tr_x, sr_y, icon_sz_sec, (255, 255, 255, 245))
-        draw_text_shadow(sunrise_time, (time_x, tr_y + (row_height - h_sr_t) // 2), font_metric)
-        
-        # Dotted Divider
+
+        # Row 1: Sunrise with icon
+        sr_icon_y = tr_y + (row_height - icon_sz_sec) // 2
+        draw_sunrise_icon(draw, tr_x, sr_icon_y, icon_sz_sec, (255, 255, 255, 245))
+        sr_text_y = tr_y + (row_height - h_sr_t) // 2
+        draw_text_shadow(sunrise_time, (time_x, sr_text_y), font_metric)
+
+        # Dashed Divider between sunrise and sunset
         div_y = tr_y + row_height + gap_y // 2
-        draw_dotted_line(tr_x, div_y, tr_x + w_tr)
-        
-        # Row 2: Sunset
-        ss_y = tr_y + row_height + gap_y + (row_height - icon_sz_sec) // 2
-        draw_sunset_icon(draw, tr_x, ss_y, icon_sz_sec, (255, 255, 255, 245))
-        draw_text_shadow(sunset_time, (time_x, tr_y + row_height + gap_y + (row_height - h_ss_t) // 2), font_metric)
+        draw_dashed_line(tr_x, div_y, tr_x + w_tr, color=(255, 255, 255, 140), line_width=max(1, int(1.5 * scale)))
+
+        # Row 2: Sunset with icon
+        ss_icon_y = tr_y + row_height + gap_y + (row_height - icon_sz_sec) // 2
+        draw_sunset_icon(draw, tr_x, ss_icon_y, icon_sz_sec, (255, 255, 255, 245))
+        ss_text_y = tr_y + row_height + gap_y + (row_height - h_ss_t) // 2
+        draw_text_shadow(sunset_time, (time_x, ss_text_y), font_metric)
 
     # Render Bottom-Left (Location)
     if not bl_hidden and city_str:
-        # Pin icon on left
         pin_y = bl_y + (max(icon_sz_sec, h_city) - icon_sz_sec) // 2
         draw_pin_icon(draw, bl_x, pin_y, icon_sz_sec, (255, 255, 255, 245))
-        
-        # City Name
+
         city_x = bl_x + icon_sz_sec + int(10 * scale)
         city_y = bl_y + (max(icon_sz_sec, h_city) - h_city) // 2
         draw_text_shadow(city_str, (city_x, city_y), font_city, fake_bold=True)
-        
-        # Country
+
         if country_str:
             country_y = bl_y + max(icon_sz_sec, h_city) + gap_y
             draw_text_shadow(country_str, (city_x, country_y), font_date)
 
-    # Render Bottom-Right (Metrics)
+    # Render Bottom-Right (Metrics) - label on top, value below
     if not br_hidden:
         metric_x = br_x + icon_sz_sec + int(10 * scale)
-        
-        # Row 1: Humidity
-        hum_y = br_y + (row_height - icon_sz_sec) // 2
-        draw_humidity_icon(draw, br_x, hum_y, icon_sz_sec, (255, 255, 255, 245))
-        draw_text_shadow(hum_str, (metric_x, br_y + (row_height - h_hum) // 2), font_metric)
-        
-        # Row 2: Wind
-        wind_y = br_y + row_height + gap_y + (row_height - icon_sz_sec) // 2
-        draw_wind_icon(draw, br_x, wind_y, icon_sz_sec, (255, 255, 255, 245))
-        draw_text_shadow(wind_str, (metric_x, br_y + row_height + gap_y + (row_height - h_wind) // 2), font_metric)
 
-    # Render Left-Middle (Main Weather detail)
+        # Humidity: icon + label on top, value below
+        hum_icon_y = br_y + (row_height - icon_sz_sec) // 2
+        draw_humidity_icon(draw, br_x, hum_icon_y, icon_sz_sec, (255, 255, 255, 245))
+        hum_label_y = br_y + (row_height - h_hum_label) // 2
+        draw_text_shadow(hum_label_str, (metric_x, hum_label_y), font_label, text_color=(255, 255, 255, 200))
+        hum_val_y = br_y + row_height + int(2 * scale)
+        draw_text_shadow(hum_val_str, (metric_x, hum_val_y), font_date)
+
+        # Wind: icon + label on top, value below
+        wind_block_y = br_y + row_height + int(2 * scale) + h_hum_val + gap_y
+        wind_icon_y = wind_block_y + (row_height - icon_sz_sec) // 2
+        draw_wind_icon(draw, br_x, wind_icon_y, icon_sz_sec, (255, 255, 255, 245))
+        wind_label_y = wind_block_y + (row_height - h_wind_label) // 2
+        draw_text_shadow(wind_label_str, (metric_x, wind_label_y), font_label, text_color=(255, 255, 255, 200))
+        wind_val_y = wind_block_y + row_height + int(2 * scale)
+        draw_text_shadow(wind_val_str, (metric_x, wind_val_y), font_date)
+
+    # Render Left-Middle (Main Weather detail) - icon first, then temp, divider, secondary
     if not lm_hidden:
         curr_y = lm_y
-        
-        # Main icon
-        icon_x = lm_x + (w_lm - icon_sz) // 2
-        draw_main_weather_icon(draw, icon_x, curr_y, icon_sz, weather_code)
+
+        # Main weather icon (large, left-aligned)
+        draw_main_weather_icon(draw, lm_x, curr_y, icon_sz, weather_code)
         curr_y += icon_sz + gap_y
-        
-        # Temp string
-        temp_x = lm_x + (w_lm - w_temp) // 2
-        draw_text_shadow(temp_str, (temp_x, curr_y), font_temp)
+
+        # Temperature (large, left-aligned)
+        draw_text_shadow(temp_str, (lm_x, curr_y), font_temp)
         curr_y += h_temp + gap_y
-        
-        # Divider line
-        div_x = lm_x + (w_lm - div_len) // 2
-        draw.line([(div_x, curr_y), (div_x + div_len, curr_y)], fill=(255, 255, 255, 200), width=max(1, int(1.5 * scale)))
+
+        # Solid divider line (like reference)
+        draw.line([(lm_x, curr_y), (lm_x + div_len, curr_y)], fill=(255, 255, 255, 200), width=max(1, int(2 * scale)))
         curr_y += gap_y + int(4 * scale)
-        
-        # Feels Like block
+
+        # Feels Like block (left-aligned)
         feels_lbl_w, feels_lbl_h = get_text_size("FEELS LIKE", font_label, temp_draw)
-        feels_val_w, feels_val_h = get_text_size(feels_str, font_date, temp_draw)
-        
-        draw_text_shadow("FEELS LIKE", (lm_x + (w_lm - feels_lbl_w) // 2, curr_y), font_label, text_color=(255, 255, 255, 180))
+        draw_text_shadow("FEELS LIKE", (lm_x, curr_y), font_label, text_color=(255, 255, 255, 180))
         curr_y += feels_lbl_h + int(2 * scale)
-        draw_text_shadow(feels_str, (lm_x + (w_lm - feels_val_w) // 2, curr_y), font_date)
-        curr_y += feels_val_h + gap_y
-        
-        # Cloudiness block
-        cloud_lbl_w, cloud_lbl_h = get_text_size("CLOUDINESS", font_label, temp_draw)
-        cloud_val_w, cloud_val_h = get_text_size(cloud_str, font_date, temp_draw)
-        
-        draw_text_shadow("CLOUDINESS", (lm_x + (w_lm - cloud_lbl_w) // 2, curr_y), font_label, text_color=(255, 255, 255, 180))
-        curr_y += cloud_lbl_h + int(2 * scale)
-        draw_text_shadow(cloud_str, (lm_x + (w_lm - cloud_val_w) // 2, curr_y), font_date)
+        draw_text_shadow(feels_str, (lm_x, curr_y), font_date)
+        curr_y += get_text_height(feels_str, font_date, temp_draw) + gap_y
+
+        # Cloudiness block (left-aligned)
+        draw_text_shadow("CLOUDINESS", (lm_x, curr_y), font_label, text_color=(255, 255, 255, 180))
+        curr_y += get_text_height("CLOUDINESS", font_label, temp_draw) + int(2 * scale)
+        draw_text_shadow(cloud_str, (lm_x, curr_y), font_date)
+        curr_y += get_text_height(cloud_str, font_date, temp_draw) + gap_y
+
+        # Dashed separator line after cloudiness (full width of left block)
+        draw_dashed_line(lm_x, curr_y, lm_x + div_len, color=(255, 255, 255, 140), line_width=max(1, int(1.5 * scale)))
 
     if img.mode != "RGBA":
         img = img.convert("RGBA")

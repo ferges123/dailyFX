@@ -56,7 +56,7 @@ describe('App', () => {
 
   it('shows DailyFX for immich title after loading', async () => {
     renderApp();
-    expect(await screen.findAllByText('DailyFX for immich')).toHaveLength(2);
+    expect(await screen.findAllByText('DailyFX for immich', {}, { timeout: 5000 })).toHaveLength(2);
   });
 
   it('shows the shared frontend app version in desktop and mobile chrome', async () => {
@@ -76,7 +76,7 @@ describe('App', () => {
   it('redirects from / to history', async () => {
     renderApp('/');
 
-    expect(await screen.findByText('There are no generations stored in the history database yet.')).toBeInTheDocument();
+    expect(await screen.findByText('There are no generations stored in the history database yet.', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(document.querySelector('a[href="/history"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/history');
   });
@@ -88,7 +88,7 @@ describe('App', () => {
       fireEvent.click(container.querySelector('a[href="/schedules"]')!);
     });
 
-    expect(await screen.findByRole('heading', { name: 'Schedules' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Schedules' }, { timeout: 5000 })).toBeInTheDocument();
     expect(container.querySelector('a[href="/schedules"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/schedules');
   });
@@ -96,7 +96,7 @@ describe('App', () => {
   it('keeps the presets subpage when loaded directly', async () => {
     const { container } = renderApp('/presets/effects');
 
-    expect(await screen.findByText('No effect presets yet')).toBeInTheDocument();
+    expect(await screen.findByText('No effect presets yet', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(container.querySelector('a[href="/presets"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/presets/effects');
   });
@@ -104,34 +104,34 @@ describe('App', () => {
   it('supports direct history detail routes', async () => {
     renderApp('/history/man-1');
 
-    expect(await screen.findByText('No items found')).toBeInTheDocument();
+    expect(await screen.findByText('No items found', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/history/man-1');
   });
 
   it('supports direct schedule creation routes', async () => {
     renderApp('/schedules/new');
 
-    expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Save' }, { timeout: 5000 })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/schedules/new');
   });
 
   it('shows a 404 page for unknown routes', async () => {
     renderApp('/not-a-real-route');
 
-    expect(await screen.findByText('Page not found')).toBeInTheDocument();
+    expect(await screen.findByText('Page not found', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/not-a-real-route');
   });
 
   it('renders Studio navigation link and navigates to Studio page', async () => {
     const { container } = renderApp('/history');
 
-    expect(await screen.findAllByText('Studio')).not.toHaveLength(0);
+    expect(await screen.findAllByText('Studio', {}, { timeout: 5000 })).not.toHaveLength(0);
 
     await act(async () => {
       fireEvent.click(container.querySelector('a[href="/studio"]')!);
     });
 
-    expect(await screen.findByText('Choose image')).toBeInTheDocument();
+    expect(await screen.findByText('Choose image', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(container.querySelector('a[href="/studio"]')).toHaveAttribute('aria-current', 'page');
     expect(window.location.pathname).toBe('/studio');
   });

@@ -1,3 +1,2 @@
-import packageInfo from '../package.json';
+export const APP_VERSION = '0.2.14';
 
-export const APP_VERSION = packageInfo.version;
