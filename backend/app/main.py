@@ -19,6 +19,10 @@ from app.api.routes_settings import router as settings_router
 from app.api.routes_studio import router as studio_router
 from app.config import get_settings
 from app.database import init_db
+from app.observability.logging import setup_logging
+from app.version import APP_VERSION
+
+setup_logging()
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 
@@ -45,7 +49,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="DailyFX for immich", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="DailyFX for immich", version=APP_VERSION, lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
