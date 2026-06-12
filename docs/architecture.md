@@ -18,16 +18,21 @@ DailyFX is split into a small set of layers so the API contract, generation flow
   - Handles validation, response models, and request/response shape.
   - Should not contain core generation or persistence logic.
 - `app/services/generation/`
-  - `pipeline.py` orchestrates the generation run using an explicit, decoupled staged pipeline (Planning, Asset Retrieval, Module Execution, Metadata Enrichment, Persistence, and Notification Dispatch).
+  - `pipeline/` package orchestrates the generation run using an explicit, decoupled staged pipeline split into modular files: `planning.py`, `assets.py`, `execution.py`, `metadata.py`, `persistence.py`, and `notifications.py` (with context/helpers in `shared.py` and coordination in `__init__.py`).
+  - `vision/` package houses provider-specific AI vision adapters (`gemini.py`, `openai.py`, `openrouter.py`, `xiaomi.py`, `local.py`) derived from a common `base.py` interface.
+  - `config_validation.py` enforces parameter constraint validation at preset save and studio preview API boundaries.
   - `engine.py` preserves compatibility for tests and shared entry points.
   - `persistence.py` writes the generated file and history entry.
   - `output.py` dispatches notifications and webhook calls.
   - `history.py` manages history queries, updates, and trace entries.
   - `modules/` contains generation effect implementations.
 - `app/services/settings/`
-  - Holds helpers for response shaping and connection tests.
+  - Holds helpers for settings management and connection tests.
 - `app/services/notifications/`
-  - Holds preset-specific notification test helpers.
+  - Holds preset-specific notification test helpers, delegating to the unified notification client.
+- `app/notifications/`
+  - `client.py` orchestrates notification delivery.
+  - `providers/` package contains modular integrations (`telegram.py`, `home_assistant.py`, `slack.py`, `discord.py`, `gotify.py`, `ntfy.py`, `apprise.py`, `web.py`) inheriting from `base.py`.
 - `app/workers/`
   - Runs the background scheduler loop and queued manual tasks.
 
@@ -46,7 +51,7 @@ This keeps JSON shape changes explicit and testable.
 
 ## Generation Flow
 
-The generation pipeline is decoupled into six explicit, testable stages defined in [pipeline.py](file:///home/ferges/Projects/dailyFX/backend/app/services/generation/pipeline.py), sharing state via the `GenerationPipelineContext` structure:
+The generation pipeline is decoupled into six explicit, testable stages defined in the [pipeline/](file:///opt/dailyFX/backend/app/services/generation/pipeline/) package, sharing state via the `GenerationPipelineContext` structure:
 
 1. **Setup & Planning (`_pipeline_setup_and_planning`):** Resolves schedule settings, sets up debug logging, updates task status to running, and selects the generation module to run based on preset weights.
 2. **Asset Retrieval & Selection (`_pipeline_retrieve_and_select_assets`):** Connects to Immich to search for candidate assets matching the filter presets and performs AI-driven selection/ranking if enabled.
