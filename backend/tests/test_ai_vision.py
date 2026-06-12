@@ -112,7 +112,7 @@ def test_xiaomi_exceptions_handling():
         patch("app.services.generation.ai_vision._decrypt_provider_key", return_value="secret"),
         patch("app.services.generation.ai_vision.reserve_ai_usage", return_value=None),
         patch("httpx.AsyncClient.post", side_effect=httpx.ReadTimeout("Timeout details")),
-        patch("app.services.generation.ai_vision.logger") as mock_logger,
+        patch("app.services.generation.vision.xiaomi.logger") as mock_logger,
     ):
         with pytest.raises(AIVisionError) as exc_info:
             asyncio.run(analyze_image(settings, _fake_image_bytes()))
@@ -127,7 +127,7 @@ def test_xiaomi_exceptions_handling():
         patch("app.services.generation.ai_vision._decrypt_provider_key", return_value="secret"),
         patch("app.services.generation.ai_vision.reserve_ai_usage", return_value=None),
         patch("httpx.AsyncClient.post", side_effect=httpx.HTTPStatusError("Bad Gateway", request=mock_response.request, response=mock_response)),
-        patch("app.services.generation.ai_vision.logger") as mock_logger,
+        patch("app.services.generation.vision.xiaomi.logger") as mock_logger,
     ):
         with pytest.raises(AIVisionError) as exc_info:
             asyncio.run(analyze_image(settings, _fake_image_bytes()))

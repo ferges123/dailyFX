@@ -191,7 +191,7 @@ def test_analyze_image_supports_local_models(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: fake_client)
 
     with (
-        patch("app.services.generation.ai_vision.get_local_ai_api_key", return_value="secret"),
+        patch("app.services.generation.vision.base.get_local_ai_api_key", return_value="secret"),
         patch("app.services.generation.ai_vision.reserve_ai_usage", return_value=None),
     ):
         result = asyncio.run(analyze_image(settings, _png_bytes()))

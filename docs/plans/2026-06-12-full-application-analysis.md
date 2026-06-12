@@ -20,6 +20,7 @@
 | **Task 4** | Split `Presets.tsx` By Existing Tabs | Antigravity | Completed |
 | **Task 6** | Split `Settings.tsx` Into Sections | Antigravity | Completed |
 | **Task 7** | Validate Effect Configs At API Boundaries | Antigravity | Completed |
+| **Task 8** | Split `ai_vision.py` Into Provider Adapters | Antigravity | Completed |
 
 ---
 
@@ -218,11 +219,11 @@ This file replaces the original read-only audit from 2026-06-12 with an executio
 - Create: `backend/app/services/generation/vision/local.py`
 - Test: `backend/tests/test_ai_vision.py`
 
-- [ ] Move shared types and helpers into `vision/base.py`.
-- [ ] Move one provider at a time, starting with OpenAI.
-- [ ] Keep public imports `analyze_image`, `analyze_images`, `AIVisionResult`, and `AIVisionError` compatible.
-- [ ] After each provider move, run `python3 -m pytest backend/tests/test_ai_vision.py` from the repository root or the existing backend test command.
-- [ ] Do not change default model choices in this refactor.
+- [x] Move shared types and helpers into `vision/base.py`.
+- [x] Move one provider at a time, starting with OpenAI.
+- [x] Keep public imports `analyze_image`, `analyze_images`, `AIVisionResult`, and `AIVisionError` compatible.
+- [x] After each provider move, run `python3 -m pytest backend/tests/test_ai_vision.py` from the repository root or the existing backend test command.
+- [x] Do not change default model choices in this refactor.
 
 ### Task 9: Extract Pipeline Stages After Validation Tests Pass
 

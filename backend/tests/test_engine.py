@@ -570,6 +570,31 @@ def test_ai_module_tags_injection(tmp_path):
         fake_client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
         fake_client.get_asset_exif = AsyncMock(return_value={"iso": 200})
 
+        mock_hero = MagicMock(
+            label="AI Fantasy Hero",
+            run=AsyncMock(
+                return_value=MagicMock(
+                    image_bytes=_fake_image_bytes(),
+                    generation_type="ai_fantasy_hero",
+                    provider="openai",
+                    model="gpt-image-1",
+                    config={
+                        "prompt_enrichment_context": {
+                            "album_name": "Vacation Album",
+                            "people_names": ["Alice"],
+                            "people_prompt_hint": "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.",
+                            "exif_summary": "Camera: Sony A7; Exposure: ISO 400",
+                            "context_hint": "Album: Vacation Album\nDetected people: Alice\nImmich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.\nEXIF: Camera: Sony A7; Exposure: ISO 400",
+                        }
+                    },
+                    source_asset_ids=["asset-1"],
+                    title="Hero Title",
+                    summary="Hero Summary",
+                )
+            ),
+        )
+        mock_hero.name = "ai_fantasy_hero"
+
         effects_config = {"ai_fantasy_hero": {"enabled": True, "weight": 1, "config": {}}}
 
         with (
@@ -583,31 +608,11 @@ def test_ai_module_tags_injection(tmp_path):
             # Mock module class
             patch(
                 "app.services.generation.engine.MODULES",
-                {
-                    "ai_fantasy_hero": MagicMock(
-                        label="AI Fantasy Hero",
-                        run=AsyncMock(
-                            return_value=MagicMock(
-                                image_bytes=_fake_image_bytes(),
-                                generation_type="ai_fantasy_hero",
-                                provider="openai",
-                                model="gpt-image-1",
-                                config={
-                                    "prompt_enrichment_context": {
-                                        "album_name": "Vacation Album",
-                                        "people_names": ["Alice"],
-                                        "people_prompt_hint": "Immich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.",
-                                        "exif_summary": "Camera: Sony A7; Exposure: ISO 400",
-                                        "context_hint": "Album: Vacation Album\nDetected people: Alice\nImmich identified these people in the source photo: Alice. Face positions: Alice is in the upper left.\nEXIF: Camera: Sony A7; Exposure: ISO 400",
-                                    }
-                                },
-                                source_asset_ids=["asset-1"],
-                                title="Hero Title",
-                                summary="Hero Summary",
-                            )
-                        ),
-                    )
-                },
+                {"ai_fantasy_hero": mock_hero},
+            ),
+            patch(
+                "app.services.generation.modules.MODULES.get",
+                return_value=mock_hero,
             ),
         ):
             mock_cfg.return_value.data_dir = tmp_path
@@ -694,6 +699,9 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
                 )
             raise AssertionError("Unexpected image bytes passed to AI Vision")
 
+        mock_anime = MagicMock(label="AI Anime", run=module_run)
+        mock_anime.name = "ai_anime"
+
         effects_config = {"ai_anime": {"enabled": True, "weight": 1, "config": {}}}
 
         with (
@@ -706,7 +714,11 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
             ),
             patch(
                 "app.services.generation.engine.MODULES",
-                {"ai_anime": MagicMock(label="AI Anime", run=module_run)},
+                {"ai_anime": mock_anime},
+            ),
+            patch(
+                "app.services.generation.modules.MODULES.get",
+                return_value=mock_anime,
             ),
             patch("app.services.generation.engine.analyze_image", side_effect=fake_analyze),
         ):
@@ -825,6 +837,9 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
                 model="gpt-4o-mini",
             )
 
+        mock_instafilter = MagicMock(label="Instafilter", run=module_run)
+        mock_instafilter.name = "instafilter"
+
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}}}
 
         with (
@@ -837,7 +852,11 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
             ),
             patch(
                 "app.services.generation.engine.MODULES",
-                {"instafilter": MagicMock(label="Instafilter", run=module_run)},
+                {"instafilter": mock_instafilter},
+            ),
+            patch(
+                "app.services.generation.modules.MODULES.get",
+                return_value=mock_instafilter,
             ),
             patch("app.services.generation.engine.analyze_image", side_effect=fake_analyze),
         ):

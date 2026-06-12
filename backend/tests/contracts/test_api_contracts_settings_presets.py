@@ -130,7 +130,7 @@ def test_effect_presets_contract():
         response = create_effect_preset(
             EffectPresetCreate(
                 name="Contract Effect",
-                groups={"collage": {"enabled": True, "weight": 1, "config": {"asset_count": 4}}},
+                groups={"collage": {"enabled": True, "weight": 1, "config": {"border": 8}}},
             ),
             db,
         )
@@ -144,7 +144,7 @@ def test_effect_presets_contract():
         assert response_dict == {
             "id": response.id,
             "name": "Contract Effect",
-            "groups": {"collage": {"enabled": True, "weight": 1, "config": {"asset_count": 4}}},
+            "groups": {"collage": {"enabled": True, "weight": 1, "config": {"border": 8}}},
             "created_at": "2026-05-12T10:20:00Z",
         }
 
