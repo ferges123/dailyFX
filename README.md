@@ -62,7 +62,7 @@ Once an effect is generated, you are notified through your preferred channel, wh
 - Per-effect enable/disable and weight
 - Filter by Immich album, person, date range, media type
 - Schedules: daily, specific days, time of day
-- Optional AI vision analysis (via OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi) for titles and captions; for `ai_*` effects, the final generated image is analyzed again so the stored title, summary, and tags match the result you actually review. See `docs/api.md` for the metadata pipeline, including `metadata_provenance`, `people_context`, and `task_trace`.
+- Optional AI vision analysis (via OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi) for titles and captions; for `ai_*` effects, the final generated image is analyzed again so the stored title, summary, and tags match the result you actually review. See `docs/api.md` for the metadata pipeline, including `metadata_provenance`, `people_context`, `task_trace`, and **API Rate Limits**.
 For API-key setup links, see [docs/api.md](docs/api.md#ai-provider-key-setup).
 
 ---
@@ -284,10 +284,14 @@ backend/          FastAPI + SQLAlchemy + Alembic
   app/
     api/          Routes: settings, generation, health, push, debug, presets, schedules
     immich/       Immich API client
+    notifications/ Web Push, ntfy, Gotify, Telegram, Home Assistant
+      providers/  Split channel integrations (telegram, home_assistant, slack, discord, etc.)
     services/
       generation/
         engine.py         Compatibility entry points
-        pipeline.py       Generation orchestration
+        pipeline/         Decoupled staged pipeline package (planning, assets, execution, etc.)
+        vision/           Modular AI vision provider adapters (gemini, openai, openrouter, etc.)
+        config_validation.py API-boundary config schema validator
         persistence.py    Result persistence and history writes
         output.py         Notifications and webhooks
         modules/          Effect plugin system
@@ -295,12 +299,15 @@ backend/          FastAPI + SQLAlchemy + Alembic
       notifications/      Notification preset test helpers
     workers/
       scheduler.py        Automation loop
-    notifications/        Web Push, ntfy, Gotify, Telegram, Home Assistant
+  healthcheck.py  Dedicated multi-check API & scheduler health status script
 
 frontend/         React 19 + Vite + Tailwind CSS
   src/
-    pages/        History, Login, Presets (Filters, Effects, Notifications), Schedules, Settings
+    pages/        Modular route views:
+      History/, Login.tsx, Presets/, Schedules/, Settings/
     api/          API client (typed)
+    components/   RouteErrorBoundary.tsx (graceful route failure recovery)
+    version.ts    Single source of truth version metadata
 ```
 
 ## License
