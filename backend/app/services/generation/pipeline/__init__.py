@@ -12,7 +12,7 @@ from app.utils.debug_logger import debug_log, set_debug_mode
 from app.services.generation.history import upsert_history_entry
 from app.services.generation.tasks import update_task
 
-# Import extracted Stage 1 (planning) functions
+# Import Stage 1 (planning)
 from .planning import (
     _pipeline_setup_and_planning,
     _select_generation_module,
@@ -20,7 +20,7 @@ from .planning import (
     _merge_module_defaults,
 )
 
-# Import extracted Stage 2 (assets) functions
+# Import Stage 2 (assets)
 from .assets import (
     _pipeline_retrieve_and_select_assets,
     _search_assets_for_generation,
@@ -32,26 +32,29 @@ from .assets import (
     rank_source_assets_for_effect,
 )
 
-# Temporarily delegate remaining functions to pipeline_old
-from ..pipeline_old import (
-    FINAL_AI_VISION_PROMPT,
-    _build_metadata_provenance,
-    _format_duration,
-    _validate_module_config,
-    _is_ai_module,
-    _inject_ai_tags,
-    _ai_tag_injections,
-    _initial_artifact_state,
-    _select_generation_page_items,
-    _resolve_generation_source_context,
-    _generation_output_paths,
+# Import Stage 3 (execution)
+from .execution import (
+    _pipeline_execute_module,
     _run_selected_module,
-    _persist_generation_outputs,
+    _validate_module_config,
+)
+
+# Import Stage 4 (metadata)
+from .metadata import (
+    _pipeline_enrich_metadata,
+    _resolve_generation_source_context,
+    _initial_artifact_state,
+    _build_generation_artifacts,
     _apply_source_vision,
     _apply_final_vision,
-    _build_generation_artifacts,
-    _pipeline_execute_module,
-    _pipeline_enrich_metadata,
+    FINAL_AI_VISION_PROMPT,
+)
+
+# Temporarily delegate remaining functions to pipeline_old
+from ..pipeline_old import (
+    _format_duration,
+    _generation_output_paths,
+    _persist_generation_outputs,
     _pipeline_persist_result,
     _pipeline_dispatch_notifications,
     run_generation_pipeline,
