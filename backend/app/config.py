@@ -20,6 +20,7 @@ class AppSettings(BaseSettings):
     app_access_token: str | None = Field(default=None, alias="APP_ACCESS_TOKEN")
     app_contact_email: str = Field(default="dailyfx@localhost", alias="APP_CONTACT_EMAIL")
     app_external_url: str | None = Field(default=None, alias="APP_EXTERNAL_URL")
+    log_json: bool = Field(default=False, alias="LOG_JSON")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
