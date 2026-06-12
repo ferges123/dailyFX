@@ -19,6 +19,7 @@
 | **Task 3** | Keep Docker Healthcheck Shallow But Move Logic Out Of Inline Python | Antigravity | Completed |
 | **Task 4** | Split `Presets.tsx` By Existing Tabs | Antigravity | Completed |
 | **Task 6** | Split `Settings.tsx` Into Sections | Antigravity | Completed |
+| **Task 7** | Validate Effect Configs At API Boundaries | Antigravity | Completed |
 
 ---
 
@@ -196,11 +197,11 @@ This file replaces the original read-only audit from 2026-06-12 with an executio
 - Test: `backend/tests/test_schedule_contracts.py`
 - Test: `backend/tests/test_studio_routes.py`
 
-- [ ] Move current `_validate_module_config` logic into `config_validation.py`.
-- [ ] Extend validation to reject unknown keys except explicitly allowed metadata keys already used by the app.
-- [ ] Call validation before saving effect presets and before starting manual/studio/scheduled generation.
-- [ ] Keep error responses stable and human-readable.
-- [ ] Run the focused backend tests for generation, presets, schedules, and studio.
+- [x] Move current `_validate_module_config` logic into `config_validation.py`.
+- [x] Extend validation to reject unknown keys except explicitly allowed metadata keys already used by the app.
+- [x] Call validation before saving effect presets and before starting manual/studio/scheduled generation.
+- [x] Keep error responses stable and human-readable.
+- [x] Run the focused backend tests for generation, presets, schedules, and studio.
 
 ### Task 8: Split `ai_vision.py` Into Provider Adapters
 

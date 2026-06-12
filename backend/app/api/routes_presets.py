@@ -118,6 +118,12 @@ def list_effect_presets(db: Session = Depends(get_db), _: None = Depends(require
 
 @router.post("/effects", response_model=EffectPresetResponse, status_code=201)
 def create_effect_preset(body: EffectPresetCreate, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    from app.services.generation.config_validation import validate_effects_config
+    try:
+        validate_effects_config(body.groups)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if db.query(EffectPresetModel).filter_by(name=body.name).first():
         raise HTTPException(status_code=409, detail="Effect preset with this name already exists")
     row = EffectPresetModel(name=body.name, groups_json=json.dumps(body.groups))
@@ -134,6 +140,12 @@ def update_effect_preset(
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
 ):
+    from app.services.generation.config_validation import validate_effects_config
+    try:
+        validate_effects_config(body.groups)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     row = db.query(EffectPresetModel).filter_by(id=preset_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Effect preset not found")

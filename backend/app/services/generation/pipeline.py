@@ -180,34 +180,8 @@ def _format_duration(seconds: float | int | None) -> str | None:
 
 
 def _validate_module_config(module, config: dict) -> None:
-    schema = getattr(module, "config_schema", None) or []
-    errors: list[str] = []
-    for field in schema:
-        key = field.get("key")
-        value = config.get(key)
-        if value is None:
-            continue
-        field_type = field.get("type")
-        if field_type == "number":
-            try:
-                v = float(value)
-            except (TypeError, ValueError):
-                errors.append(f"'{key}' must be a number, got {value!r}")
-                continue
-            if (mn := field.get("min")) is not None and v < mn:
-                errors.append(f"'{key}' must be >= {mn}, got {v}")
-            if (mx := field.get("max")) is not None and v > mx:
-                errors.append(f"'{key}' must be <= {mx}, got {v}")
-        elif field_type in ("select", "multiselect"):
-            options = {opt["value"] for opt in (field.get("options") or [])}
-            if not options:
-                continue
-            values = value if isinstance(value, list) else [value]
-            bad = [v for v in values if v not in options]
-            if bad:
-                errors.append(f"'{key}' contains invalid value(s): {bad!r}; allowed: {sorted(options)!r}")
-    if errors:
-        raise ValueError(f"Invalid config for module '{module.name}': {'; '.join(errors)}")
+    from app.services.generation.config_validation import validate_module_config
+    validate_module_config(module.name, {"config": config})
 
 
 def _is_ai_module(generation_type: str | None, group_name: str | None) -> bool:

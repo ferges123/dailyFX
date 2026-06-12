@@ -79,9 +79,16 @@ async def create_studio_preview(
     settings = get_or_create_settings(db)
 
     module = _get_supported_module(effect_id)
+    parsed_config = _parse_config(config)
+    from app.services.generation.config_validation import validate_module_config
+    try:
+        validate_module_config(effect_id, {"config": parsed_config})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     module_config = {
         **(getattr(module, "default_config", None) or {}),
-        **_parse_config(config),
+        **parsed_config,
     }
 
     content = await file.read()
