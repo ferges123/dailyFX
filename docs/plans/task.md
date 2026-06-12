@@ -10,7 +10,7 @@
 | Task 6: split `Settings.tsx` | Completed | Split Settings.tsx into sections. |
 | Task 7: API-boundary effect config validation | Completed | Created validation service and enforced it at preset and studio routes. |
 | Task 8: split `ai_vision.py` | Completed | Split into provider-specific adapter package and refactored tests. |
-| Task 9: extract pipeline stages | Not Started | Split pipeline execution into separate files. |
+| Task 9: extract pipeline stages | In Progress | Split pipeline execution into separate files. |
 | Task 10: split notification providers | Completed | Split into provider-specific adapter modules under notifications/providers/ |
 | Task 11: rate limits | Completed | Implemented per-endpoint HTTP rate limits. |
 | Task 12: Content Security Policy | Completed | Added CSP headers to Nginx frontend config. |
