@@ -396,14 +396,13 @@ def draw_sunset_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float,
 
 
 def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple = (255, 204, 0, 255)):
-    w = max(1.5, size * 0.08)
+    w = max(2, size * 0.06)
     cx = x + size / 2
     cy = y + size / 2
-    r = size * 0.22
+    r = size * 0.30
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=int(w))
-    # 8 rays
-    ray_len = size * 0.12
-    ray_gap = size * 0.08
+    ray_len = size * 0.10
+    ray_gap = size * 0.06
     import math
     for i in range(8):
         angle = i * (math.pi / 4)
@@ -415,25 +414,25 @@ def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: 
 
 
 def draw_cloud(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, fill_color: tuple = (255, 255, 255, 230)):
-    # Left circle
-    r1 = size * 0.18
-    cx1, cy1 = x + size * 0.35, y + size * 0.6
+    # Large left bump
+    r1 = size * 0.22
+    cx1, cy1 = x + size * 0.32, y + size * 0.58
     draw.ellipse([cx1 - r1, cy1 - r1, cx1 + r1, cy1 + r1], fill=fill_color)
-    
-    # Middle circle
-    r2 = size * 0.23
-    cx2, cy2 = x + size * 0.52, y + size * 0.45
+
+    # Large center bump (tallest)
+    r2 = size * 0.28
+    cx2, cy2 = x + size * 0.50, y + size * 0.42
     draw.ellipse([cx2 - r2, cy2 - r2, cx2 + r2, cy2 + r2], fill=fill_color)
-    
-    # Right circle
-    r3 = size * 0.15
-    cx3, cy3 = x + size * 0.68, y + size * 0.62
+
+    # Large right bump
+    r3 = size * 0.20
+    cx3, cy3 = x + size * 0.68, y + size * 0.58
     draw.ellipse([cx3 - r3, cy3 - r3, cx3 + r3, cy3 + r3], fill=fill_color)
-    
-    # Bottom rect
+
+    # Bottom fill rectangle
     draw.rounded_rectangle(
-        [x + size * 0.25, y + size * 0.55, x + size * 0.75, y + size * 0.78],
-        radius=int(size * 0.12),
+        [x + size * 0.15, y + size * 0.55, x + size * 0.82, y + size * 0.82],
+        radius=int(size * 0.14),
         fill=fill_color
     )
 
@@ -900,23 +899,29 @@ def _draw_graphics_overlay(
     lm_hidden = False
     if faces:
         shifted = False
-        for sy in [0, int(-50 * scale), int(50 * scale), int(-100 * scale), int(100 * scale), int(-150 * scale), int(150 * scale)]:
-            test_y = lm_y + sy
-            if test_y >= margin and test_y + h_lm <= height - margin:
-                if not check_collision([lm_x, test_y, lm_x + w_lm, test_y + h_lm]):
-                    lm_y = test_y
-                    shifted = True
-                    break
-        if not shifted:
-            # Swap to right side
-            lm_x = width - margin - w_lm
-            for sy in [0, int(-50 * scale), int(50 * scale), int(-100 * scale), int(100 * scale), int(-150 * scale), int(150 * scale)]:
-                test_y = lm_y + sy
+        for sy in range(0, int(400 * scale), int(20 * scale)):
+            for sign in (0, -1, 1):
+                test_y = lm_y + sign * sy
                 if test_y >= margin and test_y + h_lm <= height - margin:
                     if not check_collision([lm_x, test_y, lm_x + w_lm, test_y + h_lm]):
                         lm_y = test_y
                         shifted = True
                         break
+            if shifted:
+                break
+        if not shifted:
+            # Swap to right side
+            lm_x = width - margin - w_lm
+            for sy in range(0, int(400 * scale), int(20 * scale)):
+                for sign in (0, -1, 1):
+                    test_y = lm_y + sign * sy
+                    if test_y >= margin and test_y + h_lm <= height - margin:
+                        if not check_collision([lm_x, test_y, lm_x + w_lm, test_y + h_lm]):
+                            lm_y = test_y
+                            shifted = True
+                            break
+                if shifted:
+                    break
         if not shifted:
             lm_hidden = True
 

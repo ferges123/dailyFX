@@ -71,6 +71,7 @@ def _setup_db():
         database.engine.dispose()
     database.engine = None
     database._current_database_url = None
+    database._initialized_databases.clear()
     test_db.unlink(missing_ok=True)
     init_db()
     return SessionLocal()
