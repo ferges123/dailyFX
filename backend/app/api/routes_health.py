@@ -2,6 +2,7 @@ import time
 
 import httpx
 from fastapi import APIRouter, Depends
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -32,7 +33,7 @@ async def health_detailed(db: Session = Depends(get_db), _: None = Depends(requi
 
     # DB check
     try:
-        db.execute(__import__("sqlalchemy").text("SELECT 1"))
+        db.execute(text("SELECT 1"))
         checks["database"] = {"status": "ok"}
     except Exception as e:
         checks["database"] = {"status": "error", "detail": str(e)}

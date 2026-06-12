@@ -6,13 +6,13 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
+COPY app ./app
+RUN pip install --no-cache-dir .
 
 COPY alembic.ini ./
 COPY run_opencv_tests.py ./
 COPY healthcheck.py ./
 COPY tests ./tests
-COPY app ./app
 COPY start.sh ./
 RUN chmod +x start.sh && chmod -R o+rX /app
 

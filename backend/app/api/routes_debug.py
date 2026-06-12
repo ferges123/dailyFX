@@ -1,14 +1,16 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
+
+from app.security import require_auth
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 DEBUG_LOG_DIR = Path("/data/logs")
 
 
 @router.get("/log", response_class=PlainTextResponse)
-def get_debug_log() -> str:
+def get_debug_log(_: None = Depends(require_auth)) -> str:
     """Get the latest debug log file content."""
     log_dir = DEBUG_LOG_DIR
 
