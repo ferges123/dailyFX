@@ -12,3 +12,8 @@ os.environ["DATA_DIR"] = str(test_data_dir)
 
 if "DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = f"sqlite:///{test_data_dir / 'app.db'}"
+
+# Disable rate limiting globally during test suite execution
+from app.limiter import limiter
+limiter.enabled = False
+
