@@ -12,7 +12,7 @@
 | Task 8: split `ai_vision.py` | Completed | Split into provider-specific adapter package and refactored tests. |
 | Task 9: extract pipeline stages | Not Started | Split pipeline execution into separate files. |
 | Task 10: split notification providers | Completed | Split into provider-specific adapter modules under notifications/providers/ |
-| Task 11: rate limits | In Progress | Apply per-endpoint rate limits. |
+| Task 11: rate limits | Completed | Implemented per-endpoint HTTP rate limits. |
 | Task 12: Content Security Policy | Completed | Added CSP headers to Nginx frontend config. |
 | Task 13: comparator in history | Rejected | Decided not to implement. |
 | Task 14: bulk actions | Rejected | Decided not to implement. |
