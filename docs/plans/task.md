@@ -16,4 +16,4 @@
 | Task 12: Content Security Policy | Not Started | Add CSP to frontend Nginx. |
 | Task 13: comparator in history | Not Started | Add before/after image comparator. |
 | Task 14: bulk actions | Not Started | Add bulk accept/reject endpoints and UI. |
-| Task 15: metrics and structured logging | Not Started | Add Prometheus-like metrics and JSON logging. |
+| Task 15: metrics and structured logging | Completed | Added Prometheus metrics endpoint and structured JSON logging. |
