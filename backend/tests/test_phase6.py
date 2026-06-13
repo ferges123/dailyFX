@@ -31,6 +31,7 @@ init_db()
 
 def test_debug_log_not_found_when_no_logs(tmp_path):
     from fastapi import HTTPException
+
     from app.api.routes_debug import get_debug_log
 
     missing_dir = tmp_path / "missing"

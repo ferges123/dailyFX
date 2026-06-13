@@ -1,5 +1,6 @@
 from app.services.generation.modules import MODULES
 
+
 def validate_module_config(module_name: str, group_config: dict) -> None:
     """
     Validates a single module group dictionary: {enabled, weight, config}

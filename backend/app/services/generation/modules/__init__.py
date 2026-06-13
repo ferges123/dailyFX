@@ -15,6 +15,7 @@ from app.services.generation.modules.halftone import HalftoneModule
 from app.services.generation.modules.hdr import HDRModule
 from app.services.generation.modules.huji import HujiModule
 from app.services.generation.modules.instafilter import InstafilterModule
+from app.services.generation.modules.instaweather import InstaWeatherModule
 from app.services.generation.modules.light_leak import LightLeakModule
 from app.services.generation.modules.museum_archive import MuseumArchiveModule
 from app.services.generation.modules.neon_bloom import NeonBloomModule
@@ -24,7 +25,6 @@ from app.services.generation.modules.polaroid import PolaroidModule
 from app.services.generation.modules.popart import PopArtModule
 from app.services.generation.modules.prism_split import PrismSplitModule
 from app.services.generation.modules.vintage_film import VintageFilmModule
-from app.services.generation.modules.instaweather import InstaWeatherModule
 
 LOCAL_MODULE_CLASSES = [
     AppleWeatherModule,

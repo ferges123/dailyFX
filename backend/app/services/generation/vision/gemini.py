@@ -1,7 +1,9 @@
-import httpx
 import json
 import logging
-from .base import AIVisionResult, AIVisionError, GEMINI_VISION_MODEL
+
+import httpx
+
+from .base import GEMINI_VISION_MODEL, AIVisionError, AIVisionResult
 
 logger = logging.getLogger(__name__)
 

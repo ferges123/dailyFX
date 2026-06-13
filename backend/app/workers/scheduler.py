@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.services.generation.engine import run_generation_cycle
+from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.generation.schedule_runs import build_scheduled_run_context
 from app.services.generation.task_flow import run_queued_generation_task
 from app.services.generation.tasks import ensure_task
-from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.immich import get_or_create_settings
 
 _running_task_ids: set[str] = set()
@@ -245,11 +245,12 @@ async def _run_queued_task_in_background(task_id: str) -> None:
 
 async def _perform_tick(session: Session, now: datetime | None = None, async_mode: bool = True) -> dict[str, object]:
     """Core tick logic — iterates over all enabled schedules."""
+    import uuid
+
     from app.models.effect_preset import EffectPresetModel
     from app.models.filter_preset import FilterPresetModel
-    from app.models.schedule import ScheduleModel
     from app.models.generation_task import GenerationTaskModel
-    import uuid
+    from app.models.schedule import ScheduleModel
 
     current = now or _local_now()
     if current.tzinfo is None:

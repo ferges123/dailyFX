@@ -1,9 +1,12 @@
-import httpx
 import json
 import logging
+
+import httpx
+
 from app.models.settings import SettingsModel
 from app.services.local_ai import LocalAIConfigurationError, get_local_ai_base_url
-from .base import AIVisionResult, AIVisionError, _chat_image_content, _vision_result_from_chat_json
+
+from .base import AIVisionError, AIVisionResult, _chat_image_content, _vision_result_from_chat_json
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
-import pytest
 from app.services.generation.people_context import PeopleContext, PeopleFaceContext
+
 
 def test_anonymized_prompt_hint_basic():
     face1 = PeopleFaceContext(

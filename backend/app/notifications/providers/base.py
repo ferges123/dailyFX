@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from urllib.parse import urlparse
+
 import httpx
 
-from app.notifications.base import NotificationTestResult, NotificationProviderName
 from app.utils.url_utils import normalize_base_url as _normalize_url
 
 

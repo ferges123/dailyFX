@@ -1,7 +1,9 @@
-import httpx
 import json
 import logging
-from .base import AIVisionResult, AIVisionError, _chat_image_content, _vision_result_from_chat_json
+
+import httpx
+
+from .base import AIVisionError, AIVisionResult, _chat_image_content, _vision_result_from_chat_json
 
 logger = logging.getLogger(__name__)
 

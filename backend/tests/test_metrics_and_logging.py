@@ -1,6 +1,5 @@
-import os
-import pytest
 from app.config import AppSettings
+
 
 def test_settings_has_log_json_and_defaults_to_false():
     # Clear settings cache if any
@@ -15,6 +14,7 @@ def test_settings_has_log_json_and_defaults_to_false():
 def test_json_formatter_outputs_valid_json():
     import json
     import logging
+
     from app.observability.logging import JSONFormatter
 
     formatter = JSONFormatter()
@@ -42,8 +42,9 @@ def test_json_formatter_outputs_valid_json():
 
 def test_setup_logging_configures_json_logging(monkeypatch):
     import logging
-    from app.observability.logging import JSONFormatter, setup_logging
+
     import app.config
+    from app.observability.logging import JSONFormatter, setup_logging
 
     # Set LOG_JSON to True
     monkeypatch.setenv("LOG_JSON", "true")
@@ -65,6 +66,7 @@ def test_setup_logging_configures_json_logging(monkeypatch):
 
 def test_metrics_endpoint_returns_prometheus_format():
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as client:
@@ -77,8 +79,9 @@ def test_metrics_endpoint_returns_prometheus_format():
 
 
 def test_metrics_endpoint_enforces_auth_when_app_access_token_configured(monkeypatch):
-    import app.config as config_module
     from fastapi.testclient import TestClient
+
+    import app.config as config_module
     from app.main import app
 
     # Enforce APP_ACCESS_TOKEN
@@ -106,10 +109,11 @@ def test_metrics_endpoint_enforces_auth_when_app_access_token_configured(monkeyp
 
 def test_metrics_includes_database_counts(monkeypatch):
     from fastapi.testclient import TestClient
-    from app.main import app
+
     from app.database import SessionLocal
-    from app.models.generation_task import GenerationTaskModel
+    from app.main import app
     from app.models.generation_history import GenerationHistoryModel
+    from app.models.generation_task import GenerationTaskModel
 
     # Seed data
     db = SessionLocal()

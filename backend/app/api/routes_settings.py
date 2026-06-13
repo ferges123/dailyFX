@@ -2,8 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.limiter import limiter
-
 from app.immich.errors import (
     ImmichAuthenticationError,
     ImmichConfigurationError,
@@ -11,6 +9,7 @@ from app.immich.errors import (
     ImmichPermissionError,
     ImmichUnexpectedResponseError,
 )
+from app.limiter import limiter
 from app.schemas.settings import ConnectionTestResponse, SettingsResponse, SettingsUpdate
 from app.security import encrypt_secret, require_auth
 from app.services.generation.ai_vision import XIAOMI_API_BASE_URL

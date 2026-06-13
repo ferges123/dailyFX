@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.limiter import limiter
-
 from app.models.effect_preset import EffectPresetModel
 from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel

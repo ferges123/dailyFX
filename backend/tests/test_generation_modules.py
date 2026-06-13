@@ -407,8 +407,8 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
 
 
 def test_museum_archive_anonymization():
-    from app.services.generation.modules.museum_archive import MuseumArchiveModule
     from app.services.generation.ai_vision import AIVisionResult
+    from app.services.generation.modules.museum_archive import MuseumArchiveModule
     
     client = AsyncMock()
     client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())

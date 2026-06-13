@@ -473,7 +473,7 @@ def test_ai_photo_selection_ranks_candidates_with_vision():
     trace = {}
     with (
         patch("app.services.generation.pipeline.assets.analyze_images", fake_analyze_images),
-        patch("app.services.generation.pipeline.assets.analyze_image", side_effect=AssertionError("single-image ranking should not be used")),
+        patch("app.services.generation.ai_vision.analyze_image", side_effect=AssertionError("single-image ranking should not be used")),
         patch("app.services.generation.pipeline.assets.debug_log") as debug_log,
     ):
         selected = asyncio.run(

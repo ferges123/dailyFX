@@ -8,6 +8,7 @@ from PIL import Image
 
 from app.services.generation.ai_vision import AIVisionError, AIVisionResult, analyze_image, analyze_images
 
+
 def _fake_image_bytes() -> bytes:
     buffer = BytesIO()
     Image.new("RGB", (160, 120), color=(128, 64, 32)).save(buffer, format="PNG")

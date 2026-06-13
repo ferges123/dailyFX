@@ -1,8 +1,13 @@
 from __future__ import annotations
-import httpx
+
 import json
+
+import httpx
+
 from app.notifications.base import NotificationTestResult
+
 from .base import _extract_json_response
+
 
 def html_escape(text: str) -> str:
     """Escape special HTML characters for Telegram Bot API."""

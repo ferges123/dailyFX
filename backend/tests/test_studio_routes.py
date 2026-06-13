@@ -3,18 +3,19 @@ import json
 from pathlib import Path
 
 import pytest
-from PIL import Image
 
 # Initialize the test DB first before importing any app modules
 from _contract_helpers import configure_contract_test_db
+from PIL import Image
+
 test_db = configure_contract_test_db("studio_routes")
 
-from app.database import SessionLocal, init_db
-from app.security import require_auth
 from fastapi.testclient import TestClient
+
+from app.database import SessionLocal, init_db
 from app.main import app
 from app.models.generation_history import GenerationHistoryModel
-
+from app.security import require_auth
 from app.services.studio.validation import (
     MAX_STUDIO_UPLOAD_BYTES,
     StudioUploadValidationError,
@@ -136,6 +137,7 @@ def test_studio_preview_creates_history_entry(authenticated_client: TestClient, 
 
 
 from unittest.mock import AsyncMock, patch
+
 from app.services.generation.ai_vision import AIVisionResult
 
 

@@ -1,20 +1,22 @@
 import pytest
-from fastapi.testclient import TestClient
 from _contract_helpers import configure_contract_test_db
+from fastapi.testclient import TestClient
 
 # Initialize the test DB first
 test_db = configure_contract_test_db("config_validation")
 
 from app.database import SessionLocal, init_db
+
 init_db()
 
 from app.main import app
+from app.models.effect_preset import EffectPresetModel
 from app.security import require_auth
 from app.services.generation.config_validation import (
-    validate_module_config,
     validate_effects_config,
+    validate_module_config,
 )
-from app.models.effect_preset import EffectPresetModel
+
 
 @pytest.fixture
 def authenticated_client():
@@ -179,6 +181,7 @@ def test_preset_api_validation(authenticated_client, db_session):
 
 def test_studio_api_validation(authenticated_client):
     import io
+
     # Test POST /api/studio/preview reject invalid config
     from PIL import Image
     img = Image.new("RGB", (10, 10))

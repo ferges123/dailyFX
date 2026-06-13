@@ -5,11 +5,12 @@ from dataclasses import replace
 
 from app.immich.models import ImmichSearchFilters
 from app.models.settings import SettingsModel
-from app.services.generation.ai_vision import analyze_image, analyze_images
+from app.services.generation.ai_vision import analyze_images
 from app.utils.debug_logger import debug_log
+
 from .shared import (
-    GenerationPipelineContext,
     GenerationModuleSelection,
+    GenerationPipelineContext,
     _trace_stage,
 )
 

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
 import httpx
+from PIL import Image, ImageDraw, ImageFont
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
-from app.services.generation.modules.common import get_font, save_png, load_rgb
+from app.services.generation.modules.common import get_font, load_rgb, save_png
 
 logger = logging.getLogger(__name__)
 

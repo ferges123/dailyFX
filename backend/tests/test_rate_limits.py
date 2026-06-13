@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.fixture(autouse=True)
 def enable_limiter():
     from app.limiter import limiter
@@ -16,6 +17,7 @@ def test_limiter_module_exists():
 
 def test_studio_preview_rate_limit():
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as client:
@@ -35,6 +37,7 @@ def test_studio_preview_rate_limit():
 
 def test_settings_update_rate_limit():
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as client:
@@ -60,6 +63,7 @@ def test_settings_update_rate_limit():
 
 def test_schedule_run_now_rate_limit():
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as client:

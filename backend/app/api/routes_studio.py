@@ -2,23 +2,21 @@
 import json
 import logging
 import uuid
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
 from app.limiter import limiter
 from app.models.generation_history import GenerationHistoryModel
+from app.schemas.generation import GenerationModuleResponse
 from app.security import require_auth
-
-from app.services.immich import get_or_create_settings
+from app.services.generation.ai_effects import get_seed_hidden_map
+from app.services.generation.ai_vision import analyze_image
 from app.services.generation.modules import MODULES
 from app.services.generation.stream import record_history_snapshot
-from app.services.generation.ai_vision import analyze_image
-from app.schemas.generation import GenerationModuleResponse
-from app.services.generation.ai_effects import get_seed_hidden_map
+from app.services.immich import get_or_create_settings
 from app.services.studio.local_asset import StudioLocalAssetClient, build_studio_asset
 from app.services.studio.validation import (
     StudioUploadValidationError,

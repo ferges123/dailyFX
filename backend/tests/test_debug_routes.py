@@ -1,9 +1,9 @@
-import pytest
-from pathlib import Path
 from unittest.mock import patch
+
 from fastapi.testclient import TestClient
-from app.main import app
+
 import app.config as config_module
+from app.main import app
 
 
 def test_debug_log_endpoint_no_auth(tmp_path, monkeypatch):

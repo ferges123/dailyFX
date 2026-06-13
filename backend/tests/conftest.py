@@ -15,5 +15,6 @@ if "DATABASE_URL" not in os.environ:
 
 # Disable rate limiting globally during test suite execution
 from app.limiter import limiter
+
 limiter.enabled = False
 

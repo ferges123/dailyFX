@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
 
-from _contract_helpers import make_effect_preset_row, make_notification_preset_row
-
 import pytest
+from _contract_helpers import make_effect_preset_row, make_notification_preset_row
 from fastapi import HTTPException
 
 from app.api.routes_schedules import create_schedule, list_schedules, update_schedule

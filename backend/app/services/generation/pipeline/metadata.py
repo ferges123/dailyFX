@@ -8,13 +8,15 @@ from app.models.settings import SettingsModel
 from app.services.generation.exif_embedder import embed_exif_metadata
 from app.services.generation.people_context import load_people_context
 from app.utils.debug_logger import debug_log
+
 from .shared import (
-    GenerationPipelineContext,
-    GenerationModuleSelection,
     GenerationArtifacts,
+    GenerationModuleSelection,
+    GenerationPipelineContext,
     _build_metadata_provenance,
     _trace_stage,
 )
+
 
 def _is_ai_module(generation_type: str | None, group_name: str | None) -> bool:
     return (generation_type or "").startswith("ai_") or (group_name or "").startswith("ai_")

@@ -8,10 +8,10 @@ from app.api.routes_push import list_subscriptions
 from app.notifications.client import (
     send_apprise_notification,
     send_discord_notification,
-    send_slack_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
+    send_slack_notification,
     send_telegram_notification,
     send_web_notification,
 )
@@ -525,8 +525,9 @@ def test_web_notifications_do_not_send_without_explicit_targets(monkeypatch):
 
 def test_test_subscription_endpoint_targets_one_subscription(monkeypatch):
     from fastapi.testclient import TestClient
-    from app.main import app
+
     from app.database import SessionLocal, init_db
+    from app.main import app
     from app.models.push import PushSubscriptionModel
 
     init_db()
@@ -567,6 +568,7 @@ def test_test_subscription_endpoint_targets_one_subscription(monkeypatch):
 
 def test_test_subscription_endpoint_returns_404_for_unknown_subscription():
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     client = TestClient(app)

@@ -4,10 +4,10 @@ from app.models.notification_preset import NotificationPresetModel
 from app.notifications.client import (
     send_apprise_notification,
     send_discord_notification,
-    send_slack_notification,
     send_gotify_notification,
     send_homeassistant_notification,
     send_ntfy_notification,
+    send_slack_notification,
     send_telegram_notification,
     send_web_notification,
 )

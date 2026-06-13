@@ -11,7 +11,7 @@ from pillow_heif import register_heif_opener
 
 from app.models.settings import SettingsModel
 from app.security import decrypt_secret
-from app.services.local_ai import LocalAIConfigurationError, get_local_ai_api_key, get_local_ai_base_url
+from app.services.local_ai import get_local_ai_api_key
 
 register_heif_opener()
 

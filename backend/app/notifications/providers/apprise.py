@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 import asyncio
+
 from app.notifications.base import NotificationTestResult
+
 
 async def test_apprise_notification(
     notification_url: str,

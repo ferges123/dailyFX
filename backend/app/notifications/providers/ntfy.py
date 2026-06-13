@@ -1,7 +1,11 @@
 from __future__ import annotations
+
 import httpx
+
 from app.notifications.base import NotificationTestResult
-from .base import _normalize_base_url, _extract_json_response
+
+from .base import _extract_json_response, _normalize_base_url
+
 
 async def test_ntfy_notification(
     notification_url: str,

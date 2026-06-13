@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import json
 import sys
 import time
 import urllib.request
-import json
 from pathlib import Path
+
 from app.config import get_settings
+
 
 def check_health():
     try:

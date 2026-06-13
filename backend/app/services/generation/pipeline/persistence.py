@@ -1,11 +1,12 @@
 import time
 
 from app.utils.debug_logger import debug_log
+
 from .shared import (
-    GenerationPipelineContext,
     GenerationArtifacts,
-    _trace_stage,
+    GenerationPipelineContext,
     _format_duration,
+    _trace_stage,
 )
 
 

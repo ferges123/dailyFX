@@ -7,11 +7,11 @@ from app.api.routes_generation import (
     accept_generation,
     get_generation_history,
     get_generation_image,
+    get_review_page,
     get_task_status,
     list_generation_modules,
     reject_generation,
     retry_acceptance,
-    get_review_page,
 )
 from app.database import SessionLocal
 from app.database import init_db as _init_db

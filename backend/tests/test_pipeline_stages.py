@@ -1,13 +1,11 @@
-import asyncio
-from unittest.mock import MagicMock, patch
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
-import pytest
 from app.services.generation.pipeline import (
     GenerationPipelineContext,
     _pipeline_setup_and_planning,
 )
-from app.services.generation.ai_vision import AIVisionError
+
 
 def test_pipeline_setup_and_planning_basic():
     db = MagicMock()

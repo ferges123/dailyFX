@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from app.notifications.base import NotificationTestResult
+
 
 async def test_web_notification() -> NotificationTestResult:
     return NotificationTestResult(

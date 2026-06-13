@@ -216,9 +216,9 @@ def test_preset_push_subscriptions_relationship():
 
 def test_create_and_update_preset_with_push_subscriptions():
     from fastapi.testclient import TestClient
+
     from app.main import app
     from app.models.push import PushSubscriptionModel
-    from app.models.notification_preset import NotificationPresetModel
 
     init_db()
     db = SessionLocal()
@@ -252,9 +252,8 @@ def test_create_and_update_preset_with_push_subscriptions():
 
 def test_notification_preset_rejects_unknown_push_subscription_id():
     from fastapi.testclient import TestClient
+
     from app.main import app
-    from app.models.push import PushSubscriptionModel
-    from app.models.notification_preset import NotificationPresetModel
 
     init_db()
     db = SessionLocal()
@@ -277,9 +276,8 @@ def test_notification_preset_rejects_unknown_push_subscription_id():
 
 def test_notification_preset_allows_empty_push_subscription_targets():
     from fastapi.testclient import TestClient
+
     from app.main import app
-    from app.models.push import PushSubscriptionModel
-    from app.models.notification_preset import NotificationPresetModel
 
     init_db()
     db = SessionLocal()

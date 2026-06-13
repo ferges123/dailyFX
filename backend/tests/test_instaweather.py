@@ -1,12 +1,13 @@
 import asyncio
 from datetime import datetime
+
 from PIL import Image
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.instaweather import (
     InstaWeatherModule,
-    map_wmo_code,
     calculate_season_and_icon,
+    map_wmo_code,
     parse_date,
 )
 
@@ -130,12 +131,13 @@ def test_fetch_weather_structure():
 
 def test_vector_icons():
     from PIL import Image, ImageDraw
+
     from app.services.generation.modules.instaweather import (
-        draw_pin_icon,
         draw_humidity_icon,
-        draw_wind_icon,
+        draw_pin_icon,
         draw_sunrise_icon,
         draw_sunset_icon,
+        draw_wind_icon,
     )
     img = Image.new("RGBA", (100, 100))
     draw = ImageDraw.Draw(img)
@@ -148,6 +150,7 @@ def test_vector_icons():
 
 def test_collision_avoidance():
     from PIL import Image
+
     from app.services.generation.modules.instaweather import _draw_graphics_overlay
     
     img = Image.new("RGB", (1000, 1000), "white")

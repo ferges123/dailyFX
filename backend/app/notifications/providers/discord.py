@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 import httpx
+
 from app.notifications.base import NotificationTestResult
+
 
 async def test_discord_notification(
     webhook_url: str,

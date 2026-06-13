@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.models.settings import SettingsModel
 from app.utils.debug_logger import debug_log
+
 from .shared import (
-    GenerationPipelineContext,
     GenerationModuleSelection,
+    GenerationPipelineContext,
     _trace_stage,
 )
 

@@ -5,9 +5,8 @@ Revises: 0032_add_ai_photo_selection_to_schedules
 Create Date: 2026-06-10 17:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0033"
 down_revision = "0032_add_ai_photo_selection_to_schedules"

@@ -1,13 +1,15 @@
-import httpx
 import json
 import logging
+
+import httpx
+
 from .base import (
-    AIVisionResult,
-    AIVisionError,
-    XIAOMI_VISION_MODEL,
     XIAOMI_API_BASE_URL,
-    _validate_xiaomi_image_model,
+    XIAOMI_VISION_MODEL,
+    AIVisionError,
+    AIVisionResult,
     _chat_image_content,
+    _validate_xiaomi_image_model,
     _vision_result_from_chat_json,
 )
 

@@ -1,12 +1,13 @@
-import os
 import asyncio
+import os
 from datetime import datetime, timezone
+
 from _contract_helpers import configure_contract_test_db
 
 from app.database import SessionLocal, init_db
+from app.models.generation_task import GenerationTaskModel
 from app.models.schedule import ScheduleModel, schedule_notification_preset_association
 from app.models.settings import SettingsModel
-from app.models.generation_task import GenerationTaskModel
 from app.services.immich import get_or_create_settings
 from app.workers.scheduler import _perform_tick, _running_task_ids
 

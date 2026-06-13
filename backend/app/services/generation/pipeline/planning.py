@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 from app.models.settings import SettingsModel
 from app.services.generation.history import upsert_history_entry
 from app.utils.debug_logger import debug_log, set_debug_mode
+
 from .shared import (
-    GenerationPipelineContext,
     GenerationModuleSelection,
+    GenerationPipelineContext,
     _trace_stage,
 )
 
