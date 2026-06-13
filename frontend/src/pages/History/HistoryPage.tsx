@@ -5,7 +5,6 @@ import {
   Search,
   Layers,
   Trash2,
-  XCircle,
 } from 'lucide-react';
 import {
   acceptGeneration,
@@ -266,21 +265,19 @@ export function HistoryPage() {
             type="button"
             onClick={() => setConfirmDeleteOpen('rejected')}
             title="Delete all rejected items"
-            className="h-8 w-full rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition active:scale-98 cursor-pointer md:w-auto md:px-2.5"
+            className="h-8 w-auto shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition active:scale-98 cursor-pointer md:w-auto"
           >
-            <XCircle size={12} className="inline-block align-[-2px] mr-1" />
-            <span className="md:hidden">Delete Rejected</span>
-            <span className="hidden md:inline">Rejected</span>
+            <Trash2 size={12} className="inline-block align-[-2px] mr-1" />
+            <span>Rejected</span>
           </button>
           <button
             type="button"
             onClick={() => setConfirmDeleteOpen('all')}
             title="Clear all history and images"
-            className="h-8 w-full rounded-lg bg-red-600 px-3 text-xs font-bold text-white hover:bg-red-700 transition active:scale-98 cursor-pointer md:w-auto md:px-2.5"
+            className="h-8 w-auto shrink-0 rounded-lg bg-red-600 px-2.5 text-xs font-bold text-white hover:bg-red-700 transition active:scale-98 cursor-pointer md:w-auto"
           >
             <Trash2 size={12} className="inline-block align-[-2px] mr-1" />
-            <span className="md:hidden">Clear All</span>
-            <span className="hidden md:inline">Clear All</span>
+            <span>All</span>
           </button>
           <div
             className={`flex h-8 w-full items-center justify-center gap-1.5 rounded-full border px-2.5 text-[10px] md:w-auto ${
