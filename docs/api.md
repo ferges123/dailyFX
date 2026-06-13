@@ -49,6 +49,8 @@ Some read-only review endpoints remain public and are noted below.
 | Studio | `GET /api/studio/modules`, `POST /api/studio/preview` |
 | Notifications | `GET /api/notifications/vapid-public-key`, `GET /api/notifications/subscriptions`, `DELETE /api/notifications/subscriptions/{sub_id}`, `POST /api/notifications/subscribe`, `POST /api/notifications/unsubscribe` |
 | Debug | `GET /api/debug/log` |
+| Metrics | `GET /metrics` |
+
 
 ---
 
@@ -362,6 +364,43 @@ Returns all compatible single-source creative modules supported by the studio pa
 Rate limit: `5/minute`.
 
 Validates the submitted effect configuration against its schema and applies the creative filter to a locally uploaded image (`file`). Generates a temporary rendering session under the `data/temp/studio` workspace, commits a pending review entry into the database history, and returns the newly generated `task_id` along with image URLs.
+
+---
+
+## Metrics
+
+### `GET /metrics`
+
+Prometheus-compatible application metrics. Requires authentication if `APP_ACCESS_TOKEN` is configured.
+
+Exposes:
+- `dailyfx_app_info`: Application metadata (e.g., version).
+- `dailyfx_generation_task_status`: Count of active/queued generation tasks by status (`queued`, `running`, `completed`, `failed`).
+- `dailyfx_generation_history_status`: Count of historical generation tasks by status (`pending_review`, `accepted`, `rejected`, `failed`).
+- `dailyfx_scheduler_heartbeat_age_seconds`: Time in seconds since the last scheduler heartbeat (based on the modification age of the `scheduler.health` file).
+
+Example response (Prometheus exposition format):
+
+```text
+# HELP dailyfx_app_info Application metadata.
+# TYPE dailyfx_app_info gauge
+dailyfx_app_info{version="0.1.0"} 1
+# HELP dailyfx_generation_task_status Count of active/queued generation tasks by status.
+# TYPE dailyfx_generation_task_status gauge
+dailyfx_generation_task_status{status="queued"} 0
+dailyfx_generation_task_status{status="running"} 0
+dailyfx_generation_task_status{status="completed"} 0
+dailyfx_generation_task_status{status="failed"} 0
+# HELP dailyfx_generation_history_status Count of historical generation tasks by status.
+# TYPE dailyfx_generation_history_status gauge
+dailyfx_generation_history_status{status="pending_review"} 1
+dailyfx_generation_history_status{status="accepted"} 5
+dailyfx_generation_history_status{status="rejected"} 0
+dailyfx_generation_history_status{status="failed"} 0
+# HELP dailyfx_scheduler_heartbeat_age_seconds Time in seconds since last scheduler heartbeat.
+# TYPE dailyfx_scheduler_heartbeat_age_seconds gauge
+dailyfx_scheduler_heartbeat_age_seconds 12
+```
 
 ---
 
