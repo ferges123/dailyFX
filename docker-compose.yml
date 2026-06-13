@@ -24,14 +24,14 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "8439:80"
+      - "8439:8080"
     deploy:
       resources:
         limits:
           memory: 512m
           cpus: "1.0"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3
