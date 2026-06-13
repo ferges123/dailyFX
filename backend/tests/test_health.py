@@ -1,11 +1,13 @@
-import sys
-import time
 import os
-from unittest.mock import patch, MagicMock
+import time
+from unittest.mock import MagicMock, patch
+
 import pytest
+
 from app.api.routes_health import health
 from app.main import app
 from app.version import APP_VERSION
+
 
 def test_health_and_fastapi_metadata_use_shared_app_version():
     assert health()["version"] == APP_VERSION
@@ -29,7 +31,7 @@ def test_healthcheck_script_success(tmp_path):
     # Mock urllib.request.urlopen and get_settings
     with patch("healthcheck.get_settings", return_value=mock_settings), \
          patch("urllib.request.urlopen") as mock_urlopen, \
-         patch("sys.exit", side_effect=mock_sys_exit) as mock_exit:
+         patch("sys.exit", side_effect=mock_sys_exit):
         
         # Mock API response
         mock_resp = MagicMock()
@@ -58,7 +60,7 @@ def test_healthcheck_script_stale_scheduler(tmp_path):
 
     with patch("healthcheck.get_settings", return_value=mock_settings), \
          patch("urllib.request.urlopen") as mock_urlopen, \
-         patch("sys.exit", side_effect=mock_sys_exit) as mock_exit:
+         patch("sys.exit", side_effect=mock_sys_exit):
         
         # Mock API response
         mock_resp = MagicMock()
@@ -85,7 +87,7 @@ def test_healthcheck_script_api_failure(tmp_path):
 
     with patch("healthcheck.get_settings", return_value=mock_settings), \
          patch("urllib.request.urlopen") as mock_urlopen, \
-         patch("sys.exit", side_effect=mock_sys_exit) as mock_exit:
+         patch("sys.exit", side_effect=mock_sys_exit):
         
         # Mock API response failing
         mock_urlopen.side_effect = Exception("Connection refused")

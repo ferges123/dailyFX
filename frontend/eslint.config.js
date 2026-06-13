@@ -21,5 +21,13 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  {
+    files: ['src/sw.js'],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+      },
+    },
+  },
   prettier,
 );

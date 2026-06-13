@@ -29,3 +29,4 @@ data/outputs/
 data/temp/
 data/tests/
 backend/data/
+.mimocode/

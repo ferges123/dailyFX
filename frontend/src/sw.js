@@ -35,16 +35,13 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = event.notification.data?.url || '/';
   
   event.waitUntil(
-    // eslint-disable-next-line no-undef
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus();
         }
       }
-      // eslint-disable-next-line no-undef
       if (clients.openWindow) {
-        // eslint-disable-next-line no-undef
         return clients.openWindow(targetUrl);
       }
     })

@@ -1,1 +1,1 @@
-from .base import AIVisionResult, AIVisionError
+from .base import AIVisionError, AIVisionResult  # noqa: F401

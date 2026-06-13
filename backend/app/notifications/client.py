@@ -1,49 +1,10 @@
 from __future__ import annotations
 
-# Re-export Web notification provider
-from app.notifications.providers.web import (
-    test_web_notification,
-    send_web_notification,
-)
-
-# Re-export Ntfy notification provider
-from app.notifications.providers.ntfy import (
-    test_ntfy_notification,
-    send_ntfy_notification,
-)
-
-# Re-export Gotify notification provider
-from app.notifications.providers.gotify import (
-    test_gotify_notification,
-    send_gotify_notification,
-)
-
-# Re-export Telegram notification provider
-from app.notifications.providers.telegram import (
-    html_escape,
-    send_telegram_notification,
-)
-
-# Re-export Home Assistant notification provider
-from app.notifications.providers.home_assistant import (
-    test_homeassistant_notification,
-    send_homeassistant_notification,
-)
-
-# Re-export Apprise notification provider
-from app.notifications.providers.apprise import (
-    test_apprise_notification,
-    send_apprise_notification,
-)
-
-# Re-export Discord notification provider
-from app.notifications.providers.discord import (
-    test_discord_notification,
-    send_discord_notification,
-)
-
-# Re-export Slack notification provider
-from app.notifications.providers.slack import (
-    test_slack_notification,
-    send_slack_notification,
-)
+from app.notifications.providers.apprise import send_apprise_notification  # noqa: F401
+from app.notifications.providers.discord import send_discord_notification  # noqa: F401
+from app.notifications.providers.gotify import send_gotify_notification  # noqa: F401
+from app.notifications.providers.home_assistant import send_homeassistant_notification  # noqa: F401
+from app.notifications.providers.ntfy import send_ntfy_notification  # noqa: F401
+from app.notifications.providers.slack import send_slack_notification  # noqa: F401
+from app.notifications.providers.telegram import send_telegram_notification  # noqa: F401
+from app.notifications.providers.web import send_web_notification  # noqa: F401

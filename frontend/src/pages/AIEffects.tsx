@@ -25,7 +25,7 @@ import {
 } from '../api/client';
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../components/FormUI';
-import { Field, SelectField } from '../components/Field';
+import { Field } from '../components/Field';
 
 const AI_EFFECT_GROUP_ORDER = [
   'Portrait',

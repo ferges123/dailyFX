@@ -1,12 +1,13 @@
 import time
+
 from fastapi import APIRouter, Depends, Response
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.models.generation_task import GenerationTaskModel
 from app.models.generation_history import GenerationHistoryModel
+from app.models.generation_task import GenerationTaskModel
 from app.security import require_auth
 from app.version import APP_VERSION
 

@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 
 import {
   createStudioPreview,
-  getApiUrl,
   getStudioModules,
   type GenerationModuleInfo,
   type StudioPreviewResponse,

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
-  Check,
   Clock3,
   HelpCircle,
   Pencil,
@@ -34,7 +33,6 @@ import {
   serializeAutomationSchedule,
   describeAutomationSchedule,
 } from './automation.utils';
-import { type AutomationScheduleMode } from './automation.types';
 import { formatDateTime } from './datetime.utils';
 import { getVisionModelOptions, getImageModelOptions } from './Settings';
 import { type FormState, emptyForm } from './Schedules/types';

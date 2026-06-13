@@ -377,7 +377,6 @@ def _draw_apple_weather_overlay(
     # Let the circle size scale nicely with temp height
     circle_d = int(temp_h + 16 * scale)
     icon_w = circle_d
-    icon_h = circle_d
 
     line1_width = icon_w + icon_gap + temp_w
     line1_height = circle_d

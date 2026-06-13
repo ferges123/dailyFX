@@ -1,61 +1,62 @@
 from __future__ import annotations
 
 import logging
+
 from app.models.settings import SettingsModel
 from app.services.generation.ai_budget import reserve_ai_usage
 
 # Import base elements
 from .vision.base import (
-    AIVisionResult,
-    AIVisionError,
     DEFAULT_VISION_PROMPT,
-    OPENAI_VISION_MODEL,
     GEMINI_VISION_MODEL,
+    OPENAI_VISION_MODEL,
+    XIAOMI_API_BASE_URL,  # noqa: F401
     XIAOMI_VISION_MODEL,
-    XIAOMI_API_BASE_URL,
-    _normalize_image_for_vision,
+    AIVisionError,
+    AIVisionResult,
     _decrypt_provider_key,
+    _normalize_image_for_vision,
     _validate_xiaomi_image_model,
-)
-
-# Import OpenAI adapter
-from .vision.openai import (
-    _analyze_images_with_openai,
-    _analyze_with_openai,
-    _get_text_desc_openai,
-    _fuse_openai,
 )
 
 # Import Gemini adapter
 from .vision.gemini import (
     _analyze_images_with_gemini,
     _analyze_with_gemini,
-    _get_text_desc_gemini,
     _fuse_gemini,
-)
-
-# Import OpenRouter adapter
-from .vision.openrouter import (
-    _analyze_images_with_openrouter,
-    _analyze_with_openrouter,
-    _get_text_desc_openrouter,
-    _fuse_openrouter,
-)
-
-# Import Xiaomi adapter
-from .vision.xiaomi import (
-    _analyze_images_with_xiaomi,
-    _analyze_with_xiaomi,
-    _get_text_desc_xiaomi,
-    _fuse_xiaomi,
+    _get_text_desc_gemini,
 )
 
 # Import Local adapter
 from .vision.local import (
     _analyze_images_with_local,
     _analyze_with_local,
-    _get_text_desc_local,
     _fuse_local,
+    _get_text_desc_local,
+)
+
+# Import OpenAI adapter
+from .vision.openai import (
+    _analyze_images_with_openai,
+    _analyze_with_openai,
+    _fuse_openai,
+    _get_text_desc_openai,
+)
+
+# Import OpenRouter adapter
+from .vision.openrouter import (
+    _analyze_images_with_openrouter,
+    _analyze_with_openrouter,
+    _fuse_openrouter,
+    _get_text_desc_openrouter,
+)
+
+# Import Xiaomi adapter
+from .vision.xiaomi import (
+    _analyze_images_with_xiaomi,
+    _analyze_with_xiaomi,
+    _fuse_xiaomi,
+    _get_text_desc_xiaomi,
 )
 
 logger = logging.getLogger(__name__)
