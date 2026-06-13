@@ -448,3 +448,51 @@ async def reject_generation(task_id: str, db: Session = Depends(get_db), _: None
     db.refresh(row)
     record_history_snapshot(db, row)
     return row
+
+
+@router.delete("/history/rejected", status_code=204)
+async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    """Delete all rejected generations (files + DB records)."""
+    from app.models.generation_stream_event import GenerationStreamEventModel
+    from app.models.generation_task import GenerationTaskModel
+
+    rows = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "REJECTED").all()
+    task_ids = [row.task_id for row in rows]
+
+    for row in rows:
+        if row.output_path:
+            path = Path(row.output_path)
+            if path.exists():
+                path.unlink(missing_ok=True)
+            thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
+            if thumb.exists():
+                thumb.unlink(missing_ok=True)
+
+    db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "REJECTED").delete()
+    if task_ids:
+        db.query(GenerationTaskModel).filter(GenerationTaskModel.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(GenerationStreamEventModel).filter(GenerationStreamEventModel.task_id.in_(task_ids)).delete(synchronize_session=False)
+    db.commit()
+
+
+@router.delete("/history/cache", status_code=204)
+async def clear_generation_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    """Delete all generation history (files + DB records)."""
+    from app.models.generation_stream_event import GenerationStreamEventModel
+    from app.models.generation_task import GenerationTaskModel
+
+    rows = db.query(GenerationHistoryModel).all()
+
+    for row in rows:
+        if row.output_path:
+            path = Path(row.output_path)
+            if path.exists():
+                path.unlink(missing_ok=True)
+            thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
+            if thumb.exists():
+                thumb.unlink(missing_ok=True)
+
+    db.query(GenerationHistoryModel).delete()
+    db.query(GenerationTaskModel).delete()
+    db.query(GenerationStreamEventModel).delete()
+    db.commit()

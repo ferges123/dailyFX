@@ -414,7 +414,7 @@ function PresetSubnavLink({
   return (
     <Link
       to={to}
-      className={`flex-1 rounded-[0.8rem] py-1.5 text-center text-xs font-semibold transition-all ${
+      className={`flex-1 shrink-0 rounded-[0.8rem] py-1.5 px-3.5 text-center text-xs font-semibold transition-all ${
         active
           ? 'bg-white text-emerald-950 shadow-xs'
           : 'text-stone-600 hover:text-stone-900'
@@ -429,7 +429,7 @@ function PresetsLayout() {
   const location = useLocation();
   return (
     <div className="grid gap-3">
-      <div className="app-surface p-1 flex gap-1.5">
+      <div className="app-surface p-1 flex gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <PresetSubnavLink
           to="/presets/filters"
           active={location.pathname === '/presets/filters'}

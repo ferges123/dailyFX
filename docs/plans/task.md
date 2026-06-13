@@ -18,3 +18,7 @@
 | Task 14: bulk actions | Rejected | Decided not to implement. |
 
 | Task 15: metrics and structured logging | Completed | Added Prometheus metrics endpoint and structured JSON logging. |
+| Task 16: update architecture.md | Completed | Update architecture details to reflect pipeline/vision split and notifications refactor. |
+| Task 17: update api.md | Completed | Document rate limiting, config validation, and new studio endpoints in API docs. |
+| Task 18: update frontend.md | Completed | Update frontend structure with split pages, lazy loading, and route boundaries. |
+| Task 19: update README.md | Completed | Update readme architecture diagram and metadata notes. |

@@ -445,6 +445,14 @@ export function rejectGeneration(taskId: string) {
   });
 }
 
+export function clearRejectedCache() {
+  return request<void>('/api/generation/history/rejected', { method: 'DELETE' });
+}
+
+export function clearGenerationCache() {
+  return request<void>('/api/generation/history/cache', { method: 'DELETE' });
+}
+
 export async function getVapidPublicKey(): Promise<string> {
   const data = await request<{ publicKey: string }>('/api/notifications/vapid-public-key');
   return data.publicKey;

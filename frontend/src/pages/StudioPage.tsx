@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ImagePlus, WandSparkles, History } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import {
   createStudioPreview,
@@ -8,10 +9,13 @@ import {
   getStudioModules,
   type GenerationModuleInfo,
   type StudioPreviewResponse,
+  type GenerationHistoryEntry,
 } from '../api/client';
 import { InlineError, SectionCard } from '../components/FormUI';
 import { InlineSpinner } from '../components/ErrorUI';
 import { ModuleConfigEditor } from '../components/EffectsComponents';
+import { SecureImage } from '../components/SecureImage';
+import { LightboxModal } from './History/LightboxModal';
 
 export function StudioPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -20,6 +24,44 @@ export function StudioPage() {
   const [aiVisionEnabled, setAiVisionEnabled] = useState(false);
   const [promptEnrichmentEnabled, setPromptEnrichmentEnabled] = useState(false);
   const [preview, setPreview] = useState<StudioPreviewResponse | null>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  const entryForLightbox = useMemo((): GenerationHistoryEntry | null => {
+    if (!preview) return null;
+    return {
+      id: 0,
+      task_id: preview.task_id,
+      generation_type: preview.module_name,
+      status: 'PENDING_REVIEW',
+      title: preview.title,
+      summary: preview.summary,
+      source_asset_ids: '[]',
+      output_path: null,
+      image_url: preview.image_url,
+      provider: null,
+      model: null,
+      total_token_count: null,
+      config_json: '{}',
+      tags_json: null,
+      task_step: null,
+      uploaded_asset_id: null,
+      upload_status: null,
+      album_id: null,
+      album_name: null,
+      album_created: false,
+      album_updated: false,
+      accept_notes: null,
+      accepted_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }, [preview]);
+
+  useEffect(() => {
+    if (!preview) {
+      setIsLightboxOpen(false);
+    }
+  }, [preview]);
 
   const [dragActive, setDragActive] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -236,25 +278,38 @@ export function StudioPage() {
 
       <SectionCard title="Preview">
         {preview ? (
-          <div className="grid gap-3">
-            <img
-              src={getApiUrl(preview.image_url)}
-              alt={preview.title}
-              className="max-h-[70vh] w-full rounded-xl border border-stone-200 object-contain"
-            />
+          <div className="flex flex-col gap-3 flex-1">
+            <div className="flex-1 flex items-center justify-center">
+              <SecureImage
+                src={preview.image_url}
+                alt={preview.title}
+                className="max-h-[70vh] w-full rounded-xl border border-stone-200 object-contain cursor-zoom-in"
+                onClick={() => setIsLightboxOpen(true)}
+              />
+            </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <a className="app-button-primary justify-center" href={preview.history_url}>
+              <Link className="app-button-primary justify-center" to={preview.history_url}>
                 <History size={16} />
                 Open in History
-              </a>
+              </Link>
             </div>
           </div>
         ) : (
-          <div className="grid min-h-80 place-items-center rounded-xl border border-stone-200 bg-white/65 text-sm text-stone-500">
+          <div className="grid min-h-80 place-items-center rounded-xl border border-stone-200 bg-white/65 text-sm text-stone-500 flex-1">
             Preview appears here after generation.
           </div>
         )}
       </SectionCard>
+
+      {isLightboxOpen && entryForLightbox && (
+        <LightboxModal
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+          imageUrl={entryForLightbox.image_url || ''}
+          entry={entryForLightbox}
+          exif={null}
+        />
+      )}
     </section>
   );
 }

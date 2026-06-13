@@ -9,7 +9,7 @@ export function useHistorySelection(
   setSelectedHistoryTaskId: (taskId: string | null) => void,
   allowFallbackSelection = true,
 ) {
-  const [mobileShowDetail, setMobileShowDetail] = useState(false);
+  const [mobileShowDetail, setMobileShowDetail] = useState(!allowFallbackSelection);
 
   const selectedHistoryEntry = useMemo(
     () => filteredHistoryItems.find((item) => item.task_id === selectedHistoryTaskId) ?? null,

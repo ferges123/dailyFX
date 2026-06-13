@@ -15,6 +15,8 @@ vi.mock('../api/client', () => {
     acceptGeneration: vi.fn(),
     rejectGeneration: vi.fn(),
     retryGenerationAcceptance: vi.fn(),
+    clearRejectedCache: vi.fn(),
+    clearGenerationCache: vi.fn(),
     getImmichAssetDetailUrl: vi.fn((base, id) => id ? `${base}/photos/${id}` : null),
   };
 });

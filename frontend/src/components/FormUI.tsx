@@ -14,7 +14,7 @@ export function SectionCard({
   className?: string;
 }) {
   return (
-    <section className={`grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
+    <section className={`flex flex-col gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
       <div className="flex items-center gap-1.5">
         <div className="text-sm font-semibold text-stone-900">{title}</div>
         {description ? (
