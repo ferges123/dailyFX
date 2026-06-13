@@ -47,9 +47,9 @@ def test_settings_are_saved_with_masked_secrets():
         )
 
         assert response.immich_url == "https://immich.example.test"
-        assert response.immich_api_key_masked == "imm...1234"
-        assert response.openai_api_key_masked == "sk-...9876"
-        assert response.xiaomi_api_key_masked == "mim...2468"
+        assert response.immich_api_key_masked == "********"
+        assert response.openai_api_key_masked == "********"
+        assert response.xiaomi_api_key_masked == "********"
         assert response.ai_vision_hourly_limit == 25
         assert response.ai_image_hourly_limit == 7
 
@@ -61,7 +61,7 @@ def test_settings_are_saved_with_masked_secrets():
         assert row.ai_image_hourly_limit == 7
 
         read_response = read_settings(db)
-        assert read_response.immich_api_key_masked == "imm...1234"
+        assert read_response.immich_api_key_masked == "********"
     finally:
         db.close()
 

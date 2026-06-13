@@ -2,7 +2,6 @@ import json
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.security import mask_secret
 from app.utils.url_utils import validate_http_url
 
 
@@ -66,14 +65,6 @@ class SettingsResponse(SettingsBase):
     def from_model(
         cls,
         row: object,
-        *,
-        immich_api_key: str | None = None,
-        openai_api_key: str | None = None,
-        gemini_api_key: str | None = None,
-        openrouter_api_key: str | None = None,
-        byteplus_api_key: str | None = None,
-        xiaomi_api_key: str | None = None,
-        local_ai_api_key: str | None = None,
     ) -> "SettingsResponse":
         return cls(
             immich_url=row.immich_url,
@@ -83,13 +74,13 @@ class SettingsResponse(SettingsBase):
             debug_mode=row.debug_mode,
             favorite_albums_json=row.favorite_albums_json,
             ai_custom_prompt=row.ai_custom_prompt,
-            immich_api_key_masked=mask_secret(immich_api_key),
-            openai_api_key_masked=mask_secret(openai_api_key),
-            gemini_api_key_masked=mask_secret(gemini_api_key),
-            openrouter_api_key_masked=mask_secret(openrouter_api_key),
-            byteplus_api_key_masked=mask_secret(byteplus_api_key),
-            xiaomi_api_key_masked=mask_secret(xiaomi_api_key),
-            local_ai_api_key_masked=mask_secret(local_ai_api_key),
+            immich_api_key_masked="********" if getattr(row, "encrypted_immich_api_key", None) else None,
+            openai_api_key_masked="********" if getattr(row, "encrypted_openai_api_key", None) else None,
+            gemini_api_key_masked="********" if getattr(row, "encrypted_gemini_api_key", None) else None,
+            openrouter_api_key_masked="********" if getattr(row, "encrypted_openrouter_api_key", None) else None,
+            byteplus_api_key_masked="********" if getattr(row, "encrypted_byteplus_api_key", None) else None,
+            xiaomi_api_key_masked="********" if getattr(row, "encrypted_xiaomi_api_key", None) else None,
+            local_ai_api_key_masked="********" if getattr(row, "encrypted_local_ai_api_key", None) else None,
         )
 
 

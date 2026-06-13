@@ -56,14 +56,14 @@ def test_settings_contract():
             "debug_mode": True,
             "favorite_albums_json": '["albums-a", "albums-b"]',
             "ai_custom_prompt": "Focus on faces",
-            "immich_api_key_masked": "imm...1234",
-            "openai_api_key_masked": "sk-...9876",
-            "gemini_api_key_masked": "gem...4567",
-            "openrouter_api_key_masked": "ope...1357",
-            "byteplus_api_key_masked": "byt...2468",
-            "xiaomi_api_key_masked": "mim...8642",
+            "immich_api_key_masked": "********",
+            "openai_api_key_masked": "********",
+            "gemini_api_key_masked": "********",
+            "openrouter_api_key_masked": "********",
+            "byteplus_api_key_masked": "********",
+            "xiaomi_api_key_masked": "********",
             "local_ai_base_url": "https://local-ai.example.test/v1",
-            "local_ai_api_key_masked": "loc...3141",
+            "local_ai_api_key_masked": "********",
         }
 
         read_response = read_settings(db)
