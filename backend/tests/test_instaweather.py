@@ -186,3 +186,40 @@ def test_collision_avoidance():
     assert res.size == (1000, 1000)
 
 
+def test_instaweather_reference_layout_returns_square_image():
+    from app.services.generation.modules.instaweather import _draw_graphics_overlay
+
+    img = Image.new("RGB", (1600, 1200), "white")
+    weather_info = {
+        "temp_c": 22.0,
+        "weather_code": 1,
+        "apparent_temp_c": 22.0,
+        "cloud_cover": 12,
+        "humidity": 48,
+        "wind_speed": 11.0,
+        "wind_dir": "NE",
+        "sunrise": "04:57",
+        "sunset": "20:46",
+    }
+
+    res = _draw_graphics_overlay(
+        img=img,
+        mode="instaweather",
+        location=("Zakopane", "Polska"),
+        weather_info=weather_info,
+        dt=datetime(2024, 5, 18, 12, 0, 0),
+        faces=[],
+        units="celsius",
+        font_style="classic",
+    )
+
+    assert res.size == (1200, 1200)
+
+
+def test_instaweather_reference_layout_uses_english_labels():
+    from app.services.generation.modules.instaweather import _cloudiness_label_en, _format_english_date
+
+    assert _format_english_date(datetime(2024, 5, 18, 12, 0, 0)) == ("SATURDAY", "MAY 18, 2024")
+    assert _cloudiness_label_en("LOW") == "LOW"
+    assert _cloudiness_label_en("MEDIUM") == "MEDIUM"
+    assert _cloudiness_label_en("HIGH") == "HIGH"

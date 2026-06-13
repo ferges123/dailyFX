@@ -20,7 +20,7 @@ def _load_app_version() -> str:
     except Exception:
         pass
 
-    return "0.2.14"
+    return "0.2.16"
 
 
 APP_VERSION = _load_app_version()
