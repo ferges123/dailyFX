@@ -691,3 +691,8 @@ def test_tag_assets_uses_put_tag_assets_endpoint(monkeypatch: pytest.MonkeyPatch
             "body": {"ids": ["asset-1"]},
         }
     ]
+
+
+def test_immich_client_default_timeout():
+    client = ImmichClient("https://photos.example.com", "secret-key")
+    assert client.timeout == 30.0

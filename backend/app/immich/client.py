@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImmichClient:
-    def __init__(self, server_url: str, api_key: str, timeout: float = 10.0) -> None:
+    def __init__(self, server_url: str, api_key: str, timeout: float = 30.0) -> None:
         self.server_url = server_url.rstrip("/")
         self.api_base_url = normalize_api_url(server_url)
         self.api_key = api_key
