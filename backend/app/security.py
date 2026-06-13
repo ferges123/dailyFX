@@ -20,6 +20,13 @@ def require_auth(credentials: HTTPAuthorizationCredentials | None = Security(_be
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def require_review_auth(credentials: HTTPAuthorizationCredentials | None = Security(_bearer)) -> None:
+    """FastAPI dependency — enforces Bearer token auth on review endpoints if configured."""
+    if not get_settings().require_auth_for_review:
+        return  # auth not required for reviews
+    require_auth(credentials)
+
+
 def _fernet() -> Fernet:
     digest = hashlib.sha256(get_settings().secret_key_material.encode("utf-8")).digest()
     key = base64.urlsafe_b64encode(digest)

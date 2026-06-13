@@ -21,7 +21,7 @@ from app.schemas.generation import (
     GenerationModuleResponse,
     GenerationTaskStatusResponse,
 )
-from app.security import require_auth
+from app.security import require_auth, require_review_auth
 from app.services.generation.ai_effects import get_seed_hidden_map
 from app.services.generation.examples import ensure_example_preview, list_example_previews
 from app.services.generation.history import get_or_create_thumbnail
@@ -242,7 +242,11 @@ async def get_review_page(task_id: str) -> FileResponse:
 
 
 @router.get("/review/{task_id}/thumbnail")
-async def get_review_thumbnail(task_id: str, db: Session = Depends(get_db)) -> FileResponse:
+async def get_review_thumbnail(
+    task_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_review_auth),
+) -> FileResponse:
     """Public thumbnail for push notification image previews."""
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row or not row.output_path:
@@ -254,7 +258,11 @@ async def get_review_thumbnail(task_id: str, db: Session = Depends(get_db)) -> F
 
 
 @router.get("/history/{task_id}", response_model=GenerationHistoryResponse)
-async def get_generation_history_entry(task_id: str, db: Session = Depends(get_db)):
+async def get_generation_history_entry(
+    task_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_review_auth),
+):
     """Get a single generation history entry by task_id. No auth required (used by review page)."""
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
@@ -280,7 +288,7 @@ def get_generation_image(
     task_id: str,
     thumbnail: bool = False,
     db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
+    _: None = Depends(require_review_auth),
 ):
     """Serve the generated image file or its thumbnail preview."""
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()

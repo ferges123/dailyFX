@@ -126,6 +126,7 @@ All connections (Immich, AI keys) and preferences are configured directly via th
 | `DATA_DIR` | no | Directory for SQLite DB, results, and caches (default: `./data`). |
 | `DATABASE_URL` | no | Database connection string (default: `sqlite:///./data/app.db`). |
 | `APP_ACCESS_TOKEN` | no | If set, all API endpoints require `Authorization: Bearer <token>`. Recommended for internet-exposed instances. |
+| `REQUIRE_AUTH_FOR_REVIEW` | no | If set to `true`, history review and image endpoints will also require auth (default: `false`). |
 | `APP_EXTERNAL_URL` | no | Public/External URL of your DailyFX instance (required for images and action buttons in notifications). |
 | `APP_CONTACT_EMAIL` | no | Email to contact the administrator (default: `dailyfx@localhost`). |
 | `EXAMPLE_ASSET_ID` | no | Any asset ID from your library — enables effect preview images in the Effects tab. |

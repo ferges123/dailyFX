@@ -118,3 +118,33 @@ def test_cors_origins_must_be_http_or_https(monkeypatch):
         assert "CORS_ORIGINS entries must be absolute http:// or https:// origins" in str(exc)
     else:
         raise AssertionError("settings loaded with invalid CORS_ORIGINS")
+
+
+def test_require_review_auth_dependency(monkeypatch):
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("APP_ENV", "development")
+
+    import app.config
+    import app.security
+    from fastapi import HTTPException
+
+    app.config.get_settings.cache_clear()
+
+    # 1. require_auth_for_review is False -> should NOT raise even if app_access_token is set
+    monkeypatch.setenv("REQUIRE_AUTH_FOR_REVIEW", "False")
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "my-token")
+    app.config.get_settings.cache_clear()
+
+    # This should pass without raising
+    app.security.require_review_auth(None)
+
+    # 2. require_auth_for_review is True -> should raise HTTPException(401) if no credentials
+    monkeypatch.setenv("REQUIRE_AUTH_FOR_REVIEW", "True")
+    app.config.get_settings.cache_clear()
+
+    try:
+        app.security.require_review_auth(None)
+    except HTTPException as exc:
+        assert exc.status_code == 401
+    else:
+        raise AssertionError("require_review_auth did not raise 401 when enabled and no credentials provided")
