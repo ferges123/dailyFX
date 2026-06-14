@@ -29,28 +29,34 @@ init_db()
 # ── Debug route ──────────────────────────────────────────────────────────────
 
 
-def test_debug_log_not_found_when_no_logs(tmp_path):
+def test_debug_log_not_found_when_no_logs(tmp_path, monkeypatch):
     from fastapi import HTTPException
 
     from app.api.routes_debug import get_debug_log
+    import app.config as config_module
 
     missing_dir = tmp_path / "missing"
-    with patch("app.api.routes_debug.DEBUG_LOG_DIR", missing_dir):
-        try:
-            get_debug_log()
-        except HTTPException as exc:
-            assert exc.status_code == 404
-        else:
-            raise AssertionError("Expected missing debug logs to return 404")
+    settings = config_module.get_settings()
+    monkeypatch.setattr(settings, "data_dir", missing_dir)
+    try:
+        get_debug_log()
+    except HTTPException as exc:
+        assert exc.status_code == 404
+    else:
+        raise AssertionError("Expected missing debug logs to return 404")
 
 
-def test_debug_log_returns_content(tmp_path):
+def test_debug_log_returns_content(tmp_path, monkeypatch):
     from app.api.routes_debug import get_debug_log
+    import app.config as config_module
 
-    log_file = tmp_path / "debug_20260101_000000.log"
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log_file = log_dir / "debug_20260101_000000.log"
     log_file.write_text("test log line")
-    with patch("app.api.routes_debug.DEBUG_LOG_DIR", tmp_path):
-        assert get_debug_log() == "test log line"
+    settings = config_module.get_settings()
+    monkeypatch.setattr(settings, "data_dir", tmp_path)
+    assert get_debug_log() == "test log line"
 
 
 # ── Health detailed ──────────────────────────────────────────────────────────

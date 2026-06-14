@@ -17,12 +17,14 @@ def test_debug_log_endpoint_no_auth(tmp_path, monkeypatch):
     log_file = log_dir / "debug_2026-06-12.log"
     log_file.write_text("test log content")
 
-    # Patch DEBUG_LOG_DIR in routes_debug
-    with patch("app.api.routes_debug.DEBUG_LOG_DIR", log_dir):
-        with TestClient(app) as client:
-            response = client.get("/api/debug/log")
-            assert response.status_code == 200
-            assert response.text == "test log content"
+    # Patch data_dir in settings
+    settings = config_module.get_settings()
+    monkeypatch.setattr(settings, "data_dir", tmp_path)
+
+    with TestClient(app) as client:
+        response = client.get("/api/debug/log")
+        assert response.status_code == 200
+        assert response.text == "test log content"
 
 
 def test_debug_log_endpoint_with_auth(tmp_path, monkeypatch):
@@ -36,21 +38,23 @@ def test_debug_log_endpoint_with_auth(tmp_path, monkeypatch):
     log_file = log_dir / "debug_2026-06-12.log"
     log_file.write_text("test log content")
 
-    # Patch DEBUG_LOG_DIR in routes_debug
-    with patch("app.api.routes_debug.DEBUG_LOG_DIR", log_dir):
-        with TestClient(app) as client:
-            # 1. Try unauthenticated
-            response = client.get("/api/debug/log")
-            assert response.status_code == 401
+    # Patch data_dir in settings
+    settings = config_module.get_settings()
+    monkeypatch.setattr(settings, "data_dir", tmp_path)
 
-            # 2. Try with wrong token
-            response = client.get("/api/debug/log", headers={"Authorization": "Bearer bad-token"})
-            assert response.status_code == 401
+    with TestClient(app) as client:
+        # 1. Try unauthenticated
+        response = client.get("/api/debug/log")
+        assert response.status_code == 401
 
-            # 3. Try with correct token
-            response = client.get("/api/debug/log", headers={"Authorization": "Bearer super-secret-debug-token"})
-            assert response.status_code == 200
-            assert response.text == "test log content"
+        # 2. Try with wrong token
+        response = client.get("/api/debug/log", headers={"Authorization": "Bearer bad-token"})
+        assert response.status_code == 401
+
+        # 3. Try with correct token
+        response = client.get("/api/debug/log", headers={"Authorization": "Bearer super-secret-debug-token"})
+        assert response.status_code == 200
+        assert response.text == "test log content"
 
     # Reset setting
     monkeypatch.delenv("APP_ACCESS_TOKEN", raising=False)
