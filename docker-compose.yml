@@ -8,6 +8,11 @@ services:
       - ./data:/data
     ports:
       - "8438:8438"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -25,6 +30,11 @@ services:
     restart: unless-stopped
     ports:
       - "8439:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
