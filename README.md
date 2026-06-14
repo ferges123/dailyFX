@@ -96,13 +96,13 @@ services:
     volumes:
       - ./data:/data
     ports:
-      - "8438:8438"
+      - "127.0.0.1:8438:8438"
 
   web:
     image: ghcr.io/ferges123/dailyfx-web:latest
     restart: unless-stopped
     ports:
-      - "8439:8080"
+      - "127.0.0.1:8439:8080"
 ```
 
 #### Production-Ready Version (with healthchecks & limits)
@@ -117,17 +117,14 @@ services:
     volumes:
       - ./data:/data
     ports:
-      - "8438:8438"
+      - "127.0.0.1:8438:8438"
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-          cpus: "2.0"
+    mem_limit: 2g
+    cpus: 2.0
     healthcheck:
       test: ["CMD", "python", "healthcheck.py"]
       interval: 30s
@@ -139,17 +136,14 @@ services:
     image: ghcr.io/ferges123/dailyfx-web:latest
     restart: unless-stopped
     ports:
-      - "8439:8080"
+      - "127.0.0.1:8439:8080"
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: "1.0"
+    mem_limit: 512m
+    cpus: 1.0
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
       interval: 30s
