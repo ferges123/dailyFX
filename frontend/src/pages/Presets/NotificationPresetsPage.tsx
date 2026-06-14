@@ -276,6 +276,7 @@ export function NotificationPresetsTab() {
   const [pushStatus, setPushStatus] = useState<
     'idle' | 'pending' | 'subscribed' | 'error'
   >('idle');
+  const [pushError, setPushError] = useState<string | null>(null);
   const formPanelRef = useRef<HTMLDivElement | null>(null);
 
   const webPushSupport = {
@@ -347,6 +348,7 @@ export function NotificationPresetsTab() {
   async function handlePushToggle() {
     if (pushStatus === 'pending') return;
     setPushStatus('pending');
+    setPushError(null);
     try {
       const reg = await navigator.serviceWorker.ready;
       if (pushSub) {
@@ -366,8 +368,24 @@ export function NotificationPresetsTab() {
         setPushStatus('subscribed');
         qc.invalidateQueries({ queryKey: ['push-subscriptions'] });
       }
-    } catch {
-      setPushStatus('idle');
+    } catch (err: any) {
+      setPushStatus('error');
+      let errMsg = 'An unknown error occurred.';
+      if (err instanceof Error) {
+        errMsg = err.message;
+      } else if (typeof err === 'string') {
+        errMsg = err;
+      }
+
+      if (errMsg.includes('Permission denied') || errMsg.includes('permission')) {
+        errMsg = 'Permission denied. Please enable notifications for this site in your browser settings.';
+      } else if (errMsg.includes('is not secure') || (typeof window !== 'undefined' && !window.isSecureContext)) {
+        errMsg = 'Web Push requires a secure context (HTTPS) or a local localhost context.';
+      } else if (errMsg.includes('VAPID') || errMsg.includes('applicationServerKey')) {
+        errMsg = 'Invalid or missing VAPID public key. Please check your server configuration.';
+      }
+
+      setPushError(errMsg);
     }
   }
 
@@ -551,6 +569,12 @@ export function NotificationPresetsTab() {
                     </span>
                   )}
                 </div>
+
+                {pushError && (
+                  <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-800">
+                    <strong>Failed to update subscription:</strong> {pushError}
+                  </div>
+                )}
 
                 {/* Warn if no device is targeted */}
                 {(form.push_subscription_ids ?? []).length === 0 && (

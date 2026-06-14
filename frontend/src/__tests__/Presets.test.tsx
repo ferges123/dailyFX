@@ -391,4 +391,73 @@ describe('Presets pages', () => {
       'sm:flex-row',
     );
   });
+
+  it('displays error message when Web Push subscription fails', async () => {
+    // 1. Setup mocks for Web Push support in testing environment
+    const originalNotification = (globalThis as any).Notification;
+    const originalNavigator = (globalThis as any).navigator;
+    const originalSecureContext = (globalThis as any).isSecureContext;
+    const originalPushManager = (globalThis as any).PushManager;
+
+    (globalThis as any).isSecureContext = true;
+    (globalThis as any).PushManager = {};
+    (globalThis as any).Notification = {
+      permission: 'granted',
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+    };
+
+    const mockPushManager = {
+      subscribe: vi.fn().mockRejectedValue(new Error('VAPID key error or permission denied')),
+      getSubscription: vi.fn().mockResolvedValue(null),
+    };
+    const mockServiceWorker = {
+      ready: Promise.resolve({
+        pushManager: mockPushManager,
+      }),
+    };
+    Object.defineProperty(globalThis, 'navigator', {
+      value: {
+        ...originalNavigator,
+        serviceWorker: mockServiceWorker,
+      },
+      writable: true,
+    });
+
+    vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
+    vi.mocked(client.getPushSubscriptions).mockResolvedValue({
+      count: 0,
+      subscriptions: [],
+    });
+    vi.mocked(client.getVapidPublicKey).mockResolvedValue('mock-vapid-key');
+
+    // 2. Render Page
+    renderPage(<NotificationPresetsPage />);
+
+    // 3. Open Form
+    expect(
+      await screen.findByText('No notification presets yet'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'New preset' })[0]);
+
+    // 5. Click Subscribe button
+    const subscribeButton = await screen.findByText('Subscribe this browser');
+    fireEvent.click(subscribeButton);
+
+    // 6. Verify that the error is caught and displayed
+    expect(
+      await screen.findByText(/Failed to update subscription:/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Permission denied. Please enable notifications for this site/),
+    ).toBeInTheDocument();
+
+    // 7. Cleanup global mocks
+    (globalThis as any).Notification = originalNotification;
+    (globalThis as any).isSecureContext = originalSecureContext;
+    (globalThis as any).PushManager = originalPushManager;
+    Object.defineProperty(globalThis, 'navigator', {
+      value: originalNavigator,
+      writable: true,
+    });
+  });
 });
