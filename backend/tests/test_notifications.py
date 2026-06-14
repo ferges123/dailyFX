@@ -16,6 +16,7 @@ from app.notifications.client import (
     send_web_notification,
 )
 from app.notifications.vapid import save_subscription
+from app.services.generation.output import send_generation_notification
 
 test_db = configure_contract_test_db("notifications")
 
@@ -53,6 +54,52 @@ def test_send_web_notification_returns_ok():
     assert result.provider == "web"
     assert result.message == "Message"
     assert result.detail == "Detail"
+
+
+def test_generation_notification_uses_review_token_not_app_access_token(monkeypatch):
+    import app.config
+
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "full-access-token")
+    monkeypatch.setenv("APP_EXTERNAL_URL", "https://dailyfx.example.test")
+    app.config.get_settings.cache_clear()
+
+    captured = {}
+
+    async def fake_send_web_notification(**kwargs):
+        captured.update(kwargs)
+
+    preset = type(
+        "NotificationPreset",
+        (),
+        {
+            "provider": "web",
+            "url": None,
+            "topic": None,
+            "encrypted_token": None,
+            "push_subscriptions": [],
+        },
+    )()
+
+    monkeypatch.setattr("app.services.generation.output.send_web_notification", fake_send_web_notification)
+
+    asyncio.run(
+        send_generation_notification(
+            preset,
+            title="Ready",
+            summary="Generated image is ready.",
+            image_url="/api/generation/history/task-review-token/image",
+            task_id="task-review-token",
+        )
+    )
+
+    assert "full-access-token" not in captured["url"]
+    assert "review_token=" in captured["url"]
+    assert "full-access-token" not in captured["detail"]
+    assert "review_token=" in captured["detail"]
+
+    monkeypatch.delenv("APP_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("APP_EXTERNAL_URL", raising=False)
+    app.config.get_settings.cache_clear()
 
 
 def test_send_ntfy_notification_posts_to_topic(monkeypatch):
@@ -574,7 +621,6 @@ def test_test_subscription_endpoint_returns_404_for_unknown_subscription():
     client = TestClient(app)
     resp = client.post("/api/notifications/subscriptions/999999/test")
     assert resp.status_code == 404
-
 
 
 

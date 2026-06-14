@@ -795,10 +795,20 @@ function renderExif(e, selectedExif) {
 }
 
 function getToken() {
-  return new URLSearchParams(location.search).get('token')
-    || tokenInput.value.trim()
+  return tokenInput.value.trim()
     || localStorage.getItem('dailyfx_token')
     || '';
+}
+
+function getReviewToken() {
+  return new URLSearchParams(location.search).get('review_token') || '';
+}
+
+function apiUrl(path) {
+  const reviewToken = getReviewToken();
+  if (!reviewToken) return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}review_token=${encodeURIComponent(reviewToken)}`;
 }
 
 function headers() {
@@ -890,7 +900,7 @@ async function loadOriginalImage(assetId) {
 async function load() {
   try {
     const [rEntry, rSettings] = await Promise.all([
-      fetch(`/api/generation/history/${taskId}`, {headers: headers()}),
+      fetch(apiUrl(`/api/generation/history/${taskId}`), {headers: headers()}),
       fetch(`/api/settings`, {headers: headers()}),
     ]);
     if (rEntry.status === 401) {
@@ -1011,10 +1021,10 @@ async function load() {
 function refreshImage() {
   const t = getToken();
   if (t) {
-    fetch(`/api/generation/history/${taskId}/image`, {headers: {'Authorization': `Bearer ${t}`}})
+    fetch(apiUrl(`/api/generation/history/${taskId}/image`), {headers: {'Authorization': `Bearer ${t}`}})
       .then(r => r.blob()).then(b => { imgEl.src = URL.createObjectURL(b); });
   } else {
-    imgEl.src = `/api/generation/history/${taskId}/image`;
+    imgEl.src = apiUrl(`/api/generation/history/${taskId}/image`);
   }
 }
 
@@ -1139,7 +1149,7 @@ document.getElementById('lb-download').addEventListener('click', async (e) => {
   try {
     const t = getToken();
     const headersList = t ? {'Authorization': `Bearer ${t}`} : {};
-    const res = await fetch(`/api/generation/history/${taskId}/image`, { headers: headersList });
+    const res = await fetch(apiUrl(`/api/generation/history/${taskId}/image`), { headers: headersList });
     if (!res.ok) throw new Error('Download failed');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

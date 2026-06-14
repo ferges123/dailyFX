@@ -273,6 +273,38 @@ def test_get_generation_image_not_found():
         db.close()
 
 
+def test_get_generation_image_accepts_review_token_when_review_auth_enabled(monkeypatch, tmp_path):
+    import pytest
+    from fastapi import HTTPException
+
+    import app.config
+    from app.security import create_review_token
+
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "full-access-token")
+    monkeypatch.setenv("REQUIRE_AUTH_FOR_REVIEW", "true")
+    app.config.get_settings.cache_clear()
+
+    db = _setup_generation_routes_db()
+    try:
+        img_path = tmp_path / "task-review-token.png"
+        img_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        _add_history_row(db, "task-review-token", output_path=str(img_path))
+        review_token = create_review_token("task-review-token")
+
+        response = get_generation_image("task-review-token", review_token=review_token, db=db)
+
+        assert response.path == img_path
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_generation_image("task-review-token", review_token="bad-token", db=db)
+        assert exc_info.value.status_code == 401
+    finally:
+        monkeypatch.delenv("APP_ACCESS_TOKEN", raising=False)
+        monkeypatch.delenv("REQUIRE_AUTH_FOR_REVIEW", raising=False)
+        app.config.get_settings.cache_clear()
+        db.close()
+
+
 def test_accept_generation(tmp_path):
     from io import BytesIO
 

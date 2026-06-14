@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlencode
 
 from app.notifications.client import (
     send_apprise_notification,
@@ -12,9 +13,14 @@ from app.notifications.client import (
     send_telegram_notification,
     send_web_notification,
 )
-from app.security import decrypt_secret
+from app.security import create_review_token, decrypt_secret
 
 logger = logging.getLogger(__name__)
+
+
+def _with_review_token(url: str, review_token: str) -> str:
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}{urlencode({'review_token': review_token})}"
 
 
 async def send_generation_notification(notification_preset, title: str, summary: str, image_url: str, task_id: str):
@@ -28,14 +34,14 @@ async def send_generation_notification(notification_preset, title: str, summary:
     notification_topic = notification_preset.topic
     notification_token = decrypt_secret(notification_preset.encrypted_token)
     full_title = f"New AI Generation: {title}"
-    access_token = engine_module.get_settings().app_access_token
-    app_url = f"/api/generation/review/{task_id}" + (f"?token={access_token}" if access_token else "")
+    review_token = create_review_token(task_id)
+    app_url = _with_review_token(f"/api/generation/review/{task_id}", review_token)
 
     ext_url = engine_module.get_settings().app_external_url
     if ext_url:
         ext_url = ext_url.rstrip("/")
-        abs_image_url = f"{ext_url}/api/generation/review/{task_id}/thumbnail"
-        abs_app_url = f"{ext_url}/api/generation/review/{task_id}" + (f"?token={access_token}" if access_token else "")
+        abs_image_url = _with_review_token(f"{ext_url}/api/generation/review/{task_id}/thumbnail", review_token)
+        abs_app_url = _with_review_token(f"{ext_url}/api/generation/review/{task_id}", review_token)
         detail = f"{summary}\n\nReview: {abs_app_url}"
     else:
         abs_image_url = None
@@ -51,7 +57,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     message=title,
                     detail=detail,
                     url=app_url,
-                    image=f"/api/generation/review/{task_id}/thumbnail",
+                    image=_with_review_token(f"/api/generation/review/{task_id}/thumbnail", review_token),
                     subscription_ids=subscription_ids,
                 )
             elif provider == "ntfy" and notification_url and notification_topic:

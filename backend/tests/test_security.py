@@ -1,4 +1,7 @@
 import importlib
+from datetime import datetime, timedelta, timezone
+
+from fastapi import HTTPException
 
 
 def test_encrypt_decrypt_and_mask(monkeypatch):
@@ -126,8 +129,6 @@ def test_require_review_auth_dependency(monkeypatch):
 
     import app.config
     import app.security
-    from fastapi import HTTPException
-
     app.config.get_settings.cache_clear()
 
     # 1. require_auth_for_review is False -> should NOT raise even if app_access_token is set
@@ -148,3 +149,49 @@ def test_require_review_auth_dependency(monkeypatch):
         assert exc.status_code == 401
     else:
         raise AssertionError("require_review_auth did not raise 401 when enabled and no credentials provided")
+
+
+def test_review_token_round_trip_for_task(monkeypatch):
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("APP_ENV", "development")
+
+    import app.config
+    import app.security
+
+    app.config.get_settings.cache_clear()
+
+    now = datetime(2026, 6, 13, 12, 0, tzinfo=timezone.utc)
+    token = app.security.create_review_token("task-review-1", now=now, ttl_seconds=300)
+
+    assert token
+    assert app.security.verify_review_token(token, "task-review-1", now=now + timedelta(seconds=299)) is True
+
+
+def test_review_token_rejects_wrong_task(monkeypatch):
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("APP_ENV", "development")
+
+    import app.config
+    import app.security
+
+    app.config.get_settings.cache_clear()
+
+    now = datetime(2026, 6, 13, 12, 0, tzinfo=timezone.utc)
+    token = app.security.create_review_token("task-review-1", now=now, ttl_seconds=300)
+
+    assert app.security.verify_review_token(token, "task-review-2", now=now) is False
+
+
+def test_review_token_rejects_expired_token(monkeypatch):
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("APP_ENV", "development")
+
+    import app.config
+    import app.security
+
+    app.config.get_settings.cache_clear()
+
+    now = datetime(2026, 6, 13, 12, 0, tzinfo=timezone.utc)
+    token = app.security.create_review_token("task-review-1", now=now, ttl_seconds=300)
+
+    assert app.security.verify_review_token(token, "task-review-1", now=now + timedelta(seconds=301)) is False

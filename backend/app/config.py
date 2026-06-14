@@ -18,6 +18,7 @@ class AppSettings(BaseSettings):
     example_asset_id: str = Field(default="", alias="EXAMPLE_ASSET_ID")
     cors_origins: str = Field(default="", alias="CORS_ORIGINS")
     app_access_token: str | None = Field(default=None, alias="APP_ACCESS_TOKEN")
+    review_token_ttl_seconds: int = Field(default=86400, alias="REVIEW_TOKEN_TTL_SECONDS", ge=60, le=2592000)
     app_contact_email: str = Field(default="dailyfx@localhost", alias="APP_CONTACT_EMAIL")
     app_external_url: str | None = Field(default=None, alias="APP_EXTERNAL_URL")
     log_json: bool = Field(default=False, alias="LOG_JSON")
