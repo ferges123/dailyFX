@@ -14,6 +14,8 @@ import {
   type ImmichFilterOptions,
 } from '../../api/client';
 import { Field, SelectField } from '../../components/Field';
+import { ConfirmModal } from '../../components/ConfirmModal';
+import { logger } from '../../utils/logger';
 import {
   MultiSelectPanel,
   PersonSelectPanel,
@@ -146,7 +148,7 @@ export function FilterPresetsTab() {
           JSON.stringify(options.data),
         );
       } catch (err) {
-        console.warn('Failed to cache Immich filter options:', err);
+        logger.warn('Failed to cache Immich filter options:', err);
       }
     }
   }, [options.data]);
@@ -165,6 +167,14 @@ export function FilterPresetsTab() {
   const [personSearch, setPersonSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const formPanelRef = useRef<HTMLDivElement | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  } | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -472,7 +482,14 @@ export function FilterPresetsTab() {
               personNames={personNames}
               onEdit={openEdit}
               onDelete={(id, name) => {
-                if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id);
+                setConfirmConfig({
+                  isOpen: true,
+                  title: 'Delete Filter Preset',
+                  description: `Are you sure you want to delete "${name}"?`,
+                  confirmLabel: 'Delete',
+                  variant: 'danger',
+                  onConfirm: () => deleteMutation.mutate(id),
+                });
               }}
             />
           ));
@@ -495,6 +512,21 @@ export function FilterPresetsTab() {
           </div>
         )}
       </div>
+
+      {confirmConfig && (
+        <ConfirmModal
+          isOpen={confirmConfig.isOpen}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant={confirmConfig.variant}
+          onConfirm={() => {
+            confirmConfig.onConfirm();
+            setConfirmConfig(null);
+          }}
+          onClose={() => setConfirmConfig(null)}
+        />
+      )}
     </div>
   );
 }

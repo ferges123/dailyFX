@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { logger } from '../utils/logger';
 
 type RouteErrorBoundaryProps = {
   children: ReactNode;
@@ -19,7 +20,7 @@ export class RouteErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Route render failed', error, errorInfo);
+    logger.error('Route render failed', error, errorInfo);
   }
 
   render() {

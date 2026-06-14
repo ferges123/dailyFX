@@ -28,6 +28,8 @@ import {
   type NotificationPreset,
 } from '../../api/client';
 import { Field } from '../../components/Field';
+import { ConfirmModal } from '../../components/ConfirmModal';
+import { logger } from '../../utils/logger';
 import { PresetHeader, PresetFormActions, PresetActionRow } from './PresetHeader';
 
 function NotificationPresetCard({
@@ -278,6 +280,14 @@ export function NotificationPresetsTab() {
   >('idle');
   const [pushError, setPushError] = useState<string | null>(null);
   const formPanelRef = useRef<HTMLDivElement | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  } | null>(null);
 
   const webPushSupport = {
     hasNotification: typeof window !== 'undefined' && 'Notification' in window,
@@ -296,7 +306,7 @@ export function NotificationPresetsTab() {
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
     } catch (err) {
-      console.error('Failed to request permission', err);
+      logger.error('Failed to request permission', err);
     }
   };
 
@@ -652,13 +662,20 @@ export function NotificationPresetsTab() {
                             <button
                               type="button"
                               onClick={() => {
-                                if (confirm('Deleting this subscription will remove it from all preset targets. Continue?')) {
-                                  deleteSubMutation.mutate(sub.id);
-                                  setForm((f) => ({
-                                    ...f,
-                                    push_subscription_ids: (f.push_subscription_ids ?? []).filter((id) => id !== sub.id),
-                                  }));
-                                }
+                                setConfirmConfig({
+                                  isOpen: true,
+                                  title: 'Delete Subscription Globally',
+                                  description: 'Deleting this subscription will remove it from all preset targets. Continue?',
+                                  confirmLabel: 'Delete',
+                                  variant: 'danger',
+                                  onConfirm: () => {
+                                    deleteSubMutation.mutate(sub.id);
+                                    setForm((f) => ({
+                                      ...f,
+                                      push_subscription_ids: (f.push_subscription_ids ?? []).filter((id) => id !== sub.id),
+                                    }));
+                                  },
+                                });
                               }}
                               disabled={deleteSubMutation.isPending}
                               className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50 transition-colors"

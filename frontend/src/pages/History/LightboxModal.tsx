@@ -16,6 +16,7 @@ import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { formatDateTime } from '../datetime.utils';
+import { logger } from '../../utils/logger';
 
 // Format shutter speed decimal into a readable fraction
 function formatShutterSpeed(seconds: number | string | undefined | null): string {
@@ -137,14 +138,14 @@ export function LightboxModal({
           title: entry.title || 'DailyFX image',
         });
       } catch (error) {
-        console.warn('Native file share failed, trying URL fallback:', error);
+        logger.warn('Native file share failed, trying URL fallback:', error);
         try {
           await navigator.share({
             title: entry.title || 'DailyFX image',
             url: shareUrl,
           });
         } catch (urlError) {
-          console.error('URL sharing failed:', urlError);
+          logger.error('URL sharing failed:', urlError);
           await fallbackCopyLink(shareUrl);
         }
       } finally {
@@ -161,7 +162,7 @@ export function LightboxModal({
       setShareStatus('copied');
       setTimeout(() => setShareStatus('idle'), 2000);
     } catch (err) {
-      console.error('Failed to copy link:', err);
+      logger.error('Failed to copy link:', err);
       setShareStatus('error');
       setTimeout(() => setShareStatus('idle'), 2000);
     }
