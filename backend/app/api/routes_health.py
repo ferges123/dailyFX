@@ -103,8 +103,8 @@ async def health_detailed(db: Session = Depends(get_db), _: None = Depends(requi
                 headers = {"Authorization": f"Bearer {key}"} if key else {}
             else:  # gemini
                 key = decrypt_secret(settings.encrypted_gemini_api_key)
-                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}" if key else ""
-                headers = {}
+                url = "https://generativelanguage.googleapis.com/v1beta/models"
+                headers = {"x-goog-api-key": key} if key else {}
             if not key:
                 checks["ai"] = {"status": "key_missing", "provider": provider}
             else:
