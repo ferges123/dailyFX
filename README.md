@@ -82,7 +82,30 @@ There are two ways to run DailyFX: using pre-built images from GitHub Container 
 
 You do not need to clone the repository to run DailyFX. You can run it directly using Docker Compose:
 
-1. Create a `docker-compose.yml` file in an empty directory:
+1. Create a `docker-compose.yml` file in an empty directory. You can choose either a minimal version or a production-ready version with healthchecks and limits:
+
+#### Minimal Version
+
+```yaml
+services:
+  api:
+    image: ghcr.io/ferges123/dailyfx-api:latest
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    env_file: .env
+    volumes:
+      - ./data:/data
+    ports:
+      - "8438:8438"
+
+  web:
+    image: ghcr.io/ferges123/dailyfx-web:latest
+    restart: unless-stopped
+    ports:
+      - "8439:8080"
+```
+
+#### Production-Ready Version (with healthchecks & limits)
 
 ```yaml
 services:
