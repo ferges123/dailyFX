@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { formatDateTime } from '../datetime.utils';
 
 // Format shutter speed decimal into a readable fraction
@@ -82,6 +83,7 @@ export function LightboxModal({
   const [isSharing, setIsSharing] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const [showOriginal, setShowOriginal] = useState(false);
+  const trapRef = useFocusTrap(isOpen);
 
   useEffect(() => {
     setShowOriginal(false);
@@ -169,6 +171,7 @@ export function LightboxModal({
 
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/98 p-3 md:items-center md:p-4 backdrop-blur-xl animate-fade-in"
       onClick={onClose}
     >

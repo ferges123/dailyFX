@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X, FolderPlus, ChevronDown } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface AlbumOption {
   id: string;
@@ -32,6 +33,7 @@ export function UploadModal({
   const [targetAlbumType, setTargetAlbumType] = useState<'existing' | 'new' | 'none'>('none');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
   const [newAlbumName, setNewAlbumName] = useState<string>('');
+  const trapRef = useFocusTrap(isOpen);
 
   // Auto-initialize album selection when modal opens or active entry changes
   useEffect(() => {
@@ -79,7 +81,7 @@ export function UploadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+    <div ref={trapRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
       <div className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl p-6 relative animate-scale-in">
         <button
           type="button"

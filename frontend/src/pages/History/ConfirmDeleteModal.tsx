@@ -1,4 +1,5 @@
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -15,12 +16,14 @@ export function ConfirmDeleteModal({
   variant,
   isPending,
 }: ConfirmDeleteModalProps) {
+  const trapRef = useFocusTrap(isOpen);
+
   if (!isOpen) return null;
 
   const isAll = variant === 'all';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div ref={trapRef} className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-5 shadow-xl">
         <button
