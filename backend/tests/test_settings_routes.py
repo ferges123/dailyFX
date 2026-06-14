@@ -353,6 +353,14 @@ def test_get_provider_models_byteplus_success():
                         {
                             "id": "seedream-5-0-260128",
                             "name": "SeeDream 5.0",
+                            "domain": "ImageGeneration",
+                            "task_type": ["ImageToImage", "TextToImage"]
+                        },
+                        {
+                            "id": "seed-2-0-pro-260328",
+                            "name": "Seed 2.0 Pro",
+                            "domain": "VLM",
+                            "task_type": ["VisualQuestionAnswering"]
                         }
                     ]
                 }
@@ -374,8 +382,12 @@ def test_get_provider_models_byteplus_success():
             data = response.json()
             assert "vision_models" in data
             assert "image_models" in data
-            assert any(m["value"] == "seedream-5-0-260128" for m in data["vision_models"])
+            # Seed 2.0 Pro is vision only
+            assert any(m["value"] == "seed-2-0-pro-260328" for m in data["vision_models"])
+            assert not any(m["value"] == "seed-2-0-pro-260328" for m in data["image_models"])
+            # SeeDream 5.0 is image only
             assert any(m["value"] == "seedream-5-0-260128" for m in data["image_models"])
+            assert not any(m["value"] == "seedream-5-0-260128" for m in data["vision_models"])
     finally:
         app.dependency_overrides.clear()
         db.close()

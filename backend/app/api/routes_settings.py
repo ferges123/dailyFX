@@ -326,8 +326,18 @@ async def get_provider_models(
             for m in models_list:
                 model_id = m.get("id", "")
                 name = m.get("name", model_id)
-                vision_models.append({"label": name, "value": model_id})
-                image_models.append({"label": name, "value": model_id})
+                domain = m.get("domain", "")
+                task_types = m.get("task_type") or []
+                if not isinstance(task_types, list):
+                    task_types = []
+                
+                # AI Vision / VLM models (img2txt / VisualQuestionAnswering)
+                if "VisualQuestionAnswering" in task_types or domain == "VLM":
+                    vision_models.append({"label": name, "value": model_id})
+                
+                # AI Image / ImageGeneration models (txt2img / img2img)
+                if "TextToImage" in task_types or "ImageToImage" in task_types or domain == "ImageGeneration":
+                    image_models.append({"label": name, "value": model_id})
 
         elif provider == "local":
             models_list = payload.get("data", [])
