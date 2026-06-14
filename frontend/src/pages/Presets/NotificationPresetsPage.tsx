@@ -99,6 +99,40 @@ function NotificationPresetCard({
   );
 }
 
+function getPushDiagnostics(
+  webPushSupport: {
+    hasNotification: boolean;
+    hasServiceWorker: boolean;
+    hasPushManager: boolean;
+    isSecureContext: boolean;
+  },
+  notificationPermission: string
+) {
+  let diagnosticsText = '';
+  let diagnosticsColor = 'text-stone-500 bg-stone-100 border-stone-200';
+  let showPermissionButton = false;
+
+  if (!webPushSupport.hasNotification || !webPushSupport.hasServiceWorker || !webPushSupport.hasPushManager) {
+    diagnosticsText = 'This browser does not support Web Push';
+    diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
+  } else if (!webPushSupport.isSecureContext) {
+    diagnosticsText = 'Web Push requires HTTPS or a local localhost context';
+    diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
+  } else if (notificationPermission === 'default') {
+    diagnosticsText = 'Requires permission';
+    diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
+    showPermissionButton = true;
+  } else if (notificationPermission === 'denied') {
+    diagnosticsText = 'Blocked in browser settings';
+    diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
+  } else if (notificationPermission === 'granted') {
+    diagnosticsText = 'Notifications enabled';
+    diagnosticsColor = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+  }
+
+  return { diagnosticsText, diagnosticsColor, showPermissionButton };
+}
+
 export function NotificationPresetsTab() {
   const qc = useQueryClient();
   const presets = useQuery({
@@ -317,6 +351,11 @@ export function NotificationPresetsTab() {
     webPushSupport.isSecureContext &&
     notificationPermission !== 'denied';
 
+  const { diagnosticsText, diagnosticsColor, showPermissionButton } = getPushDiagnostics(
+    webPushSupport,
+    notificationPermission
+  );
+
   const [testSubResult, setTestSubResult] = useState<{ id: number; ok: boolean; msg: string } | null>(null);
 
   const testSubMutation = useMutation({
@@ -510,47 +549,21 @@ export function NotificationPresetsTab() {
             >
               <div className="grid gap-4">
                 {/* Diagnostics Status Badge */}
-                {(() => {
-                  let diagnosticsText = '';
-                  let diagnosticsColor = 'text-stone-500 bg-stone-100 border-stone-200';
-                  let showPermissionButton = false;
-
-                  if (!webPushSupport.hasNotification || !webPushSupport.hasServiceWorker || !webPushSupport.hasPushManager) {
-                    diagnosticsText = 'This browser does not support Web Push';
-                    diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
-                  } else if (!webPushSupport.isSecureContext) {
-                    diagnosticsText = 'Web Push requires HTTPS or a local localhost context';
-                    diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
-                  } else if (notificationPermission === 'default') {
-                    diagnosticsText = 'Requires permission';
-                    diagnosticsColor = 'text-amber-700 bg-amber-50 border-amber-200';
-                    showPermissionButton = true;
-                  } else if (notificationPermission === 'denied') {
-                    diagnosticsText = 'Blocked in browser settings';
-                    diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
-                  } else if (notificationPermission === 'granted') {
-                    diagnosticsText = 'Notifications enabled';
-                    diagnosticsColor = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-                  }
-
-                  return (
-                    <div className="flex flex-wrap items-center gap-2">
-                       <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${diagnosticsColor}`}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        Status: {diagnosticsText}
-                      </div>
-                      {showPermissionButton && (
-                        <button
-                          type="button"
-                          onClick={requestNotificationPermission}
-                          className="app-button-secondary h-6 px-2.5 text-[10px] font-semibold"
-                        >
-                          Grant permission
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
+                <div className="flex flex-wrap items-center gap-2">
+                   <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${diagnosticsColor}`}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    Status: {diagnosticsText}
+                  </div>
+                  {showPermissionButton && (
+                    <button
+                      type="button"
+                      onClick={requestNotificationPermission}
+                      className="app-button-secondary h-6 px-2.5 text-[10px] font-semibold"
+                    >
+                      Grant permission
+                    </button>
+                  )}
+                </div>
 
                 {/* Local Browser Subscription Controls */}
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
