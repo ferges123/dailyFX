@@ -26,6 +26,7 @@ import {
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../components/FormUI';
 import { Field } from '../components/Field';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 const AI_EFFECT_GROUP_ORDER = [
   'Portrait',
@@ -242,6 +243,14 @@ export function AIEffectsPage() {
   const [importResult, setImportResult] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [groupFilter, setGroupFilter] = useState('all');
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  } | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -691,24 +700,35 @@ export function AIEffectsPage() {
                   effect={effect}
                   onEdit={openEdit}
                   onDuplicate={(item) => {
-                    if (confirm(`Duplicate "${item.title}"?`))
-                      duplicateMutation.mutate(item);
+                    setConfirmConfig({
+                      isOpen: true,
+                      title: 'Duplicate AI Effect',
+                      description: `Are you sure you want to duplicate "${item.title}"?`,
+                      confirmLabel: 'Duplicate',
+                      variant: 'info',
+                      onConfirm: () => duplicateMutation.mutate(item),
+                    });
                   }}
                   onReset={(item) => {
-                    if (
-                      confirm(`Reset "${item.title}" to the built-in default?`)
-                    )
-                      resetMutation.mutate(item);
+                    setConfirmConfig({
+                      isOpen: true,
+                      title: 'Reset AI Effect',
+                      description: `Are you sure you want to reset "${item.title}" to the built-in default?`,
+                      confirmLabel: 'Reset',
+                      variant: 'warning',
+                      onConfirm: () => resetMutation.mutate(item),
+                    });
                   }}
                   onDelete={(item) => {
-                    const verb =
-                      item.source === 'builtin' ? 'disable' : 'delete';
-                    if (
-                      confirm(
-                        `${verb === 'disable' ? 'Disable' : 'Delete'} "${item.title}"?`,
-                      )
-                    )
-                      deleteMutation.mutate(item);
+                    const verb = item.source === 'builtin' ? 'disable' : 'delete';
+                    setConfirmConfig({
+                      isOpen: true,
+                      title: `${verb === 'disable' ? 'Disable' : 'Delete'} AI Effect`,
+                      description: `Are you sure you want to ${verb} "${item.title}"?`,
+                      confirmLabel: verb === 'disable' ? 'Disable' : 'Delete',
+                      variant: 'danger',
+                      onConfirm: () => deleteMutation.mutate(item),
+                    });
                   }}
                 />
               ))}
@@ -716,6 +736,21 @@ export function AIEffectsPage() {
           </SectionCard>
         ))}
       </div>
+
+      {confirmConfig && (
+        <ConfirmModal
+          isOpen={confirmConfig.isOpen}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant={confirmConfig.variant}
+          onConfirm={() => {
+            confirmConfig.onConfirm();
+            setConfirmConfig(null);
+          }}
+          onClose={() => setConfirmConfig(null)}
+        />
+      )}
     </div>
   );
 }

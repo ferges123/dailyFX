@@ -14,6 +14,7 @@ import {
   type GenerationModuleInfo,
 } from '../../api/client';
 import { Field } from '../../components/Field';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { FilterRow, ModuleConfigEditor } from '../../components/EffectsComponents';
 import {
   createDefaultModificationGroups,
@@ -276,6 +277,14 @@ export function EffectPresetsTab() {
     Record<string, boolean>
   >({});
   const formPanelRef = useRef<HTMLDivElement | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  } | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -622,8 +631,14 @@ export function EffectPresetsTab() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`Delete "${p.name}"?`))
-                      deleteMutation.mutate(p.id);
+                    setConfirmConfig({
+                      isOpen: true,
+                      title: 'Delete Effect Preset',
+                      description: `Are you sure you want to delete "${p.name}"?`,
+                      confirmLabel: 'Delete',
+                      variant: 'danger',
+                      onConfirm: () => deleteMutation.mutate(p.id),
+                    });
                   }}
                   className="inline-flex w-full items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 bg-rose-50/30 sm:w-auto sm:bg-transparent sm:py-1"
                 >
@@ -651,6 +666,21 @@ export function EffectPresetsTab() {
           </div>
         )}
       </div>
+
+      {confirmConfig && (
+        <ConfirmModal
+          isOpen={confirmConfig.isOpen}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant={confirmConfig.variant}
+          onConfirm={() => {
+            confirmConfig.onConfirm();
+            setConfirmConfig(null);
+          }}
+          onClose={() => setConfirmConfig(null)}
+        />
+      )}
     </div>
   );
 }
