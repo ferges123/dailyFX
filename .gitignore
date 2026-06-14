@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 .agent/
 .venv/
 __pycache__/
@@ -24,6 +26,7 @@ data/logs/*
 data/backups/*
 data/scheduler.health
 !data/results/.gitkeep
+cache/
 docs/plans/
 data/outputs/
 data/temp/
