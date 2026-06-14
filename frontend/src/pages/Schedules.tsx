@@ -43,16 +43,11 @@ import { ConfirmModal } from '../components/ConfirmModal';
 function normalizeModelSelection(
   provider: string,
   model: string,
-  options: { value: string }[],
-  freeTextProviders: string[],
 ) {
-  if (provider === 'none' || freeTextProviders.includes(provider)) {
-    return model;
+  if (provider === 'none') {
+    return '';
   }
-  if (options.some((opt) => opt.value === model)) {
-    return model;
-  }
-  return options[0]?.value ?? model;
+  return model;
 }
 
 function scheduleToForm(schedule: Schedule): FormState {
@@ -73,15 +68,11 @@ function scheduleToForm(schedule: Schedule): FormState {
     ai_vision_model: normalizeModelSelection(
       aiVisionProvider,
       schedule.ai_vision_model ?? 'gpt-4o-mini',
-      getVisionModelOptions(aiVisionProvider),
-      ['openrouter', 'local'],
     ),
     ai_image_provider: aiImageProvider,
     ai_image_model: normalizeModelSelection(
       aiImageProvider,
       schedule.ai_image_model ?? 'gpt-image-1',
-      getImageModelOptions(aiImageProvider),
-      ['openrouter', 'byteplus', 'local'],
     ),
     ai_prompt_enrichment: schedule.ai_prompt_enrichment ?? false,
     ai_photo_selection_enabled: schedule.ai_photo_selection_enabled ?? false,

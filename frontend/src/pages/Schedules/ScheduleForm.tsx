@@ -491,7 +491,7 @@ export function ScheduleForm({
                     ai_image_model: value,
                   }))
                 }
-                freeTextProviders={['openrouter', 'byteplus', 'local']}
+                freeTextProviders={['openrouter', 'local']}
                 providerHelp="Set this only when you want a separate image-generation provider."
                 modelPlaceholder="e.g. your-local-model"
               />

@@ -239,7 +239,7 @@ def test_get_or_create_settings_recovers_from_duplicate_insert():
 
 def test_get_provider_models_success():
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
-    from unittest.mock import AsyncMock, patch
+    from unittest.mock import AsyncMock, MagicMock, patch
 
     from app.database import SessionLocal, init_db
     from app.security import require_auth
@@ -265,22 +265,24 @@ def test_get_provider_models_success():
             patch("app.api.routes_settings.decrypt_secret", return_value="gemini-secret-api-key"),
             patch("httpx.AsyncClient.get") as mock_get,
         ):
-            mock_response = AsyncMock()
+            mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {
-                "models": [
-                    {
-                        "name": "models/gemini-2.5-flash",
-                        "displayName": "Gemini 2.5 Flash",
-                        "supportedGenerationMethods": ["generateContent"],
-                    },
-                    {
-                        "name": "models/gemini-2.5-flash-image",
-                        "displayName": "Gemini 2.5 Flash Image",
-                        "supportedGenerationMethods": ["generateContent"],
-                    },
-                ]
-            }
+            mock_response.json = MagicMock(
+                return_value={
+                    "models": [
+                        {
+                            "name": "models/gemini-2.5-flash",
+                            "displayName": "Gemini 2.5 Flash",
+                            "supportedGenerationMethods": ["generateContent"],
+                        },
+                        {
+                            "name": "models/gemini-2.5-flash-image",
+                            "displayName": "Gemini 2.5 Flash Image",
+                            "supportedGenerationMethods": ["generateContent"],
+                        },
+                    ]
+                }
+            )
             mock_get.return_value = mock_response
 
             from fastapi.testclient import TestClient
@@ -310,6 +312,70 @@ def test_get_provider_models_success():
             assert any(m["value"] == "gemini-2.5-flash" for m in data["vision_models"])
             assert not any(m["value"] == "gemini-2.5-flash-image" for m in data["vision_models"])
             assert any(m["value"] == "gemini-2.5-flash-image" for m in data["image_models"])
+    finally:
+        app.dependency_overrides.clear()
+        db.close()
+
+
+def test_get_provider_models_byteplus_success():
+    os.environ["APP_SECRET_KEY"] = "test-api-secret"
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.database import SessionLocal, init_db
+    from app.security import require_auth
+    from app.services.immich import get_or_create_settings
+
+    init_db()
+    db = SessionLocal()
+    from app.main import app
+
+    route_require_auth = require_auth
+    for route in app.routes:
+        if route.path == "/api/settings/models/{provider}":
+            dependant = getattr(route, "dependant", None)
+            if dependant:
+                for d in dependant.dependencies:
+                    if d.call.__name__ == "require_auth":
+                        route_require_auth = d.call
+                        break
+    app.dependency_overrides[route_require_auth] = lambda: None
+
+    try:
+        with (
+            patch("app.api.routes_settings.decrypt_secret", return_value="byteplus-secret-api-key"),
+            patch("httpx.AsyncClient.get") as mock_get,
+        ):
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json = MagicMock(
+                return_value={
+                    "data": [
+                        {
+                            "id": "seedream-5-0-260128",
+                            "name": "SeeDream 5.0",
+                        }
+                    ]
+                }
+            )
+            mock_get.return_value = mock_response
+
+            from fastapi.testclient import TestClient
+
+            client = TestClient(app)
+
+            # Setup settings model key
+            row = get_or_create_settings(db)
+            row.encrypted_byteplus_api_key = "encrypted"
+            db.add(row)
+            db.commit()
+
+            response = client.get("/api/settings/models/byteplus")
+            assert response.status_code == 200
+            data = response.json()
+            assert "vision_models" in data
+            assert "image_models" in data
+            assert any(m["value"] == "seedream-5-0-260128" for m in data["vision_models"])
+            assert any(m["value"] == "seedream-5-0-260128" for m in data["image_models"])
     finally:
         app.dependency_overrides.clear()
         db.close()

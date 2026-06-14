@@ -365,7 +365,7 @@ describe('SchedulesPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('normalizes unsupported Xiaomi vision models when loading an edit form', async () => {
+  it('retains unsupported Xiaomi vision models and shows custom input when loading an edit form', async () => {
     window.history.pushState({}, '', '/schedules');
     vi.mocked(client.getSchedules).mockResolvedValue([
       {
@@ -435,11 +435,8 @@ describe('SchedulesPage', () => {
 
     const formPanel = await screen.findByLabelText('Schedule form panel');
     expect(
-      within(formPanel).getByDisplayValue('mimo-v2.5'),
+      within(formPanel).getByDisplayValue('mimo-v2.5-pro'),
     ).toBeInTheDocument();
-    expect(
-      within(formPanel).queryByDisplayValue('mimo-v2.5-pro'),
-    ).not.toBeInTheDocument();
   });
 
   it('saves edits from the right panel form', async () => {

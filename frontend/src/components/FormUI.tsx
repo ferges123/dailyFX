@@ -111,6 +111,8 @@ export function ProviderModelField({
     // If the model is set but not listed, default to custom input mode
     if (model && !isOptionListed && !freeTextProviders.includes(provider)) {
       setIsCustomMode(true);
+    } else if (isOptionListed) {
+      setIsCustomMode(false);
     }
   }, [model, modelOptions, provider, freeTextProviders, isOptionListed]);
 

@@ -322,7 +322,7 @@ async def get_provider_models(
                     image_models.append({"label": name, "value": model_id})
 
         elif provider == "byteplus":
-            models_list = payload.get("models", [])
+            models_list = payload.get("data", [])
             for m in models_list:
                 model_id = m.get("id", "")
                 name = m.get("name", model_id)
