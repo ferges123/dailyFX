@@ -10,11 +10,11 @@ from app.immich.errors import (
     ImmichUnexpectedResponseError,
 )
 from app.limiter import limiter
-from app.schemas.settings import ConnectionTestResponse, SettingsResponse, SettingsUpdate
-from app.security import encrypt_secret, require_auth
+from app.schemas.settings import ConnectionTestResponse, SettingsResponse, SettingsUpdate, AvailableModelsResponse
+from app.security import encrypt_secret, require_auth, decrypt_secret
 from app.services.generation.ai_vision import XIAOMI_API_BASE_URL
 from app.services.immich import build_immich_client, get_or_create_settings
-from app.services.local_ai import LocalAIConfigurationError, get_local_ai_base_url
+from app.services.local_ai import LocalAIConfigurationError, get_local_ai_base_url, get_local_ai_api_key
 from app.services.settings.connection_tests import (
     build_connection_test_response as _connection_test_response,
 )
@@ -213,3 +213,143 @@ async def _test_local_connection(row) -> ConnectionTestResponse:
         provider_name="Local AI",
         use_bearer=True,
     )
+
+
+@router.get("/models/{provider}", response_model=AvailableModelsResponse)
+async def get_provider_models(
+    provider: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth)
+) -> AvailableModelsResponse:
+    import httpx
+    row = get_or_create_settings(db)
+
+
+    
+    # Fallback default hardcoded lists
+    fallback_vision = []
+    fallback_image = []
+    if provider == "openai":
+        fallback_vision = [{"label": "gpt-4o-mini", "value": "gpt-4o-mini"}, {"label": "gpt-4o", "value": "gpt-4o"}]
+        fallback_image = [{"label": "gpt-image-1", "value": "gpt-image-1"}, {"label": "gpt-image-1-mini", "value": "gpt-image-1-mini"}]
+    elif provider == "gemini":
+        fallback_vision = [
+            {"label": "gemini-2.5-flash", "value": "gemini-2.5-flash"},
+            {"label": "gemini-2.5-pro", "value": "gemini-2.5-pro"},
+            {"label": "gemini-2.0-flash", "value": "gemini-2.0-flash"},
+            {"label": "gemini-2.0-flash-lite", "value": "gemini-2.0-flash-lite"}
+        ]
+        fallback_image = [
+            {"label": "gemini-2.5-flash-image", "value": "gemini-2.5-flash-image"},
+            {"label": "gemini-3.1-flash-image-preview", "value": "gemini-3.1-flash-image-preview"},
+            {"label": "gemini-3-pro-image-preview", "value": "gemini-3-pro-image-preview"}
+        ]
+    elif provider == "xiaomi":
+        fallback_vision = [{"label": "mimo-v2.5", "value": "mimo-v2.5"}]
+
+    # Fetch configuration for HTTP call
+    config = _HTTP_PROVIDER_TESTS.get(provider)
+    if not config and provider != "local":
+        return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
+
+    # Get API key / base URL
+    api_key = None
+    url = None
+    header_name = "Authorization"
+    use_bearer = True
+    
+    if provider == "local":
+        try:
+            url = f"{get_local_ai_base_url(row)}/models"
+        except Exception:
+            return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
+        api_key = get_local_ai_api_key(row)
+    else:
+        encrypted_field = config["encrypted_field"]
+        api_key = decrypt_secret(getattr(row, encrypted_field, None))
+        url = config["url"]
+        header_name = config["header_name"]
+        use_bearer = config["use_bearer"]
+
+    if not api_key and provider != "local":
+        return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
+
+    headers = {}
+    if api_key:
+        headers = {header_name: f"Bearer {api_key}" if use_bearer else api_key}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, headers=headers)
+        if response.status_code >= 400:
+            return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
+        
+        payload = response.json()
+        vision_models = []
+        image_models = []
+
+        if provider == "gemini":
+            models_list = payload.get("models", [])
+            for m in models_list:
+                name = m.get("name", "")
+                display_name = m.get("displayName", name)
+                short_name = name.replace("models/", "")
+                methods = m.get("supportedGenerationMethods", [])
+                if "generateContent" in methods:
+                    if "image" in name or "imagen" in name:
+                        image_models.append({"label": display_name, "value": short_name})
+                    else:
+                        vision_models.append({"label": display_name, "value": short_name})
+        
+        elif provider == "openai":
+            models_list = payload.get("data", [])
+            for m in models_list:
+                model_id = m.get("id", "")
+                if "gpt-4o" in model_id or "gpt-4-vision" in model_id or "gpt-4" in model_id:
+                    vision_models.append({"label": model_id, "value": model_id})
+                elif "dall-e" in model_id or "gpt-image" in model_id:
+                    image_models.append({"label": model_id, "value": model_id})
+
+        elif provider == "openrouter":
+            models_list = payload.get("data", [])
+            for m in models_list:
+                model_id = m.get("id", "")
+                name = m.get("name", model_id)
+                # Check typical vision/multimodal models
+                if any(x in model_id.lower() for x in ["vision", "-vl", "llava", "gemini-2", "gpt-4o", "claude-3"]):
+                    vision_models.append({"label": name, "value": model_id})
+                if any(x in model_id.lower() for x in ["flux", "stable-diffusion", "midjourney", "dall-e", "imagen"]):
+                    image_models.append({"label": name, "value": model_id})
+
+        elif provider == "byteplus":
+            models_list = payload.get("models", [])
+            for m in models_list:
+                model_id = m.get("id", "")
+                name = m.get("name", model_id)
+                vision_models.append({"label": name, "value": model_id})
+                image_models.append({"label": name, "value": model_id})
+
+        elif provider == "local":
+            models_list = payload.get("data", [])
+            for m in models_list:
+                model_id = m.get("id", "")
+                vision_models.append({"label": model_id, "value": model_id})
+                image_models.append({"label": model_id, "value": model_id})
+
+        elif provider == "xiaomi":
+            models_list = payload.get("models", [])
+            for m in models_list:
+                model_id = m.get("id", "")
+                name = m.get("name", model_id)
+                if "mimo" in model_id.lower():
+                    vision_models.append({"label": name, "value": model_id})
+
+        # Ensure fallback lists are used if filtered results are empty
+        return AvailableModelsResponse(
+            vision_models=vision_models if vision_models else fallback_vision,
+            image_models=image_models if image_models else fallback_image
+        )
+
+    except Exception:
+        return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
+

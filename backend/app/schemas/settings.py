@@ -101,3 +101,9 @@ class NotificationTestResponse(BaseModel):
     message: str
     provider: str
     detail: str | None = None
+
+
+class AvailableModelsResponse(BaseModel):
+    vision_models: list[dict[str, str]]
+    image_models: list[dict[str, str]]
+
