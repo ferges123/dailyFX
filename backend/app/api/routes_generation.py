@@ -5,8 +5,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Security
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
@@ -21,7 +22,7 @@ from app.schemas.generation import (
     GenerationModuleResponse,
     GenerationTaskStatusResponse,
 )
-from app.security import require_auth, require_review_auth
+from app.security import authorize_review_access, require_auth
 from app.services.generation.ai_effects import get_seed_hidden_map
 from app.services.generation.examples import ensure_example_preview, list_example_previews
 from app.services.generation.history import get_or_create_thumbnail
@@ -39,6 +40,7 @@ from app.services.immich import build_immich_client, get_or_create_settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/generation", tags=["generation"])
+_review_bearer = HTTPBearer(auto_error=False)
 
 
 def _stream_event_message(event_type: str, payload: dict | None = None, event_id: int | None = None) -> str:
@@ -244,10 +246,12 @@ async def get_review_page(task_id: str) -> FileResponse:
 @router.get("/review/{task_id}/thumbnail")
 async def get_review_thumbnail(
     task_id: str,
+    review_token: str | None = None,
     db: Session = Depends(get_db),
-    _: None = Depends(require_review_auth),
+    credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
 ) -> FileResponse:
     """Public thumbnail for push notification image previews."""
+    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row or not row.output_path:
         raise HTTPException(status_code=404, detail="Not found")
@@ -260,10 +264,12 @@ async def get_review_thumbnail(
 @router.get("/history/{task_id}", response_model=GenerationHistoryResponse)
 async def get_generation_history_entry(
     task_id: str,
+    review_token: str | None = None,
     db: Session = Depends(get_db),
-    _: None = Depends(require_review_auth),
+    credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
 ):
     """Get a single generation history entry by task_id. No auth required (used by review page)."""
+    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Not found")
@@ -287,10 +293,12 @@ async def get_generation_history(
 def get_generation_image(
     task_id: str,
     thumbnail: bool = False,
+    review_token: str | None = None,
     db: Session = Depends(get_db),
-    _: None = Depends(require_review_auth),
+    credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
 ):
     """Serve the generated image file or its thumbnail preview."""
+    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row or not row.output_path:
         raise HTTPException(status_code=404, detail="Image not found")
@@ -367,7 +375,7 @@ async def accept_generation(
         db.refresh(row)
         record_history_snapshot(db, row)
         logger.exception("Failed to upload image to Immich: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Failed to upload image to Immich") from exc
 
 
 @router.post("/history/{task_id}/retry", response_model=GenerationHistoryResponse)
@@ -438,7 +446,8 @@ async def retry_acceptance(
         db.commit()
         db.refresh(row)
         record_history_snapshot(db, row)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.exception("Retry failed for task %s", task_id)
+        raise HTTPException(status_code=500, detail="Retry failed") from exc
 
 
 @router.post("/history/{task_id}/reject", response_model=GenerationHistoryResponse)
