@@ -1,6 +1,7 @@
 services:
   api:
     image: ghcr.io/ferges123/dailyfx-api:latest
+    build: ./backend
     restart: unless-stopped
     user: "${UID:-1000}:${GID:-1000}"
     env_file: .env
@@ -24,6 +25,7 @@ services:
 
   web:
     image: ghcr.io/ferges123/dailyfx-web:latest
+    build: ./frontend
     restart: unless-stopped
     ports:
       - "127.0.0.1:8439:8080"
