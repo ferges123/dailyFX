@@ -69,6 +69,13 @@ async def get_task_status(
 
 @router.get("/stream")
 async def stream_generation_events(request: Request, _: None = Depends(require_auth)):
+    """SSE endpoint for real-time generation status updates.
+
+    Polling design: we create a short-lived DB session per iteration to avoid
+    holding a transaction open for the entire stream lifetime. The poll interval
+    is 5 seconds (not 1s) to limit DB load when many clients are connected.
+    Duplicate payloads are suppressed so the client receives only state changes.
+    """
     last_event_id_header = request.headers.get("last-event-id")
     try:
         last_event_id = int(last_event_id_header) if last_event_id_header else 0
@@ -79,35 +86,42 @@ async def stream_generation_events(request: Request, _: None = Depends(require_a
         cursor = last_event_id
         heartbeat_at = time.monotonic()
 
-        while True:
-            if await request.is_disconnected():
-                break
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
 
-            session = SessionLocal()
-            try:
-                if cursor > 0 and replay_gap_requires_resync(session, cursor):
-                    yield _stream_event_message(
-                        "resync-required",
-                        {"reason": "stream_gap", "last_event_id": cursor},
-                    )
-                    return
+                # Open a short-lived session only for this read, then close it.
+                # This avoids holding a transaction open across the sleep and
+                # prevents unbounded session/connection churn under load.
+                session = SessionLocal()
+                try:
+                    if cursor > 0 and replay_gap_requires_resync(session, cursor):
+                        yield _stream_event_message(
+                            "resync-required",
+                            {"reason": "stream_gap", "last_event_id": cursor},
+                        )
+                        return
 
-                rows = load_events_after(session, cursor)
-                if rows:
-                    for row in rows:
-                        payload = json.loads(row.payload_json)
-                        yield _stream_event_message(row.event_type, payload, row.id)
-                        cursor = row.id
-                    heartbeat_at = time.monotonic()
-                    continue
-            finally:
-                session.close()
+                    rows = load_events_after(session, cursor)
+                    if rows:
+                        for row in rows:
+                            payload = json.loads(row.payload_json)
+                            yield _stream_event_message(row.event_type, payload, row.id)
+                            cursor = row.id
+                        heartbeat_at = time.monotonic()
+                finally:
+                    session.close()
 
-            now = time.monotonic()
-            if now - heartbeat_at >= 15:
-                yield _stream_event_message("heartbeat", {"ts": datetime.now(timezone.utc).isoformat()})
-                heartbeat_at = now
-            await asyncio.sleep(1)
+                now = time.monotonic()
+                if now - heartbeat_at >= 15:
+                    yield _stream_event_message("heartbeat", {"ts": datetime.now(timezone.utc).isoformat()})
+                    heartbeat_at = now
+                await asyncio.sleep(5)
+
+        except asyncio.CancelledError:
+            # Client disconnected or server shutting down — clean exit.
+            return
 
     return StreamingResponse(
         event_stream(),

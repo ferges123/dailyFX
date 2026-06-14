@@ -58,6 +58,10 @@ def _ensure_engine() -> Engine:
     engine = create_engine(
         database_url,
         connect_args=connect_args,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,
     )
 
     if database_url.startswith("sqlite"):
