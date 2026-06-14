@@ -8,7 +8,7 @@ The frontend has been upgraded to the following modern technologies:
 - **Core Framework**: React 19
 - **Build System**: Vite 8 (utilizing the Rolldown/Oxc based compiler under the hood for extremely fast builds)
 - **Programming Language**: TypeScript 6
-- **Styling**: Tailwind CSS v4.0 (leveraging the new CSS-first configuration system in [styles.css](../frontend/src/styles.css) instead of `tailwind.config.js` or PostCSS configurations)
+- **Styling**: Tailwind CSS v4.3 (leveraging the new CSS-first configuration system in [styles.css](../frontend/src/styles.css) instead of `tailwind.config.js` or PostCSS configurations)
 - **Data Fetching & Caching**: TanStack React Query v5.101.0
 - **Testing**: Vitest 4.1.8 with React Testing Library and JSDOM
 - **Icons**: Lucide React v1.17.0

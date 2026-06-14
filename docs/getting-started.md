@@ -56,11 +56,11 @@ DailyFX notification presets can target one or more comma-separated channels:
 
 ## Optional AI Features
 If you want AI-powered effects, enter your API keys for your preferred AI provider in the **Settings** tab. DailyFX supports:
-- OpenAI
-- Gemini
-- OpenRouter
-- BytePlus
-- Xiaomi
+- OpenAI (vision analysis + image generation)
+- Gemini (vision analysis + image generation)
+- OpenRouter (vision analysis + image generation)
+- BytePlus (image generation only)
+- Xiaomi (vision analysis + image generation)
 For official key setup links, see [API documentation](api.md#ai-provider-key-setup).
 
 For BytePlus AI Image, use the [BytePlus Model Management console](https://console.byteplus.com/ark/region:ark+ap-southeast-1/openManagement) to choose a ModelArk image model. Some models include a free tier or free trial quota, visible in the model details and pricing.

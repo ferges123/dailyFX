@@ -12,6 +12,8 @@ Thanks for helping improve DailyFX for immich.
 ## Recommended checks
 
 - Backend: `cd backend && pytest`
+- Backend lint: `make backend-lint`
+- Backend format: `make backend-format`
 - Frontend: `cd frontend && npm test && npm run build`
 
 ## Reporting issues

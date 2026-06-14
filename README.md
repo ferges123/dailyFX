@@ -6,7 +6,7 @@
 
 Unlike generic photo filters that strip away metadata or require tedious manual work, DailyFX acts as an automated background curator. It connects directly to your Immich instance, retrieves assets based on your custom schedules, and applies any of its 40+ built-in creative modules. You can choose classic darkroom simulations like Cyanotype and Polaroid, high-dynamic-range enhancements, or leverage state-of-the-art Generative AI models to reimagine your photos in comic book, cyberpunk, or claymation styles.
 
-The entire process is designed with the self-hoster in mind. Running completely on your own hardware via Docker, it ensures your private memories never leave your control. It features a metadata pipeline that supports AI-powered caption and title generation (via OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi), automatically analyzing the final image so the stored title, summary, and tags match what you actually review.
+The entire process is designed with the self-hoster in mind. Running completely on your own hardware via Docker, it ensures your private memories never leave your control. It features a metadata pipeline that supports AI-powered caption and title generation (via OpenAI, Gemini, OpenRouter, or Xiaomi), automatically analyzing the final image so the stored title, summary, and tags match what you actually review. BytePlus and Xiaomi are used for AI image generation, while OpenAI, Gemini, and OpenRouter handle both image generation and vision analysis.
 
 Once an effect is generated, you are notified through your preferred channel, whether that is an interactive Telegram message, a Home Assistant alert, a Gotify/ntfy notification, or a standard Web Push. With a single tap from the notification, you can compare the original and styled version, then choose to upload it back to Immich or discard it completely. For a concise run-through of the workflow, see [docs/how-it-works.md](docs/how-it-works.md).
 
@@ -38,6 +38,9 @@ Once an effect is generated, you are notified through your preferred channel, wh
 | **Pencil Sketch** | Hand-drawn pencil sketch using OpenCV |
 | **Cartoon** | Cartoon effect with bold edges and flat colors |
 | **HDR** | HDR tone mapping with vivid colors and enhanced dynamic range |
+| **Apple Weather** | Apple-style weather card with frosted glass and soft atmospheric accents |
+| **Insta Weather** | Context-aware weather and season watermark with automatic face protection |
+| **Aerochrome** | Kodak Aerochrome infrared film simulation — green foliage turns vivid red/pink |
 | **AI Anime** | AI-generated anime-style art *(requires AI provider API key)* |
 | **AI Caricature** | AI-generated caricature *(requires AI provider API key)* |
 | **AI Comic Book** | AI-generated retro comic book illustration *(requires AI provider API key)* |
@@ -62,7 +65,7 @@ Once an effect is generated, you are notified through your preferred channel, wh
 - Per-effect enable/disable and weight
 - Filter by Immich album, person, date range, media type
 - Schedules: daily, specific days, time of day
-- Optional AI vision analysis (via OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi) for titles and captions; for `ai_*` effects, the final generated image is analyzed again so the stored title, summary, and tags match the result you actually review. See `docs/api.md` for the metadata pipeline, including `metadata_provenance`, `people_context`, `task_trace`, and **API Rate Limits**.
+- Optional AI vision analysis (via OpenAI, Gemini, OpenRouter, or Xiaomi) for titles and captions; for `ai_*` effects, the final generated image is analyzed again so the stored title, summary, and tags match the result you actually review. See `docs/api.md` for the metadata pipeline, including `metadata_provenance`, `people_context`, `task_trace`, and **API Rate Limits**.
 For API-key setup links, see [docs/api.md](docs/api.md#ai-provider-key-setup).
 
 ---
@@ -192,7 +195,7 @@ docker compose up --build -d
 
 ---
 
-Open **http://localhost:8439** in your browser. Go to the **Settings** tab to configure your Immich URL and API Key, plus any optional AI API keys (OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi).
+Open **http://localhost:8439** in your browser. Go to the **Settings** tab to configure your Immich URL and API Key, plus any optional AI API keys (OpenAI, Gemini, OpenRouter, BytePlus for image generation, or Xiaomi).
 
 If you want the simplest walkthrough, start with [docs/getting-started.md](docs/getting-started.md). For the short operator flow summary, see [docs/how-it-works.md](docs/how-it-works.md). If you want the full deployment guide, see [docs/self-hosting.md](docs/self-hosting.md).
 
@@ -229,6 +232,7 @@ All connections (Immich, AI keys) and preferences are configured directly via th
 | `APP_CONTACT_EMAIL` | no | Email to contact the administrator (default: `dailyfx@localhost`). |
 | `EXAMPLE_ASSET_ID` | no | Any asset ID from your library — enables effect preview images in the Effects tab. |
 | `CORS_ORIGINS` | no | Comma-separated allowed origins (default: localhost and frontend ports). |
+| `LOG_JSON` | no | If set to `true`, use structured JSON logging instead of plain text (default: `false`). |
 
 > [!NOTE]
 > Immich connection details (`IMMICH_URL` and `IMMICH_API_KEY`), AI API keys, and notification integrations are managed dynamically in the web UI settings/presets instead of the `.env` file.
@@ -316,7 +320,7 @@ class MyEffectModule:
 ```python
 from app.services.generation.modules.myeffect import MyEffectModule
 
-MODULE_CLASSES = [
+LOCAL_MODULE_CLASSES = [
     ...,
     MyEffectModule,
 ]

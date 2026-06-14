@@ -44,6 +44,7 @@ Optional env values:
 - `APP_CONTACT_EMAIL` sets the administrator contact email.
 - `CORS_ORIGINS` should include any custom frontend origin you expose.
 - `EXAMPLE_ASSET_ID` sets a default preview asset ID.
+- `LOG_JSON` enables structured JSON logging when set to `true`.
 
 The bundled `.env.example` is already tuned for Docker-based self-hosting: `APP_ENV=production`, `DATA_DIR=/data`, and `DATABASE_URL=sqlite:////data/app.db`.
 
@@ -63,7 +64,7 @@ The frontend nginx container proxies `/api/*` to the backend, so the browser tal
 ## First Login & Configuration
 - Open `http://localhost:8439`
 - If `APP_ACCESS_TOKEN` is set in `.env`, enter that token on the login screen to authenticate.
-- Go to the **Settings** tab to configure your Immich URL, Immich API Key, and optional AI API keys (OpenAI, Gemini, OpenRouter, BytePlus, Xiaomi).
+- Go to the **Settings** tab to configure your Immich URL, Immich API Key, and optional AI API keys (OpenAI, Gemini, OpenRouter, BytePlus for image generation, Xiaomi).
 - Per-schedule AI provider/model selection lives in the **Schedules** tab, not in global settings.
 - Go to **Filters**, **Effects**, and **Notifications** tabs to configure presets.
 - Go to the **Schedules** tab to schedule automatic generations.

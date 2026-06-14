@@ -14,6 +14,8 @@
 - `cd frontend && npm test` runs the Vitest suite once; `npm run test:watch` keeps it running.
 - `make backend-install` installs backend dependencies with test extras.
 - `make backend-test` runs `python3 -m pytest`.
+- `make backend-lint` runs `ruff check .` in the backend directory.
+- `make backend-format` runs `ruff format .` in the backend directory.
 
 ## Coding Style & Naming Conventions
 - Follow existing TypeScript/React patterns in `frontend/src/`. Use `PascalCase` for components and descriptive lowercase filenames for utilities.

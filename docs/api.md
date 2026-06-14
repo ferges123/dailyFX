@@ -29,10 +29,11 @@ Some read-only review endpoints remain public and are noted below.
 ## Response notes
 
 - Rate limit: `120/minute` per client IP by default.
-  - Strict rate limits apply to sensitive endpoints:
-    - `POST /api/settings/test-*`: `10/minute`
-    - `POST /api/schedules/{schedule_id}/run-now`: `10/minute`
-    - `POST /api/studio/preview`: `5/minute`
+- Strict rate limits apply to sensitive endpoints:
+  - `POST /api/settings/test-*`: `10/minute`
+  - `PUT /api/settings`: `10/minute`
+  - `POST /api/schedules/{schedule_id}/run-now`: `10/minute`
+  - `POST /api/studio/preview`: `5/minute`
 - Errors are returned as JSON with a `detail` field
 - Some endpoints return binary content such as PNG, JPEG, HTML, or plain text
 
@@ -98,6 +99,8 @@ Returns the current application settings, including:
 AI provider and model selection now live on schedules, not in the global settings record.
 
 ### `PUT /api/settings`
+
+Rate limit: `10/minute`.
 
 Updates application settings. API keys are stored encrypted. Sending an empty string clears a key.
 
