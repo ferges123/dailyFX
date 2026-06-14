@@ -76,23 +76,104 @@ For API-key setup links, see [docs/api.md](docs/api.md#ai-provider-key-setup).
 
 ## Quick start
 
+There are two ways to run DailyFX: using pre-built images from GitHub Container Registry (recommended), or building from source.
+
+### Option A: Running Pre-built Images (Recommended)
+
+You do not need to clone the repository to run DailyFX. You can run it directly using Docker Compose:
+
+1. Create a `docker-compose.yml` file in an empty directory:
+
+```yaml
+services:
+  api:
+    image: ghcr.io/ferges123/dailyfx-api:latest
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    env_file: .env
+    volumes:
+      - ./data:/data
+    ports:
+      - "8438:8438"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
+    healthcheck:
+      test: ["CMD", "python", "healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: ghcr.io/ferges123/dailyfx-web:latest
+    restart: unless-stopped
+    ports:
+      - "8439:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      api:
+        condition: service_healthy
+```
+
+2. Create a `.env` file next to your `docker-compose.yml` and add a secure random key:
+
+```env
+APP_SECRET_KEY=    # generate with: openssl rand -hex 32
+```
+
+3. Start the containers:
+
+```bash
+docker compose up -d
+```
+
+---
+
+### Option B: Building from Source
+
+If you want to clone the repository and build the images locally:
+
+1. Clone the repository and copy `.env.example`:
 ```bash
 git clone https://github.com/ferges123/dailyFX.git
 cd dailyFX
 cp .env.example .env
 ```
 
-Edit `.env` — generate a secure secret key:
-
+2. Edit `.env` to generate a secure secret key:
 ```env
 APP_SECRET_KEY=    # generate with: openssl rand -hex 32
 ```
 
-Then start:
-
+3. Build and start:
 ```bash
 docker compose up --build -d
 ```
+
+---
 
 Open **http://localhost:8439** in your browser. Go to the **Settings** tab to configure your Immich URL and API Key, plus any optional AI API keys (OpenAI, Gemini, OpenRouter, BytePlus, or Xiaomi).
 

@@ -1,4 +1,4 @@
-import { getApiUrl } from './client';
+import { getApiUrl, getAuthToken } from './client';
 
 export type GenerationStreamConnectionState = 'connected' | 'reconnecting' | 'disconnected';
 
@@ -22,7 +22,7 @@ type ParsedSseEvent = {
 };
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('dailyfx_token');
+  const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

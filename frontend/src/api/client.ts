@@ -167,8 +167,12 @@ function resolveApiBase(): string {
 
 const apiBase = resolveApiBase();
 
+export function getAuthToken(): string | null {
+  return localStorage.getItem('dailyfx_token');
+}
+
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('dailyfx_token');
+  const token = getAuthToken();
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
@@ -192,6 +196,22 @@ export function getApiUrl(path: string) {
   return `${apiBase}${path}`;
 }
 
+async function handleResponseError(response: Response): Promise<never> {
+  let detail = `API request failed: ${response.status}`;
+  try {
+    const payload = (await response.json()) as { detail?: string };
+    if (payload.detail) {
+      detail = payload.detail;
+    }
+  } catch {
+    // ignore
+  }
+  if (response.status === 401) {
+    onUnauthorizedCallback?.();
+  }
+  throw new ApiError(response.status, detail);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
     headers: {
@@ -202,19 +222,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!response.ok) {
-    let detail = `API request failed: ${response.status}`;
-    try {
-      const payload = (await response.json()) as { detail?: string };
-      if (payload.detail) {
-        detail = payload.detail;
-      }
-    } catch {
-      // ignore
-    }
-    if (response.status === 401) {
-      onUnauthorizedCallback?.();
-    }
-    throw new ApiError(response.status, detail);
+    await handleResponseError(response);
   }
   if (response.status === 204) {
     return {} as T;
@@ -320,17 +328,7 @@ export async function createStudioPreview(
   });
 
   if (!response.ok) {
-    let detail = `API request failed: ${response.status}`;
-    try {
-      const payload = (await response.json()) as { detail?: string };
-      if (payload.detail) detail = payload.detail;
-    } catch {
-      // ignore
-    }
-    if (response.status === 401) {
-      onUnauthorizedCallback?.();
-    }
-    throw new ApiError(response.status, detail);
+    await handleResponseError(response);
   }
 
   return response.json() as Promise<StudioPreviewResponse>;

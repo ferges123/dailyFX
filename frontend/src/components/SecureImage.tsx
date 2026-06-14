@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getAuthToken } from '../api/client';
 
 interface SecureImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -14,7 +15,7 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
 
     let isMounted = true;
     let createdUrl: string | null = null;
-    const token = localStorage.getItem('dailyfx_token');
+    const token = getAuthToken();
 
     async function fetchImage() {
       try {

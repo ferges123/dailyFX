@@ -11,9 +11,7 @@ COPY app ./app
 RUN pip install --no-cache-dir .
 
 COPY alembic.ini ./
-COPY run_opencv_tests.py ./
 COPY healthcheck.py ./
-COPY tests ./tests
 COPY start.sh ./
 RUN chmod +x start.sh && chmod -R o+rX /app
 
