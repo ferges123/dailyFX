@@ -53,3 +53,11 @@ export function testLocalAIConnection() {
     method: 'POST',
   });
 }
+
+export function getProviderModels(provider: string) {
+  return request<{
+    vision_models: Array<{ label: string; value: string }>;
+    image_models: Array<{ label: string; value: string }>;
+  }>(`/api/settings/models/${provider}`);
+}
+

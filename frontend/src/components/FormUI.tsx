@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { AlertTriangle, HelpCircle, Inbox } from 'lucide-react';
 import { Field, SelectField } from './Field';
 
@@ -100,18 +100,56 @@ export function ProviderModelField({
   modelPlaceholder?: string;
   className?: string;
 }) {
-  const shouldUseFreeText = provider !== 'none' && freeTextProviders.includes(provider);
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const isOptionListed = modelOptions.some((opt) => opt.value === model);
+
+  useEffect(() => {
+    if (provider === 'none') {
+      setIsCustomMode(false);
+      return;
+    }
+    // If the model is set but not listed, default to custom input mode
+    if (model && !isOptionListed && !freeTextProviders.includes(provider)) {
+      setIsCustomMode(true);
+    }
+  }, [model, modelOptions, provider, freeTextProviders, isOptionListed]);
+
+  const shouldUseFreeText = provider !== 'none' && (freeTextProviders.includes(provider) || isCustomMode);
   const modelDisabled = provider === 'none';
+
+  const selectOptions = [
+    ...modelOptions,
+    { label: 'Custom model...', value: '__custom__' }
+  ];
 
   return (
     <div className={`grid gap-2.5 md:gap-3 rounded-xl md:rounded-2xl border border-stone-200/80 bg-white/85 p-3 md:p-4 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md ${className}`}>
-      <div className="flex items-center gap-1.5">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">{label}</div>
-        {providerHelp ? (
-          <span title={providerHelp} aria-label={providerHelp} className="inline-flex items-center text-stone-400 transition hover:text-stone-600">
-            <HelpCircle size={12} />
-          </span>
-        ) : null}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">{label}</div>
+          {providerHelp ? (
+            <span title={providerHelp} aria-label={providerHelp} className="inline-flex items-center text-stone-400 transition hover:text-stone-600">
+              <HelpCircle size={12} />
+            </span>
+          ) : null}
+        </div>
+        {provider !== 'none' && !freeTextProviders.includes(provider) && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsCustomMode(!isCustomMode);
+              if (isCustomMode) {
+                // Switch back: choose first option if available
+                onModelChange(modelOptions[0]?.value ?? '');
+              } else {
+                onModelChange('');
+              }
+            }}
+            className="text-[10px] text-stone-500 hover:text-emerald-700 font-medium underline"
+          >
+            {isCustomMode ? 'Choose from list' : 'Use custom model ID'}
+          </button>
+        )}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Provider" value={provider} onChange={(e) => onProviderChange(e.target.value)}>
@@ -125,8 +163,21 @@ export function ProviderModelField({
         ) : shouldUseFreeText ? (
           <Field label="Model" value={model} onChange={(e) => onModelChange(e.target.value)} placeholder={modelPlaceholder} optional />
         ) : (
-          <SelectField label="Model" value={model} onChange={(e) => onModelChange(e.target.value)} disabled={modelDisabled}>
-            {modelOptions.map((opt) => (
+          <SelectField
+            label="Model"
+            value={isOptionListed ? model : '__custom__'}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '__custom__') {
+                setIsCustomMode(true);
+                onModelChange('');
+              } else {
+                onModelChange(val);
+              }
+            }}
+            disabled={modelDisabled}
+          >
+            {selectOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </SelectField>
@@ -135,3 +186,4 @@ export function ProviderModelField({
     </div>
   );
 }
+

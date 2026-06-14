@@ -1,10 +1,11 @@
-import { type RefObject } from 'react';
+import { type RefObject, useState, useEffect } from 'react';
 import { HelpCircle, Check, X } from 'lucide-react';
 import {
   type FilterPreset,
   type EffectPreset,
   type NotificationPreset,
   type Schedule,
+  getProviderModels,
 } from '../../api/client';
 import { Field, SelectField } from '../../components/Field';
 import { InlineError, ProviderModelField, SectionCard } from '../../components/FormUI';
@@ -56,6 +57,52 @@ export function ScheduleForm({
         : [...current.scheduleDays, day].sort((a, b) => a - b),
     }));
   }
+
+  const [visionModels, setVisionModels] = useState<Array<{ label: string; value: string }>>(() =>
+    getVisionModelOptions(form.ai_vision_provider)
+  );
+  const [imageModels, setImageModels] = useState<Array<{ label: string; value: string }>>(() =>
+    getImageModelOptions(form.ai_image_provider)
+  );
+
+  useEffect(() => {
+    let active = true;
+    if (form.ai_vision_provider === 'none') {
+      setVisionModels([]);
+      return;
+    }
+    setVisionModels(getVisionModelOptions(form.ai_vision_provider));
+    getProviderModels(form.ai_vision_provider)
+      .then((data) => {
+        if (active) {
+          setVisionModels(data.vision_models);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [form.ai_vision_provider]);
+
+  useEffect(() => {
+    let active = true;
+    if (form.ai_image_provider === 'none') {
+      setImageModels([]);
+      return;
+    }
+    setImageModels(getImageModelOptions(form.ai_image_provider));
+    getProviderModels(form.ai_image_provider)
+      .then((data) => {
+        if (active) {
+          setImageModels(data.image_models);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [form.ai_image_provider]);
+
 
   return (
     <aside
@@ -392,9 +439,7 @@ export function ScheduleForm({
                   });
                 }}
                 model={form.ai_vision_model}
-                modelOptions={getVisionModelOptions(
-                  form.ai_vision_provider,
-                )}
+                modelOptions={visionModels}
                 onModelChange={(value) =>
                   setForm((current) => ({
                     ...current,
@@ -439,9 +484,7 @@ export function ScheduleForm({
                   });
                 }}
                 model={form.ai_image_model}
-                modelOptions={getImageModelOptions(
-                  form.ai_image_provider,
-                )}
+                modelOptions={imageModels}
                 onModelChange={(value) =>
                   setForm((current) => ({
                     ...current,
