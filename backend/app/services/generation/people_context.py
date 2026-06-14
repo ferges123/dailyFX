@@ -99,7 +99,7 @@ class PeopleContext:
 
         name_map = {}
         for i, name in enumerate(self.names):
-            name_map[name] = f"person {i+1}"
+            name_map[name] = f"person {i + 1}"
         for face in self.faces:
             if face.person_name and face.person_name not in name_map:
                 name_map[face.person_name] = f"person {len(name_map) + 1}"

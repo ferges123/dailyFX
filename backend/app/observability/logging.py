@@ -12,7 +12,7 @@ class JSONFormatter(logging.Formatter):
         exception_str = None
         if exc_info:
             exception_str = self.formatException(exc_info)
-        
+
         log_data = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
@@ -24,26 +24,27 @@ class JSONFormatter(logging.Formatter):
         }
         if exception_str:
             log_data["exception"] = exception_str
-        
+
         return json.dumps(log_data)
+
 
 def setup_logging():
     settings = get_settings()
     if not settings.log_json:
         return
-        
+
     root_logger = logging.getLogger()
-    
+
     # Remove existing handlers
     for handler in list(root_logger.handlers):
         root_logger.removeHandler(handler)
-        
+
     # Add our StreamHandler
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.INFO)
-    
+
     # Configure uvicorn loggers to propagate to root logger so they use our formatter
     for logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
         uv_logger = logging.getLogger(logger_name)

@@ -1,4 +1,3 @@
-
 import json
 import logging
 import uuid
@@ -82,6 +81,7 @@ async def create_studio_preview(
     module = _get_supported_module(effect_id)
     parsed_config = _parse_config(config)
     from app.services.generation.config_validation import validate_module_config
+
     try:
         validate_module_config(effect_id, {"config": parsed_config})
     except ValueError as e:

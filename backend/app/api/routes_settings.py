@@ -10,11 +10,11 @@ from app.immich.errors import (
     ImmichUnexpectedResponseError,
 )
 from app.limiter import limiter
-from app.schemas.settings import ConnectionTestResponse, SettingsResponse, SettingsUpdate, AvailableModelsResponse
-from app.security import encrypt_secret, require_auth, decrypt_secret
+from app.schemas.settings import AvailableModelsResponse, ConnectionTestResponse, SettingsResponse, SettingsUpdate
+from app.security import decrypt_secret, encrypt_secret, require_auth
 from app.services.generation.ai_vision import XIAOMI_API_BASE_URL
 from app.services.immich import build_immich_client, get_or_create_settings
-from app.services.local_ai import LocalAIConfigurationError, get_local_ai_base_url, get_local_ai_api_key
+from app.services.local_ai import LocalAIConfigurationError, get_local_ai_api_key, get_local_ai_base_url
 from app.services.settings.connection_tests import (
     build_connection_test_response as _connection_test_response,
 )
@@ -217,32 +217,32 @@ async def _test_local_connection(row) -> ConnectionTestResponse:
 
 @router.get("/models/{provider}", response_model=AvailableModelsResponse)
 async def get_provider_models(
-    provider: str,
-    db: Session = Depends(get_db),
-    _: None = Depends(require_auth)
+    provider: str, db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> AvailableModelsResponse:
     import httpx
+
     row = get_or_create_settings(db)
 
-
-    
     # Fallback default hardcoded lists
     fallback_vision = []
     fallback_image = []
     if provider == "openai":
         fallback_vision = [{"label": "gpt-4o-mini", "value": "gpt-4o-mini"}, {"label": "gpt-4o", "value": "gpt-4o"}]
-        fallback_image = [{"label": "gpt-image-1", "value": "gpt-image-1"}, {"label": "gpt-image-1-mini", "value": "gpt-image-1-mini"}]
+        fallback_image = [
+            {"label": "gpt-image-1", "value": "gpt-image-1"},
+            {"label": "gpt-image-1-mini", "value": "gpt-image-1-mini"},
+        ]
     elif provider == "gemini":
         fallback_vision = [
             {"label": "gemini-2.5-flash", "value": "gemini-2.5-flash"},
             {"label": "gemini-2.5-pro", "value": "gemini-2.5-pro"},
             {"label": "gemini-2.0-flash", "value": "gemini-2.0-flash"},
-            {"label": "gemini-2.0-flash-lite", "value": "gemini-2.0-flash-lite"}
+            {"label": "gemini-2.0-flash-lite", "value": "gemini-2.0-flash-lite"},
         ]
         fallback_image = [
             {"label": "gemini-2.5-flash-image", "value": "gemini-2.5-flash-image"},
             {"label": "gemini-3.1-flash-image-preview", "value": "gemini-3.1-flash-image-preview"},
-            {"label": "gemini-3-pro-image-preview", "value": "gemini-3-pro-image-preview"}
+            {"label": "gemini-3-pro-image-preview", "value": "gemini-3-pro-image-preview"},
         ]
     elif provider == "xiaomi":
         fallback_vision = [{"label": "mimo-v2.5", "value": "mimo-v2.5"}]
@@ -257,7 +257,7 @@ async def get_provider_models(
     url = None
     header_name = "Authorization"
     use_bearer = True
-    
+
     if provider == "local":
         try:
             url = f"{get_local_ai_base_url(row)}/models"
@@ -283,7 +283,7 @@ async def get_provider_models(
             response = await client.get(url, headers=headers)
         if response.status_code >= 400:
             return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
-        
+
         payload = response.json()
         vision_models = []
         image_models = []
@@ -300,7 +300,7 @@ async def get_provider_models(
                         image_models.append({"label": display_name, "value": short_name})
                     else:
                         vision_models.append({"label": display_name, "value": short_name})
-        
+
         elif provider == "openai":
             models_list = payload.get("data", [])
             for m in models_list:
@@ -347,9 +347,8 @@ async def get_provider_models(
         # Ensure fallback lists are used if filtered results are empty
         return AvailableModelsResponse(
             vision_models=vision_models if vision_models else fallback_vision,
-            image_models=image_models if image_models else fallback_image
+            image_models=image_models if image_models else fallback_image,
         )
 
     except Exception:
         return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
-

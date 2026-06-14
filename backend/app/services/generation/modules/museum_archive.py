@@ -50,11 +50,7 @@ class MuseumArchiveModule:
             frame_style = "classic"
 
         people_context = await load_people_context(client, asset)
-        name_hint = (
-            ", ideally referencing the people"
-            if people_context and people_context.names
-            else ""
-        )
+        name_hint = ", ideally referencing the people" if people_context and people_context.names else ""
         vision_prompt = (
             "Analyze this image. Return a JSON object with two fields: "
             f"'title' (a short, creative 3-5 word title{name_hint}) and "

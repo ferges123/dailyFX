@@ -132,7 +132,9 @@ async def run_generation_pipeline(
         return persist_res
 
     except AIUsageLimitExceededError as exc:
-        debug_log("Generation blocked by AI usage limit", task_id=ctx.task_id, module=ctx.selected_group_name, error=str(exc))
+        debug_log(
+            "Generation blocked by AI usage limit", task_id=ctx.task_id, module=ctx.selected_group_name, error=str(exc)
+        )
         logger.warning("Generation blocked for task %s: %s", ctx.task_id, exc)
         _record_generation_failure(
             db=db,

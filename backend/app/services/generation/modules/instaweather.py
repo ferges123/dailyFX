@@ -78,7 +78,9 @@ def parse_date(date_str: str | None) -> datetime | None:
     return None
 
 
-def get_text_size(text: str, font: ImageFont.FreeTypeFont | ImageFont.ImageFont, draw: ImageDraw.ImageDraw) -> tuple[int, int]:
+def get_text_size(
+    text: str, font: ImageFont.FreeTypeFont | ImageFont.ImageFont, draw: ImageDraw.ImageDraw
+) -> tuple[int, int]:
     """Cross-version helper to measure text width and height in PIL."""
     try:
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -256,7 +258,6 @@ async def reverse_geocode_detailed(lat: float, lon: float) -> tuple[str | None, 
     return None, None
 
 
-
 def get_fallback_weather(lat: float, month: int) -> dict:
     """Simulate realistic weather conditions based on latitude and month as fallback."""
     abs_lat = abs(lat)
@@ -275,17 +276,18 @@ def get_fallback_weather(lat: float, month: int) -> dict:
     amplitude = 15 * (abs_lat / 90.0)
 
     import math
+
     seasonal_variation = amplitude * math.sin(math.pi * (season_month - 4) / 6)
     temp_c = base_temp + seasonal_variation
 
     if temp_c < 0:
         code = 71  # Snow
     elif temp_c < 10:
-        code = 3   # Cloudy
+        code = 3  # Cloudy
     elif seasonal_variation < -5:
         code = 61  # Rain
     else:
-        code = 0   # Clear
+        code = 0  # Clear
 
     # Fallback simulation details
     apparent_temp_c = round(temp_c + (2.0 if code == 0 else -1.5), 1)
@@ -308,6 +310,8 @@ def get_fallback_weather(lat: float, month: int) -> dict:
         "sunset": sunset,
         "simulated": True,
     }
+
+
 def draw_pin_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
     w = max(1.5, size * 0.08)
     cx = x + size / 2
@@ -319,9 +323,9 @@ def draw_pin_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, co
     r_in = size * 0.08
     draw.ellipse([cx - r_in, cy - r_in, cx + r_in, cy + r_in], fill=color)
     # Bottom pointer
-    p1 = (cx - r * 0.866, cy + r * 0.5) # 150 deg
+    p1 = (cx - r * 0.866, cy + r * 0.5)  # 150 deg
     p2 = (cx, y + size * 0.95)
-    p3 = (cx + r * 0.866, cy + r * 0.5) # 30 deg
+    p3 = (cx + r * 0.866, cy + r * 0.5)  # 30 deg
     draw.line([p1, p2, p3], fill=color, width=int(w), joint="round")
 
 
@@ -346,7 +350,7 @@ def draw_wind_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, c
     draw.line([(x + size * 0.1, y1), (x + size * 0.65, y1)], fill=color, width=int(w))
     # Curl 1 (up and back)
     draw.arc([x + size * 0.55, y1 - size * 0.2, x + size * 0.75, y1], start=270, end=90, fill=color, width=int(w))
-    
+
     # Line 2 (bottom)
     y2 = y + size * 0.65
     draw.line([(x + size * 0.2, y2), (x + size * 0.75, y2)], fill=color, width=int(w))
@@ -372,7 +376,11 @@ def draw_sunrise_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float
     draw.line([(cx + r * 0.7, hy - r * 0.7), (cx + r * 1.1, hy - r * 1.1)], fill=color, width=int(w))
     # Up arrow (small, in center of sun)
     draw.line([(cx, hy - size * 0.05), (cx, hy - size * 0.18)], fill=color, width=int(w))
-    draw.line([(cx - size * 0.05, hy - size * 0.13), (cx, hy - size * 0.18), (cx + size * 0.05, hy - size * 0.13)], fill=color, width=int(w))
+    draw.line(
+        [(cx - size * 0.05, hy - size * 0.13), (cx, hy - size * 0.18), (cx + size * 0.05, hy - size * 0.13)],
+        fill=color,
+        width=int(w),
+    )
 
 
 def draw_sunset_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
@@ -393,7 +401,11 @@ def draw_sunset_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float,
     draw.line([(cx + r * 0.7, hy - r * 0.7), (cx + r * 1.1, hy - r * 1.1)], fill=color, width=int(w))
     # Down arrow
     draw.line([(cx, hy - size * 0.18), (cx, hy - size * 0.05)], fill=color, width=int(w))
-    draw.line([(cx - size * 0.05, hy - size * 0.10), (cx, hy - size * 0.05), (cx + size * 0.05, hy - size * 0.10)], fill=color, width=int(w))
+    draw.line(
+        [(cx - size * 0.05, hy - size * 0.10), (cx, hy - size * 0.05), (cx + size * 0.05, hy - size * 0.10)],
+        fill=color,
+        width=int(w),
+    )
 
 
 def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple = (255, 204, 0, 255)):
@@ -405,6 +417,7 @@ def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: 
     ray_len = size * 0.10
     ray_gap = size * 0.06
     import math
+
     for i in range(8):
         angle = i * (math.pi / 4)
         x1 = cx + (r + ray_gap) * math.cos(angle)
@@ -432,9 +445,7 @@ def draw_cloud(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, fill_
 
     # Bottom fill rectangle
     draw.rounded_rectangle(
-        [x + size * 0.15, y + size * 0.55, x + size * 0.82, y + size * 0.82],
-        radius=int(size * 0.14),
-        fill=fill_color
+        [x + size * 0.15, y + size * 0.55, x + size * 0.82, y + size * 0.82], radius=int(size * 0.14), fill=fill_color
     )
 
 
@@ -473,12 +484,12 @@ def draw_thunderstorm(draw: ImageDraw.ImageDraw, x: float, y: float, size: float
     # Sharp lightning bolt polygon
     color = (255, 220, 0, 255)
     p = [
-        (x + size * 0.55, y + size * 0.65), # top start
-        (x + size * 0.44, y + size * 0.78), # middle left
-        (x + size * 0.52, y + size * 0.78), # middle right
-        (x + size * 0.45, y + size * 0.94), # bottom tip
-        (x + size * 0.58, y + size * 0.76), # middle right high
-        (x + size * 0.50, y + size * 0.76), # middle left high
+        (x + size * 0.55, y + size * 0.65),  # top start
+        (x + size * 0.44, y + size * 0.78),  # middle left
+        (x + size * 0.52, y + size * 0.78),  # middle right
+        (x + size * 0.45, y + size * 0.94),  # bottom tip
+        (x + size * 0.58, y + size * 0.76),  # middle right high
+        (x + size * 0.50, y + size * 0.76),  # middle left high
     ]
     draw.polygon(p, fill=color)
 
@@ -599,10 +610,7 @@ class InstaWeatherModule:
             raw_people = asset_info.get("people") or []
             for person_payload in raw_people:
                 raw_faces = (
-                    person_payload.get("faces")
-                    or person_payload.get("faceList")
-                    or person_payload.get("face")
-                    or []
+                    person_payload.get("faces") or person_payload.get("faceList") or person_payload.get("face") or []
                 )
                 if isinstance(raw_faces, list):
                     for face_payload in raw_faces:
@@ -638,7 +646,7 @@ class InstaWeatherModule:
         if mode == "instaweather" and weather_info:
             w_desc, _ = map_wmo_code(weather_info["weather_code"])
             temp_val = weather_info["temp_c"]
-            temp_str = f"{int(temp_val)}°C" if units == "celsius" else f"{int((temp_val * 9/5) + 32)}°F"
+            temp_str = f"{int(temp_val)}°C" if units == "celsius" else f"{int((temp_val * 9 / 5) + 32)}°F"
             loc_str = f" in {city}" if city else ""
             weather_summary = f" Weather: {w_desc}, {temp_str}{loc_str}."
 

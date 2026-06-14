@@ -466,9 +466,11 @@ def test_ai_effect_import_and_export_http_roundtrip():
 
 
 def test_delete_ai_effect_in_use_raises_conflict():
-    from fastapi import HTTPException
-    from app.models.effect_preset import EffectPresetModel
     import json
+
+    from fastapi import HTTPException
+
+    from app.models.effect_preset import EffectPresetModel
 
     init_db()
     db = SessionLocal()
@@ -488,10 +490,7 @@ def test_delete_ai_effect_in_use_raises_conflict():
         create_ai_effect(body, db)
 
         # 2. Create an EffectPreset using this AI effect in groups
-        preset = EffectPresetModel(
-            name="Test In Use Preset",
-            groups_json=json.dumps({effect_id: {}})
-        )
+        preset = EffectPresetModel(name="Test In Use Preset", groups_json=json.dumps({effect_id: {}}))
         db.add(preset)
         db.commit()
 
@@ -511,4 +510,3 @@ def test_delete_ai_effect_in_use_raises_conflict():
             db.delete(row)
             db.commit()
         db.close()
-

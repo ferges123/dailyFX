@@ -51,7 +51,9 @@ async def _resolve_context(asset, client) -> tuple[datetime, str | None, dict]:
             lon_f = float(lon)
             location = await reverse_geocode(lat_f, lon_f)
             if not location:
-                location = f"{abs(lat_f):.2f}°{'N' if lat_f >= 0 else 'S'}, {abs(lon_f):.2f}°{'E' if lon_f >= 0 else 'W'}"
+                location = (
+                    f"{abs(lat_f):.2f}°{'N' if lat_f >= 0 else 'S'}, {abs(lon_f):.2f}°{'E' if lon_f >= 0 else 'W'}"
+                )
             weather_info = await fetch_weather(lat_f, lon_f, dt)
             if not weather_info:
                 weather_info = get_fallback_weather(lat_f, dt.month)
@@ -115,10 +117,7 @@ class AppleWeatherModule:
             raw_people = asset_info.get("people") or []
             for person_payload in raw_people:
                 raw_faces = (
-                    person_payload.get("faces")
-                    or person_payload.get("faceList")
-                    or person_payload.get("face")
-                    or []
+                    person_payload.get("faces") or person_payload.get("faceList") or person_payload.get("face") or []
                 )
                 if isinstance(raw_faces, list):
                     for face_payload in raw_faces:
@@ -144,7 +143,12 @@ class AppleWeatherModule:
             card_height_est = int(335 * scale)
             positions_map = {
                 "bottom_left": (margin, height - margin - card_height_est, margin + card_width_est, height - margin),
-                "bottom_right": (width - margin - card_width_est, height - margin - card_height_est, width - margin, height - margin),
+                "bottom_right": (
+                    width - margin - card_width_est,
+                    height - margin - card_height_est,
+                    width - margin,
+                    height - margin,
+                ),
                 "top_left": (margin, margin, margin + card_width_est, margin + card_height_est),
                 "top_right": (width - margin - card_width_est, margin, width - margin, margin + card_height_est),
             }
@@ -210,8 +214,16 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         # Sun center
         draw.ellipse([x + size * 0.25, y + size * 0.25, x + size * 0.75, y + size * 0.75], fill=(255, 204, 0))
         # Outer glow rings
-        draw.ellipse([x + size * 0.15, y + size * 0.15, x + size * 0.85, y + size * 0.85], outline=(255, 220, 100, 60), width=max(1, int(2 * scale)))
-        draw.ellipse([x + size * 0.05, y + size * 0.05, x + size * 0.95, y + size * 0.95], outline=(255, 220, 100, 30), width=max(1, int(1 * scale)))
+        draw.ellipse(
+            [x + size * 0.15, y + size * 0.15, x + size * 0.85, y + size * 0.85],
+            outline=(255, 220, 100, 60),
+            width=max(1, int(2 * scale)),
+        )
+        draw.ellipse(
+            [x + size * 0.05, y + size * 0.05, x + size * 0.95, y + size * 0.95],
+            outline=(255, 220, 100, 30),
+            width=max(1, int(1 * scale)),
+        )
 
     # 1, 2 = Partly cloudy
     elif weather_code in (1, 2):
@@ -220,7 +232,16 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         sun_cy = cy - size * 0.15
         sun_r = size * 0.20
         draw.ellipse([sun_cx - sun_r, sun_cy - sun_r, sun_cx + sun_r, sun_cy + sun_r], fill=(255, 204, 0))
-        draw.ellipse([sun_cx - sun_r - size*0.06, sun_cy - sun_r - size*0.06, sun_cx + sun_r + size*0.06, sun_cy + sun_r + size*0.06], outline=(255, 220, 100, 40), width=max(1, int(1 * scale)))
+        draw.ellipse(
+            [
+                sun_cx - sun_r - size * 0.06,
+                sun_cy - sun_r - size * 0.06,
+                sun_cx + sun_r + size * 0.06,
+                sun_cy + sun_r + size * 0.06,
+            ],
+            outline=(255, 220, 100, 40),
+            width=max(1, int(1 * scale)),
+        )
 
         # Soft layered cloud
         # Back cloud puff (darker/gray)
@@ -230,7 +251,11 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         draw.ellipse([cx + size * 0.02, cy + size * 0.06, cx + size * 0.26, cy + size * 0.30], fill=(255, 255, 255))
         draw.ellipse([cx - size * 0.18, cy - size * 0.14, cx + size * 0.18, cy + size * 0.22], fill=(255, 255, 255))
         # Bottom connection pill
-        draw.rounded_rectangle([cx - size * 0.35, cy + size * 0.14, cx + size * 0.26, cy + size * 0.30], radius=max(1, int(8 * scale)), fill=(255, 255, 255))
+        draw.rounded_rectangle(
+            [cx - size * 0.35, cy + size * 0.14, cx + size * 0.26, cy + size * 0.30],
+            radius=max(1, int(8 * scale)),
+            fill=(255, 255, 255),
+        )
 
     # 3 = Cloudy, 45, 48 = Foggy
     elif weather_code in (3, 45, 48):
@@ -241,12 +266,24 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         draw.ellipse([cx - size * 0.34, cy + size * 0.04, cx - size * 0.08, cy + size * 0.30], fill=(245, 247, 250))
         draw.ellipse([cx + size * 0.02, cy + size * 0.08, cx + size * 0.28, cy + size * 0.34], fill=(245, 247, 250))
         draw.ellipse([cx - size * 0.18, cy - size * 0.10, cx + size * 0.18, cy + size * 0.26], fill=(255, 255, 255))
-        draw.rounded_rectangle([cx - size * 0.34, cy + size * 0.16, cx + size * 0.28, cy + size * 0.34], radius=max(1, int(9 * scale)), fill=(255, 255, 255))
+        draw.rounded_rectangle(
+            [cx - size * 0.34, cy + size * 0.16, cx + size * 0.28, cy + size * 0.34],
+            radius=max(1, int(9 * scale)),
+            fill=(255, 255, 255),
+        )
 
         # Fog lines for 45, 48
         if weather_code in (45, 48):
-            draw.rounded_rectangle([cx - size * 0.38, cy + size * 0.38, cx + size * 0.38, cy + size * 0.42], radius=max(1, int(2 * scale)), fill=(255, 255, 255, 160))
-            draw.rounded_rectangle([cx - size * 0.28, cy + size * 0.46, cx + size * 0.28, cy + size * 0.50], radius=max(1, int(2 * scale)), fill=(255, 255, 255, 120))
+            draw.rounded_rectangle(
+                [cx - size * 0.38, cy + size * 0.38, cx + size * 0.38, cy + size * 0.42],
+                radius=max(1, int(2 * scale)),
+                fill=(255, 255, 255, 160),
+            )
+            draw.rounded_rectangle(
+                [cx - size * 0.28, cy + size * 0.46, cx + size * 0.28, cy + size * 0.50],
+                radius=max(1, int(2 * scale)),
+                fill=(255, 255, 255, 120),
+            )
 
     # 51, 53, 55 = Drizzle, 56, 57 = Freezing drizzle, 61, 63, 65 = Rain, 66, 67 = Freezing rain, 80, 81, 82 = Rain showers
     elif weather_code in (51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82):
@@ -258,13 +295,27 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         draw.ellipse([cx - size * 0.34, cy + size * 0.02, cx - size * 0.08, cy + size * 0.28], fill=(180, 195, 215))
         draw.ellipse([cx + size * 0.02, cy + size * 0.06, cx + size * 0.28, cy + size * 0.32], fill=(180, 195, 215))
         draw.ellipse([cx - size * 0.18, cy - size * 0.12, cx + size * 0.18, cy + size * 0.24], fill=(200, 215, 235))
-        draw.rounded_rectangle([cx - size * 0.34, cy + size * 0.14, cx + size * 0.28, cy + size * 0.32], radius=max(1, int(8 * scale)), fill=(200, 215, 235))
+        draw.rounded_rectangle(
+            [cx - size * 0.34, cy + size * 0.14, cx + size * 0.28, cy + size * 0.32],
+            radius=max(1, int(8 * scale)),
+            fill=(200, 215, 235),
+        )
 
         # Raindrops (3 slanted lines)
         drop_color = (100, 185, 255, 230)
-        draw.line([cx - size * 0.18, cy + size * 0.36, cx - size * 0.22, cy + size * 0.48], fill=drop_color, width=max(1, int(2.5 * scale)))
-        draw.line([cx, cy + size * 0.36, cx - size * 0.04, cy + size * 0.48], fill=drop_color, width=max(1, int(2.5 * scale)))
-        draw.line([cx + size * 0.18, cy + size * 0.36, cx + size * 0.14, cy + size * 0.48], fill=drop_color, width=max(1, int(2.5 * scale)))
+        draw.line(
+            [cx - size * 0.18, cy + size * 0.36, cx - size * 0.22, cy + size * 0.48],
+            fill=drop_color,
+            width=max(1, int(2.5 * scale)),
+        )
+        draw.line(
+            [cx, cy + size * 0.36, cx - size * 0.04, cy + size * 0.48], fill=drop_color, width=max(1, int(2.5 * scale))
+        )
+        draw.line(
+            [cx + size * 0.18, cy + size * 0.36, cx + size * 0.14, cy + size * 0.48],
+            fill=drop_color,
+            width=max(1, int(2.5 * scale)),
+        )
 
     # 71, 73, 75, 77 = Snowfall, 85, 86 = Snow showers
     elif weather_code in (71, 73, 75, 77, 85, 86):
@@ -275,7 +326,11 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         draw.ellipse([cx - size * 0.34, cy + size * 0.04, cx - size * 0.08, cy + size * 0.30], fill=(220, 225, 235))
         draw.ellipse([cx + size * 0.02, cy + size * 0.08, cx + size * 0.28, cy + size * 0.34], fill=(220, 225, 235))
         draw.ellipse([cx - size * 0.18, cy - size * 0.10, cx + size * 0.18, cy + size * 0.26], fill=(235, 240, 248))
-        draw.rounded_rectangle([cx - size * 0.34, cy + size * 0.16, cx + size * 0.28, cy + size * 0.34], radius=max(1, int(8 * scale)), fill=(235, 240, 248))
+        draw.rounded_rectangle(
+            [cx - size * 0.34, cy + size * 0.16, cx + size * 0.28, cy + size * 0.34],
+            radius=max(1, int(8 * scale)),
+            fill=(235, 240, 248),
+        )
 
         # Snowflakes (3 white dots)
         snow_color = (255, 255, 255, 240)
@@ -293,7 +348,11 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
         draw.ellipse([cx - size * 0.34, cy + size * 0.00, cx - size * 0.08, cy + size * 0.26], fill=(100, 105, 130))
         draw.ellipse([cx + size * 0.02, cy + size * 0.04, cx + size * 0.28, cy + size * 0.30], fill=(100, 105, 130))
         draw.ellipse([cx - size * 0.18, cy - size * 0.14, cx + size * 0.18, cy + size * 0.22], fill=(120, 125, 150))
-        draw.rounded_rectangle([cx - size * 0.34, cy + size * 0.12, cx + size * 0.28, cy + size * 0.30], radius=max(1, int(8 * scale)), fill=(120, 125, 150))
+        draw.rounded_rectangle(
+            [cx - size * 0.34, cy + size * 0.12, cx + size * 0.28, cy + size * 0.30],
+            radius=max(1, int(8 * scale)),
+            fill=(120, 125, 150),
+        )
 
         # Lightning bolt peaking out
         bolt_pts = [
@@ -302,7 +361,7 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
             (cx - size * 0.02, cy + size * 0.46),
             (cx - size * 0.14, cy + size * 0.66),
             (cx + size * 0.12, cy + size * 0.40),
-            (cx + size * 0.02, cy + size * 0.40)
+            (cx + size * 0.02, cy + size * 0.40),
         ]
         draw.polygon(bolt_pts, fill=(255, 215, 0))
 
@@ -413,14 +472,9 @@ def _draw_apple_weather_overlay(
     shadow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     shadow_draw = ImageDraw.Draw(shadow_layer)
     shadow_draw.rounded_rectangle(
-        [
-            x + int(4 * scale),
-            y + int(6 * scale),
-            x + card_width + int(4 * scale),
-            y + card_height + int(6 * scale)
-        ],
+        [x + int(4 * scale), y + int(6 * scale), x + card_width + int(4 * scale), y + card_height + int(6 * scale)],
         radius=card_radius,
-        fill=(0, 0, 0, 110)
+        fill=(0, 0, 0, 110),
     )
     shadow_blurred = shadow_layer.filter(ImageFilter.GaussianBlur(radius=max(12, int(20 * scale))))
     result_img = Image.alpha_composite(result_img, shadow_blurred)
@@ -525,6 +579,3 @@ def _draw_apple_weather_overlay(
 
     combined = Image.alpha_composite(result_img, overlay_layer)
     return combined.convert("RGB")
-
-
-

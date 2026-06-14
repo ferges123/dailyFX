@@ -39,12 +39,14 @@ def validate_module_config(module_name: str, group_config: dict) -> None:
         raise ValueError(f"Parameters 'config' for module '{module_name}' must be a dictionary")
 
     schema = getattr(module, "config_schema", None) or []
-    
+
     # Reject unknown keys in parameters 'config'
     allowed_config_keys = {field.get("key") for field in schema if field.get("key")}
     unknown_config_keys = set(config.keys()) - allowed_config_keys
     if unknown_config_keys:
-        raise ValueError(f"Module '{module_name}' config contains unknown keys: {', '.join(sorted(unknown_config_keys))}")
+        raise ValueError(
+            f"Module '{module_name}' config contains unknown keys: {', '.join(sorted(unknown_config_keys))}"
+        )
 
     errors: list[str] = []
     for field in schema:
@@ -74,6 +76,7 @@ def validate_module_config(module_name: str, group_config: dict) -> None:
 
     if errors:
         raise ValueError(f"Invalid config for module '{module_name}': {'; '.join(errors)}")
+
 
 def validate_effects_config(effects_config: dict) -> None:
     """

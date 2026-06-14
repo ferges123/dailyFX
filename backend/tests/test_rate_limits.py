@@ -4,6 +4,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def enable_limiter():
     from app.limiter import limiter
+
     limiter.enabled = True
     yield
     limiter.enabled = False
@@ -11,8 +12,8 @@ def enable_limiter():
 
 def test_limiter_module_exists():
     from app.limiter import limiter
-    assert limiter is not None
 
+    assert limiter is not None
 
 
 def test_studio_preview_rate_limit():
@@ -29,7 +30,7 @@ def test_studio_preview_rate_limit():
         for _ in range(5):
             response = client.post("/api/studio/preview", files=files, data=data)
             assert response.status_code != 429
-        
+
         # 6th request must exceed limit and return 429
         response = client.post("/api/studio/preview", files=files, data=data)
         assert response.status_code == 429
@@ -75,6 +76,3 @@ def test_schedule_run_now_rate_limit():
         # 11th request must exceed limit and return 429
         response = client.post("/api/schedules/9999/run-now")
         assert response.status_code == 429
-
-
-

@@ -233,5 +233,3 @@ def test_studio_modules_include_ai_and_exclude_multisource(authenticated_client:
     names = {item["name"] for item in response.json()}
     assert "collage" not in names
     assert any(name.startswith("ai_") for name in names)
-
-

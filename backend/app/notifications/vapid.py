@@ -156,4 +156,3 @@ async def send_push_to_all(
     if stale:
         db.query(PushSubscriptionModel).filter(PushSubscriptionModel.id.in_(stale)).delete(synchronize_session=False)
         db.commit()
-

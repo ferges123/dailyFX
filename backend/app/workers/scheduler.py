@@ -207,6 +207,7 @@ async def _run_queued_task_in_background(task_id: str) -> None:
     try:
         settings = get_or_create_settings(session)
         from app.models.generation_task import GenerationTaskModel
+
         queued_task = session.get(GenerationTaskModel, task_id)
         if not queued_task:
             logger.warning("Queued background task %s not found in database", task_id)
@@ -225,6 +226,7 @@ async def _run_queued_task_in_background(task_id: str) -> None:
             payload = parse_run_now_task_payload(queued_task.payload_json)
             if payload.schedule_id:
                 from app.models.schedule import ScheduleModel
+
                 schedule = session.get(ScheduleModel, payload.schedule_id)
                 if schedule:
                     if result["status"] == "completed":
@@ -240,7 +242,9 @@ async def _run_queued_task_in_background(task_id: str) -> None:
     finally:
         session.close()
         _running_task_ids.discard(task_id)
-        logger.info("Background task finished and cleaned up: %s. Current running count: %d", task_id, len(_running_task_ids))
+        logger.info(
+            "Background task finished and cleaned up: %s. Current running count: %d", task_id, len(_running_task_ids)
+        )
 
 
 async def _perform_tick(session: Session, now: datetime | None = None, async_mode: bool = True) -> dict[str, object]:
@@ -384,7 +388,11 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
             if task.task_id in _running_task_ids:
                 continue
             if len(_running_task_ids) >= MAX_CONCURRENT_TASKS:
-                logger.info("Concurrency limit reached (%d/%d). Skipping further queue processing.", len(_running_task_ids), MAX_CONCURRENT_TASKS)
+                logger.info(
+                    "Concurrency limit reached (%d/%d). Skipping further queue processing.",
+                    len(_running_task_ids),
+                    MAX_CONCURRENT_TASKS,
+                )
                 break
 
             _running_task_ids.add(task.task_id)
@@ -451,6 +459,7 @@ async def _async_main() -> None:
             logger.info("Reset %d stuck RUNNING tasks to FAILED", len(stuck_tasks))
 
         from app.models.generation_task import GenerationTaskModel
+
         stuck_queued_tasks = session.query(GenerationTaskModel).filter(GenerationTaskModel.status == "running").all()
         if stuck_queued_tasks:
             for task in stuck_queued_tasks:

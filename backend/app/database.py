@@ -66,6 +66,7 @@ def _ensure_engine() -> Engine:
 
     if database_url.startswith("sqlite"):
         from sqlalchemy import event
+
         @event.listens_for(engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
@@ -76,7 +77,6 @@ def _ensure_engine() -> Engine:
     SessionLocal.configure(bind=engine)
     _current_database_url = database_url
     return engine
-
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -113,5 +113,3 @@ def init_db() -> None:
     command.upgrade(alembic_cfg, "head")
     bootstrap_builtin_ai_effects()
     _initialized_databases.add(database_url)
-
-

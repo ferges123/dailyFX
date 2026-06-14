@@ -501,8 +501,12 @@ async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends
 
     db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "REJECTED").delete()
     if task_ids:
-        db.query(GenerationTaskModel).filter(GenerationTaskModel.task_id.in_(task_ids)).delete(synchronize_session=False)
-        db.query(GenerationStreamEventModel).filter(GenerationStreamEventModel.task_id.in_(task_ids)).delete(synchronize_session=False)
+        db.query(GenerationTaskModel).filter(GenerationTaskModel.task_id.in_(task_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(GenerationStreamEventModel).filter(GenerationStreamEventModel.task_id.in_(task_ids)).delete(
+            synchronize_session=False
+        )
     db.commit()
 
 

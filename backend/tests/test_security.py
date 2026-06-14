@@ -129,6 +129,7 @@ def test_require_review_auth_dependency(monkeypatch):
 
     import app.config
     import app.security
+
     app.config.get_settings.cache_clear()
 
     # 1. require_auth_for_review is False -> should NOT raise even if app_access_token is set

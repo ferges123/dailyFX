@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -33,7 +32,6 @@ router = APIRouter(prefix="/api/ai-effects", tags=["ai-effects"])
 def _effect_in_use(db: Session, effect_id: str) -> bool:
     pattern = f'%"{effect_id}"%'
     return db.query(EffectPresetModel).filter(EffectPresetModel.groups_json.like(pattern)).first() is not None
-
 
 
 def _row_to_response(

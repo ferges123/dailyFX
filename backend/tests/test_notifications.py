@@ -494,7 +494,10 @@ def test_send_slack_notification(monkeypatch):
 
     assert result.ok is True
     assert result.provider == "slack"
-    assert fake_client.requests[0]["url"] == "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+    assert (
+        fake_client.requests[0]["url"]
+        == "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+    )
     json_data = fake_client.requests[0]["json"]
     assert "Generation ready" in json_data["text"]
     assert len(json_data["blocks"]) == 4
@@ -621,6 +624,3 @@ def test_test_subscription_endpoint_returns_404_for_unknown_subscription():
     client = TestClient(app)
     resp = client.post("/api/notifications/subscriptions/999999/test")
     assert resp.status_code == 404
-
-
-

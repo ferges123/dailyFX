@@ -706,7 +706,9 @@ class ImmichClient:
                     if not assets:
                         break
                     if exclude_ids:
-                        assets = [asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)]
+                        assets = [
+                            asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)
+                        ]
                     if not assets:
                         continue
                     return assets

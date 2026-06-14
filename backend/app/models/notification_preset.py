@@ -45,4 +45,3 @@ class NotificationPresetModel(Base):
         secondary=preset_push_subscription_association,
         backref="notification_presets",
     )
-

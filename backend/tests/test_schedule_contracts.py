@@ -172,7 +172,9 @@ def test_schedule_response_includes_ai_photo_selection_flag():
     init_db()
     db = SessionLocal()
     try:
-        filter_preset = FilterPresetModel(name="Filter validation create", album_ids_json="[]", person_filters_json="[]")
+        filter_preset = FilterPresetModel(
+            name="Filter validation create", album_ids_json="[]", person_filters_json="[]"
+        )
         effect_preset = make_effect_preset_row(
             name="Effect validation create", groups_json='{"instafilter": {"enabled": true}}'
         )
@@ -234,7 +236,9 @@ def test_update_schedule_rejects_ai_photo_selection_without_vision_provider():
     init_db()
     db = SessionLocal()
     try:
-        filter_preset = FilterPresetModel(name="Filter validation update", album_ids_json="[]", person_filters_json="[]")
+        filter_preset = FilterPresetModel(
+            name="Filter validation update", album_ids_json="[]", person_filters_json="[]"
+        )
         effect_preset = make_effect_preset_row(
             name="Effect validation update", groups_json='{"instafilter": {"enabled": true}}'
         )

@@ -17,4 +17,3 @@ if "DATABASE_URL" not in os.environ:
 from app.limiter import limiter
 
 limiter.enabled = False
-

@@ -106,4 +106,3 @@ class NotificationTestResponse(BaseModel):
 class AvailableModelsResponse(BaseModel):
     vision_models: list[dict[str, str]]
     image_models: list[dict[str, str]]
-

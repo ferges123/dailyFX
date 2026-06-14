@@ -409,7 +409,7 @@ def test_ai_modules_include_album_exif_and_people_in_prompt_enrichment_context()
 def test_museum_archive_anonymization():
     from app.services.generation.ai_vision import AIVisionResult
     from app.services.generation.modules.museum_archive import MuseumArchiveModule
-    
+
     client = AsyncMock()
     client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
     client.get_asset_exif = MagicMock()
@@ -437,10 +437,14 @@ def test_museum_archive_anonymization():
     )
     settings = MagicMock(default_ai_provider="openai")
     asset = SimpleNamespace(
-        id="asset-1", original_file_name="photo.jpg", created_at="2024-06-15T10:30:00.000Z", people=[SimpleNamespace(id="person-1", name="Alice")]
+        id="asset-1",
+        original_file_name="photo.jpg",
+        created_at="2024-06-15T10:30:00.000Z",
+        people=[SimpleNamespace(id="person-1", name="Alice")],
     )
-    
+
     captured: dict[str, object] = {}
+
     async def fake_analyze(settings, image_bytes, *args, **kwargs):
         captured["prompt"] = kwargs.get("prompt")
         captured["context_hint"] = kwargs.get("context_hint")
@@ -453,5 +457,8 @@ def test_museum_archive_anonymization():
     assert "Alice" not in captured["prompt"]
     assert "person 1" not in captured["prompt"]
     assert "ideally referencing the people" in captured["prompt"]
-    assert captured["context_hint"] == "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left."
+    assert (
+        captured["context_hint"]
+        == "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left."
+    )
     assert result.config["people_context"]["names"] == ["Alice"]

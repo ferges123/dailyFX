@@ -10,6 +10,7 @@ from .base import AIVisionError, AIVisionResult, _chat_image_content, _vision_re
 
 logger = logging.getLogger(__name__)
 
+
 async def _analyze_images_with_local(
     settings: SettingsModel,
     api_key: str | None,

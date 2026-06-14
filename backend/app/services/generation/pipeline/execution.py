@@ -17,6 +17,7 @@ _ALBUM_NAME_SENTINEL = object()
 
 def _validate_module_config(module, config: dict) -> None:
     from app.services.generation.config_validation import validate_module_config
+
     validate_module_config(module.name, {"config": config})
 
 

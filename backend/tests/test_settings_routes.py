@@ -239,14 +239,16 @@ def test_get_or_create_settings_recovers_from_duplicate_insert():
 
 def test_get_provider_models_success():
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
+    from unittest.mock import AsyncMock, patch
+
     from app.database import SessionLocal, init_db
-    from app.services.immich import get_or_create_settings
-    from unittest.mock import patch, AsyncMock
     from app.security import require_auth
+    from app.services.immich import get_or_create_settings
 
     init_db()
     db = SessionLocal()
     from app.main import app
+
     route_require_auth = require_auth
     for route in app.routes:
         if route.path == "/api/settings/models/{provider}":
@@ -261,7 +263,7 @@ def test_get_provider_models_success():
     try:
         with (
             patch("app.api.routes_settings.decrypt_secret", return_value="gemini-secret-api-key"),
-            patch("httpx.AsyncClient.get") as mock_get
+            patch("httpx.AsyncClient.get") as mock_get,
         ):
             mock_response = AsyncMock()
             mock_response.status_code = 200
@@ -270,18 +272,19 @@ def test_get_provider_models_success():
                     {
                         "name": "models/gemini-2.5-flash",
                         "displayName": "Gemini 2.5 Flash",
-                        "supportedGenerationMethods": ["generateContent"]
+                        "supportedGenerationMethods": ["generateContent"],
                     },
                     {
                         "name": "models/gemini-2.5-flash-image",
                         "displayName": "Gemini 2.5 Flash Image",
-                        "supportedGenerationMethods": ["generateContent"]
-                    }
+                        "supportedGenerationMethods": ["generateContent"],
+                    },
                 ]
             }
             mock_get.return_value = mock_response
 
             from fastapi.testclient import TestClient
+
             client = TestClient(app)
 
             # Debug dependency identities
@@ -310,7 +313,3 @@ def test_get_provider_models_success():
     finally:
         app.dependency_overrides.clear()
         db.close()
-
-
-
-

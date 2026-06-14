@@ -167,7 +167,12 @@ def _pipeline_setup_and_planning(ctx: GenerationPipelineContext) -> GenerationMo
         return None
 
     ctx.selected_group_name = module_selection.name
-    debug_log("Module selected", task_id=ctx.task_id, module=ctx.selected_group_name, config=module_selection.config.get("config", {}))
+    debug_log(
+        "Module selected",
+        task_id=ctx.task_id,
+        module=ctx.selected_group_name,
+        config=module_selection.config.get("config", {}),
+    )
     logger.info(f"🎯 Selected generation group: {ctx.selected_group_name} (task_id={ctx.task_id})")
     _trace_stage(
         ctx.db,
@@ -177,6 +182,9 @@ def _pipeline_setup_and_planning(ctx: GenerationPipelineContext) -> GenerationMo
         step=ctx.current_step,
         status="running",
         progress=ctx.current_progress,
-        details={"group": ctx.selected_group_name, "label": getattr(module_selection.module, "label", ctx.selected_group_name)},
+        details={
+            "group": ctx.selected_group_name,
+            "label": getattr(module_selection.module, "label", ctx.selected_group_name),
+        },
     )
     return module_selection

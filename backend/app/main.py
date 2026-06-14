@@ -26,7 +26,6 @@ from app.version import APP_VERSION
 setup_logging()
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -53,7 +52,10 @@ app = FastAPI(
     title="DailyFX for Immich",
     description="Self-hosted creative companion for Immich. Transform your photo library with 40+ built-in effects and AI-generated styles.",
     version=APP_VERSION,
-    license_info={"name": "PolyForm Noncommercial License 1.0.0", "url": "https://polyformproject.org/licenses/noncommercial/1.0.0/"},
+    license_info={
+        "name": "PolyForm Noncommercial License 1.0.0",
+        "url": "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+    },
     openapi_tags=[
         {"name": "health", "description": "API and component health checks"},
         {"name": "settings", "description": "Application settings and provider connection tests"},
@@ -95,4 +97,3 @@ app.include_router(ai_effects_router)
 app.include_router(schedules_router)
 app.include_router(studio_router)
 app.include_router(metrics_router)
-

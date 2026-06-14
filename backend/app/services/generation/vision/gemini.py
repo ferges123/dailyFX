@@ -7,6 +7,7 @@ from .base import GEMINI_VISION_MODEL, AIVisionError, AIVisionResult
 
 logger = logging.getLogger(__name__)
 
+
 async def _analyze_images_with_gemini(
     api_key: str,
     b64_images: list[str],

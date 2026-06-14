@@ -176,9 +176,10 @@ class NotificationPresetResponse(BaseModel):
             token_masked=token_masked,
             webhook_url=row.webhook_url,
             created_at=row.created_at,
-            push_subscription_ids=[sub.id for sub in row.push_subscriptions] if hasattr(row, "push_subscriptions") else [],
+            push_subscription_ids=[sub.id for sub in row.push_subscriptions]
+            if hasattr(row, "push_subscriptions")
+            else [],
         )
-
 
 
 class NotificationPresetTestResponse(BaseModel):

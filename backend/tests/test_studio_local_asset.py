@@ -33,6 +33,7 @@ def test_local_asset_client_rejects_unknown_asset(tmp_path: Path) -> None:
     client = StudioLocalAssetClient(temp_root=tmp_path / "temp" / "studio", assets={})
 
     import pytest
+
     with pytest.raises(FileNotFoundError):
         asyncio.run(client.get_asset_data("studio://missing/source.jpg"))
 
@@ -50,6 +51,7 @@ def test_local_asset_client_rejects_path_outside_temp_root(tmp_path: Path) -> No
     client = StudioLocalAssetClient(temp_root=tmp_path / "temp" / "studio", assets={asset.id: asset})
 
     import pytest
+
     with pytest.raises(ValueError, match="outside Studio temp root"):
         asyncio.run(client.get_asset_data(asset.id))
 

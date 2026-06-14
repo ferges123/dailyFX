@@ -7,6 +7,7 @@ from .base import OPENAI_VISION_MODEL, AIVisionError, AIVisionResult, _chat_imag
 
 logger = logging.getLogger(__name__)
 
+
 async def _analyze_images_with_openai(
     api_key: str,
     b64_images: list[str],

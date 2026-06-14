@@ -251,9 +251,10 @@ async def _pipeline_retrieve_and_select_assets(
     )
     logger.info(f"📸 Selected random asset, running module {ctx.selected_group_name} (task_id={ctx.task_id})")
 
-    ai_photo_selection_enabled = bool(getattr(ctx.settings, "ai_photo_selection_enabled", False)) and int(
-        getattr(module_selection.module, "source_asset_count", 1) or 1
-    ) == 1
+    ai_photo_selection_enabled = (
+        bool(getattr(ctx.settings, "ai_photo_selection_enabled", False))
+        and int(getattr(module_selection.module, "source_asset_count", 1) or 1) == 1
+    )
     page_items = _prepare_page_items_for_module(
         page=page,
         module=module_selection.module,

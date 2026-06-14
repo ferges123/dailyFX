@@ -91,4 +91,3 @@ async def test_subscription(sub_id: int, db: Session = Depends(get_db), _: None 
         subscription_ids=[row.id],
     )
     return {"ok": True, "subscription_id": row.id}
-

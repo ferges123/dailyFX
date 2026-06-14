@@ -40,6 +40,7 @@ class MockImmichClient:
     async def get_asset_data(self, asset_id):
         img = Image.new("RGB", (100, 100), "white")
         from io import BytesIO
+
         out = BytesIO()
         img.save(out, format="PNG")
         return out.getvalue()
@@ -52,6 +53,7 @@ class MockImmichClient:
 
     def _coerce_face_summary(self, payload):
         from app.immich.client import ImmichClient
+
         return ImmichClient._coerce_face_summary(payload)
 
 
@@ -60,6 +62,7 @@ def test_instaweather_module_run_time_mode(monkeypatch):
         return None
 
     from app.services.generation.modules import instaweather
+
     monkeypatch.setattr(instaweather, "fetch_weather", mock_fetch_weather)
 
     module = InstaWeatherModule()
@@ -90,17 +93,19 @@ def test_instaweather_module_run_weather_mode(monkeypatch):
         return "Piaseczno", "Poland"
 
     from app.services.generation.modules import instaweather
+
     monkeypatch.setattr(instaweather, "fetch_weather", mock_fetch_weather)
     monkeypatch.setattr(instaweather, "reverse_geocode", mock_reverse_geocode)
     monkeypatch.setattr(instaweather, "reverse_geocode_detailed", mock_reverse_geocode_detailed)
 
-
     module = InstaWeatherModule()
-    client = MockImmichClient(exif_data={
-        "latitude": 52.0725,
-        "longitude": 21.02,
-        "dateTimeOriginal": "2025-06-04T12:34:56Z",
-    })
+    client = MockImmichClient(
+        exif_data={
+            "latitude": 52.0725,
+            "longitude": 21.02,
+            "dateTimeOriginal": "2025-06-04T12:34:56Z",
+        }
+    )
     settings = SettingsModel()
 
     class DummyAsset:
@@ -119,6 +124,7 @@ def test_instaweather_module_run_weather_mode(monkeypatch):
 def test_fetch_weather_structure():
     # Test that fallback geocode/weather provides all required fields
     from app.services.generation.modules.instaweather import get_fallback_weather
+
     data = get_fallback_weather(52.23, 6)
     assert "apparent_temp_c" in data
     assert "cloud_cover" in data
@@ -139,6 +145,7 @@ def test_vector_icons():
         draw_sunset_icon,
         draw_wind_icon,
     )
+
     img = Image.new("RGBA", (100, 100))
     draw = ImageDraw.Draw(img)
     draw_pin_icon(draw, 10, 10, 20, (255, 255, 255, 255))
@@ -152,15 +159,16 @@ def test_collision_avoidance():
     from PIL import Image
 
     from app.services.generation.modules.instaweather import _draw_graphics_overlay
-    
+
     img = Image.new("RGB", (1000, 1000), "white")
+
     # Mock face
     class MockFace:
         bounding_box_x1 = 0.05
         bounding_box_y1 = 0.05
         bounding_box_x2 = 0.15
         bounding_box_y2 = 0.15
-        
+
     faces = [MockFace()]
     weather_info = {
         "temp_c": 22.0,
@@ -173,7 +181,7 @@ def test_collision_avoidance():
         "sunrise": "05:12",
         "sunset": "20:45",
     }
-    
+
     # Render with faces and check that it doesn't crash
     res = _draw_graphics_overlay(
         img=img,

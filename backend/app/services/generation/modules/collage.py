@@ -88,7 +88,9 @@ def _pick_styles(config: dict) -> list[str]:
     return repeated[:4]
 
 
-def _build_collage(image_bytes_list: list[bytes], styles: list[str], canvas_size: tuple[int, int], border: int) -> bytes:
+def _build_collage(
+    image_bytes_list: list[bytes], styles: list[str], canvas_size: tuple[int, int], border: int
+) -> bytes:
     w, h = canvas_size
     tw, th = max(1, (w - border) // 2), max(1, (h - border) // 2)
 

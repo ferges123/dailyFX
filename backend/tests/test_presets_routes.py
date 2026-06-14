@@ -95,7 +95,6 @@ def test_notification_presets_masking_and_updating():
         db.close()
 
 
-
 def test_notification_preset_rejects_non_http_urls():
     with pytest.raises(ValueError, match="Server URL must be an absolute http:// or https:// URL"):
         NotificationPresetCreate(
@@ -177,6 +176,7 @@ def test_person_filter_mode_rejects_invalid_value():
 
 def _clear_notification_preset_tables(db):
     import sqlalchemy as sa
+
     db.execute(sa.text("DELETE FROM preset_push_subscriptions"))
     db.execute(sa.text("DELETE FROM push_subscriptions"))
     db.execute(sa.text("DELETE FROM notification_presets"))
@@ -225,8 +225,12 @@ def test_create_and_update_preset_with_push_subscriptions():
     try:
         _clear_notification_preset_tables(db)
 
-        sub1 = PushSubscriptionModel(endpoint="https://push.example/ep1", p256dh="dh1", auth="au1", device_label="Device A")
-        sub2 = PushSubscriptionModel(endpoint="https://push.example/ep2", p256dh="dh2", auth="au2", device_label="Device B")
+        sub1 = PushSubscriptionModel(
+            endpoint="https://push.example/ep1", p256dh="dh1", auth="au1", device_label="Device A"
+        )
+        sub2 = PushSubscriptionModel(
+            endpoint="https://push.example/ep2", p256dh="dh2", auth="au2", device_label="Device B"
+        )
         db.add_all([sub1, sub2])
         db.commit()
 
@@ -296,7 +300,3 @@ def test_notification_preset_allows_empty_push_subscription_targets():
         assert resp.json()["push_subscription_ids"] == []
     finally:
         db.close()
-
-
-
-

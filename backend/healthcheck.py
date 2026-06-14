@@ -24,8 +24,8 @@ def check_health():
             if response.status != 200:
                 print(f"API health check failed with status code {response.status}", file=sys.stderr)
                 sys.exit(1)
-            
-            data = json.loads(response.read().decode('utf-8'))
+
+            data = json.loads(response.read().decode("utf-8"))
             if data.get("status") != "ok":
                 print(f"API health status is not ok: {data}", file=sys.stderr)
                 sys.exit(1)
@@ -49,6 +49,7 @@ def check_health():
 
     print("Health check passed.")
     sys.exit(0)
+
 
 if __name__ == "__main__":
     check_health()

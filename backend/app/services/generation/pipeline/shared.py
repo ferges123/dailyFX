@@ -14,6 +14,7 @@ from app.services.generation.tasks import update_task
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class GenerationPipelineContext:
     db: Session
@@ -42,7 +43,7 @@ class GenerationPipelineContext:
         status: str | None = None,
         step: str | None = None,
         progress: float | None = None,
-        error: str | None = None
+        error: str | None = None,
     ) -> None:
         if step is not None:
             self.current_step = step

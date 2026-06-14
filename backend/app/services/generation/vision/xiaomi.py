@@ -15,6 +15,7 @@ from .base import (
 
 logger = logging.getLogger(__name__)
 
+
 async def _analyze_images_with_xiaomi(
     api_key: str,
     b64_images: list[str],

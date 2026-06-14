@@ -116,14 +116,20 @@ class AIStyleBaseModule:
         if people_context:
             if getattr(people_context, "names", None):
                 if anonymize:
-                    people_names = [f"person {i+1}" for i, name in enumerate(people_context.names) if isinstance(name, str) and name.strip()]
+                    people_names = [
+                        f"person {i + 1}"
+                        for i, name in enumerate(people_context.names)
+                        if isinstance(name, str) and name.strip()
+                    ]
                 else:
                     people_names = [name for name in people_context.names if isinstance(name, str) and name.strip()]
                 names = ", ".join(people_names)
                 if names:
                     parts.append(f"Detected people: {names}")
-            
-            prompt_hint = people_context.anonymized_prompt_hint() if anonymize else getattr(people_context, "prompt_hint", "")
+
+            prompt_hint = (
+                people_context.anonymized_prompt_hint() if anonymize else getattr(people_context, "prompt_hint", "")
+            )
             if prompt_hint:
                 parts.append(prompt_hint)
         exif_hint = self._format_exif_context(exif_info)
@@ -135,7 +141,11 @@ class AIStyleBaseModule:
         return {
             "album_name": album_name or "",
             "people_names": people_names,
-            "people_prompt_hint": (people_context.anonymized_prompt_hint() if anonymize else getattr(people_context, "prompt_hint", "")) if people_context else "",
+            "people_prompt_hint": (
+                people_context.anonymized_prompt_hint() if anonymize else getattr(people_context, "prompt_hint", "")
+            )
+            if people_context
+            else "",
             "exif_summary": exif_hint or "",
             "context_hint": context_hint,
         }

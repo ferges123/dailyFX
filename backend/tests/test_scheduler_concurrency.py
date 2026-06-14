@@ -53,6 +53,7 @@ def test_scheduler_async_concurrency_limit(monkeypatch):
 
         # Mock run_queued_generation_task to do a small sleep to simulate execution
         called_tasks = []
+
         async def fake_run_queued_generation_task(session, settings, queued_task, *args, **kwargs):
             called_tasks.append(queued_task.task_id)
             await asyncio.sleep(0.1)

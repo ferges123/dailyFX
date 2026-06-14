@@ -33,6 +33,7 @@ def _inject_ai_tags(tags: list[str], module, group_name: str) -> list[str]:
         merged.append(style_tag)
     return merged
 
+
 logger = logging.getLogger(__name__)
 
 FINAL_AI_VISION_PROMPT = (

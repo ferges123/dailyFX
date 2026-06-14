@@ -7,6 +7,7 @@ from .base import AIVisionError, AIVisionResult, _chat_image_content, _vision_re
 
 logger = logging.getLogger(__name__)
 
+
 async def _analyze_images_with_openrouter(
     api_key: str,
     b64_images: list[str],

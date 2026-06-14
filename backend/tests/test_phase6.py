@@ -32,8 +32,8 @@ init_db()
 def test_debug_log_not_found_when_no_logs(tmp_path, monkeypatch):
     from fastapi import HTTPException
 
-    from app.api.routes_debug import get_debug_log
     import app.config as config_module
+    from app.api.routes_debug import get_debug_log
 
     missing_dir = tmp_path / "missing"
     settings = config_module.get_settings()
@@ -47,8 +47,8 @@ def test_debug_log_not_found_when_no_logs(tmp_path, monkeypatch):
 
 
 def test_debug_log_returns_content(tmp_path, monkeypatch):
-    from app.api.routes_debug import get_debug_log
     import app.config as config_module
+    from app.api.routes_debug import get_debug_log
 
     log_dir = tmp_path / "logs"
     log_dir.mkdir()

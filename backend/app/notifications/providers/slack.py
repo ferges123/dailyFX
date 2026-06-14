@@ -40,34 +40,40 @@ async def send_slack_notification(
         }
     ]
     if detail:
-        blocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"{detail}",
-            },
-        })
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"{detail}",
+                },
+            }
+        )
     if image_url:
-        blocks.append({
-            "type": "image",
-            "image_url": image_url,
-            "alt_text": title,
-        })
+        blocks.append(
+            {
+                "type": "image",
+                "image_url": image_url,
+                "alt_text": title,
+            }
+        )
     if click_url:
-        blocks.append({
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "🔎 Review Image",
-                    },
-                    "url": click_url,
-                    "action_id": "review_image",
-                }
-            ],
-        })
+        blocks.append(
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "🔎 Review Image",
+                        },
+                        "url": click_url,
+                        "action_id": "review_image",
+                    }
+                ],
+            }
+        )
 
     payload = {
         "text": fallback_text,

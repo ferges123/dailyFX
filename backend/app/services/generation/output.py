@@ -51,7 +51,11 @@ async def send_generation_notification(notification_preset, title: str, summary:
     for provider in providers:
         try:
             if provider == "web":
-                subscription_ids = [sub.id for sub in notification_preset.push_subscriptions] if hasattr(notification_preset, "push_subscriptions") else []
+                subscription_ids = (
+                    [sub.id for sub in notification_preset.push_subscriptions]
+                    if hasattr(notification_preset, "push_subscriptions")
+                    else []
+                )
                 await send_web_notification(
                     title=full_title,
                     message=title,

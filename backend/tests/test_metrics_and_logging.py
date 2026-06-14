@@ -4,8 +4,9 @@ from app.config import AppSettings
 def test_settings_has_log_json_and_defaults_to_false():
     # Clear settings cache if any
     from app.config import get_settings
+
     get_settings.cache_clear()
-    
+
     settings = AppSettings()
     assert hasattr(settings, "log_json")
     assert settings.log_json is False
@@ -26,11 +27,11 @@ def test_json_formatter_outputs_valid_json():
         msg="Hello %s!",
         args=("world",),
         exc_info=None,
-        func="test_func"
+        func="test_func",
     )
     formatted = formatter.format(record)
     data = json.loads(formatted)
-    
+
     assert data["message"] == "Hello world!"
     assert data["logger"] == "test_logger"
     assert data["level"] == "INFO"
@@ -61,7 +62,6 @@ def test_setup_logging_configures_json_logging(monkeypatch):
     handlers = root.handlers
     assert len(handlers) == 1
     assert isinstance(handlers[0].formatter, JSONFormatter)
-
 
 
 def test_metrics_endpoint_returns_prometheus_format():
@@ -106,7 +106,6 @@ def test_metrics_endpoint_enforces_auth_when_app_access_token_configured(monkeyp
     config_module.get_settings.cache_clear()
 
 
-
 def test_metrics_includes_database_counts(monkeypatch):
     from fastapi.testclient import TestClient
 
@@ -121,11 +120,11 @@ def test_metrics_includes_database_counts(monkeypatch):
         # Clear existing
         db.query(GenerationTaskModel).delete()
         db.query(GenerationHistoryModel).delete()
-        
+
         # Add a queued task
         task = GenerationTaskModel(task_id="task_123", status="queued")
         db.add(task)
-        
+
         # Add a history entry
         history = GenerationHistoryModel(
             task_id="history_123",
@@ -134,7 +133,7 @@ def test_metrics_includes_database_counts(monkeypatch):
             title="test title",
             summary="test summary",
             source_asset_ids="asset1",
-            config_json="{}"
+            config_json="{}",
         )
         db.add(history)
         db.commit()
@@ -147,12 +146,12 @@ def test_metrics_includes_database_counts(monkeypatch):
     with TestClient(app) as client:
         response = client.get("/metrics")
         assert response.status_code == 200
-        
+
         text = response.text
         # Verify active tasks count
         assert 'dailyfx_generation_task_status{status="queued"} 1' in text
         assert 'dailyfx_generation_task_status{status="running"} 0' in text
-        
+
         # Verify history status count
         assert 'dailyfx_generation_history_status{status="accepted"} 1' in text
         assert 'dailyfx_generation_history_status{status="failed"} 0' in text
@@ -168,7 +167,3 @@ def test_metrics_includes_database_counts(monkeypatch):
         raise
     finally:
         db.close()
-
-
-
-

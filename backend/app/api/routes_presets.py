@@ -36,7 +36,6 @@ def _load_push_subscriptions_or_400(db: Session, ids: list[int]) -> list[PushSub
     return [rows_by_id[item] for item in ids]
 
 
-
 def _preset_in_use(db: Session, preset_id: int, fk_field: str) -> bool:
     return db.query(ScheduleModel).filter(getattr(ScheduleModel, fk_field) == preset_id).first() is not None
 
@@ -119,6 +118,7 @@ def list_effect_presets(db: Session = Depends(get_db), _: None = Depends(require
 @router.post("/effects", response_model=EffectPresetResponse, status_code=201)
 def create_effect_preset(body: EffectPresetCreate, db: Session = Depends(get_db), _: None = Depends(require_auth)):
     from app.services.generation.config_validation import validate_effects_config
+
     try:
         validate_effects_config(body.groups)
     except ValueError as e:
@@ -141,6 +141,7 @@ def update_effect_preset(
     _: None = Depends(require_auth),
 ):
     from app.services.generation.config_validation import validate_effects_config
+
     try:
         validate_effects_config(body.groups)
     except ValueError as e:
@@ -237,7 +238,6 @@ def update_notification_preset(
     db.commit()
     db.refresh(row)
     return NotificationPresetResponse.from_model(row, token_masked=_masked_token(row))
-
 
 
 @router.delete("/notifications/{preset_id}", status_code=204)

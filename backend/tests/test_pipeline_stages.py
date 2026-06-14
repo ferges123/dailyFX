@@ -19,11 +19,7 @@ def test_pipeline_setup_and_planning_basic():
         debug_mode=True,
     )
     ctx = GenerationPipelineContext(
-        db=db,
-        settings=settings,
-        task_id="test-task",
-        force=True,
-        effects_config={"pencil_sketch": {"enabled": True}}
+        db=db, settings=settings, task_id="test-task", force=True, effects_config={"pencil_sketch": {"enabled": True}}
     )
 
     with (
