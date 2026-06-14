@@ -899,7 +899,14 @@ export function NotificationPresetsTab() {
             onTest={(id) => testMutation.mutate(id)}
             onEdit={openEdit}
             onDelete={(id, name) => {
-              if (confirm(`Delete "${name}"?`)) deleteMutation.mutate(id);
+              setConfirmConfig({
+                isOpen: true,
+                title: 'Delete Notification Preset',
+                description: `Are you sure you want to delete "${name}"?`,
+                confirmLabel: 'Delete',
+                variant: 'danger',
+                onConfirm: () => deleteMutation.mutate(id),
+              });
             }}
           />
         ))}
@@ -921,6 +928,21 @@ export function NotificationPresetsTab() {
           </div>
         )}
       </div>
+
+      {confirmConfig && (
+        <ConfirmModal
+          isOpen={confirmConfig.isOpen}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant={confirmConfig.variant}
+          onConfirm={() => {
+            confirmConfig.onConfirm();
+            setConfirmConfig(null);
+          }}
+          onClose={() => setConfirmConfig(null)}
+        />
+      )}
     </div>
   );
 }
