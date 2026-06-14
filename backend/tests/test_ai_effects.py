@@ -463,3 +463,52 @@ def test_ai_effect_import_and_export_http_roundtrip():
         assert conflict.conflicts == ["ai_http_imported_test"]
     finally:
         db.close()
+
+
+def test_delete_ai_effect_in_use_raises_conflict():
+    from fastapi import HTTPException
+    from app.models.effect_preset import EffectPresetModel
+    import json
+
+    init_db()
+    db = SessionLocal()
+    try:
+        # 1. Create a custom AI effect
+        effect_id = "ai_test_in_use"
+        body = AIEffectCreate(
+            id=effect_id,
+            title="Test In Use",
+            description="Custom effect for in-use testing",
+            display_group="Custom Group",
+            positive_prompt="Positive",
+            negative_prompt="Negative",
+            custom_prompt_placeholder="Placeholder",
+            enabled=True,
+        )
+        create_ai_effect(body, db)
+
+        # 2. Create an EffectPreset using this AI effect in groups
+        preset = EffectPresetModel(
+            name="Test In Use Preset",
+            groups_json=json.dumps({effect_id: {}})
+        )
+        db.add(preset)
+        db.commit()
+
+        # 3. Try to delete the AI effect and verify it raises HTTPException (409)
+        with pytest.raises(HTTPException) as exc_info:
+            delete_ai_effect(effect_id, db)
+        assert exc_info.value.status_code == 409
+        assert "AI effect is used" in exc_info.value.detail
+
+        # 4. Clean up preset
+        db.delete(preset)
+        db.commit()
+    finally:
+        # Clean up effect if created
+        row = db.get(AIEffectModel, "ai_test_in_use")
+        if row:
+            db.delete(row)
+            db.commit()
+        db.close()
+

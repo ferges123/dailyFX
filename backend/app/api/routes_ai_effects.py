@@ -31,15 +31,9 @@ router = APIRouter(prefix="/api/ai-effects", tags=["ai-effects"])
 
 
 def _effect_in_use(db: Session, effect_id: str) -> bool:
-    rows = db.query(EffectPresetModel).all()
-    for row in rows:
-        try:
-            groups = json.loads(row.groups_json or "{}")
-        except json.JSONDecodeError:
-            continue
-        if effect_id in groups:
-            return True
-    return False
+    pattern = f'%"{effect_id}"%'
+    return db.query(EffectPresetModel).filter(EffectPresetModel.groups_json.like(pattern)).first() is not None
+
 
 
 def _row_to_response(
