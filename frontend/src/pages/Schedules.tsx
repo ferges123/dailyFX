@@ -38,6 +38,7 @@ import { getVisionModelOptions, getImageModelOptions } from './Settings';
 import { type FormState, emptyForm } from './Schedules/types';
 import { ScheduleSummaryCard } from './Schedules/ScheduleSummaryCard';
 import { ScheduleForm } from './Schedules/ScheduleForm';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 function normalizeModelSelection(
   provider: string,
@@ -163,6 +164,14 @@ export function SchedulesPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<number | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  } | null>(null);
 
   const [search, setSearch] = useState('');
   const formPanelRef = useRef<HTMLElement | null>(null);
@@ -595,8 +604,14 @@ export function SchedulesPage() {
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            if (confirm(`Delete "${schedule.name}"?`))
-                              deleteMutation.mutate(schedule.id);
+                            setConfirmConfig({
+                              isOpen: true,
+                              title: 'Delete Schedule',
+                              description: `Are you sure you want to delete "${schedule.name}"?`,
+                              confirmLabel: 'Delete',
+                              variant: 'danger',
+                              onConfirm: () => deleteMutation.mutate(schedule.id),
+                            });
                           }}
                           className="app-button-secondary items-center justify-center px-2 py-1 text-[11px] font-medium text-rose-700"
                           title="Delete schedule"
@@ -724,6 +739,21 @@ export function SchedulesPage() {
           )}
         </div>
       </div>
+
+      {confirmConfig && (
+        <ConfirmModal
+          isOpen={confirmConfig.isOpen}
+          title={confirmConfig.title}
+          description={confirmConfig.description}
+          confirmLabel={confirmConfig.confirmLabel}
+          variant={confirmConfig.variant}
+          onConfirm={() => {
+            confirmConfig.onConfirm();
+            setConfirmConfig(null);
+          }}
+          onClose={() => setConfirmConfig(null)}
+        />
+      )}
     </section>
   );
 }
