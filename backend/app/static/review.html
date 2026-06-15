@@ -1097,10 +1097,10 @@ async function load() {
 function refreshImage() {
   const t = getToken();
   if (t) {
-    fetch(apiUrl(`/api/generation/history/${taskId}/image`), {headers: {'Authorization': `Bearer ${t}`}})
+    fetch(apiUrl(`/api/generation/history/${taskId}/image?thumbnail=true`), {headers: {'Authorization': `Bearer ${t}`}})
       .then(r => r.blob()).then(b => { imgEl.src = URL.createObjectURL(b); });
   } else {
-    imgEl.src = apiUrl(`/api/generation/history/${taskId}/image`);
+    imgEl.src = apiUrl(`/api/generation/history/${taskId}/image?thumbnail=true`);
   }
 }
 
