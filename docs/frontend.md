@@ -33,19 +33,9 @@ Desktop
 Mobile
 ![History mobile](./screenshots/history-mobile.png)
 
-### Schedules
-Desktop
-![Schedules desktop](./screenshots/schedules-desktop.png)
-
-Mobile
-![Schedules mobile](./screenshots/schedules-mobile.png)
-
 ### Settings
 Desktop
 ![Settings desktop](./screenshots/settings-desktop.png)
-
-Mobile
-![Settings mobile](./screenshots/settings-mobile.png)
 
 ## Data Flow
 - The app fetches most data through `/api/*` endpoints defined in [frontend/src/api/client.ts](../frontend/src/api/client.ts).
