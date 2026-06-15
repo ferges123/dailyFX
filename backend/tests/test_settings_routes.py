@@ -357,6 +357,18 @@ def test_get_provider_models_byteplus_success():
                             "task_type": ["ImageToImage", "TextToImage"]
                         },
                         {
+                            "id": "seedream-3-0-t2i-250415",
+                            "name": "Seedream 3.0",
+                            "domain": "ImageGeneration",
+                            "task_type": ["TextToImage"]
+                        },
+                        {
+                            "id": "seededit-3-0-t2i-250415",
+                            "name": "SeedEdit 3.0 T2I",
+                            "domain": "ImageGeneration",
+                            "task_type": ["TextToImage"]
+                        },
+                        {
                             "id": "seed-2-0-pro-260328",
                             "name": "Seed 2.0 Pro",
                             "domain": "VLM",
@@ -388,6 +400,9 @@ def test_get_provider_models_byteplus_success():
             # SeeDream 5.0 is image only
             assert any(m["value"] == "seedream-5-0-260128" for m in data["image_models"])
             assert not any(m["value"] == "seedream-5-0-260128" for m in data["vision_models"])
+            # Text-to-image-only BytePlus models are not valid for the app's img2img flow.
+            assert not any(m["value"] == "seedream-3-0-t2i-250415" for m in data["image_models"])
+            assert not any(m["value"] == "seededit-3-0-t2i-250415" for m in data["image_models"])
     finally:
         app.dependency_overrides.clear()
         db.close()

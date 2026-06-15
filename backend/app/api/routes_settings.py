@@ -335,8 +335,8 @@ async def get_provider_models(
                 if "VisualQuestionAnswering" in task_types or domain == "VLM":
                     vision_models.append({"label": name, "value": model_id})
                 
-                # AI Image / ImageGeneration models (txt2img / img2img)
-                if "TextToImage" in task_types or "ImageToImage" in task_types or domain == "ImageGeneration":
+                # AI Image models here feed the app's img2img effects flow.
+                if "ImageToImage" in task_types:
                     image_models.append({"label": name, "value": model_id})
 
         elif provider == "local":
