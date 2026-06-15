@@ -2,6 +2,15 @@
 
 ### *Turn your static photo library into a dynamic, AI-powered creative playground.*
 
+## TLDR
+
+DailyFX is a self-hosted web app for Immich that automatically picks photos, applies creative effects or AI transformations, lets you review the results, and uploads accepted images back to Immich with metadata preserved.
+
+- Runs with Docker Compose and stores persistent state in `./data/`.
+- Works with classic local effects out of the box; AI effects are optional and require provider API keys.
+- Supports schedules, web review, and notifications through Web Push, ntfy, Gotify, Telegram, Home Assistant, Slack, Discord, or Apprise.
+- Start with `docker compose up -d`, open `http://localhost:8439`, configure Immich in **Settings**, then create presets and schedules.
+
 **DailyFX** is a self-hosted creative companion designed specifically for [Immich](https://immich.app). It breathes new life into your photo archives by automatically transforming your pictures into stunning artistic masterpieces—from vintage film strips and pop-art collages to next-gen AI-generated transformations. Review them daily, approve your favorites with one click, and seamlessly upload them back to Immich with all original EXIF metadata (camera, GPS, and timestamp) perfectly preserved.
 
 Unlike generic photo filters that strip away metadata or require tedious manual work, DailyFX acts as an automated background curator. It connects directly to your Immich instance, retrieves assets based on your custom schedules, and applies any of its 40+ built-in creative modules. You can choose classic darkroom simulations like Cyanotype and Polaroid, high-dynamic-range enhancements, or leverage state-of-the-art Generative AI models to reimagine your photos in comic book, cyberpunk, or claymation styles.
