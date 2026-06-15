@@ -294,10 +294,40 @@ def test_send_telegram_notification_photo_and_buttons(monkeypatch):
 
     reply_markup = json.loads(req["data"]["reply_markup"])
     buttons = reply_markup["inline_keyboard"][0]
-    assert buttons[0]["text"] == "✅ Accept & Upload"
+    assert buttons[0]["text"] == "✅ Accept"
     assert buttons[0]["callback_data"] == "accept:task-abc"
     assert buttons[1]["text"] == "❌ Reject"
     assert buttons[1]["callback_data"] == "reject:task-abc"
+    assert len(buttons) == 2
+
+
+def test_send_telegram_notification_with_review_url(monkeypatch):
+    fake_response = FakeResponse(json_body={"ok": True, "result": {"message_id": 12347}})
+    fake_client = FakeTelegramAsyncClient(response=fake_response)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: fake_client)
+
+    result = asyncio.run(
+        send_telegram_notification(
+            token="bot12345",
+            chat_id="chat9876",
+            title="AI Gen",
+            message="Image generated",
+            task_id="task-abc",
+            review_url="https://example.com/review/task-abc",
+        )
+    )
+
+    assert result.ok is True
+    req = fake_client.requests[0]
+    
+    import json
+    reply_markup = json.loads(req["json"]["reply_markup"])
+    buttons = reply_markup["inline_keyboard"][0]
+    assert len(buttons) == 3
+    assert buttons[0]["text"] == "✅ Accept"
+    assert buttons[1]["text"] == "❌ Reject"
+    assert buttons[2]["text"] == "🔍 Review"
+    assert buttons[2]["url"] == "https://example.com/review/task-abc"
 
 
 def test_telegram_bot_callback_handling(monkeypatch):
