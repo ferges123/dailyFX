@@ -157,6 +157,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
   color: #e7e5e4;
   border-top: 1px solid #292524;
   box-sizing: border-box;
+  max-height: 42vh;
+  overflow-y: auto;
+  min-height: 0;
 }
 .lb-meta-tag {
   font-size: 10px;
@@ -241,7 +244,71 @@ button:disabled{opacity:.45;cursor:not-allowed}
   border-radius: 12px;
 }
 .lb-footer {
+  position: sticky;
+  bottom: -1.25rem;
+  margin-bottom: -1.25rem;
+  background: #1c1917;
+  padding-top: 0.75rem;
+  border-top: 1px solid #292524;
   margin-top: 1rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-bottom: 1.25rem;
+  z-index: 10;
+}
+.lb-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lb-share-btn {
+  position: relative;
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #292524;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+.lb-share-btn:hover:not(:disabled) {
+  background: #44403c;
+}
+.lb-share-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.lb-share-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lb-share-tooltip {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #065f46;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 20;
+}
+.lb-share-tooltip.visible {
+  opacity: 1;
 }
 .lb-download-btn {
   width: 100%;
@@ -306,9 +373,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
     flex-shrink: 0;
     border-top: none;
     border-left: 1px solid #292524;
+    max-height: 92vh;
+    overflow-y: auto;
+    min-height: 0;
   }
   .lb-footer {
-    margin-top: 0;
+    margin-top: 1rem;
   }
 }
 @keyframes spin {
@@ -509,12 +579,18 @@ button:disabled{opacity:.45;cursor:not-allowed}
         </div>
       </div>
 
-      <!-- Footer Download Button -->
+      <!-- Footer Download & Share Actions -->
       <div class="lb-footer">
-        <button id="lb-download" class="lb-download-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download Full-Res PNG
-        </button>
+        <div class="lb-footer-actions">
+          <button id="lb-share" class="lb-share-btn" title="Share image">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span class="lb-share-tooltip" id="lb-share-tooltip">Copied!</span>
+          </button>
+          <button id="lb-download" class="lb-download-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Full-Res PNG
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1138,6 +1214,80 @@ if (lbToggleOriginal) {
     }
   });
 }
+
+const lbShareBtn = document.getElementById('lb-share');
+const lbShareTooltip = document.getElementById('lb-share-tooltip');
+let isSharingLightbox = false;
+
+function fallbackCopyLinkLightbox(url) {
+  navigator.clipboard.writeText(url)
+    .then(() => showTooltip('Copied!'))
+    .catch((err) => {
+      console.error('Failed to copy link:', err);
+      showTooltip('Failed to copy', true);
+    });
+}
+
+function showTooltip(text, isError = false) {
+  lbShareTooltip.textContent = text;
+  if (isError) {
+    lbShareTooltip.style.background = '#dc2626';
+  } else {
+    lbShareTooltip.style.background = '#065f46';
+  }
+  lbShareTooltip.classList.add('visible');
+  setTimeout(() => {
+    lbShareTooltip.classList.remove('visible');
+  }, 2000);
+}
+
+lbShareBtn.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (isSharingLightbox || !currentEntry) return;
+
+  const shareUrl = `${window.location.origin}/api/generation/history/${taskId}/image`;
+
+  if (typeof navigator.share === 'function') {
+    isSharingLightbox = true;
+    lbShareBtn.disabled = true;
+    try {
+      const t = getToken();
+      const headersList = t ? {'Authorization': `Bearer ${t}`} : {};
+      const response = await fetch(apiUrl(`/api/generation/history/${taskId}/image`), { headers: headersList });
+      if (!response.ok) throw new Error('Failed to fetch image');
+
+      const blob = await response.blob();
+      const file = new File([blob], makeSafeFileName(currentEntry.title), {
+        type: blob.type || 'image/png',
+      });
+
+      if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
+        throw new Error('File sharing not supported by browser');
+      }
+
+      await navigator.share({
+        files: [file],
+        title: currentEntry.title || 'DailyFX image',
+      });
+    } catch (error) {
+      console.warn('Native file share failed, trying URL fallback:', error);
+      try {
+        await navigator.share({
+          title: currentEntry.title || 'DailyFX image',
+          url: shareUrl,
+        });
+      } catch (urlError) {
+        console.error('URL sharing failed:', urlError);
+        await fallbackCopyLinkLightbox(shareUrl);
+      }
+    } finally {
+      isSharingLightbox = false;
+      lbShareBtn.disabled = false;
+    }
+  } else {
+    await fallbackCopyLinkLightbox(shareUrl);
+  }
+});
 
 document.getElementById('lb-download').addEventListener('click', async (e) => {
   e.preventDefault();
