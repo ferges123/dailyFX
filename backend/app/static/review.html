@@ -1219,6 +1219,16 @@ const lbShareBtn = document.getElementById('lb-share');
 const lbShareTooltip = document.getElementById('lb-share-tooltip');
 let isSharingLightbox = false;
 
+function makeSafeFileName(title) {
+  const base = (title || 'dailyfx-image')
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${base || 'dailyfx-image'}.png`;
+}
+
 function fallbackCopyLinkLightbox(url) {
   navigator.clipboard.writeText(url)
     .then(() => showTooltip('Copied!'))
