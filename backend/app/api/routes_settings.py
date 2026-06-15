@@ -330,11 +330,11 @@ async def get_provider_models(
                 task_types = m.get("task_type") or []
                 if not isinstance(task_types, list):
                     task_types = []
-                
+
                 # AI Vision / VLM models (img2txt / VisualQuestionAnswering)
                 if "VisualQuestionAnswering" in task_types or domain == "VLM":
                     vision_models.append({"label": name, "value": model_id})
-                
+
                 # AI Image models here feed the app's img2img effects flow.
                 if "ImageToImage" in task_types:
                     image_models.append({"label": name, "value": model_id})

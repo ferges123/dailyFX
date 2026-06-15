@@ -13,7 +13,7 @@ from PIL import Image
 from app.database import SessionLocal, init_db
 from app.models.ai_usage import AIUsageEventModel
 from app.services.generation.ai_budget import AIUsageLimitExceededError, count_recent_usage, reserve_ai_usage
-from app.services.generation.ai_image import AIImageResult, encode_image_for_provider, generate_ai_image
+from app.services.generation.ai_image import AIImageError, AIImageResult, encode_image_for_provider, generate_ai_image
 from app.services.generation.ai_vision import AIVisionResult, analyze_image
 
 test_db = configure_contract_test_db("ai_budget")
@@ -378,3 +378,36 @@ def test_generate_ai_image_logs_byteplus_error_hint(monkeypatch):
     ]
     assert hint_calls
     assert "API key" in hint_calls[0].kwargs["hint"]
+
+
+def test_generate_ai_image_byteplus_error_message(monkeypatch):
+    init_db()
+    settings = SimpleNamespace(
+        ai_image_provider="byteplus",
+        ai_image_model="seededit-3-0-i2i-250628",
+        ai_image_hourly_limit=4,
+        encrypted_byteplus_api_key="secret",
+    )
+    fake_client = _FakeAsyncClient()
+    fake_client.next_post_response = _FakeResponse(
+        status_code=404,
+        json_body={"error": {"message": "Model seededit-3-0-i2i-250628 not found"}},
+        text='{"error":{"message":"Model seededit-3-0-i2i-250628 not found"}}',
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: fake_client)
+
+    with (
+        patch("app.services.generation.ai_image._decrypt_provider_key", return_value="secret"),
+        patch("app.services.generation.ai_image.reserve_ai_usage", return_value=None),
+    ):
+        try:
+            asyncio.run(generate_ai_image(settings, _png_bytes(), "make it playful"))
+        except AIImageError as exc:
+            exc_info = exc
+        else:
+            raise AssertionError("Expected BytePlus image generation to fail")
+
+    assert (
+        "BytePlus image generation failed (HTTP 404): Model seededit-3-0-i2i-250628 not found. Hint: Check the BytePlus model/endpoint ID in settings."
+        in str(exc_info)
+    )

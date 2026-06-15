@@ -239,7 +239,7 @@ def test_get_or_create_settings_recovers_from_duplicate_insert():
 
 def test_get_provider_models_success():
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
-    from unittest.mock import AsyncMock, MagicMock, patch
+    from unittest.mock import MagicMock, patch
 
     from app.database import SessionLocal, init_db
     from app.security import require_auth
@@ -319,7 +319,7 @@ def test_get_provider_models_success():
 
 def test_get_provider_models_byteplus_success():
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
-    from unittest.mock import AsyncMock, MagicMock, patch
+    from unittest.mock import MagicMock, patch
 
     from app.database import SessionLocal, init_db
     from app.security import require_auth
@@ -354,26 +354,26 @@ def test_get_provider_models_byteplus_success():
                             "id": "seedream-5-0-260128",
                             "name": "SeeDream 5.0",
                             "domain": "ImageGeneration",
-                            "task_type": ["ImageToImage", "TextToImage"]
+                            "task_type": ["ImageToImage", "TextToImage"],
                         },
                         {
                             "id": "seedream-3-0-t2i-250415",
                             "name": "Seedream 3.0",
                             "domain": "ImageGeneration",
-                            "task_type": ["TextToImage"]
+                            "task_type": ["TextToImage"],
                         },
                         {
                             "id": "seededit-3-0-t2i-250415",
                             "name": "SeedEdit 3.0 T2I",
                             "domain": "ImageGeneration",
-                            "task_type": ["TextToImage"]
+                            "task_type": ["TextToImage"],
                         },
                         {
                             "id": "seed-2-0-pro-260328",
                             "name": "Seed 2.0 Pro",
                             "domain": "VLM",
-                            "task_type": ["VisualQuestionAnswering"]
-                        }
+                            "task_type": ["VisualQuestionAnswering"],
+                        },
                     ]
                 }
             )

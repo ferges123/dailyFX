@@ -93,6 +93,27 @@ def _byteplus_error_body(response: httpx.Response) -> str:
     return str(payload)
 
 
+def _extract_byteplus_error(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text or f"HTTP {response.status_code}"
+
+    if isinstance(payload, dict):
+        err = payload.get("error")
+        if isinstance(err, dict) and "message" in err:
+            return str(err["message"])
+        metadata = payload.get("ResponseMetadata")
+        if isinstance(metadata, dict):
+            err_meta = metadata.get("Error")
+            if isinstance(err_meta, dict) and "Message" in err_meta:
+                return str(err_meta["Message"])
+        msg = payload.get("message")
+        if isinstance(msg, str):
+            return msg
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def _normalize_input_image(image_bytes: bytes) -> tuple[bytes, str]:
     image = _load_input_image(image_bytes)
     out = BytesIO()
@@ -414,8 +435,16 @@ async def _generate_with_byteplus(api_key: str, image_bytes: bytes, prompt: str,
                 hint = _byteplus_error_hint(response.status_code, error_body)
                 if hint:
                     debug_log("BytePlus image error hint", status_code=response.status_code, hint=hint)
+
+                err_msg = _extract_byteplus_error(response)
+                full_msg = f"BytePlus image generation failed (HTTP {response.status_code}): {err_msg}"
+                if hint:
+                    full_msg += f". Hint: {hint}"
+                raise AIImageError(full_msg)
             response.raise_for_status()
             data = response.json()
+        except AIImageError:
+            raise
         except Exception as exc:
             debug_log("BytePlus image request failed", error=str(exc))
             raise AIImageError(f"BytePlus image generation failed: {exc}") from exc

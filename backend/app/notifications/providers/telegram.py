@@ -51,9 +51,7 @@ async def send_telegram_notification(
         if review_url:
             buttons.append({"text": "🔍 Review", "url": review_url})
 
-        reply_markup = {
-            "inline_keyboard": [buttons]
-        }
+        reply_markup = {"inline_keyboard": [buttons]}
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         if image_bytes:
