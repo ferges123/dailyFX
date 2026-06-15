@@ -24,18 +24,10 @@ The frontend has been upgraded to the following modern technologies:
 - `Login`: shown only when `APP_ACCESS_TOKEN` is enabled on the backend.
 
 ## Screenshots
-Captured images live in [`docs/screenshots/`](./screenshots/) and can be reused in the README, docs pages, or pull requests.
-
-### History
-Desktop
 ![History desktop](./screenshots/history-desktop.png)
-
-Mobile
-![History mobile](./screenshots/history-mobile.png)
-
-### Settings
-Desktop
 ![Settings desktop](./screenshots/settings-desktop.png)
+
+![History mobile](./screenshots/history-mobile.png)
 
 ## Data Flow
 - The app fetches most data through `/api/*` endpoints defined in [frontend/src/api/client.ts](../frontend/src/api/client.ts).
