@@ -337,7 +337,8 @@ async def get_provider_models(
 
                 # AI Image models here feed the app's img2img effects flow.
                 if "ImageToImage" in task_types:
-                    image_models.append({"label": name, "value": model_id})
+                    if "seededit" not in model_id.lower():
+                        image_models.append({"label": name, "value": model_id})
 
         elif provider == "local":
             models_list = payload.get("data", [])
