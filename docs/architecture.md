@@ -26,15 +26,22 @@ DailyFX is split into a small set of layers so the API contract, generation flow
   - `output.py` dispatches notifications and webhook calls.
   - `history.py` manages history queries, updates, and trace entries.
   - `modules/` contains generation effect implementations.
+- `app/services/studio/`
+  - Validation, local asset handling, and helpers for the Studio page preview flow.
 - `app/services/settings/`
   - Holds helpers for settings management and connection tests.
+- `app/services/local_ai.py`
+  - Local AI provider support (e.g. self-hosted OpenAI-compatible endpoints).
 - `app/services/notifications/`
   - Holds preset-specific notification test helpers, delegating to the unified notification client.
 - `app/notifications/`
   - `client.py` orchestrates notification delivery.
   - `providers/` package contains modular integrations (`telegram.py`, `home_assistant.py`, `slack.py`, `discord.py`, `gotify.py`, `ntfy.py`, `apprise.py`, `web.py`) inheriting from `base.py`.
 - `app/workers/`
-  - Runs the background scheduler loop and queued manual tasks.
+  - `scheduler.py` — runs the background scheduler loop and queued manual tasks.
+  - `telegram_bot.py` — Telegram bot worker for interactive notification buttons.
+- `app/observability/`
+  - Structured logging setup (`logging.py`).
 
 ## Contract Boundary
 

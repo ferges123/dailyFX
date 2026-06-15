@@ -52,6 +52,20 @@ Once an effect is generated, you are notified through your preferred channel, wh
 | **AI High-Fashion Editorial** | AI-generated luxury editorial portrait *(requires AI provider API key)* |
 | **AI Brick-Built Figure** | AI-generated playful brick-built character scene *(requires AI provider API key)* |
 | **AI Yellow Cartoon Sitcom** | AI-generated bright cartoon family-comedy portrait *(requires AI provider API key)* |
+| **AI Caveman** | AI-generated prehistoric caveman portrait *(requires AI provider API key)* |
+| **AI Celebrity Mugshot** | AI-generated celebrity-style mugshot photo *(requires AI provider API key)* |
+| **AI Celebrity Red Carpet** | AI-generated celebrity red carpet portrait *(requires AI provider API key)* |
+| **AI Film Noir Portrait** | AI-generated black-and-white film noir portrait *(requires AI provider API key)* |
+| **AI Gangster Mugshot** | AI-generated vintage gangster mugshot *(requires AI provider API key)* |
+| **AI Low Poly 3D** | AI-generated low-poly 3D rendered portrait *(requires AI provider API key)* |
+| **AI Mugshot** | AI-generated standard mugshot-style photo *(requires AI provider API key)* |
+| **AI Post Apocalyptic** | AI-generated post-apocalyptic survivor portrait *(requires AI provider API key)* |
+| **AI Space Explorer** | AI-generated astronaut space explorer portrait *(requires AI provider API key)* |
+| **AI Superhero** | AI-generated superhero portrait *(requires AI provider API key)* |
+| **AI Vintage Travel Poster** | AI-generated vintage travel poster illustration *(requires AI provider API key)* |
+| **AI Watercolor Postcard** | AI-generated watercolor postcard-style image *(requires AI provider API key)* |
+| **AI Yearbook 90s** | AI-generated 90s yearbook-style portrait *(requires AI provider API key)* |
+| **AI Zombie** | AI-generated zombie portrait *(requires AI provider API key)* |
 
 **Workflow:**
 1. Scheduler picks a weighted random effect and fetches photos from your Immich library
@@ -245,6 +259,19 @@ All connections (Immich, AI keys) and preferences are configured directly via th
 | `8438` | Backend API |
 
 To change ports, edit `docker-compose.yml`.
+
+### API Documentation
+
+The backend ships with interactive API documentation available at:
+
+| Path | Description |
+|---|---|
+| `http://localhost:8438/docs` | **Swagger UI** — interactive API explorer with live requests |
+| `http://localhost:8438/redoc` | **ReDoc** — clean, readable API reference |
+| `http://localhost:8438/openapi.json` | **OpenAPI 3.1 spec** — machine-readable schema |
+
+> [!NOTE]
+> When `APP_ACCESS_TOKEN` is set, Swagger UI and ReDoc require the token to explore authenticated endpoints. Enter it in the **Authorize** button on the Swagger page.
 
 ---
 

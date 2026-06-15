@@ -46,6 +46,7 @@ Some read-only review endpoints remain public and are noted below.
 | Immich | `GET /api/immich/options`, `GET /api/immich/assets`, `GET /api/immich/assets/{asset_id}/thumbnail`, `GET /api/immich/assets/{asset_id}/exif` |
 | Presets | CRUD for `filters`, `effects`, `notifications` |
 | Schedules | CRUD plus `POST /api/schedules/{schedule_id}/run-now` |
+| AI Effects | `GET /api/ai-effects`, `POST /api/ai-effects`, `PUT /api/ai-effects/{effect_id}`, `DELETE /api/ai-effects/{effect_id}`, `POST /api/ai-effects/{effect_id}/reset`, `POST /api/ai-effects/{effect_id}/duplicate`, `POST /api/ai-effects/import`, `GET /api/ai-effects/export` |
 | Generation | `GET /api/generation/stream`, `GET /api/generation/task/{task_id}/status`, `GET /api/generation/modules`, `GET /api/generation/examples`, `GET /api/generation/examples/{module_name}`, history/review/accept/reject |
 | Studio | `GET /api/studio/modules`, `POST /api/studio/preview` |
 | Notifications | `GET /api/notifications/vapid-public-key`, `GET /api/notifications/subscriptions`, `DELETE /api/notifications/subscriptions/{sub_id}`, `POST /api/notifications/subscribe`, `POST /api/notifications/unsubscribe` |
@@ -128,6 +129,11 @@ Requires authentication:
 - `POST /api/settings/test-openrouter`
 - `POST /api/settings/test-byteplus`
 - `POST /api/settings/test-xiaomi`
+- `POST /api/settings/test-local-ai`
+
+### `GET /api/settings/models/{provider}`
+
+Returns available models for a given AI provider (e.g. `openai`, `gemini`, `xiaomi`). Used by the Schedule form to dynamically populate model selectors. Falls back to a hardcoded list when the provider API is unreachable.
 
 ---
 
@@ -306,6 +312,16 @@ The `task_trace` array records the visible run timeline used by the History and 
 - `POST /api/generation/history/{task_id}/accept`
 - `POST /api/generation/history/{task_id}/retry`
 - `POST /api/generation/history/{task_id}/reject`
+- `DELETE /api/generation/history/rejected`
+- `DELETE /api/generation/history/cache`
+
+### `DELETE /api/generation/history/rejected`
+
+Deletes all rejected generations — both the files on disk and the database records. Returns `204` on success.
+
+### `DELETE /api/generation/history/cache`
+
+Deletes all generation history (files + DB records). Returns `204` on success.
 
 Public review endpoints:
 - `GET /api/generation/review/{task_id}`
@@ -349,8 +365,67 @@ All notification endpoints require authentication.
 - `DELETE /api/notifications/subscriptions/{sub_id}`
 - `POST /api/notifications/subscribe`
 - `POST /api/notifications/unsubscribe`
+- `POST /api/notifications/subscriptions/{sub_id}/test`
+
+### `POST /api/notifications/subscriptions/{sub_id}/test`
+
+Sends a test push notification to a specific Web Push subscription. Returns `404` if the subscription is not found.
 
 `POST /api/notifications/subscribe` expects a push subscription payload with fields such as `endpoint`, `p256dh`, `auth`, `device_label`, and `user_agent`.
+
+---
+
+## AI Effects
+
+All AI effects endpoints require authentication. AI effects define reusable prompt-based creative styles that can be assigned to effect presets. Built-in effects come from the seed data; custom effects are user-created.
+
+### `GET /api/ai-effects`
+
+Returns all AI effects, sorted by source (builtin, custom, imported) and title. Hidden built-in effects are excluded.
+
+### `POST /api/ai-effects`
+
+Creates a new custom AI effect.
+
+Request body:
+- `id` (string, required) — unique identifier
+- `title` (string, required)
+- `description` (string, required)
+- `display_group` (string, optional)
+- `positive_prompt` (string, required)
+- `negative_prompt` (string, optional)
+- `custom_prompt_placeholder` (string, optional)
+- `enabled` (boolean, required)
+
+Returns `409` if the `id` already exists.
+
+### `PUT /api/ai-effects/{effect_id}`
+
+Updates an existing AI effect. Built-in effects can be edited; changes are tracked with `user_modified_at`.
+
+### `DELETE /api/ai-effects/{effect_id}`
+
+Deletes a custom AI effect. Built-in effects are disabled instead of deleted. Returns `409` if the effect is referenced by an effect preset.
+
+### `POST /api/ai-effects/{effect_id}/reset`
+
+Resets a built-in AI effect to its seed defaults. Only works for effects with `source == "builtin"`. Returns `409` otherwise.
+
+### `POST /api/ai-effects/{effect_id}/duplicate`
+
+Creates a copy of an existing AI effect with a `_copy` suffix appended to the ID. The copy has `source == "custom"`.
+
+### `POST /api/ai-effects/import`
+
+Imports AI effects from a JSON payload. Accepts:
+- `effects` (array of effect objects)
+- `overwrite_existing` (boolean) — if `true`, existing effects are updated; otherwise conflicts are reported.
+
+Returns a result object with `added`, `updated`, and `conflicts` arrays.
+
+### `GET /api/ai-effects/export`
+
+Exports all AI effects as a JSON payload suitable for import (includes `schema_version` and `effects` array).
 
 ---
 

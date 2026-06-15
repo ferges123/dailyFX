@@ -22,6 +22,7 @@ async def send_telegram_notification(
     detail: str | None = None,
     image_bytes: bytes | None = None,
     task_id: str | None = None,
+    review_url: str | None = None,
 ) -> NotificationTestResult:
     if not token.strip():
         raise ValueError("Telegram Bot Token is required")
@@ -42,14 +43,16 @@ async def send_telegram_notification(
 
     reply_markup = None
     if task_id:
-        # Include inline buttons for Accept/Reject
+        # Include inline buttons for Accept/Reject and optionally Review
+        buttons = [
+            {"text": "✅ Accept", "callback_data": f"accept:{task_id}"},
+            {"text": "❌ Reject", "callback_data": f"reject:{task_id}"},
+        ]
+        if review_url:
+            buttons.append({"text": "🔍 Review", "url": review_url})
+
         reply_markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Accept & Upload", "callback_data": f"accept:{task_id}"},
-                    {"text": "❌ Reject", "callback_data": f"reject:{task_id}"},
-                ]
-            ]
+            "inline_keyboard": [buttons]
         }
 
     async with httpx.AsyncClient(timeout=15.0) as client:
