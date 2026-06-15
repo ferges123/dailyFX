@@ -510,6 +510,45 @@ async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends
     db.commit()
 
 
+@router.delete("/history/status/{status}", status_code=204)
+async def delete_history_by_status(status: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    """Delete all generations of a specific status (files + DB records)."""
+    status_map = {
+        "rejected": "REJECTED",
+        "failed": "FAILED",
+        "pending": "PENDING_REVIEW",
+        "accepted": "UPLOADED",
+    }
+    db_status = status_map.get(status.lower())
+    if not db_status:
+        raise HTTPException(status_code=400, detail=f"Invalid or unsupported status: {status}")
+
+    from app.models.generation_stream_event import GenerationStreamEventModel
+    from app.models.generation_task import GenerationTaskModel
+
+    rows = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == db_status).all()
+    task_ids = [row.task_id for row in rows]
+
+    for row in rows:
+        if row.output_path:
+            path = Path(row.output_path)
+            if path.exists():
+                path.unlink(missing_ok=True)
+            thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
+            if thumb.exists():
+                thumb.unlink(missing_ok=True)
+
+    db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == db_status).delete()
+    if task_ids:
+        db.query(GenerationTaskModel).filter(GenerationTaskModel.task_id.in_(task_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(GenerationStreamEventModel).filter(GenerationStreamEventModel.task_id.in_(task_ids)).delete(
+            synchronize_session=False
+        )
+    db.commit()
+
+
 @router.delete("/history/cache", status_code=204)
 async def clear_generation_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
     """Delete all generation history (files + DB records)."""

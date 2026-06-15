@@ -92,6 +92,10 @@ export function clearRejectedCache() {
   return request<void>('/api/generation/history/rejected', { method: 'DELETE' });
 }
 
+export function clearHistoryByStatus(status: 'rejected' | 'failed' | 'pending' | 'accepted') {
+  return request<void>(`/api/generation/history/status/${status}`, { method: 'DELETE' });
+}
+
 export function clearGenerationCache() {
   return request<void>('/api/generation/history/cache', { method: 'DELETE' });
 }

@@ -5,7 +5,7 @@ interface ConfirmDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  variant: 'rejected' | 'all';
+  variant: 'rejected' | 'failed' | 'pending' | 'accepted' | 'all';
   isPending: boolean;
 }
 
@@ -20,7 +20,55 @@ export function ConfirmDeleteModal({
 
   if (!isOpen) return null;
 
-  const isAll = variant === 'all';
+  const getModalConfig = () => {
+    switch (variant) {
+      case 'all':
+        return {
+          title: 'Clear all history?',
+          desc: 'This will permanently delete all generated images, thumbnails, and history records. This action cannot be undone.',
+          btnText: 'Clear All',
+          isDanger: true,
+        };
+      case 'rejected':
+        return {
+          title: 'Delete rejected items?',
+          desc: 'This will permanently delete all rejected items and their generated images. This action cannot be undone.',
+          btnText: 'Delete Rejected',
+          isDanger: false,
+        };
+      case 'failed':
+        return {
+          title: 'Delete failed items?',
+          desc: 'This will permanently delete all failed items. This action cannot be undone.',
+          btnText: 'Delete Failed',
+          isDanger: true,
+        };
+      case 'pending':
+        return {
+          title: 'Delete pending items?',
+          desc: 'This will permanently delete all pending items. This action cannot be undone.',
+          btnText: 'Delete Pending',
+          isDanger: false,
+        };
+      case 'accepted':
+        return {
+          title: 'Delete accepted items?',
+          desc: 'This will permanently delete all accepted items. This action cannot be undone.',
+          btnText: 'Delete Accepted',
+          isDanger: true,
+        };
+      default:
+        return {
+          title: 'Confirm deletion?',
+          desc: 'This action cannot be undone.',
+          btnText: 'Delete',
+          isDanger: true,
+        };
+    }
+  };
+
+  const config = getModalConfig();
+  const isDanger = config.isDanger;
 
   return (
     <div ref={trapRef} className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -36,17 +84,15 @@ export function ConfirmDeleteModal({
         </button>
 
         <div className="flex items-start gap-3 mb-4">
-          <div className={`shrink-0 rounded-xl p-2.5 ${isAll ? 'bg-red-100' : 'bg-amber-100'}`}>
-            <AlertTriangle size={18} className={isAll ? 'text-red-600' : 'text-amber-600'} />
+          <div className={`shrink-0 rounded-xl p-2.5 ${isDanger ? 'bg-red-100' : 'bg-amber-100'}`}>
+            <AlertTriangle size={18} className={isDanger ? 'text-red-600' : 'text-amber-600'} />
           </div>
           <div>
             <h3 className="text-sm font-bold text-stone-900">
-              {isAll ? 'Clear all history?' : 'Delete rejected items?'}
+              {config.title}
             </h3>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              {isAll
-                ? 'This will permanently delete all generated images, thumbnails, and history records. This action cannot be undone.'
-                : 'This will permanently delete all rejected items and their generated images. This action cannot be undone.'}
+              {config.desc}
             </p>
           </div>
         </div>
@@ -65,7 +111,7 @@ export function ConfirmDeleteModal({
             onClick={onConfirm}
             disabled={isPending}
             className={`flex-1 h-9 rounded-lg text-xs font-bold text-white transition active:scale-98 cursor-pointer disabled:opacity-50 ${
-              isAll
+              isDanger
                 ? 'bg-red-600 hover:bg-red-700'
                 : 'bg-amber-600 hover:bg-amber-700'
             }`}
@@ -78,7 +124,7 @@ export function ConfirmDeleteModal({
             ) : (
               <span className="inline-flex items-center gap-1.5">
                 <Trash2 size={13} />
-                {isAll ? 'Clear All' : 'Delete Rejected'}
+                {config.btnText}
               </span>
             )}
           </button>

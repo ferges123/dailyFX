@@ -207,19 +207,6 @@ describe('HistoryPage', () => {
     expect(screen.getByText('+12s')).toBeInTheDocument();
   });
 
-  it('uses compact labels for destructive history cleanup actions', async () => {
-    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
-    vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
-
-    renderHistory();
-
-    expect(await screen.findByRole('button', { name: 'Rejected' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
-    expect(screen.queryByText('Delete Rejected')).not.toBeInTheDocument();
-    expect(screen.queryByText('Clear All')).not.toBeInTheDocument();
-  });
-
   it('renders queued run-now tasks in history immediately', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockQueuedHistoryPage);

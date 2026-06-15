@@ -447,3 +447,43 @@ def test_get_review_page():
     assert "img-original" in content
     assert "lb-toggle-original" in content
     assert "lb-img-original" in content
+
+
+def test_delete_history_by_status(tmp_path):
+    from app.api.routes_generation import delete_history_by_status
+
+    db = _setup_generation_routes_db()
+    try:
+        # Add some mock rows with different statuses
+        img_path_failed = tmp_path / "failed.png"
+        img_path_failed.write_bytes(b"failed")
+        _add_history_row(db, "task-failed", status="FAILED", output_path=str(img_path_failed))
+
+        img_path_pending = tmp_path / "pending.png"
+        img_path_pending.write_bytes(b"pending")
+        _add_history_row(db, "task-pending", status="PENDING_REVIEW", output_path=str(img_path_pending))
+
+        img_path_uploaded = tmp_path / "uploaded.png"
+        img_path_uploaded.write_bytes(b"uploaded")
+        _add_history_row(db, "task-uploaded", status="UPLOADED", output_path=str(img_path_uploaded))
+
+        # 1. Delete failed items
+        asyncio.run(delete_history_by_status("failed", db))
+        assert not img_path_failed.exists()
+        assert img_path_pending.exists()
+        assert img_path_uploaded.exists()
+        assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "FAILED").count() == 0
+
+        # 2. Delete pending items
+        asyncio.run(delete_history_by_status("pending", db))
+        assert not img_path_pending.exists()
+        assert img_path_uploaded.exists()
+        assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "PENDING_REVIEW").count() == 0
+
+        # 3. Delete accepted (uploaded) items
+        asyncio.run(delete_history_by_status("accepted", db))
+        assert not img_path_uploaded.exists()
+        assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "UPLOADED").count() == 0
+
+    finally:
+        db.close()

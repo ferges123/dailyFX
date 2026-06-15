@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save } from 'lucide-react';
+import { Save, Trash2 } from 'lucide-react';
 import {
   type FormEvent,
   useEffect,
@@ -9,9 +9,12 @@ import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import {
   getSettings,
   updateSettings,
+  clearHistoryByStatus,
+  clearGenerationCache,
   type SettingsUpdate,
 } from '../api/client';
 import { APP_VERSION } from '../version';
+import { ConfirmDeleteModal } from './History/ConfirmDeleteModal';
 
 import { RuntimeStatusSection } from './Settings/RuntimeStatusSection';
 import { ConnectionTestsSection } from './Settings/ConnectionTestsSection';
@@ -56,6 +59,23 @@ type TestState = {
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<'rejected' | 'failed' | 'pending' | 'accepted' | 'all' | null>(null);
+
+  const clearHistoryMutation = useMutation({
+    mutationFn: (status: 'rejected' | 'failed' | 'pending' | 'accepted') => clearHistoryByStatus(status),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
+      setConfirmDeleteOpen(null);
+    },
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: clearGenerationCache,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
+      setConfirmDeleteOpen(null);
+    },
+  });
   const settings = useQuery({
     queryKey: ['settings'],
     queryFn: getSettings,
@@ -211,6 +231,70 @@ export function SettingsPage() {
           </div>
         </label>
       </div>
+
+      {/* Danger Zone */}
+      <div className="app-panel border border-red-200/50 bg-red-50/10 p-3 md:p-4 rounded-2xl">
+        <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-red-800 mb-2">Danger Zone</h3>
+        <p className="text-xs text-stone-500 mb-4 leading-relaxed">
+          The following actions will permanently delete history records and their associated files from disk. These actions cannot be undone.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen('rejected')}
+            className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition active:scale-98 cursor-pointer"
+          >
+            <Trash2 size={12} className="mr-1.5" />
+            Delete Rejected
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen('failed')}
+            className="inline-flex h-8 items-center rounded-lg border border-red-300 bg-white px-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition active:scale-98 cursor-pointer"
+          >
+            <Trash2 size={12} className="mr-1.5" />
+            Delete Failed
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen('pending')}
+            className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition active:scale-98 cursor-pointer"
+          >
+            <Trash2 size={12} className="mr-1.5" />
+            Delete Pending
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen('accepted')}
+            className="inline-flex h-8 items-center rounded-lg border border-red-300 bg-white px-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition active:scale-98 cursor-pointer"
+          >
+            <Trash2 size={12} className="mr-1.5" />
+            Delete Accepted
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen('all')}
+            className="inline-flex h-8 items-center rounded-lg bg-red-650 hover:bg-red-700 text-white px-2.5 text-xs font-bold transition active:scale-98 cursor-pointer"
+          >
+            <Trash2 size={12} className="mr-1.5" />
+            Clear All History
+          </button>
+        </div>
+      </div>
+
+      <ConfirmDeleteModal
+        isOpen={confirmDeleteOpen !== null}
+        onClose={() => setConfirmDeleteOpen(null)}
+        onConfirm={() => {
+          if (confirmDeleteOpen === 'all') {
+            clearAllMutation.mutate();
+          } else if (confirmDeleteOpen !== null) {
+            clearHistoryMutation.mutate(confirmDeleteOpen);
+          }
+        }}
+        variant={confirmDeleteOpen ?? 'rejected'}
+        isPending={clearAllMutation.isPending || clearHistoryMutation.isPending}
+      />
 
       {/* Save */}
       <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl border border-stone-200/70 bg-[rgba(248,246,239,0.96)] p-2 shadow-sm sm:flex-row sm:items-center md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">

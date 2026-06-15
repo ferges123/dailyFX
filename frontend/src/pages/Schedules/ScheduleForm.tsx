@@ -520,22 +520,8 @@ export function ScheduleForm({
                 />
                 <div className="grid gap-0.5">
                   <span>AI prompt enrichment</span>
-                  <span
-                    title={
-                      form.ai_vision_provider === 'none' ||
-                      form.ai_image_provider === 'none'
-                        ? 'Enable both providers before turning this on.'
-                        : 'Combine vision output with the effect prompt.'
-                    }
-                    aria-label={
-                      form.ai_vision_provider === 'none' ||
-                      form.ai_image_provider === 'none'
-                        ? 'Enable both providers before turning this on.'
-                        : 'Combine vision output with the effect prompt.'
-                    }
-                    className="inline-flex items-center text-stone-400 transition hover:text-stone-600"
-                  >
-                    <HelpCircle size={12} />
+                  <span className="text-xs font-normal leading-5 text-stone-500">
+                    Combine vision output with the effect prompt.
                   </span>
                 </div>
               </label>

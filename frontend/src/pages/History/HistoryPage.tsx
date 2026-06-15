@@ -4,12 +4,9 @@ import {
   RefreshCw,
   Search,
   Layers,
-  Trash2,
 } from 'lucide-react';
 import {
   acceptGeneration,
-  clearGenerationCache,
-  clearRejectedCache,
   getImmichAssetDetailUrl,
   getSettings,
   rejectGeneration,
@@ -25,7 +22,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { UploadModal } from './UploadModal';
 import { LightboxModal } from './LightboxModal';
-import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+
 import { HistoryDetailPanel } from './HistoryDetailPanel';
 import { useHistoryFilters } from './useHistoryFilters';
 import { useHistoryQuery } from './useHistoryQuery';
@@ -170,27 +167,7 @@ export function HistoryPage() {
     },
   });
 
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<'rejected' | 'all' | null>(null);
 
-  const clearRejectedMutation = useMutation({
-    mutationFn: clearRejectedCache,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
-      setConfirmDeleteOpen(null);
-      setSelectedHistoryTaskId(null);
-      navigate('/history');
-    },
-  });
-
-  const clearAllMutation = useMutation({
-    mutationFn: clearGenerationCache,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
-      setConfirmDeleteOpen(null);
-      setSelectedHistoryTaskId(null);
-      navigate('/history');
-    },
-  });
 
   const { streamStatus } = useHistoryStreamSync({
     enabled: !!data,
@@ -261,24 +238,7 @@ export function HistoryPage() {
             <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
             <span className="md:hidden">Refresh</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setConfirmDeleteOpen('rejected')}
-            title="Delete all rejected items"
-            className="h-8 w-auto shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition active:scale-98 cursor-pointer md:w-auto"
-          >
-            <Trash2 size={12} className="inline-block align-[-2px] mr-1" />
-            <span>Rejected</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmDeleteOpen('all')}
-            title="Clear all history and images"
-            className="h-8 w-auto shrink-0 rounded-lg bg-red-600 px-2.5 text-xs font-bold text-white hover:bg-red-700 transition active:scale-98 cursor-pointer md:w-auto"
-          >
-            <Trash2 size={12} className="inline-block align-[-2px] mr-1" />
-            <span>All</span>
-          </button>
+
           <div
             className={`flex h-8 w-full items-center justify-center gap-1.5 rounded-full border px-2.5 text-[10px] md:w-auto ${
             streamStatus === 'connected'
@@ -528,19 +488,7 @@ export function HistoryPage() {
         />
       )}
 
-      <ConfirmDeleteModal
-        isOpen={confirmDeleteOpen !== null}
-        onClose={() => setConfirmDeleteOpen(null)}
-        onConfirm={() => {
-          if (confirmDeleteOpen === 'all') {
-            clearAllMutation.mutate();
-          } else if (confirmDeleteOpen === 'rejected') {
-            clearRejectedMutation.mutate();
-          }
-        }}
-        variant={confirmDeleteOpen ?? 'rejected'}
-        isPending={clearAllMutation.isPending || clearRejectedMutation.isPending}
-      />
+
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsPage, XIAOMI_VISION_MODELS } from '../pages/Settings';
@@ -20,6 +20,8 @@ vi.mock('../api/client', async (importOriginal) => {
     testBytePlusConnection: vi.fn(),
     testLocalAIConnection: vi.fn(),
     testXiaomiConnection: vi.fn(),
+    clearHistoryByStatus: vi.fn(),
+    clearGenerationCache: vi.fn(),
   };
 });
 
@@ -130,5 +132,33 @@ describe('SettingsPage', () => {
 
   it('only offers Xiaomi vision models that support image input', () => {
     expect(XIAOMI_VISION_MODELS.map((option) => option.value)).toEqual(['mimo-v2.5']);
+  });
+
+  it('renders Danger Zone with status deletion buttons and calls API upon confirmation', async () => {
+    vi.mocked(client.getHealth).mockResolvedValue(mockHealth);
+    vi.mocked(client.getDetailedHealth).mockResolvedValue(mockDetailedHealth);
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+
+    renderSettings();
+
+    expect(await screen.findByText('Danger Zone')).toBeInTheDocument();
+    expect(screen.getByText('Delete Rejected')).toBeInTheDocument();
+    expect(screen.getByText('Delete Failed')).toBeInTheDocument();
+    expect(screen.getByText('Delete Pending')).toBeInTheDocument();
+    expect(screen.getByText('Delete Accepted')).toBeInTheDocument();
+    expect(screen.getByText('Clear All History')).toBeInTheDocument();
+
+    // Click "Delete Failed"
+    fireEvent.click(screen.getByText('Delete Failed'));
+
+    // Verify confirmation modal opens
+    expect(screen.getByText('Delete failed items?')).toBeInTheDocument();
+
+    // Confirm deletion
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete Failed' })[1]);
+
+    await waitFor(() => {
+      expect(client.clearHistoryByStatus).toHaveBeenCalledWith('failed');
+    });
   });
 });
