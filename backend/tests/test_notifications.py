@@ -320,8 +320,7 @@ def test_send_telegram_notification_with_review_url(monkeypatch):
     assert result.ok is True
     req = fake_client.requests[0]
     
-    import json
-    reply_markup = json.loads(req["json"]["reply_markup"])
+    reply_markup = req["json"]["reply_markup"]
     buttons = reply_markup["inline_keyboard"][0]
     assert len(buttons) == 3
     assert buttons[0]["text"] == "✅ Accept"
