@@ -84,6 +84,37 @@ For API-key setup links, see [docs/api.md](docs/api.md#ai-provider-key-setup).
 
 ---
 
+## Screenshots
+
+### History
+Desktop
+
+![History desktop](docs/screenshots/history-desktop.png)
+
+Mobile
+
+![History mobile](docs/screenshots/history-mobile.png)
+
+### Schedules
+Desktop
+
+![Schedules desktop](docs/screenshots/schedules-desktop.png)
+
+Mobile
+
+![Schedules mobile](docs/screenshots/schedules-mobile.png)
+
+### Settings
+Desktop
+
+![Settings desktop](docs/screenshots/settings-desktop.png)
+
+Mobile
+
+![Settings mobile](docs/screenshots/settings-mobile.png)
+
+---
+
 ## Requirements
 
 - Docker and Docker Compose

@@ -23,6 +23,30 @@ The frontend has been upgraded to the following modern technologies:
 - `Settings`: configure Immich access, API keys, AI budgets, and the default AI prompt.
 - `Login`: shown only when `APP_ACCESS_TOKEN` is enabled on the backend.
 
+## Screenshots
+Captured images live in [`docs/screenshots/`](./screenshots/) and can be reused in the README, docs pages, or pull requests.
+
+### History
+Desktop
+![History desktop](./screenshots/history-desktop.png)
+
+Mobile
+![History mobile](./screenshots/history-mobile.png)
+
+### Schedules
+Desktop
+![Schedules desktop](./screenshots/schedules-desktop.png)
+
+Mobile
+![Schedules mobile](./screenshots/schedules-mobile.png)
+
+### Settings
+Desktop
+![Settings desktop](./screenshots/settings-desktop.png)
+
+Mobile
+![Settings mobile](./screenshots/settings-mobile.png)
+
 ## Data Flow
 - The app fetches most data through `/api/*` endpoints defined in [frontend/src/api/client.ts](../frontend/src/api/client.ts).
 - Authentication uses a bearer token stored in `localStorage` under `dailyfx_token`.
