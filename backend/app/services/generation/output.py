@@ -107,6 +107,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     detail=summary,
                     image_bytes=image_bytes,
                     task_id=task_id,
+                    review_url=abs_app_url,
                 )
             elif provider == "apprise" and notification_url:
                 from pathlib import Path as _Path
