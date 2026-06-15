@@ -42,14 +42,14 @@ Some read-only review endpoints remain public and are noted below.
 | Area | Endpoints |
 |---|---|
 | Health | `GET /api/health`, `GET /api/health/detailed` |
-| Settings | `GET /api/settings`, `PUT /api/settings`, `POST /api/settings/test-immich`, `POST /api/settings/test-openai`, `POST /api/settings/test-gemini`, `POST /api/settings/test-openrouter`, `POST /api/settings/test-byteplus`, `POST /api/settings/test-xiaomi` |
+| Settings | `GET /api/settings`, `PUT /api/settings`, `POST /api/settings/test-immich`, `POST /api/settings/test-openai`, `POST /api/settings/test-gemini`, `POST /api/settings/test-openrouter`, `POST /api/settings/test-byteplus`, `POST /api/settings/test-xiaomi`, `POST /api/settings/test-local-ai`, `GET /api/settings/models/{provider}` |
 | Immich | `GET /api/immich/options`, `GET /api/immich/assets`, `GET /api/immich/assets/{asset_id}/thumbnail`, `GET /api/immich/assets/{asset_id}/exif` |
 | Presets | CRUD for `filters`, `effects`, `notifications` |
 | Schedules | CRUD plus `POST /api/schedules/{schedule_id}/run-now` |
 | AI Effects | `GET /api/ai-effects`, `POST /api/ai-effects`, `PUT /api/ai-effects/{effect_id}`, `DELETE /api/ai-effects/{effect_id}`, `POST /api/ai-effects/{effect_id}/reset`, `POST /api/ai-effects/{effect_id}/duplicate`, `POST /api/ai-effects/import`, `GET /api/ai-effects/export` |
 | Generation | `GET /api/generation/stream`, `GET /api/generation/task/{task_id}/status`, `GET /api/generation/modules`, `GET /api/generation/examples`, `GET /api/generation/examples/{module_name}`, history/review/accept/reject |
 | Studio | `GET /api/studio/modules`, `POST /api/studio/preview` |
-| Notifications | `GET /api/notifications/vapid-public-key`, `GET /api/notifications/subscriptions`, `DELETE /api/notifications/subscriptions/{sub_id}`, `POST /api/notifications/subscribe`, `POST /api/notifications/unsubscribe` |
+| Notifications | `GET /api/notifications/vapid-public-key`, `GET /api/notifications/subscriptions`, `DELETE /api/notifications/subscriptions/{sub_id}`, `POST /api/notifications/subscribe`, `POST /api/notifications/unsubscribe`, `POST /api/notifications/subscriptions/{sub_id}/test` |
 | Debug | `GET /api/debug/log` |
 | Metrics | `GET /metrics` |
 

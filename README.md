@@ -74,7 +74,7 @@ Once an effect is generated, you are notified through your preferred channel, wh
 4. **Reject** → logged in history, not uploaded
 
 **Other features:**
-- Push notifications (Web Push, ntfy, Gotify, Telegram Bot, Home Assistant) with image preview
+- Push notifications (Web Push, ntfy, Gotify, Telegram Bot, Home Assistant, Slack, Discord, Apprise) with image preview
 - Mobile-friendly review page linked from notification
 - Per-effect enable/disable and weight
 - Filter by Immich album, person, date range, media type
@@ -412,7 +412,7 @@ Back up the `data/` directory, especially `data/app.db`.
 ```
 backend/          FastAPI + SQLAlchemy + Alembic
   app/
-    api/          Routes: settings, generation, health, push, debug, presets, schedules
+    api/          Routes: settings, generation, health, push, debug, presets, schedules, metrics, ai-effects, studio, immich
     immich/       Immich API client
     notifications/ Web Push, ntfy, Gotify, Telegram, Home Assistant
       providers/  Split channel integrations (telegram, home_assistant, slack, discord, etc.)

@@ -43,7 +43,7 @@ The frontend has been upgraded to the following modern technologies:
   - `AIEffects/`: contains `AIEffectCard.tsx` and manages the AI Effects page.
   - `AIEffects.tsx`: top-level AI Effects page with CRUD, import/export, and reset capabilities.
   - `Schedules/`: split of form details (`ScheduleForm.tsx`, `ScheduleSummaryCard.tsx`) to improve maintainability.
-  - `Settings/`: contains configuration sections (`AIProviderSettingsSection.tsx`, `ConnectionTestsSection.tsx`, `RuntimeStatusSection.tsx`) and settings validation helpers.
+  - `Settings/`: contains configuration sections (`AIProviderSettingsSection.tsx`, `ConnectionTestsSection.tsx`, `RuntimeStatusSection.tsx`, `TestableInputRow.tsx`) and settings validation helpers.
 - `frontend/src/components/`: reusable UI controls and image handling.
   - `RouteErrorBoundary.tsx`: route-level boundary displaying localized error UI instead of crashing the app shell.
 - `frontend/src/api/`: typed API client and auth helpers.
