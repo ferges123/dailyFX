@@ -162,14 +162,15 @@ def test_collision_avoidance():
 
     img = Image.new("RGB", (1000, 1000), "white")
 
-    # Mock face
-    class MockFace:
+    # Mock face on the left side (collides with weather column)
+    class MockFaceLeft:
         bounding_box_x1 = 0.05
-        bounding_box_y1 = 0.05
-        bounding_box_x2 = 0.15
-        bounding_box_y2 = 0.15
+        bounding_box_y1 = 0.20
+        bounding_box_x2 = 0.25
+        bounding_box_y2 = 0.40
+        image_width = 1000
+        image_height = 1000
 
-    faces = [MockFace()]
     weather_info = {
         "temp_c": 22.0,
         "weather_code": 0,
@@ -182,19 +183,47 @@ def test_collision_avoidance():
         "sunset": "20:45",
     }
 
-    # Render with faces and check that it doesn't crash
-    res = _draw_graphics_overlay(
+    # Render with left face -> should resolve to "swapped"
+    res1 = _draw_graphics_overlay(
         img=img,
         mode="instaweather",
         location=("ZAKOPANE", "POLAND"),
         weather_info=weather_info,
         dt=None,
-        faces=faces,
+        faces=[MockFaceLeft()],
         units="celsius",
         font_style="classic",
     )
-    assert res is not None
-    assert res.size == (1000, 1000)
+    assert res1 is not None
+    assert res1.size == (1000, 1000)
+    assert res1.info.get("resolved_position") == "swapped"
+
+    # Render with no faces -> should resolve to "standard"
+    res2 = _draw_graphics_overlay(
+        img=img,
+        mode="instaweather",
+        location=("ZAKOPANE", "POLAND"),
+        weather_info=weather_info,
+        dt=None,
+        faces=[],
+        units="celsius",
+        font_style="classic",
+    )
+    assert res2 is not None
+    assert res2.info.get("resolved_position") == "standard"
+
+    # Render with "postcard" style -> should complete successfully
+    res3 = _draw_graphics_overlay(
+        img=img,
+        mode="instaweather",
+        location=("ZAKOPANE", "POLAND"),
+        weather_info=weather_info,
+        dt=None,
+        faces=[],
+        units="celsius",
+        font_style="postcard",
+    )
+    assert res3 is not None
 
 
 def test_instaweather_reference_layout_returns_square_image():

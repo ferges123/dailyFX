@@ -642,6 +642,8 @@ class InstaWeatherModule:
             font_style=layout_style,
         )
 
+        resolved_position = result_img.info.get("resolved_position", "standard")
+
         weather_summary = ""
         if mode == "instaweather" and weather_info:
             w_desc, _ = map_wmo_code(weather_info["weather_code"])
@@ -661,10 +663,107 @@ class InstaWeatherModule:
                 "layout_style": layout_style,
                 "units": units,
                 "protect_faces": protect_faces,
+                "resolved_position": resolved_position,
                 "mode": mode,
             },
             source_asset_ids=[asset.id],
         )
+
+
+def check_weather_column_collision(
+    layout: str, faces: list, width: int, height: int, scale: float, margin: int
+) -> bool:
+    if layout == "standard":
+        col_x1, col_x2 = 0, margin + int(380 * scale)
+    else:
+        col_x1, col_x2 = width - margin - int(380 * scale), width
+
+    col_y1, col_y2 = int(70 * scale), height
+
+    for face in faces:
+        if (
+            face.bounding_box_x1 is None
+            or face.bounding_box_y1 is None
+            or face.bounding_box_x2 is None
+            or face.bounding_box_y2 is None
+        ):
+            continue
+
+        is_normalized = (
+            face.bounding_box_x1 <= 1.0
+            and face.bounding_box_y1 <= 1.0
+            and face.bounding_box_x2 <= 1.0
+            and face.bounding_box_y2 <= 1.0
+        )
+        if is_normalized:
+            fx1_c = face.bounding_box_x1 * width
+            fy1_c = face.bounding_box_y1 * height
+            fx2_c = face.bounding_box_x2 * width
+            fy2_c = face.bounding_box_y2 * height
+        else:
+            orig_width = getattr(face, "image_width", None) or width
+            orig_height = getattr(face, "image_height", None) or height
+            side = min(orig_width, orig_height)
+            left = max(0, (orig_width - side) // 2)
+            top = max(0, (orig_height - side) // 2)
+
+            fx1_c = (face.bounding_box_x1 - left) * (width / side)
+            fy1_c = (face.bounding_box_y1 - top) * (width / side)
+            fx2_c = (face.bounding_box_x2 - left) * (width / side)
+            fy2_c = (face.bounding_box_y2 - top) * (width / side)
+
+        if fx1_c < col_x2 and fx2_c > col_x1 and fy1_c < col_y2 and fy2_c > col_y1:
+            return True
+
+    return False
+
+
+def check_metrics_column_collision(
+    layout: str, faces: list, width: int, height: int, scale: float, margin: int
+) -> bool:
+    if layout == "standard":
+        col_x1, col_x2 = width - margin - int(320 * scale), width
+    else:
+        col_x1, col_x2 = 0, margin + int(320 * scale)
+
+    col_y1, col_y2 = int(70 * scale), height
+
+    for face in faces:
+        if (
+            face.bounding_box_x1 is None
+            or face.bounding_box_y1 is None
+            or face.bounding_box_x2 is None
+            or face.bounding_box_y2 is None
+        ):
+            continue
+
+        is_normalized = (
+            face.bounding_box_x1 <= 1.0
+            and face.bounding_box_y1 <= 1.0
+            and face.bounding_box_x2 <= 1.0
+            and face.bounding_box_y2 <= 1.0
+        )
+        if is_normalized:
+            fx1_c = face.bounding_box_x1 * width
+            fy1_c = face.bounding_box_y1 * height
+            fx2_c = face.bounding_box_x2 * width
+            fy2_c = face.bounding_box_y2 * height
+        else:
+            orig_width = getattr(face, "image_width", None) or width
+            orig_height = getattr(face, "image_height", None) or height
+            side = min(orig_width, orig_height)
+            left = max(0, (orig_width - side) // 2)
+            top = max(0, (orig_height - side) // 2)
+
+            fx1_c = (face.bounding_box_x1 - left) * (width / side)
+            fy1_c = (face.bounding_box_y1 - top) * (width / side)
+            fx2_c = (face.bounding_box_x2 - left) * (width / side)
+            fy2_c = (face.bounding_box_y2 - top) * (width / side)
+
+        if fx1_c < col_x2 and fx2_c > col_x1 and fy1_c < col_y2 and fy2_c > col_y1:
+            return True
+
+    return False
 
 
 def _draw_graphics_overlay(
@@ -685,7 +784,29 @@ def _draw_graphics_overlay(
     white = (255, 255, 255, 245)
     muted = (255, 255, 255, 210)
 
-    font_regular = "Inter-Regular"
+    # Determine layout position
+    layout_position = "standard"
+    if faces:
+        std_weather_collision = check_weather_column_collision("standard", faces, width, height, scale, margin)
+        swap_weather_collision = check_weather_column_collision("swapped", faces, width, height, scale, margin)
+
+        if std_weather_collision and not swap_weather_collision:
+            layout_position = "swapped"
+        elif not std_weather_collision and swap_weather_collision:
+            layout_position = "standard"
+        else:
+            std_metrics_collision = check_metrics_column_collision("standard", faces, width, height, scale, margin)
+            swap_metrics_collision = check_metrics_column_collision("swapped", faces, width, height, scale, margin)
+            if std_metrics_collision and not swap_metrics_collision:
+                layout_position = "swapped"
+            else:
+                layout_position = "standard"
+
+    if font_style == "postcard":
+        font_regular = "PlayfairDisplay-Medium"
+    else:
+        font_regular = "Inter-Regular"
+
     font_date = get_font(font_regular, max(18, int(36 * scale)))
     font_temp = get_font(font_regular, max(70, int(130 * scale)))
     font_label = get_font(font_regular, max(16, int(28 * scale)))
@@ -747,19 +868,36 @@ def _draw_graphics_overlay(
 
     shade = Image.new("RGBA", img.size, (0, 0, 0, 0))
     shade_draw = ImageDraw.Draw(shade)
+
     left_w = int(size * 0.48)
-    for x in range(left_w):
-        alpha = int(118 * (1 - x / left_w))
-        shade_draw.line([(x, 0), (x, height)], fill=(0, 0, 0, alpha))
+    if layout_position == "standard":
+        for x in range(left_w):
+            alpha = int(118 * (1 - x / left_w))
+            shade_draw.line([(x, 0), (x, height)], fill=(0, 0, 0, alpha))
+    else:
+        for x in range(width - left_w, width):
+            alpha = int(118 * ((x - (width - left_w)) / left_w))
+            shade_draw.line([(x, 0), (x, height)], fill=(0, 0, 0, alpha))
+
     top_right_w = int(size * 0.34)
     top_right_h = int(size * 0.23)
-    for x in range(width - top_right_w, width):
-        x_factor = (x - (width - top_right_w)) / top_right_w
-        for y in range(0, top_right_h):
-            y_factor = 1 - (y / top_right_h)
-            alpha = int(84 * x_factor * y_factor)
-            if alpha:
-                shade_draw.point((x, y), fill=(0, 0, 0, alpha))
+    if layout_position == "standard":
+        for x in range(width - top_right_w, width):
+            x_factor = (x - (width - top_right_w)) / top_right_w
+            for y in range(0, top_right_h):
+                y_factor = 1 - (y / top_right_h)
+                alpha = int(84 * x_factor * y_factor)
+                if alpha:
+                    shade_draw.point((x, y), fill=(0, 0, 0, alpha))
+    else:
+        for x in range(0, top_right_w):
+            x_factor = 1 - (x / top_right_w)
+            for y in range(0, top_right_h):
+                y_factor = 1 - (y / top_right_h)
+                alpha = int(84 * x_factor * y_factor)
+                if alpha:
+                    shade_draw.point((x, y), fill=(0, 0, 0, alpha))
+
     bottom_h = int(size * 0.38)
     for y in range(height - bottom_h, height):
         alpha = int(112 * ((y - (height - bottom_h)) / bottom_h))
@@ -797,34 +935,52 @@ def _draw_graphics_overlay(
         draw_func(draw, x + offset, y + offset, icon_size, (0, 0, 0, 140))
         draw_func(draw, x, y, icon_size, white)
 
+    if layout_position == "standard":
+        weather_base_x = margin
+        metrics_base_x = width - margin
+        time_x = metrics_base_x - int(104 * scale)
+        top_icon_x = time_x - int(86 * scale)
+        metric_base_x = metrics_base_x - int(300 * scale)
+        dashed_line_end_x = width - margin
+    else:
+        weather_base_x = width - margin - int(380 * scale)
+        metrics_base_x = margin + int(300 * scale)
+        time_x = metrics_base_x - int(104 * scale)
+        top_icon_x = time_x - int(86 * scale)
+        metric_base_x = metrics_base_x - int(300 * scale)
+        dashed_line_end_x = metrics_base_x
+
+    top_y = int(74 * scale)
+    metric_y = height - int(250 * scale)
+
     date_y = int(72 * scale)
-    draw_text_shadow(day_str, (margin, date_y), font_date)
-    draw_text_shadow(date_str, (margin, date_y + int(52 * scale)), font_date)
+    draw_text_shadow(day_str, (weather_base_x, date_y), font_date)
+    draw_text_shadow(date_str, (weather_base_x, date_y + int(52 * scale)), font_date)
 
     icon_size = int(210 * scale)
-    icon_x = margin - int(8 * scale)
+    icon_x = weather_base_x - int(8 * scale)
     icon_y = int(210 * scale)
     draw_main_weather_icon(draw, icon_x, icon_y, icon_size, weather_code)
 
     temp_y = int(455 * scale)
-    draw_text_shadow(temp_str, (margin, temp_y), font_temp)
+    draw_text_shadow(temp_str, (weather_base_x, temp_y), font_temp)
     divider_y = temp_y + int(148 * scale)
     draw.line(
-        [(margin, divider_y), (margin + int(330 * scale), divider_y)],
+        [(weather_base_x, divider_y), (weather_base_x + int(330 * scale), divider_y)],
         fill=(255, 255, 255, 220),
         width=max(2, int(3 * scale)),
     )
 
     details_y = divider_y + int(36 * scale)
-    draw_text_shadow("FEELS LIKE", (margin, details_y), font_label)
-    draw_text_shadow(feels_str, (margin, details_y + int(52 * scale)), font_value, text_color=muted)
+    draw_text_shadow("FEELS LIKE", (weather_base_x, details_y), font_label)
+    draw_text_shadow(feels_str, (weather_base_x, details_y + int(52 * scale)), font_value, text_color=muted)
     cloud_y = details_y + int(132 * scale)
-    draw_text_shadow("CLOUDINESS", (margin, cloud_y), font_label)
-    draw_text_shadow(_cloudiness_label_en(cloud_str), (margin, cloud_y + int(50 * scale)), font_label)
+    draw_text_shadow("CLOUDINESS", (weather_base_x, cloud_y), font_label)
+    draw_text_shadow(_cloudiness_label_en(cloud_str), (weather_base_x, cloud_y + int(50 * scale)), font_label)
     draw_dashed_line(
-        margin,
+        weather_base_x,
         cloud_y + int(112 * scale),
-        margin + int(350 * scale),
+        weather_base_x + int(350 * scale),
         color=(255, 255, 255, 180),
         line_width=max(2, int(2 * scale)),
     )
@@ -832,38 +988,35 @@ def _draw_graphics_overlay(
     if city_str:
         loc_y = height - int(170 * scale)
         pin_size = int(68 * scale)
-        draw_shadowed_icon(draw_pin_icon, margin, loc_y - int(4 * scale), pin_size)
-        text_x = margin + int(84 * scale)
+        draw_shadowed_icon(draw_pin_icon, weather_base_x, loc_y - int(4 * scale), pin_size)
+        text_x = weather_base_x + int(84 * scale)
         draw_text_shadow(city_str, (text_x, loc_y), font_city, fake_bold=True)
         if country_str:
             draw_text_shadow(country_str, (text_x, loc_y + int(58 * scale)), font_country)
 
     top_icon_size = int(48 * scale)
-    time_x = width - margin - int(104 * scale)
-    top_icon_x = time_x - int(86 * scale)
-    top_y = int(74 * scale)
     draw_shadowed_icon(draw_sunrise_icon, top_icon_x, top_y - int(8 * scale), top_icon_size)
     draw_text_shadow(sunrise_time, (time_x, top_y), font_metric_value)
-    draw_dashed_line(top_icon_x, top_y + int(58 * scale), width - margin, color=(255, 255, 255, 180))
+    draw_dashed_line(top_icon_x, top_y + int(58 * scale), dashed_line_end_x, color=(255, 255, 255, 180))
     draw_shadowed_icon(draw_sunset_icon, top_icon_x, top_y + int(70 * scale), top_icon_size)
     draw_text_shadow(sunset_time, (time_x, top_y + int(78 * scale)), font_metric_value)
 
     metric_icon_size = int(44 * scale)
-    metric_x = width - margin - int(300 * scale)
-    metric_y = height - int(250 * scale)
-    draw_shadowed_icon(draw_humidity_icon, metric_x, metric_y, metric_icon_size)
-    draw_text_shadow(hum_label_str, (metric_x + int(66 * scale), metric_y), font_metric)
-    draw_text_shadow(hum_val_str, (metric_x + int(66 * scale), metric_y + int(42 * scale)), font_metric_value)
+    draw_shadowed_icon(draw_humidity_icon, metric_base_x, metric_y, metric_icon_size)
+    draw_text_shadow(hum_label_str, (metric_base_x + int(66 * scale), metric_y), font_metric)
+    draw_text_shadow(hum_val_str, (metric_base_x + int(66 * scale), metric_y + int(42 * scale)), font_metric_value)
     wind_y = metric_y + int(118 * scale)
-    draw_shadowed_icon(draw_wind_icon, metric_x, wind_y, metric_icon_size)
-    draw_text_shadow(wind_label_str, (metric_x + int(66 * scale), wind_y), font_metric)
-    draw_text_shadow(wind_val_str, (metric_x + int(66 * scale), wind_y + int(42 * scale)), font_metric_value)
+    draw_shadowed_icon(draw_wind_icon, metric_base_x, wind_y, metric_icon_size)
+    draw_text_shadow(wind_label_str, (metric_base_x + int(66 * scale), wind_y), font_metric)
+    draw_text_shadow(wind_val_str, (metric_base_x + int(66 * scale), wind_y + int(42 * scale)), font_metric_value)
 
     if img.mode != "RGBA":
         img = img.convert("RGBA")
 
     combined = Image.alpha_composite(img, overlay_layer)
-    return combined.convert("RGB")
+    result = combined.convert("RGB")
+    result.info["resolved_position"] = layout_position
+    return result
 
 
 def _center_square_crop(img: Image.Image) -> Image.Image:

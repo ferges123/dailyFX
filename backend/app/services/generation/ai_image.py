@@ -596,15 +596,16 @@ async def _generate_with_local(
 
 
 def _crop_to_largest_face(image_bytes: bytes, faces: list[dict] | None) -> bytes:
-    from PIL import Image
     from io import BytesIO
-    
+
+    from PIL import Image
+
     img = Image.open(BytesIO(image_bytes))
     w, h = img.size
     target_dim = min(w, h)
-    
+
     cx, cy = w / 2.0, h / 2.0
-    
+
     if faces:
         largest_face = None
         max_area = -1.0
@@ -624,12 +625,11 @@ def _crop_to_largest_face(image_bytes: bytes, faces: list[dict] | None) -> bytes
 
     left = int(cx - target_dim / 2.0)
     top = int(cy - target_dim / 2.0)
-    
+
     left = max(0, min(w - target_dim, left))
     top = max(0, min(h - target_dim, top))
-    
+
     cropped = img.crop((left, top, left + target_dim, top + target_dim))
     out = BytesIO()
     cropped.save(out, format="PNG")
     return out.getvalue()
-
