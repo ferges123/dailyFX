@@ -404,6 +404,7 @@ async def _generate_with_byteplus(api_key: str, image_bytes: bytes, prompt: str,
         "model": model,
         "prompt": prompt,
         "image": f"data:{mime_type};base64,{b64_image}",
+        "size": "adaptive",
         "response_format": "url",
         "watermark": False,
     }
