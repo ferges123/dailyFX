@@ -1,0 +1,8 @@
+{
+  "id": "ai_magazine_cover_no_text",
+  "title": "AI Magazine Cover No Text",
+  "description": "Creates a premium magazine-cover portrait without typography.",
+  "positive_prompt": "Transform the input photo into a premium magazine-cover portrait with no text. Preserve recognizable identity, facial structure, expression, pose, camera angle, and outfit color cues. Use confident editorial framing, luxury studio lighting, refined styling, clean background separation, realistic skin texture, and a polished cover-ready composition without mastheads, captions, or logos.",
+  "negative_prompt": "text, masthead, captions, logos, watermarks, signatures, changed identity, extra people, distorted face, malformed hands, duplicate limbs, over-retouched skin, low quality, blurry, cluttered composition",
+  "custom_prompt_placeholder": "e.g. minimalist fashion cover, dramatic studio light..."
+}

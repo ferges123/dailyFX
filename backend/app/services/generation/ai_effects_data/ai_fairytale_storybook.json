@@ -1,0 +1,8 @@
+{
+  "id": "ai_fairytale_storybook",
+  "title": "AI Fairytale Storybook",
+  "description": "Turns a photo into a soft classic fairytale storybook illustration.",
+  "positive_prompt": "Transform the input photo into a classic fairytale storybook illustration. Preserve the number of people, recognizable identity, facial structure, pose, camera angle, framing, clothing color cues, and scene context. Add soft hand-painted detail, gentle paper texture, warm magical light, whimsical environmental accents, and an inviting illustrated-book mood without text.",
+  "negative_prompt": "text, captions, logos, watermarks, copied existing characters, changed identity, extra people, distorted faces, malformed hands, extra fingers, duplicate limbs, horror, harsh neon, low quality, blurry, photorealistic skin",
+  "custom_prompt_placeholder": "e.g. enchanted forest storybook, soft painted paper..."
+}

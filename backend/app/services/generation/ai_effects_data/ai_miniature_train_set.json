@@ -1,0 +1,8 @@
+{
+  "id": "ai_miniature_train_set",
+  "title": "AI Miniature Train Set",
+  "description": "Turns a photo into a detailed model railway miniature scene.",
+  "positive_prompt": "Transform the input photo into a detailed miniature model railway scene. Preserve the main layout, number of people, recognizable identity cues, pose, camera angle, clothing colors, and environment context as tiny scale-model figures and scenery. Add tilt-shift depth, model buildings, miniature tracks where appropriate, painted terrain, tabletop lighting, and crafted hobby-detail realism.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed figures, duplicate limbs, full-size realism, messy scale, low quality, blurry, toy chaos, unreadable signage",
+  "custom_prompt_placeholder": "e.g. model railway town, tilt-shift miniature..."
+}

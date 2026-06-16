@@ -1,0 +1,8 @@
+{
+  "id": "ai_cinematic_movie_still",
+  "title": "AI Cinematic Movie Still",
+  "description": "Turns a photo into a dramatic cinematic film still.",
+  "positive_prompt": "Transform the input photo into a cinematic movie still. Preserve the number of people, recognizable identity, facial features, pose, camera angle, framing, outfit color cues, and scene context. Add anamorphic lens character, subtle film grain, dramatic color grading, motivated lighting, shallow depth of field, realistic textures, and a polished theatrical frame without adding text.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, changed identity, extra people, distorted faces, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, overprocessed skin, low quality, blurry, pixelated, cartoon, illustration, CGI",
+  "custom_prompt_placeholder": "e.g. moody thriller lighting, warm film grain..."
+}

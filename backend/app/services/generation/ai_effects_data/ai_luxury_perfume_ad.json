@@ -1,0 +1,8 @@
+{
+  "id": "ai_luxury_perfume_ad",
+  "title": "AI Luxury Perfume Ad",
+  "description": "Stages a photo as a text-free luxury fragrance campaign portrait.",
+  "positive_prompt": "Transform the input photo into a luxury perfume advertising portrait without text. Preserve recognizable identity, facial features, expression, pose, camera angle, and elegant framing. Add refined studio lighting, glassy reflections, subtle mist, premium fashion styling, polished skin texture, sophisticated color grading, and a high-end fragrance-campaign mood without logos or product labels.",
+  "negative_prompt": "text, captions, logos, watermarks, readable product labels, changed identity, extra people, distorted face, malformed hands, duplicate limbs, cheap commercial look, plastic skin, low quality, blurry, cluttered background",
+  "custom_prompt_placeholder": "e.g. glass reflections, luxury fragrance campaign..."
+}

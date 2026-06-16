@@ -212,6 +212,59 @@ def test_planned_ai_photo_effect_prompts_are_builtin_seed_files():
         db.close()
 
 
+def test_expanded_ai_effect_prompt_pack_is_seeded_and_listed():
+    expected_groups = {
+        "ai_cinematic_movie_still": "Cinematic",
+        "ai_polaroid_memory": "Photography",
+        "ai_editorial_black_white": "Photography",
+        "ai_album_cover": "Poster",
+        "ai_dreamy_golden_hour": "Photography",
+        "ai_snow_globe": "Seasonal",
+        "ai_ancient_statue": "Artistic",
+        "ai_newspaper_archive": "Historical",
+        "ai_fairytale_storybook": "Illustration",
+        "ai_luxury_perfume_ad": "Portrait",
+        "ai_magazine_cover_no_text": "Portrait",
+        "ai_spy_thriller_poster": "Cinematic",
+        "ai_royal_portrait": "Portrait",
+        "ai_medieval_tapestry": "Artistic",
+        "ai_paper_diorama": "3D / Toy",
+        "ai_tintype_portrait": "Historical",
+        "ai_film_contact_sheet": "Photography",
+        "ai_ukiyo_e_print": "Artistic",
+        "ai_solarpunk": "Sci-Fi",
+        "ai_underwater_dream": "Artistic",
+        "ai_miniature_train_set": "3D / Toy",
+        "ai_80s_action_movie": "Cinematic",
+        "ai_old_master_pastel": "Artistic",
+        "ai_documentary_photoessay": "Photography",
+        "ai_museum_diorama": "3D / Toy",
+    }
+
+    init_db()
+    db = SessionLocal()
+    try:
+        seed_dir = get_seed_dir()
+        manifest = load_seed_manifest()
+        manifest_groups = {entry.id: entry.display_group for entry in manifest.effects}
+        assert expected_groups.items() <= manifest_groups.items()
+        assert all((seed_dir / f"{effect_id}.json").exists() for effect_id in expected_groups)
+
+        listed = list_ai_effects(db)
+        listed_by_id = {item.id: item for item in listed}
+        assert expected_groups.keys() <= listed_by_id.keys()
+        for effect_id, display_group in expected_groups.items():
+            assert listed_by_id[effect_id].display_group == display_group
+            assert listed_by_id[effect_id].positive_prompt
+            assert listed_by_id[effect_id].negative_prompt
+
+        modules = asyncio.run(list_generation_modules())
+        module_names = {item.name for item in modules}
+        assert expected_groups.keys() <= module_names
+    finally:
+        db.close()
+
+
 def test_hidden_builtins_do_not_hide_custom_overrides(monkeypatch):
     init_db()
     db = SessionLocal()

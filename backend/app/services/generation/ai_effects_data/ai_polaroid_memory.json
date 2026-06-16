@@ -1,0 +1,8 @@
+{
+  "id": "ai_polaroid_memory",
+  "title": "AI Polaroid Memory",
+  "description": "Turns a photo into a nostalgic instant-film memory.",
+  "positive_prompt": "Transform the input photo into a nostalgic instant-film snapshot. Preserve the number of people, recognizable identity, pose, camera angle, framing, clothing colors, and scene context. Use a natural candid feel, soft flash falloff, slightly faded colors, gentle film imperfections, warm paper texture, and a clean white instant-photo border without readable writing.",
+  "negative_prompt": "readable text, captions, logos, watermarks, signatures, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, harsh HDR, oversharpening, digital artifacts, low quality, blurry, cartoon, illustration",
+  "custom_prompt_placeholder": "e.g. summer vacation snapshot, faded instant film..."
+}

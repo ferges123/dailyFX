@@ -1,0 +1,8 @@
+{
+  "id": "ai_snow_globe",
+  "title": "AI Snow Globe",
+  "description": "Turns a photo into a miniature winter snow-globe diorama.",
+  "positive_prompt": "Transform the input photo into a charming snow-globe diorama. Preserve the number of people, recognizable identity, pose, outfit color cues, and main scene layout as miniature figures inside a clear glass globe. Add falling snow, a small winter base, soft reflections on curved glass, cozy seasonal lighting, and detailed toy-like realism without text or logos.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, broken glass, harsh reflections, horror mood, low quality, blurry, unreadable clutter, flat composition",
+  "custom_prompt_placeholder": "e.g. cozy holiday snow globe, miniature winter scene..."
+}

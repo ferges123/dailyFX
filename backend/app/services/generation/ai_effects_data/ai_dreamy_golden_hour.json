@@ -1,0 +1,8 @@
+{
+  "id": "ai_dreamy_golden_hour",
+  "title": "AI Dreamy Golden Hour",
+  "description": "Adds a photorealistic warm golden-hour portrait look.",
+  "positive_prompt": "Transform the input photo into a dreamy golden-hour photograph. Preserve the number of people, recognizable identity, pose, camera angle, framing, clothing colors, and scene context. Add warm low sun, soft backlight, cinematic bokeh, subtle lens glow, natural skin tones, gentle contrast, and polished lifestyle-photography realism.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, orange color cast, overexposed highlights, plastic skin, heavy blur, low quality, cartoon, illustration, CGI",
+  "custom_prompt_placeholder": "e.g. sunset beach glow, warm backlight..."
+}

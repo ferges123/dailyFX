@@ -1,0 +1,8 @@
+{
+  "id": "ai_museum_diorama",
+  "title": "AI Museum Diorama",
+  "description": "Turns a photo into a curated museum diorama display.",
+  "positive_prompt": "Transform the input photo into a curated museum diorama display. Preserve the number of people, recognizable identity cues, pose, main composition, outfit colors, and scene context as realistic miniature figures in a glass-front exhibit. Add controlled gallery lighting, display base, carefully crafted terrain or interior details, subtle reflections, and educational-exhibit polish without readable labels.",
+  "negative_prompt": "readable text, labels, captions, logos, watermarks, changed identity, extra people, distorted figures, malformed hands, duplicate limbs, messy clutter, harsh glare, low quality, blurry, cartoonish unless requested",
+  "custom_prompt_placeholder": "e.g. natural history diorama, glass museum exhibit..."
+}

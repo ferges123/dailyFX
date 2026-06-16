@@ -1,0 +1,8 @@
+{
+  "id": "ai_80s_action_movie",
+  "title": "AI 80s Action Movie",
+  "description": "Stages a photo as a text-free 1980s action movie image.",
+  "positive_prompt": "Transform the input photo into a text-free 1980s action movie still or poster image. Preserve the number of people, recognizable identity, facial features, pose, camera angle, and main framing. Add dramatic rim light, smoky atmosphere, bold teal-orange or neon accents, heroic stance, gritty practical lighting, film grain, and high-energy cinematic composition without typography.",
+  "negative_prompt": "text, captions, logos, watermarks, copied movie characters, changed identity, extra people, distorted faces, malformed hands, extra fingers, duplicate limbs, excessive gore, low quality, blurry, flat lighting, comedy parody",
+  "custom_prompt_placeholder": "e.g. smoky backlight, retro action poster mood..."
+}

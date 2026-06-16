@@ -1,0 +1,8 @@
+{
+  "id": "ai_album_cover",
+  "title": "AI Album Cover",
+  "description": "Stages a photo as a dramatic text-free music album cover.",
+  "positive_prompt": "Transform the input photo into a text-free music album cover image. Preserve the number of people, recognizable identity, pose, camera angle, and main composition while making the framing more iconic and graphic. Add dramatic stage or studio lighting, expressive mood, strong color palette, subtle texture, and a polished square-cover composition without typography.",
+  "negative_prompt": "text, typography, captions, logos, watermarks, signatures, album title, artist name, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, low quality, blurry, cluttered layout, cartoonish unless requested",
+  "custom_prompt_placeholder": "e.g. moody indie album cover, dramatic rim light..."
+}

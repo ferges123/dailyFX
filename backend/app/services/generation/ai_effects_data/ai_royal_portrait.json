@@ -1,0 +1,8 @@
+{
+  "id": "ai_royal_portrait",
+  "title": "AI Royal Portrait",
+  "description": "Reimagines a photo as a dignified royal portrait.",
+  "positive_prompt": "Transform the input photo into a dignified royal portrait. Preserve the number of people, recognizable identity, facial features, expression, pose, camera angle, and main composition. Add elegant formal attire, palace or classical interior cues, rich fabrics, restrained jewelry or regalia, soft painterly studio lighting, and a refined ceremonial atmosphere without text or logos.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, parody, cartoon, cheap costume, excessive crown, low quality, blurry, over-smoothed skin",
+  "custom_prompt_placeholder": "e.g. palace portrait, velvet and gold accents..."
+}

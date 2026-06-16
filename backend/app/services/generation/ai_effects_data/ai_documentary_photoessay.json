@@ -1,0 +1,8 @@
+{
+  "id": "ai_documentary_photoessay",
+  "title": "AI Documentary Photoessay",
+  "description": "Gives a photo an authentic documentary photoessay look.",
+  "positive_prompt": "Transform the input photo into an authentic documentary photoessay image. Preserve the number of people, recognizable identity, pose, camera angle, framing, clothing colors, and real scene context. Emphasize natural available light, honest environmental detail, subtle film grain, human-scale storytelling, balanced contrast, and realistic travel or reportage photography without staged glamour.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, over-staged fashion lighting, heavy HDR, fantasy elements, low quality, blurry, cartoon, illustration",
+  "custom_prompt_placeholder": "e.g. travel reportage, natural window light..."
+}

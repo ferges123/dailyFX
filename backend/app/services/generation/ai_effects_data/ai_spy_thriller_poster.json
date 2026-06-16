@@ -1,0 +1,8 @@
+{
+  "id": "ai_spy_thriller_poster",
+  "title": "AI Spy Thriller Poster",
+  "description": "Turns a photo into a moody text-free spy thriller poster.",
+  "positive_prompt": "Transform the input photo into a text-free spy thriller poster image. Preserve the number of people, recognizable identity, facial features, pose, camera angle, and main framing. Add rain-slick streets or shadowy interiors, cool cinematic lighting, reflected city lights, tailored coat or suit styling where appropriate, suspenseful atmosphere, and crisp poster-grade realism without typography.",
+  "negative_prompt": "text, captions, logos, watermarks, weapons as the main focus, changed identity, extra people, distorted face, malformed hands, duplicate limbs, cartoon, comedy mood, low quality, blurry, cluttered background",
+  "custom_prompt_placeholder": "e.g. rainy city spy thriller, cool neon reflections..."
+}

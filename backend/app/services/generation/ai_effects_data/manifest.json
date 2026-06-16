@@ -165,6 +165,131 @@
       "id": "ai_double_exposure",
       "display_group": "Portrait",
       "hidden": false
+    },
+    {
+      "id": "ai_cinematic_movie_still",
+      "display_group": "Cinematic",
+      "hidden": false
+    },
+    {
+      "id": "ai_polaroid_memory",
+      "display_group": "Photography",
+      "hidden": false
+    },
+    {
+      "id": "ai_editorial_black_white",
+      "display_group": "Photography",
+      "hidden": false
+    },
+    {
+      "id": "ai_album_cover",
+      "display_group": "Poster",
+      "hidden": false
+    },
+    {
+      "id": "ai_dreamy_golden_hour",
+      "display_group": "Photography",
+      "hidden": false
+    },
+    {
+      "id": "ai_snow_globe",
+      "display_group": "Seasonal",
+      "hidden": false
+    },
+    {
+      "id": "ai_ancient_statue",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_newspaper_archive",
+      "display_group": "Historical",
+      "hidden": false
+    },
+    {
+      "id": "ai_fairytale_storybook",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_luxury_perfume_ad",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_magazine_cover_no_text",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_spy_thriller_poster",
+      "display_group": "Cinematic",
+      "hidden": false
+    },
+    {
+      "id": "ai_royal_portrait",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_medieval_tapestry",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_paper_diorama",
+      "display_group": "3D / Toy",
+      "hidden": false
+    },
+    {
+      "id": "ai_tintype_portrait",
+      "display_group": "Historical",
+      "hidden": false
+    },
+    {
+      "id": "ai_film_contact_sheet",
+      "display_group": "Photography",
+      "hidden": false
+    },
+    {
+      "id": "ai_ukiyo_e_print",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_solarpunk",
+      "display_group": "Sci-Fi",
+      "hidden": false
+    },
+    {
+      "id": "ai_underwater_dream",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_miniature_train_set",
+      "display_group": "3D / Toy",
+      "hidden": false
+    },
+    {
+      "id": "ai_80s_action_movie",
+      "display_group": "Cinematic",
+      "hidden": false
+    },
+    {
+      "id": "ai_old_master_pastel",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_documentary_photoessay",
+      "display_group": "Photography",
+      "hidden": false
+    },
+    {
+      "id": "ai_museum_diorama",
+      "display_group": "3D / Toy",
+      "hidden": false
     }
   ]
 }

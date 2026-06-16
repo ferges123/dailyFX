@@ -1,0 +1,8 @@
+{
+  "id": "ai_ukiyo_e_print",
+  "title": "AI Ukiyo-e Print",
+  "description": "Turns a photo into a Japanese woodblock-print inspired artwork.",
+  "positive_prompt": "Transform the input photo into a Japanese woodblock-print inspired artwork. Preserve the number of people, recognizable identity cues, pose, camera angle, main composition, outfit color cues, and scene context. Use flat color planes, elegant contour lines, handmade paper texture, stylized clouds or waves where appropriate, balanced negative space, and traditional printmaking texture without text or seals.",
+  "negative_prompt": "text, captions, logos, watermarks, red seals, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, photorealism, glossy 3D render, neon cyberpunk, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. woodblock print waves, handmade paper texture..."
+}

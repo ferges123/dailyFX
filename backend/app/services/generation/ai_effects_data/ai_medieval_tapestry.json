@@ -1,0 +1,8 @@
+{
+  "id": "ai_medieval_tapestry",
+  "title": "AI Medieval Tapestry",
+  "description": "Turns a photo into a woven medieval tapestry scene.",
+  "positive_prompt": "Transform the input photo into a medieval woven tapestry. Preserve the number of people, recognizable silhouettes, pose, camera angle, main composition, clothing color cues, and scene context. Recreate the image with flat decorative forms, visible woven threads, embroidered outlines, muted natural dyes, ornamental borders, and aged textile texture without text.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity beyond tapestry stylization, extra people, distorted composition, photographic skin, glossy surfaces, neon colors, low quality, blurry, modern UI elements",
+  "custom_prompt_placeholder": "e.g. embroidered medieval textile, ornamental border..."
+}

@@ -1,0 +1,8 @@
+{
+  "id": "ai_ancient_statue",
+  "title": "AI Ancient Statue",
+  "description": "Reimagines a photo as a museum-quality marble or bronze statue.",
+  "positive_prompt": "Transform the input photo into an ancient museum statue. Preserve the number of people, recognizable facial structure, pose, camera angle, framing, and main composition. Recreate the subject as carved marble or aged bronze with realistic chisel detail, subtle patina, museum-gallery lighting, classical sculptural dignity, and a clean plinth or gallery setting.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted face, malformed anatomy, extra limbs, broken sculpture, melted material, plastic, low quality, blurry, cartoon, modern clothing texture left unchanged",
+  "custom_prompt_placeholder": "e.g. white marble statue, bronze museum sculpture..."
+}

@@ -1,0 +1,8 @@
+{
+  "id": "ai_film_contact_sheet",
+  "title": "AI Film Contact Sheet",
+  "description": "Turns a photo into a text-free analog film contact sheet.",
+  "positive_prompt": "Transform the input photo into an analog film contact sheet presentation. Preserve recognizable identity, pose, camera angle, and scene context across repeated adjacent frames with slight natural variations in exposure and crop. Add black film borders, sprocket-like spacing, subtle dust, grain, and darkroom proof-sheet character without readable frame numbers or text.",
+  "negative_prompt": "readable text, numbers, captions, logos, watermarks, changed identity, extra unrelated people, distorted faces, malformed hands, duplicate faces within one frame, digital UI, low quality, blurry, cartoon, illustration",
+  "custom_prompt_placeholder": "e.g. black and white contact sheet, analog proof strip..."
+}

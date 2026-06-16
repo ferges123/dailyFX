@@ -1,0 +1,8 @@
+{
+  "id": "ai_newspaper_archive",
+  "title": "AI Newspaper Archive",
+  "description": "Turns a photo into an archival newspaper press image.",
+  "positive_prompt": "Transform the input photo into an archival newspaper press photograph. Preserve the number of people, recognizable identity, pose, camera angle, framing, clothing cues, and scene context. Use black-and-white newsprint toning, halftone dot texture, documentary flash or ambient lighting, slightly aged paper contrast, and a historical photojournalism mood without readable headlines or captions.",
+  "negative_prompt": "readable text, headlines, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, modern glossy magazine look, oversaturated color, low quality, blurry, cartoon, comic style",
+  "custom_prompt_placeholder": "e.g. 1930s newspaper archive, press flash..."
+}

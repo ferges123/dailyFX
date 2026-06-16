@@ -1,0 +1,8 @@
+{
+  "id": "ai_editorial_black_white",
+  "title": "AI Editorial Black & White",
+  "description": "Creates a clean modern black-and-white editorial portrait.",
+  "positive_prompt": "Transform the input photo into a modern black-and-white editorial portrait. Preserve recognizable identity, facial structure, expression, pose, camera angle, framing, and natural skin texture. Use refined studio or available-light contrast, elegant tonal separation, crisp eyes, soft background falloff, subtle grain, and premium magazine-quality monochrome realism.",
+  "negative_prompt": "color, color tint, text, captions, logos, watermarks, changed identity, extra people, distorted face, plastic skin, extreme beauty filter, malformed hands, duplicate limbs, low contrast, muddy shadows, low quality, blurry, cartoon, illustration",
+  "custom_prompt_placeholder": "e.g. clean studio contrast, fine art monochrome..."
+}

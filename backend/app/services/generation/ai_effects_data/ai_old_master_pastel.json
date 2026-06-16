@@ -1,0 +1,8 @@
+{
+  "id": "ai_old_master_pastel",
+  "title": "AI Old Master Pastel",
+  "description": "Turns a photo into a soft classical pastel portrait.",
+  "positive_prompt": "Transform the input photo into a soft old-master pastel portrait on textured paper. Preserve the number of people, recognizable identity, facial structure, expression, pose, camera angle, and main framing. Use delicate pastel strokes, muted classical colors, gentle light, refined shading, visible paper grain, and an elegant hand-drawn portrait finish.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, harsh ink outlines, neon colors, photorealistic skin, oil paint gloss, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. soft chalk pastel, textured portrait paper..."
+}

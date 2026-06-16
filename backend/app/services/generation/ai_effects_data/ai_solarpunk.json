@@ -1,0 +1,8 @@
+{
+  "id": "ai_solarpunk",
+  "title": "AI Solarpunk",
+  "description": "Reimagines a photo as a bright optimistic ecological future scene.",
+  "positive_prompt": "Transform the input photo into a bright solarpunk future scene. Preserve the number of people, recognizable identity, pose, camera angle, framing, outfit color cues, and scene context. Add lush greenery, warm daylight, elegant sustainable architecture, glass and wood details, rooftop gardens or clean transit elements where appropriate, and an optimistic cinematic sci-fi atmosphere.",
+  "negative_prompt": "text, captions, logos, watermarks, dystopian mood, cyberpunk neon dominance, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, pollution, rubble, low quality, blurry, cartoon unless requested",
+  "custom_prompt_placeholder": "e.g. garden city future, warm sustainable architecture..."
+}

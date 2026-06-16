@@ -1,0 +1,8 @@
+{
+  "id": "ai_underwater_dream",
+  "title": "AI Underwater Dream",
+  "description": "Turns a photo into a surreal underwater dream portrait.",
+  "positive_prompt": "Transform the input photo into a surreal underwater dream scene. Preserve the number of people, recognizable identity, facial features, pose, camera angle, framing, clothing color cues, and main composition. Add soft caustic light, floating fabric or hair movement where appropriate, gentle bubbles, blue-green atmospheric depth, and graceful fine-art realism while keeping faces clear.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted face, obscured face, malformed hands, duplicate limbs, drowning panic, horror, murky water, excessive blur, low quality, cartoon",
+  "custom_prompt_placeholder": "e.g. soft underwater caustics, floating fabric..."
+}

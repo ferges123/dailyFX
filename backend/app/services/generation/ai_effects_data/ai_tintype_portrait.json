@@ -1,0 +1,8 @@
+{
+  "id": "ai_tintype_portrait",
+  "title": "AI Tintype Portrait",
+  "description": "Creates a 19th-century tintype-style portrait.",
+  "positive_prompt": "Transform the input photo into a 19th-century tintype portrait. Preserve recognizable identity, facial structure, expression, pose, camera angle, and framing. Use monochrome silver-gray toning, shallow antique lens softness, metal-plate texture, subtle scratches, formal historical portrait lighting, and restrained vintage styling while keeping the subject identifiable.",
+  "negative_prompt": "color, text, captions, logos, watermarks, changed identity, different age, extra people, distorted face, malformed hands, duplicate limbs, modern glossy look, heavy blur, low quality, cartoon, illustration",
+  "custom_prompt_placeholder": "e.g. antique metal plate portrait, formal studio pose..."
+}

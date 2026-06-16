@@ -1,0 +1,8 @@
+{
+  "id": "ai_paper_diorama",
+  "title": "AI Paper Diorama",
+  "description": "Turns a photo into a layered handmade paper diorama.",
+  "positive_prompt": "Transform the input photo into a layered handmade paper diorama. Preserve the number of people, recognizable identity, pose, camera angle, main composition, outfit colors, and scene context. Rebuild the scene from cut paper layers with visible edges, soft cast shadows, crafted textures, controlled depth, and a charming tabletop miniature presentation without text.",
+  "negative_prompt": "text, captions, logos, watermarks, changed identity, extra people, distorted faces, malformed hands, duplicate limbs, photorealistic skin, plastic toy look, messy cutouts, low quality, blurry, flat single-layer image",
+  "custom_prompt_placeholder": "e.g. layered paper cutout scene, soft tabletop shadows..."
+}
