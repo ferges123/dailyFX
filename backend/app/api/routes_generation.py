@@ -272,7 +272,14 @@ async def get_review_thumbnail(
     path = Path(row.output_path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Not found")
-    return FileResponse(path, media_type="image/png")
+
+    thumb_path = get_or_create_thumbnail(path)
+    if thumb_path != path and thumb_path.exists():
+        return FileResponse(thumb_path, media_type="image/jpeg")
+
+    from app.services.generation.output_format import output_mime_type
+
+    return FileResponse(path, media_type=output_mime_type(row.output_format))
 
 
 @router.get("/history/{task_id}", response_model=GenerationHistoryResponse)
@@ -326,7 +333,9 @@ def get_generation_image(
         if thumb_path != path and thumb_path.exists():
             return FileResponse(thumb_path, media_type="image/jpeg", headers=headers)
 
-    return FileResponse(path, media_type="image/png", headers=headers)
+    from app.services.generation.output_format import output_mime_type
+
+    return FileResponse(path, media_type=output_mime_type(row.output_format), headers=headers)
 
 
 @router.post("/history/{task_id}/accept", response_model=GenerationHistoryResponse)

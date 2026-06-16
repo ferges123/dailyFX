@@ -21,6 +21,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "apprise>=1.9.0",
     "python-multipart>=0.0.9",
+    "imageio>=2.35.0",
 ]
 
 [project.optional-dependencies]
@@ -46,3 +47,6 @@ ignore = ["B008", "E402", "E501", "B904", "E701", "E722", "E741"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.setuptools]
+packages = ["app"]

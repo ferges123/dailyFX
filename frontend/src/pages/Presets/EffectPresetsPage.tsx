@@ -272,7 +272,7 @@ export function EffectPresetsTab() {
     createDefaultModificationGroups(),
   );
   const [error, setError] = useState<string | null>(null);
-  const [effectTab, setEffectTab] = useState<'local' | 'ai'>('local');
+  const [effectTab, setEffectTab] = useState<'local' | 'ai' | 'motion'>('local');
   const [expandedPreviews, setExpandedPreviews] = useState<
     Record<string, boolean>
   >({});
@@ -334,8 +334,9 @@ export function EffectPresetsTab() {
   const showForm = isNew || editing !== null;
   const moduleList = modules.data ?? [];
 
-  const localModules = moduleList.filter((mod) => !mod.name.startsWith('ai_'));
+  const localModules = moduleList.filter((mod) => !mod.name.startsWith('ai_') && !mod.name.startsWith('motion_'));
   const aiModules = moduleList.filter((mod) => mod.name.startsWith('ai_'));
+  const motionModules = moduleList.filter((mod) => mod.name.startsWith('motion_'));
 
   const activeLocalCount = localModules.filter(
     (mod) => groups[mod.name]?.enabled,
@@ -343,13 +344,21 @@ export function EffectPresetsTab() {
   const activeAiCount = aiModules.filter(
     (mod) => groups[mod.name]?.enabled,
   ).length;
+  const activeMotionCount = motionModules.filter(
+    (mod) => groups[mod.name]?.enabled,
+  ).length;
 
-  const currentModules = effectTab === 'local' ? localModules : aiModules;
+  const currentModules =
+    effectTab === 'local'
+      ? localModules
+      : effectTab === 'ai'
+        ? aiModules
+        : motionModules;
   const isLoading = presets.isLoading && !presets.data;
   const isError = presets.isError && !presets.data;
   const validationIssues: string[] = [];
   if (!name.trim()) validationIssues.push('Preset name is required.');
-  if (activeLocalCount + activeAiCount === 0)
+  if (activeLocalCount + activeAiCount + activeMotionCount === 0)
     validationIssues.push('Enable at least one effect before saving.');
   const canSave = validationIssues.length === 0;
 
@@ -451,6 +460,26 @@ export function EffectPresetsTab() {
                   }`}
                 >
                   {activeAiCount}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEffectTab('motion')}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all duration-200 sm:w-auto sm:rounded-t-xl sm:border-x-0 sm:border-b-2 sm:-mb-px ${
+                  effectTab === 'motion'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 sm:border-emerald-600 sm:bg-transparent'
+                    : 'border-stone-200 bg-white text-stone-500 hover:text-stone-800 sm:border-transparent sm:bg-transparent'
+                }`}
+              >
+                <span>Motion Effects</span>
+                <span
+                  className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
+                    activeMotionCount > 0
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
+                  {activeMotionCount}
                 </span>
               </button>
             </div>

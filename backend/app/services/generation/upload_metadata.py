@@ -16,16 +16,23 @@ def build_immich_upload_metadata(
     config = json.loads(row.config_json or "{}")
     raw_ts = config.get("source_created_at")
     timestamp = raw_ts.replace("+00:00", "Z") if isinstance(raw_ts, str) and raw_ts else fallback_ts
+    from app.services.generation.output_format import output_extension, output_mime_type
+
+    fmt = getattr(row, "output_format", "png") or "png"
+    extension = output_extension(fmt)
+    content_type = output_mime_type(fmt)
+
     original_name = config.get("source_original_file_name")
     if original_name:
         stem = original_name.rsplit(".", 1)[0]
-        filename = f"{stem}_dailyFX.png"
+        filename = f"{stem}_dailyFX.{extension}"
     else:
-        filename = f"{row.title.strip().replace('/', '_') or task_id}_dailyFX.png"
+        filename = f"{row.title.strip().replace('/', '_') or task_id}_dailyFX.{extension}"
     return ImmichUploadMetadata(
         filename=filename,
         device_asset_id=f"dailyFX-{task_id}",
         device_id="dailyFX",
         file_created_at=timestamp,
         file_modified_at=timestamp,
+        content_type=content_type,
     )

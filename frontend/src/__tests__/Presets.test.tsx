@@ -174,6 +174,71 @@ describe('Presets pages', () => {
     );
   });
 
+  it('renders Motion Effects tab and filters motion modules correctly', async () => {
+    vi.mocked(client.getEffectPresets).mockResolvedValue([
+      {
+        id: 1,
+        name: 'My Preset',
+        groups: {},
+        created_at: '2026-06-10T04:00:00.000Z',
+      },
+    ]);
+    vi.mocked(client.getGenerationModules).mockResolvedValue([
+      {
+        name: 'bokeh_blur',
+        label: 'Bokeh Blur',
+        description: 'Blurs background.',
+        default_weight: 1,
+        default_config: {},
+        config_schema: [],
+      },
+      {
+        name: 'ai_cartoon',
+        label: 'AI Cartoon',
+        description: 'Cartoon style.',
+        default_weight: 1,
+        default_config: {},
+        config_schema: [],
+      },
+      {
+        name: 'motion_pulse',
+        label: 'Motion Pulse',
+        description: 'Animated pulse.',
+        default_weight: 1,
+        default_config: {},
+        config_schema: [],
+      },
+    ]);
+    vi.mocked(client.getGenerationExamples).mockResolvedValue([]);
+
+    renderPage(<EffectPresetsPage />);
+
+    // Click "New preset" to open the form
+    fireEvent.click(await screen.findByText('New preset'));
+
+    // Check tabs
+    expect(screen.getByRole('button', { name: /Local Effects/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Effects/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Motion Effects/ })).toBeInTheDocument();
+
+    // In default "Local" tab, we should see Bokeh Blur but not AI Cartoon or Motion Pulse
+    expect(screen.getAllByText('Bokeh Blur').length).toBe(2);
+    expect(screen.queryAllByText('AI Cartoon').length).toBe(0);
+    expect(screen.queryAllByText('Motion Pulse').length).toBe(0);
+
+    // Click "AI Effects" tab
+    fireEvent.click(screen.getByRole('button', { name: /AI/ }));
+    expect(screen.queryAllByText('Bokeh Blur').length).toBe(0);
+    expect(screen.getAllByText('AI Cartoon').length).toBe(2);
+    expect(screen.queryAllByText('Motion Pulse').length).toBe(0);
+
+    // Click "Motion Effects" tab
+    fireEvent.click(screen.getByRole('button', { name: /Motion/ }));
+    expect(screen.queryAllByText('Bokeh Blur').length).toBe(0);
+    expect(screen.queryAllByText('AI Cartoon').length).toBe(0);
+    expect(screen.getAllByText('Motion Pulse').length).toBe(2);
+  });
+
   it('shows notification preset validation when creating a new preset', async () => {
     vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
     vi.mocked(client.getPushSubscriptions).mockResolvedValue({

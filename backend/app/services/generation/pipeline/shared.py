@@ -123,6 +123,11 @@ def _build_metadata_provenance() -> dict:
             "model": None,
             "error": None,
         },
+        "exif_info": {
+            "attempted": False,
+            "embedded": False,
+            "skip_reason": None,
+        },
         "tag_injections": [],
     }
 

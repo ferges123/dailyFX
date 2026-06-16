@@ -10,12 +10,13 @@ from .shared import (
 )
 
 
-def _generation_output_paths(task_id: str) -> tuple[object, str]:
+def _generation_output_paths(task_id: str, output_format: str | None = None) -> tuple[object, str]:
     from app.services.generation import engine as engine_module
+    from app.services.generation.output_format import output_extension
 
     output_dir = engine_module.get_settings().data_dir / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{task_id}.png"
+    output_path = output_dir / f"{task_id}.{output_extension(output_format)}"
     image_url = f"/api/generation/history/{task_id}/image"
     return output_path, image_url
 

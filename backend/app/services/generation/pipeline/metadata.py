@@ -346,6 +346,7 @@ async def _build_generation_artifacts(
             status="running",
             progress=0.8,
         )
+        metadata_provenance["exif_info"]["attempted"] = True
         state["exif_info"] = await client.get_asset_exif(source_asset_id)
         debug_log(
             "EXIF data received",
@@ -357,7 +358,15 @@ async def _build_generation_artifacts(
             taken=state["exif_info"].get("dateTimeOriginal"),
         )
         _progress("Embedding metadata…")
-        final_bytes = embed_exif_metadata(result.image_bytes, source_asset, state["ai_title"], state["exif_info"])
+
+        from app.services.generation.output_format import is_animated_output
+
+        if is_animated_output(getattr(result, "output_format", "png")):
+            metadata_provenance["exif_info"].update(embedded=False, skip_reason="animated_output")
+            final_bytes = result.image_bytes
+        else:
+            final_bytes = embed_exif_metadata(result.image_bytes, source_asset, state["ai_title"], state["exif_info"])
+            metadata_provenance["exif_info"].update(embedded=True, skip_reason=None)
     else:
         debug_log("No source asset — skipping EXIF embed", task_id=task_id)
         _trace_stage(

@@ -407,6 +407,7 @@ async def _generate_with_byteplus(api_key: str, image_bytes: bytes, prompt: str,
     }
     try:
         import math
+
         with Image.open(BytesIO(image_bytes)) as img:
             width, height = img.size
         min_pixels = 3686400

@@ -24,6 +24,8 @@ class GenerationHistoryModel(Base):
     config_json: Mapped[str] = mapped_column(Text, nullable=False)
     tags_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of tag strings
     task_step: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    output_format: Mapped[str] = mapped_column(String(10), nullable=False, default="png")
+    frame_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     uploaded_asset_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     upload_status: Mapped[str | None] = mapped_column(String(50), nullable=True)

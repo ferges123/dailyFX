@@ -37,14 +37,14 @@ function formatFileSize(bytes: number | undefined | null): string {
   return `${mib.toFixed(1)} MB`;
 }
 
-function makeSafeFileName(title: string | null | undefined) {
+function makeSafeFileName(title: string | null | undefined, ext = 'png') {
   const base = (title || 'dailyfx-image')
     .trim()
     .replace(/[\\/:*?"<>|]+/g, '-')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  return `${base || 'dailyfx-image'}.png`;
+  return `${base || 'dailyfx-image'}.${ext}`;
 }
 
 interface ExifData {
@@ -124,9 +124,10 @@ export function LightboxModal({
         const response = await fetch(`/api/generation/history/${entry.task_id}/image`);
         if (!response.ok) throw new Error('Failed to fetch image');
 
+        const ext = entry.output_format || 'png';
         const blob = await response.blob();
-        const file = new File([blob], makeSafeFileName(entry.title), {
-          type: blob.type || 'image/png',
+        const file = new File([blob], makeSafeFileName(entry.title, ext), {
+          type: blob.type || `image/${ext}`,
         });
 
         if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
@@ -384,7 +385,7 @@ export function LightboxModal({
                 onClick={(e) => e.stopPropagation()}
               >
                 <Download size={14} />
-                Download Full-Res PNG
+                Download Full-Res {(entry.output_format || 'png').toUpperCase()}
               </a>
             </div>
           </div>

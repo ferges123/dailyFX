@@ -26,6 +26,8 @@ class GenerationResult:
     model: str
     config: dict
     source_asset_ids: list[str]
+    output_format: str = "png"
+    frame_count: int | None = None
 
 
 class GenerationModule(Protocol):

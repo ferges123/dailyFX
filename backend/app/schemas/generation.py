@@ -37,6 +37,8 @@ class GenerationHistoryBase(BaseModel):
     config_json: str
     tags_json: str | None = None
     task_step: str | None = None
+    output_format: Literal["png", "gif", "webp"] = "png"
+    frame_count: int | None = None
     uploaded_asset_id: str | None = None
     upload_status: str | None = None
     album_id: str | None = None

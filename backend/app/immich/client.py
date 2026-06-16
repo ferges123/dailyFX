@@ -600,7 +600,13 @@ class ImmichClient:
                             file_created_at=file_created_at,
                             file_modified_at=file_modified_at,
                         ).as_request_data(),
-                        files={"assetData": (filename, content, "image/png")},
+                        files={
+                            "assetData": (
+                                filename,
+                                content,
+                                metadata.content_type if metadata is not None else "image/png",
+                            )
+                        },
                         headers={"x-immich-checksum": checksum or self._checksum(content)},
                         not_found_message="Immich upload endpoint was not found",
                     )

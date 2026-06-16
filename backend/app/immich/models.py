@@ -116,6 +116,7 @@ class ImmichUploadMetadata:
     file_created_at: str
     file_modified_at: str
     checksum: str | None = None
+    content_type: str = "image/png"
 
     def as_request_data(self) -> dict[str, str]:
         return {

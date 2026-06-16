@@ -38,6 +38,8 @@ def serialize_history_row(row: GenerationHistoryModel) -> dict[str, Any]:
         "config_json": row.config_json,
         "tags_json": row.tags_json,
         "task_step": row.task_step,
+        "output_format": row.output_format,
+        "frame_count": row.frame_count,
         "uploaded_asset_id": row.uploaded_asset_id,
         "upload_status": row.upload_status,
         "album_id": row.album_id,

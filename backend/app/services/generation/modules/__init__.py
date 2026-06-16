@@ -17,6 +17,10 @@ from app.services.generation.modules.huji import HujiModule
 from app.services.generation.modules.instafilter import InstafilterModule
 from app.services.generation.modules.instaweather import InstaWeatherModule
 from app.services.generation.modules.light_leak import LightLeakModule
+from app.services.generation.modules.motion_cinemagraph import MotionCinemagraphModule
+from app.services.generation.modules.motion_parallax import MotionParallaxModule
+from app.services.generation.modules.motion_pulse import MotionPulseModule
+from app.services.generation.modules.motion_zoom_pan import MotionZoomPanModule
 from app.services.generation.modules.museum_archive import MuseumArchiveModule
 from app.services.generation.modules.neon_bloom import NeonBloomModule
 from app.services.generation.modules.paper_cutout import PaperCutoutModule
@@ -27,6 +31,10 @@ from app.services.generation.modules.prism_split import PrismSplitModule
 from app.services.generation.modules.vintage_film import VintageFilmModule
 
 LOCAL_MODULE_CLASSES = [
+    MotionPulseModule,
+    MotionZoomPanModule,
+    MotionCinemagraphModule,
+    MotionParallaxModule,
     AppleWeatherModule,
     InstaWeatherModule,
     MuseumArchiveModule,

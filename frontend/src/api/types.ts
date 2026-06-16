@@ -203,6 +203,8 @@ export type GenerationHistoryEntry = {
   album_updated: boolean;
   accept_notes: string | null;
   accepted_at: string | null;
+  output_format?: 'png' | 'gif' | 'webp';
+  frame_count?: number | null;
   created_at: string;
   updated_at: string;
 };

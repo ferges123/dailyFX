@@ -121,7 +121,7 @@ async def run_generation_pipeline(
             ctx, module_selection, result, page, client, photo_selection_trace
         )
 
-        output_path, image_url = _generation_output_paths(ctx.task_id)
+        output_path, image_url = _generation_output_paths(ctx.task_id, getattr(result, "output_format", "png"))
 
         # Faza 5: Zapisanie wyników w bazie danych i na dysku
         persist_res = await _pipeline_persist_result(ctx, result, artifacts, output_path, image_url)

@@ -332,48 +332,55 @@ export function HistoryPage() {
                         )}
                       </div>
                       <div className="flex items-center justify-between gap-1.5 text-[9px] mt-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
-                            isUploaded
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                              : isRunning
-                              ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                              : isQueued
-                              ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                              : isRejected
-                              ? 'bg-stone-100 text-stone-600 border border-stone-200'
-                              : isFailed
-                              ? 'bg-red-50/70 text-red-600 border border-red-100'
-                              : 'bg-amber-50 text-amber-700 border border-amber-100'
-                          }`}
-                        >
+                        <div className="flex items-center gap-1">
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
                               isUploaded
-                                ? 'bg-emerald-500'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                 : isRunning
-                                ? 'bg-blue-500'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-100'
                                 : isQueued
-                                ? 'bg-amber-500'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-100'
                                 : isRejected
-                                ? 'bg-stone-400'
+                                ? 'bg-stone-100 text-stone-600 border border-stone-200'
                                 : isFailed
-                                ? 'bg-red-500'
-                                : 'bg-amber-500'
+                                ? 'bg-red-50/70 text-red-600 border border-red-100'
+                                : 'bg-amber-50 text-amber-700 border border-amber-100'
                             }`}
-                          />
-                          {isUploaded
-                            ? 'Uploaded'
-                            : isRunning
-                            ? 'Running'
-                            : isQueued
-                            ? 'Queued'
-                            : isRejected
-                            ? 'Rejected'
-                            : isFailed
-                            ? 'Failed'
-                            : 'Pending'}
-                        </span>
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                isUploaded
+                                  ? 'bg-emerald-500'
+                                  : isRunning
+                                  ? 'bg-blue-500'
+                                  : isQueued
+                                  ? 'bg-amber-500'
+                                  : isRejected
+                                  ? 'bg-stone-400'
+                                  : isFailed
+                                  ? 'bg-red-500'
+                                  : 'bg-amber-500'
+                              }`}
+                            />
+                            {isUploaded
+                              ? 'Uploaded'
+                              : isRunning
+                              ? 'Running'
+                              : isQueued
+                              ? 'Queued'
+                              : isRejected
+                              ? 'Rejected'
+                              : isFailed
+                              ? 'Failed'
+                              : 'Pending'}
+                          </span>
+                          {item.output_format && item.output_format !== 'png' && (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
+                              Motion
+                            </span>
+                          )}
+                        </div>
                         <span className="text-stone-400 font-medium">
                           {item.created_at ? formatDateTime(item.created_at) : ''}
                         </span>
