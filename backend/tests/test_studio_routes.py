@@ -233,3 +233,51 @@ def test_studio_modules_include_ai_and_exclude_multisource(authenticated_client:
     names = {item["name"] for item in response.json()}
     assert "collage" not in names
     assert any(name.startswith("ai_") for name in names)
+
+
+def test_studio_preview_ai_vision_resolves_provider_from_schedule(
+    authenticated_client: TestClient,
+    db_session,
+) -> None:
+    from app.models.schedule import ScheduleModel
+    from app.services.generation.ai_vision import AIVisionResult
+
+    # Enable a schedule with xiaomi vision provider
+    schedule = ScheduleModel(
+        name="Test Vision Schedule",
+        enabled=True,
+        filter_preset_id=1,
+        effect_preset_id=1,
+        ai_vision_provider="xiaomi",
+        ai_vision_model="mimo-v2.5",
+    )
+    db_session.add(schedule)
+    db_session.commit()
+
+    vision_result = AIVisionResult(
+        title="Vision Title",
+        summary="Vision summary.",
+        tags=[],
+        token_count=10,
+        provider="xiaomi",
+        model="mimo-v2.5",
+    )
+
+    with patch(
+        "app.api.routes_studio.analyze_image",
+        AsyncMock(return_value=vision_result),
+    ) as analyze_mock:
+        response = authenticated_client.post(
+            "/api/studio/preview",
+            files={"file": ("sample.jpg", jpeg_upload_bytes(), "image/jpeg")},
+            data={
+                "effect_id": "pencil_sketch",
+                "config": "{}",
+                "ai_vision_enabled": "true",
+            },
+        )
+
+    assert response.status_code == 200
+    passed_settings = analyze_mock.call_args[0][0]
+    assert passed_settings.default_ai_provider == "xiaomi"
+    assert passed_settings.default_ai_model == "mimo-v2.5"
