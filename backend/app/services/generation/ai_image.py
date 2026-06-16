@@ -406,8 +406,17 @@ async def _generate_with_byteplus(api_key: str, image_bytes: bytes, prompt: str,
         "Authorization": f"Bearer {api_key}",
     }
     try:
+        import math
         with Image.open(BytesIO(image_bytes)) as img:
             width, height = img.size
+        min_pixels = 3686400
+        current_pixels = width * height
+        if current_pixels < min_pixels:
+            scale = math.sqrt(min_pixels / current_pixels)
+            w_scaled = int(math.ceil(width * scale))
+            h_scaled = int(math.ceil(height * scale))
+            width = ((w_scaled + 7) // 8) * 8
+            height = ((h_scaled + 7) // 8) * 8
         size_param = f"{width}x{height}"
     except Exception as exc:
         debug_log("Failed to parse image size for BytePlus", error=str(exc))
