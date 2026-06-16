@@ -330,6 +330,7 @@ async def generate_ai_image(
     model: str | None = None,
     context_hint: str | None = None,
     prompt_enrichment_context_hint: str | None = None,
+    faces: list[dict] | None = None,
 ) -> AIImageResult:
     if provider is None:
         provider = _resolve_provider(settings)
@@ -365,6 +366,10 @@ async def generate_ai_image(
 
     if model is None:
         model = _resolve_model(settings, provider)
+
+    if provider in {"openai", "local"}:
+        image_bytes = _crop_to_largest_face(image_bytes, faces)
+
     encoded_image_bytes, mime_type = encode_image_for_provider(image_bytes, provider)
 
     reserve_ai_usage(

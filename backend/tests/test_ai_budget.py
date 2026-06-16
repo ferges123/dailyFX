@@ -448,3 +448,49 @@ def test_crop_to_largest_face():
     # So the green square should be fully contained at the top of the cropped image.
     assert cropped_img.getpixel((50, 50)) == (0, 255, 0)
 
+
+def test_generate_ai_image_openai_crops_image(monkeypatch):
+    from unittest.mock import MagicMock
+    from app.services.generation.ai_image import generate_ai_image
+    
+    init_db()
+    settings = SimpleNamespace(
+        ai_image_provider="openai",
+        ai_image_model="dall-e-2",
+        ai_image_hourly_limit=4,
+        encrypted_openai_api_key="secret",
+    )
+    
+    fake_client = _FakeAsyncClient()
+    # Mock Response returning base64
+    fake_client.next_post_response = _FakeResponse(json_body={"data": [{"b64_json": "ZmFrZV9wbmdfYnl0ZXM="}]})
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: fake_client)
+    
+    # 200x400 source image
+    from PIL import Image
+    from io import BytesIO
+    img = Image.new("RGB", (200, 400), (255, 0, 0))
+    out = BytesIO()
+    img.save(out, format="PNG")
+    raw_image_bytes = out.getvalue()
+    
+    faces = [{
+        "bounding_box_x1": 50.0,
+        "bounding_box_y1": 50.0,
+        "bounding_box_x2": 150.0,
+        "bounding_box_y2": 150.0,
+    }]
+    
+    with (
+        patch("app.services.generation.ai_image._decrypt_provider_key", return_value="secret"),
+        patch("app.services.generation.ai_image.reserve_ai_usage", return_value=None),
+    ):
+        result = asyncio.run(generate_ai_image(settings, raw_image_bytes, "make it playful", faces=faces))
+        
+    assert result.provider == "openai"
+    # Verify the image sent in the files parameter is square (200x200)
+    sent_file = fake_client.requests[0]["files"][0][1][1]
+    sent_img = Image.open(BytesIO(sent_file))
+    assert sent_img.size == (200, 200)
+
+
