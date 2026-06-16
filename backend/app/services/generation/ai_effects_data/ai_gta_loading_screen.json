@@ -1,0 +1,8 @@
+{
+  "id": "ai_gta_loading_screen",
+  "title": "AI GTA Loading Screen",
+  "description": "Turns the photo into high-contrast GTA-style loading screen vector art.",
+  "positive_prompt": "Transform the input photo into Grand Theft Auto loading screen art style. Preserve the number of people, recognizable identities, key facial features, pose, camera angle, and outfit. Apply a high-contrast vector illustration style with clean, bold black ink outlines, smooth color shading, and dynamic lighting. The background should feature a stylized warm sunset cityscape with palm tree silhouettes.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, photorealism, realistic textures, oil painting, pencil sketch, low contrast, bad anatomy, malformed hands, distorted faces, low quality",
+  "custom_prompt_placeholder": "e.g. sunset city background, high contrast shadows..."
+}

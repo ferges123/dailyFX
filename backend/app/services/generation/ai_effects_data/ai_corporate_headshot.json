@@ -1,0 +1,8 @@
+{
+  "id": "ai_corporate_headshot",
+  "title": "AI Corporate Headshot",
+  "description": "Transforms a casual photo into a professional business portrait for LinkedIn.",
+  "positive_prompt": "Transform the input photo into a professional corporate business headshot portrait suitable for LinkedIn. Preserve the face identity, recognizable features, expression, and eye direction of the person. Put them in clean, well-fitting professional business attire (such as a tailored suit or elegant blazer). Set the background to a modern corporate office interior or a professional studio backdrop with soft, elegant bokeh blur. Apply clean, professional studio lighting with realistic textures.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, casual clothing, t-shirt, messy hair, outdoors, beach, parties, cartoon, illustration, distorted face, malformed hands, bad anatomy, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. gray studio backdrop, dark blue suit..."
+}

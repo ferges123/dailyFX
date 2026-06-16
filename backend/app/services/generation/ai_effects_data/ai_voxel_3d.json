@@ -1,0 +1,8 @@
+{
+  "id": "ai_voxel_3d",
+  "title": "AI Voxel 3D",
+  "description": "Transforms the photo into a 3D isometric voxel art block model.",
+  "positive_prompt": "Transform the input photo into an isometric 3D voxel art model. The entire scene, including characters and background, must be built out of tiny volumetric cube blocks (voxels), similar to Minecraft or Crossy Road. Preserve the main layout, colors, pose, and identifiable features using cube-based geometry. Use clean blocky rendering, vibrant colors, and soft shadows on the block faces.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, photorealism, smooth curves, organic shapes, round circles, bad anatomy, malformed hands, distorted faces, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. Minecraft style blocks, isometric perspective..."
+}

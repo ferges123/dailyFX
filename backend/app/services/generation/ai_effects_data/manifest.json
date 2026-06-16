@@ -125,6 +125,46 @@
       "id": "ai_yellow_cartoon_sitcom",
       "display_group": "Pop Culture",
       "hidden": false
+    },
+    {
+      "id": "ai_renaissance_oil",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_stained_glass",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_vaporwave_nostalgia",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_gta_loading_screen",
+      "display_group": "Pop Culture",
+      "hidden": false
+    },
+    {
+      "id": "ai_pixel_rpg_8bit",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_voxel_3d",
+      "display_group": "3D / Toy",
+      "hidden": false
+    },
+    {
+      "id": "ai_corporate_headshot",
+      "display_group": "Portrait",
+      "hidden": false
+    },
+    {
+      "id": "ai_double_exposure",
+      "display_group": "Portrait",
+      "hidden": false
     }
   ]
 }

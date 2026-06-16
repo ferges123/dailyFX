@@ -1,0 +1,8 @@
+{
+  "id": "ai_pixel_rpg_8bit",
+  "title": "AI Pixel RPG 8-Bit",
+  "description": "Transforms the photo into a retro 16-bit pixel art character and scene.",
+  "positive_prompt": "Transform the input photo into a retro 16-bit RPG video game pixel art style. Preserve the number of people, recognizable identities, key facial features, pose, camera angle, and main composition. Use a limited but vibrant color palette, distinct pixelated textures, clean grid alignment, and pixel dithering for shading. Emulate the look of classic 90s console games like Chrono Trigger or Final VI.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, photographic look, high resolution, smooth gradients, 3D render, bad anatomy, malformed hands, distorted faces, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. 8-bit style, fantasy game interface..."
+}

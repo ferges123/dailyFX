@@ -1,0 +1,8 @@
+{
+  "id": "ai_vaporwave_nostalgia",
+  "title": "AI Vaporwave Nostalgia",
+  "description": "Applies a nostalgic 80s/90s vaporwave aesthetic with neon grid and VHS scanlines.",
+  "positive_prompt": "Transform the input photo into a 1980s vaporwave aesthetic art piece. Preserve the number of people, recognizable identities, key facial features, pose, and framing. Use a vibrant neon color palette dominated by hot pink, cyan, magenta, and deep purple. Incorporate classic vaporwave elements like a glowing wireframe 3D grid, retro-futuristic grid sunset, Greek statues, tropical palms, and a low-fidelity analog VHS glitch overlay with subtle scanlines.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, natural lighting, realistic colors, monochrome, high realism, bad anatomy, malformed hands, distorted faces, low quality",
+  "custom_prompt_placeholder": "e.g. synthwave grid, purple night sky..."
+}

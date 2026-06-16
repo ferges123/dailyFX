@@ -1,0 +1,8 @@
+{
+  "id": "ai_double_exposure",
+  "title": "AI Double Exposure",
+  "description": "Blends the silhouette of the person with a majestic misty forest and mountains.",
+  "positive_prompt": "Create an artistic double exposure photograph. The silhouette profile and structure of the person from the input photo must be beautifully blended with a scenic misty pine forest, dramatic mountains, and a soft overcast sky. The features of the face should subtly merge with the textures of the trees and nature. Use a moody, high-contrast atmospheric lighting and a premium fine-art photography look.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, cartoon, illustration, low contrast, flat lighting, colorful neon, bad anatomy, malformed hands, distorted faces, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. night cityscape background, starry sky..."
+}

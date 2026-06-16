@@ -1,0 +1,8 @@
+{
+  "id": "ai_stained_glass",
+  "title": "AI Stained Glass",
+  "description": "Turns the photo into a colorful medieval gothic stained glass window.",
+  "positive_prompt": "Transform the input photo into a medieval gothic cathedral stained glass window art piece. Preserve the number of people, recognizable identities, key facial features, pose, camera angle, and main composition. The entire image must be composed of vibrant, semi-translucent colored glass segments partitioned by thick, dark lead outlines. Have soft glowing light filtering through the colorful glass panes from behind.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, photographic look, brushstrokes, oil painting, reality, smooth gradients, 3D shading, bad anatomy, malformed hands, distorted faces, low quality, blurry",
+  "custom_prompt_placeholder": "e.g. cathedral window style, rose window colors..."
+}
