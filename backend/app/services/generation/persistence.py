@@ -88,8 +88,12 @@ def persist_generation_result(
         tags_json=json.dumps(artifacts.ai_tags) if artifacts.ai_tags else None,
         schedule_id=schedule_id,
         album_name=album_name,
-        output_format=getattr(result, "output_format", "png") or "png",
-        frame_count=getattr(result, "frame_count", None),
+        output_format=getattr(result, "output_format", "png")
+        if isinstance(getattr(result, "output_format", None), str)
+        else "png",
+        frame_count=getattr(result, "frame_count", None)
+        if isinstance(getattr(result, "frame_count", None), int)
+        else None,
         config_json=json.dumps(
             _build_generation_history_config(existing_config=existing_config, result=result, artifacts=artifacts)
         ),

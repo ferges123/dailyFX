@@ -9,6 +9,7 @@ test_data_dir.mkdir(parents=True, exist_ok=True)
 os.environ["APP_ENV"] = "development"
 os.environ["APP_SECRET_KEY"] = "test-api-secret"
 os.environ["DATA_DIR"] = str(test_data_dir)
+os.environ["APP_ACCESS_TOKEN"] = ""
 
 if "DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = f"sqlite:///{test_data_dir / 'app.db'}"

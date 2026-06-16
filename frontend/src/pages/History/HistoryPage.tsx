@@ -375,11 +375,6 @@ export function HistoryPage() {
                               ? 'Failed'
                               : 'Pending'}
                           </span>
-                          {item.output_format && item.output_format !== 'png' && (
-                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
-                              Motion
-                            </span>
-                          )}
                         </div>
                         <span className="text-stone-400 font-medium">
                           {item.created_at ? formatDateTime(item.created_at) : ''}

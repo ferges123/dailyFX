@@ -11,7 +11,9 @@ OUTPUT_MIME_TYPES = {
 
 
 def normalize_output_format(value: str | None) -> OutputFormat:
-    normalized = (value or "png").strip().lower()
+    if not isinstance(value, str):
+        return "png"
+    normalized = value.strip().lower()
     if not normalized:
         return "png"
     if normalized not in SUPPORTED_OUTPUT_FORMATS:

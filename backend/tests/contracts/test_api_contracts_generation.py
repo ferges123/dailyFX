@@ -113,6 +113,8 @@ def test_generation_history_contract():
                     "album_updated": False,
                     "accept_notes": "Uploaded successfully",
                     "accepted_at": "2026-05-12T10:30:00Z",
+                    "output_format": "png",
+                    "frame_count": None,
                     "created_at": "2026-05-12T10:00:00Z",
                     "updated_at": "2026-05-12T10:31:00Z",
                 }
