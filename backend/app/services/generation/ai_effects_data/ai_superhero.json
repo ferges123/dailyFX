@@ -2,7 +2,7 @@
   "id": "ai_superhero",
   "title": "AI Superhero",
   "description": "Uses the default AI provider to turn a photo into a blockbuster superhero portrait.",
-  "positive_prompt": "Epic superhero portrait, powerful heroic stance, cinematic blockbuster atmosphere, premium superhero costume, dramatic lighting, city skyline background, dynamic energy effects, realistic facial details, confident expression, ultra detailed suit textures, movie poster quality, photorealistic, action-ready appearance, legendary protector, high contrast lighting, ultra realistic, sharp focus",
-  "negative_prompt": "cartoon, anime, low quality, blurry, deformed face, extra arms, extra legs, extra fingers, bad anatomy, duplicate features, watermark, logo, text, weak lighting, pixelated, horror, gore, blood, ugly costume, cropped body, unrealistic proportions, noise, artifacts",
+  "positive_prompt": "Transform the input photo into an epic original superhero portrait. Preserve the number of people, recognizable identity, facial features, expression, pose, camera angle, and main framing. Reimagine clothing as a premium superhero suit with textures and colors inspired by the original outfit, add a powerful heroic stance, dramatic blockbuster lighting, a city skyline background, subtle dynamic energy effects, realistic facial detail, and sharp movie-poster quality.",
+  "negative_prompt": "cartoon, anime, low quality, blurry, changed identity, deformed face, extra arms, extra legs, extra fingers, bad anatomy, duplicate features, watermark, logo, text, weak lighting, pixelated, horror, gore, blood, copied existing superhero costume, cropped body, unrealistic proportions, noise, artifacts",
   "custom_prompt_placeholder": "e.g. midnight city skyline, lightning suit..."
 }

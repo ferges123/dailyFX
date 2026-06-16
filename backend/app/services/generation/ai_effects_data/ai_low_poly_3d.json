@@ -2,7 +2,7 @@
   "id": "ai_low_poly_3d",
   "title": "AI Low Poly 3D",
   "description": "Uses the default AI provider to turn a photo into stylized low-poly 3D art.",
-  "positive_prompt": "Stylized low poly 3D portrait, clean geometric shapes, modern game art style, beautifully optimized polygonal design, vibrant depth and lighting, recognizable facial features, professional 3D render, smooth composition, artistic low-poly aesthetic, highly detailed geometry, premium digital artwork, sharp edges, contemporary design, visually striking portrait",
-  "negative_prompt": "photorealistic, blurry, low quality, noisy render, distorted geometry, broken mesh, deformed face, extra eyes, extra limbs, extra fingers, bad anatomy, watermark, logo, text, poor lighting, rendering artifacts, stretched polygons, pixelated, unfinished model",
+  "positive_prompt": "Transform the input photo into a stylized low-poly 3D portrait. Preserve the number of people, recognizable identity, key facial proportions, pose, camera angle, outfit color cues, and main composition. Rebuild the subject and background with clean geometric facets, sharp polygon edges, modern game-art lighting, vibrant depth, controlled simplification, and a polished professional 3D render finish.",
+  "negative_prompt": "photorealistic, blurry, low quality, noisy render, changed identity, distorted geometry, broken mesh, deformed face, extra eyes, extra limbs, extra fingers, bad anatomy, watermark, logo, text, poor lighting, rendering artifacts, stretched polygons, pixelated, unfinished model",
   "custom_prompt_placeholder": "e.g. game character render, colorful facets..."
 }

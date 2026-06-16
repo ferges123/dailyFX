@@ -2,7 +2,7 @@
   "id": "ai_space_explorer",
   "title": "AI Space Explorer",
   "description": "Uses the default AI provider to turn a photo into a cinematic space exploration scene.",
-  "positive_prompt": "Elite intergalactic explorer, advanced futuristic astronaut, standing on an alien planet, breathtaking cosmic landscape, stars, galaxies and colorful nebulae in the sky, cinematic science fiction lighting, highly detailed space suit, realistic face, exploration mission atmosphere, premium movie production quality, photorealistic, ultra detailed, sharp focus, epic adventure scene",
-  "negative_prompt": "cartoon, anime, low quality, blurry, distorted face, deformed body, extra limbs, extra fingers, bad anatomy, watermark, logo, text, low detail, broken helmet, poor lighting, noise, pixelated, horror elements, unrealistic proportions, cropped subject",
+  "positive_prompt": "Transform the input photo into a cinematic space exploration scene. Preserve the number of people, recognizable identity, facial features, expression, pose, camera angle, and main composition. Reimagine the subject as an elite astronaut or intergalactic explorer in a detailed futuristic suit, standing on an alien planet with stars, galaxies, and colorful nebulae in the sky. Use dramatic science-fiction lighting, realistic materials, sharp focus, and premium movie-production realism.",
+  "negative_prompt": "cartoon, anime, low quality, blurry, changed identity, distorted face, deformed body, extra limbs, extra fingers, bad anatomy, watermark, logo, text, low detail, broken helmet, poor lighting, noise, pixelated, horror elements, unrealistic proportions, cropped subject",
   "custom_prompt_placeholder": "e.g. Mars expedition, nebula sky..."
 }

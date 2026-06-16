@@ -2,7 +2,7 @@
   "id": "ai_renaissance_oil",
   "title": "AI Renaissance Oil",
   "description": "Transforms the photo into a classic Renaissance oil painting on canvas.",
-  "positive_prompt": "Transform the input photo into a masterpiece Renaissance oil painting. Preserve the number of people, recognizable identities, key facial features, pose, camera angle, framing, and main composition. Use deep rich colors, fine sfumato blending, classic painterly brushstrokes, visible canvas texture, and dramatic chiaroscuro lighting (light falling from one side, soft shadow transitions). Emulate the style of Leonardo da Vinci, Rembrandt, and Johannes Vermeer.",
+  "positive_prompt": "Transform the input photo into a Renaissance-inspired oil painting. Preserve the number of people, recognizable identities, key facial features, pose, camera angle, framing, and main composition. Use deep rich colors, fine sfumato blending, classic painterly brushstrokes, visible canvas texture, period portrait composition, and dramatic chiaroscuro lighting with soft shadow transitions.",
   "negative_prompt": "text, captions, logos, watermarks, signatures, photographic look, camera flash, modern clothing, digital artifacts, bad anatomy, malformed hands, distorted faces, low quality, blurry, low resolution",
-  "custom_prompt_placeholder": "e.g. Rembrandt lighting, dark moody background..."
+  "custom_prompt_placeholder": "e.g. chiaroscuro lighting, dark moody background..."
 }

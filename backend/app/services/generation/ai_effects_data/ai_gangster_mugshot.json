@@ -2,7 +2,7 @@
   "id": "ai_gangster_mugshot",
   "title": "AI Gangster Mugshot",
   "description": "Uses the default AI provider to stage a photo as a cinematic crime-drama mugshot.",
-  "positive_prompt": "Crime drama mugshot, mafia boss appearance, cinematic gangster atmosphere, serious expression, movie-quality police booking photo, height measurement wall, arrest placard, dramatic law enforcement photography, realistic skin texture, highly detailed face, photorealistic, sharp focus",
-  "negative_prompt": "cartoon, anime, illustration, painting, CGI, 3D render, blurry, low resolution, distorted face, deformed body, extra fingers, extra limbs, duplicate features, bad anatomy, watermark, logo, text overlays, smiling excessively, futuristic background, fantasy elements, pixelated, noise, artifacts",
+  "positive_prompt": "Transform the input photo into a fictional crime-drama booking portrait with a classic gangster atmosphere. Preserve the subject's recognizable identity, facial structure, expression, pose, camera angle, and main framing. Add sharp tailored styling, moody law-enforcement photography, a height-measurement wall, serious expression, realistic skin texture, cinematic noir-inspired lighting, and crisp photorealistic detail. If a placard appears, keep it generic and unreadable.",
+  "negative_prompt": "cartoon, anime, illustration, painting, CGI, 3D render, blurry, low resolution, changed identity, distorted face, deformed body, extra fingers, extra limbs, duplicate features, bad anatomy, watermark, logo, readable text, text overlays, smiling excessively, futuristic background, fantasy elements, pixelated, noise, artifacts",
   "custom_prompt_placeholder": "e.g. noir crime drama, sharp suit..."
 }

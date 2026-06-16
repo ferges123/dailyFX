@@ -2,7 +2,7 @@
   "id": "ai_celebrity_red_carpet",
   "title": "AI Celebrity Red Carpet",
   "description": "Uses the default AI provider to stage a photo as a glamorous red carpet appearance.",
-  "positive_prompt": "Luxury celebrity red carpet appearance, glamorous movie premiere, flashing paparazzi cameras, elegant formal outfit, confident pose, cinematic lighting, luxury event atmosphere, high-end fashion photography, shallow depth of field, realistic skin details, prestigious Hollywood event, professional portrait, dramatic lighting, premium editorial quality, crowd and photographers in background, ultra realistic, award ceremony style",
-  "negative_prompt": "cartoon, anime, low quality, blurry, amateur photography, distorted face, extra limbs, extra fingers, duplicate person, bad anatomy, watermark, logo, text, casual clothes, empty background, poor lighting, overexposed, underexposed, pixelated, CGI, unrealistic skin, horror elements, cropped body, motion blur",
+  "positive_prompt": "Transform the input photo into a glamorous celebrity red carpet appearance at a luxury movie premiere. Preserve the number of people, recognizable identity, facial features, expression, pose, camera angle, and main framing. Upgrade clothing into elegant formalwear while keeping color cues from the original outfit where possible. Add paparazzi flashes, velvet-rope event atmosphere, photographers and crowd softly blurred in the background, cinematic lighting, shallow depth of field, realistic skin detail, and premium editorial polish.",
+  "negative_prompt": "cartoon, anime, low quality, blurry, amateur photography, changed identity, distorted face, extra limbs, extra fingers, duplicate person, bad anatomy, watermark, logo, readable text, casual clothes, empty background, poor lighting, overexposed, underexposed, pixelated, CGI, unrealistic skin, horror elements, cropped body, motion blur",
   "custom_prompt_placeholder": "e.g. film premiere, couture gown..."
 }

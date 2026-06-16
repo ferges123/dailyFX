@@ -2,7 +2,7 @@
   "id": "ai_caveman",
   "title": "AI Caveman",
   "description": "Uses the default AI provider to turn a photo into a prehistoric portrait.",
-  "positive_prompt": "Prehistoric caveman portrait, ancient human warrior, realistic stone age clothing, rugged appearance, natural environment, primitive tools, cinematic lighting, authentic prehistoric atmosphere, highly detailed facial features, realistic skin texture, survivalist character, epic historical scene, photorealistic, ultra detailed, sharp focus, documentary-quality realism",
-  "negative_prompt": "modern clothing, futuristic elements, cartoon, anime, low quality, blurry, distorted face, extra limbs, extra fingers, bad anatomy, watermark, logo, text, sci-fi technology, modern city, unrealistic proportions, noise, pixelation, cropped body, artifacts",
+  "positive_prompt": "Transform the input photo into a realistic prehistoric Stone Age portrait. Preserve the number of people, recognizable identity, facial features, expression, pose, camera angle, and main composition. Reimagine clothing as rugged natural hides and simple woven materials, add primitive tools only where they fit the pose, place the subject in a natural cave or wilderness environment, and use cinematic firelight or daylight with documentary-quality photorealism.",
+  "negative_prompt": "modern clothing, futuristic elements, cartoon, anime, low quality, blurry, changed identity, distorted face, extra limbs, extra fingers, bad anatomy, watermark, logo, text, sci-fi technology, modern city, unrealistic proportions, noise, pixelation, cropped body, artifacts",
   "custom_prompt_placeholder": "e.g. stone age hunter, cave firelight..."
 }

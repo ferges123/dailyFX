@@ -2,7 +2,7 @@
   "id": "ai_post_apocalyptic",
   "title": "AI Post-Apocalyptic",
   "description": "Uses the default AI provider to turn a photo into a cinematic survivor portrait.",
-  "positive_prompt": "Post-apocalyptic survivor portrait, abandoned city ruins, cinematic dystopian atmosphere, realistic weathered clothing, dramatic lighting, survival adventure, detailed environment, dust and atmospheric particles, resilient expression, photorealistic skin texture, movie-quality scene, ultra realistic, highly detailed, epic storytelling composition, sharp focus",
-  "negative_prompt": "cartoon, anime, low quality, blurry, extra limbs, extra fingers, deformed face, bad anatomy, duplicate features, watermark, logo, text, excessive gore, blood, zombies, dismemberment, unrealistic proportions, overexposed, underexposed, noise, artifacts, cropped body",
+  "positive_prompt": "Transform the input photo into a cinematic post-apocalyptic survivor portrait. Preserve the number of people, recognizable identity, facial features, expression, pose, camera angle, and main composition. Rework the setting into abandoned city ruins or a weathered wasteland, with realistic worn clothing, dust, atmospheric particles, dramatic dystopian lighting, resilient survival-adventure mood, photorealistic skin texture, and sharp movie-quality detail.",
+  "negative_prompt": "cartoon, anime, low quality, blurry, changed identity, extra limbs, extra fingers, deformed face, bad anatomy, duplicate features, watermark, logo, text, excessive gore, blood, zombies, dismemberment, unrealistic proportions, overexposed, underexposed, noise, artifacts, cropped body",
   "custom_prompt_placeholder": "e.g. desert ruins, rain-soaked city..."
 }

@@ -2,7 +2,7 @@
   "id": "ai_celebrity_mugshot",
   "title": "AI Celebrity Mugshot",
   "description": "Uses the default AI provider to stage a photo as a viral celebrity booking portrait.",
-  "positive_prompt": "Famous celebrity arrest photo, luxury outfit, paparazzi flash lights, viral news atmosphere, realistic police booking portrait, height measurement wall, arrest placard, cinematic true crime documentary style, serious expression, highly detailed face, photorealistic, sharp focus",
-  "negative_prompt": "cartoon, anime, illustration, painting, CGI, 3D render, blurry, low resolution, distorted face, deformed body, extra fingers, extra limbs, duplicate features, bad anatomy, watermark, logo, text overlays, smiling excessively, futuristic background, fantasy elements, pixelated, noise, artifacts",
+  "positive_prompt": "Transform the input photo into a fictional celebrity-style booking portrait with tabloid drama. Preserve the subject's recognizable identity, facial structure, expression, age impression, pose, camera angle, and main framing. Add a luxury outfit, paparazzi flash spill, height-measurement wall, serious expression, cinematic true-crime documentary lighting, realistic skin detail, and sharp photorealistic editorial polish. If a placard appears, keep it generic and unreadable.",
+  "negative_prompt": "cartoon, anime, illustration, painting, CGI, 3D render, blurry, low resolution, changed identity, distorted face, deformed body, extra fingers, extra limbs, duplicate features, bad anatomy, watermark, logo, readable text, text overlays, smiling excessively, futuristic background, fantasy elements, pixelated, noise, artifacts",
   "custom_prompt_placeholder": "e.g. tabloid flash, designer jacket..."
 }
