@@ -588,3 +588,43 @@ async def _generate_with_local(
     if not isinstance(payload, dict):
         raise AIImageError("Local AI returned an unexpected response shape")
     return _extract_b64_image(payload)
+
+
+def _crop_to_largest_face(image_bytes: bytes, faces: list[dict] | None) -> bytes:
+    from PIL import Image
+    from io import BytesIO
+    
+    img = Image.open(BytesIO(image_bytes))
+    w, h = img.size
+    target_dim = min(w, h)
+    
+    cx, cy = w / 2.0, h / 2.0
+    
+    if faces:
+        largest_face = None
+        max_area = -1.0
+        for face in faces:
+            x1 = face.get("bounding_box_x1")
+            y1 = face.get("bounding_box_y1")
+            x2 = face.get("bounding_box_x2")
+            y2 = face.get("bounding_box_y2")
+            if None not in (x1, y1, x2, y2):
+                area = (x2 - x1) * (y2 - y1)
+                if area > max_area:
+                    max_area = area
+                    largest_face = face
+        if largest_face:
+            cx = (largest_face["bounding_box_x1"] + largest_face["bounding_box_x2"]) / 2.0
+            cy = (largest_face["bounding_box_y1"] + largest_face["bounding_box_y2"]) / 2.0
+
+    left = int(cx - target_dim / 2.0)
+    top = int(cy - target_dim / 2.0)
+    
+    left = max(0, min(w - target_dim, left))
+    top = max(0, min(h - target_dim, top))
+    
+    cropped = img.crop((left, top, left + target_dim, top + target_dim))
+    out = BytesIO()
+    cropped.save(out, format="PNG")
+    return out.getvalue()
+

@@ -412,3 +412,39 @@ def test_generate_ai_image_byteplus_error_message(monkeypatch):
         "BytePlus image generation failed (HTTP 404): Model seededit-3-0-i2i-250628 not found. Hint: Check the BytePlus model/endpoint ID in settings."
         in str(exc_info)
     )
+
+
+def test_crop_to_largest_face():
+    from PIL import Image
+    from io import BytesIO
+    from app.services.generation.ai_image import _crop_to_largest_face
+
+    # Create a 200x400 vertical red image
+    img = Image.new("RGB", (200, 400), (255, 0, 0))
+    # Draw a green face box at (50, 50) to (150, 150)
+    for x in range(50, 150):
+        for y in range(50, 150):
+            img.putpixel((x, y), (0, 255, 0))
+            
+    out = BytesIO()
+    img.save(out, format="PNG")
+    img_bytes = out.getvalue()
+    
+    # Large face near the top (bounding box in pixels)
+    faces = [
+        {
+            "bounding_box_x1": 50.0,
+            "bounding_box_y1": 50.0,
+            "bounding_box_x2": 150.0,
+            "bounding_box_y2": 150.0,
+        }
+    ]
+    
+    cropped_bytes = _crop_to_largest_face(img_bytes, faces)
+    cropped_img = Image.open(BytesIO(cropped_bytes))
+    
+    assert cropped_img.size == (200, 200)
+    # The crop box should center on cy = 100, which means top = 100 - 100 = 0.
+    # So the green square should be fully contained at the top of the cropped image.
+    assert cropped_img.getpixel((50, 50)) == (0, 255, 0)
+
