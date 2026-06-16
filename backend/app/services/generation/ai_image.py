@@ -405,11 +405,19 @@ async def _generate_with_byteplus(api_key: str, image_bytes: bytes, prompt: str,
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
     }
+    try:
+        with Image.open(BytesIO(image_bytes)) as img:
+            width, height = img.size
+        size_param = f"{width}x{height}"
+    except Exception as exc:
+        debug_log("Failed to parse image size for BytePlus", error=str(exc))
+        size_param = "1k"
+
     payload = {
         "model": model,
         "prompt": prompt,
         "image": f"data:{mime_type};base64,{b64_image}",
-        "size": "adaptive",
+        "size": size_param,
         "response_format": "url",
         "watermark": False,
     }

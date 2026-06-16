@@ -288,7 +288,7 @@ def test_generate_ai_image_uses_byteplus_images_endpoint(monkeypatch):
     assert fake_client.requests[0]["url"] == "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations"
     assert fake_client.requests[0]["json"]["prompt"] == "make it playful"
     assert fake_client.requests[0]["json"]["image"].startswith("data:image/jpeg;base64,")
-    assert fake_client.requests[0]["json"]["size"] == "adaptive"
+    assert fake_client.requests[0]["json"]["size"] == "8x8"
     assert "messages" not in fake_client.requests[0]["json"]
 
 
