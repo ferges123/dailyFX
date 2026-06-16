@@ -203,6 +203,7 @@ class AIStyleBaseModule:
                     negative_prompt=self.default_negative_prompt,
                     context_hint=people_context.anonymized_prompt_hint() if people_context else None,
                     prompt_enrichment_context_hint=enrichment_context_hint,
+                    faces=people_context.to_dict()["faces"] if people_context else None,
                 )
             except AIImageError as exc:
                 raise RuntimeError(f"{self.label} generation failed: {exc}") from exc
