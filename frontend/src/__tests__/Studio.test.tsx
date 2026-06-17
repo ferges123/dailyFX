@@ -11,6 +11,7 @@ vi.mock('../api/client', async () => {
         name: 'pencil_sketch',
         label: 'Pencil Sketch',
         description: 'Sketch effect',
+        display_group: 'Artistic',
         default_weight: 1,
         default_config: {},
         config_schema: [],
@@ -19,6 +20,7 @@ vi.mock('../api/client', async () => {
         name: 'ai_anime',
         label: 'AI Anime',
         description: 'AI style',
+        display_group: 'Illustration',
         default_weight: 1,
         default_config: {},
         config_schema: [],
@@ -84,5 +86,13 @@ describe('StudioPage', () => {
     expect(previewImg).toHaveAttribute('src', 'mock-object-url');
     expect(screen.getByText('test-image.jpg')).toBeInTheDocument();
     expect(createObjectURLMock).toHaveBeenCalledWith(file);
+  });
+
+  it('renders dropdown options grouped by display category', async () => {
+    renderStudio();
+    const dropdown = await screen.findByRole('combobox');
+    await screen.findByText('Pencil Sketch');
+    expect(dropdown.querySelector('optgroup[label="Artistic"]')).toBeInTheDocument();
+    expect(dropdown.querySelector('optgroup[label="Illustration"]')).toBeInTheDocument();
   });
 });

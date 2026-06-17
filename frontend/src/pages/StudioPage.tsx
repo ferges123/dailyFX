@@ -15,6 +15,7 @@ import { InlineSpinner } from '../components/ErrorUI';
 import { ModuleConfigEditor } from '../components/EffectsComponents';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
+import { getAIEffectGroupOrder } from './AIEffects/AIEffectCard';
 
 export function StudioPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -109,9 +110,30 @@ export function StudioPage() {
   });
 
   const modules = modulesQuery.data ?? [];
+
+  const groupedModules = useMemo(() => {
+    const map = new Map<string, GenerationModuleInfo[]>();
+    for (const mod of modules) {
+      const g = mod.display_group || 'Ungrouped';
+      const list = map.get(g) || [];
+      list.push(mod);
+      map.set(g, list);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => {
+      const aOrder = getAIEffectGroupOrder(a);
+      const bOrder = getAIEffectGroupOrder(b);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.localeCompare(b);
+    });
+  }, [modules]);
+
+  const sortedModules = useMemo(() => {
+    return groupedModules.flatMap(([, items]) => items);
+  }, [groupedModules]);
+
   const activeModule = useMemo(
-    () => modules.find((item) => item.name === selectedEffect) ?? modules[0],
-    [modules, selectedEffect],
+    () => modules.find((item) => item.name === selectedEffect) ?? sortedModules[0] ?? modules[0],
+    [modules, sortedModules, selectedEffect],
   );
 
   const activeEffectId = selectedEffect || activeModule?.name || '';
@@ -213,10 +235,14 @@ export function StudioPage() {
               }}
               className="app-input"
             >
-              {modules.map((module: GenerationModuleInfo) => (
-                <option key={module.name} value={module.name}>
-                  {module.label}
-                </option>
+              {groupedModules.map(([groupName, items]) => (
+                <optgroup key={groupName} label={groupName}>
+                  {items.map((module: GenerationModuleInfo) => (
+                    <option key={module.name} value={module.name}>
+                      {module.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
