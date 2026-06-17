@@ -890,3 +890,55 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
         assert provenance["source_vision"]["people_context_used"] is True
     finally:
         db.close()
+
+
+def test_prepare_page_items_excludes_dailyfx_assets_automatically():
+    from app.services.generation.pipeline.assets import _prepare_page_items_for_module
+
+    # 4 assets, 2 of which are processed dailyFX assets
+    assets = [
+        _make_fake_asset("asset-1", filename="clean_photo.jpg"),
+        _make_fake_asset("asset-2", filename="photo_dailyFX.jpg"),
+        _make_fake_asset("asset-3", filename="another_clean.png"),
+        _make_fake_asset("asset-4", filename="my_dailyfx_processed.jpeg"),
+    ]
+    page = _make_fake_page(assets)
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=None,
+        ai_photo_selection_enabled=True,
+        task_id="task-automatic-filter",
+        _task_update=lambda **kwargs: None,
+    )
+
+    # Only asset-1 and asset-3 should be selected since others contain 'dailyfx' case-insensitively
+    assert selected is not None
+    assert [asset.id for asset in selected] == ["asset-1", "asset-3"]
+
+
+def test_prepare_page_items_retains_dailyfx_assets_manually():
+    from app.services.generation.pipeline.assets import _prepare_page_items_for_module
+
+    assets = [
+        _make_fake_asset("asset-1", filename="clean_photo.jpg"),
+        _make_fake_asset("asset-2", filename="photo_dailyFX.jpg"),
+    ]
+    page = _make_fake_page(assets)
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+
+    # Manually select asset-2 (even though it contains dailyFX in its name)
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=["asset-2"],
+        ai_photo_selection_enabled=True,
+        task_id="task-manual-override",
+        _task_update=lambda **kwargs: None,
+    )
+
+    assert selected is not None
+    assert [asset.id for asset in selected] == ["asset-2"]
+
