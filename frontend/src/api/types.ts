@@ -110,6 +110,7 @@ export type GenerationModuleInfo = {
   name: string;
   label: string;
   description: string;
+  display_group?: string | null;
   default_weight: number;
   default_config: Record<string, unknown>;
   config_schema: GenerationModuleConfigField[];

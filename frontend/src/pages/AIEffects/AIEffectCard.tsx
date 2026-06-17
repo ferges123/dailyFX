@@ -11,6 +11,7 @@ import { type AIEffect, type AIEffectUpsert } from '../../api/client';
 const AI_EFFECT_GROUP_ORDER = [
   'Portrait',
   'Illustration',
+  'Artistic',
   'Poster',
   '3D / Toy',
   'Pop Culture',
@@ -18,6 +19,8 @@ const AI_EFFECT_GROUP_ORDER = [
   'Sci-Fi',
   'Horror',
   'Historical',
+  'Photography',
+  'Seasonal',
   'Ungrouped',
 ];
 
