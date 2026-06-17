@@ -34,7 +34,6 @@ import {
   describeAutomationSchedule,
 } from './automation.utils';
 import { formatDateTime } from './datetime.utils';
-import { getVisionModelOptions, getImageModelOptions } from './Settings';
 import { type FormState, emptyForm } from './Schedules/types';
 import { ScheduleSummaryCard } from './Schedules/ScheduleSummaryCard';
 import { ScheduleForm } from './Schedules/ScheduleForm';

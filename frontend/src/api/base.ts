@@ -72,9 +72,9 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       return {} as T;
     }
     return response.json() as Promise<T>;
-  } catch (error: any) {
+  } catch (error) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new ApiError(408, 'API request timed out (15s limit)');
     }
     throw error;

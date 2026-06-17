@@ -6,7 +6,6 @@ import {
   Monitor,
   Plus,
   Trash2,
-  Pencil,
   Smartphone,
 } from 'lucide-react';
 import { InlineSpinner, ErrorBanner } from '../../components/ErrorUI';
@@ -23,14 +22,13 @@ import {
   unsubscribeWebPush,
   getPushSubscriptions,
   deletePushSubscription,
-  formatNotificationProviders,
   splitNotificationProviders,
   type NotificationPreset,
 } from '../../api/client';
 import { Field } from '../../components/Field';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { logger } from '../../utils/logger';
-import { PresetHeader, PresetFormActions, PresetActionRow } from './PresetHeader';
+import { PresetHeader, PresetFormActions } from './PresetHeader';
 
 import { NotificationPresetCard } from './NotificationPresetsPage/NotificationPresetCard';
 import { getPushDiagnostics } from './NotificationPresetsPage/utils';
@@ -319,7 +317,7 @@ export function NotificationPresetsTab() {
         setPushStatus('subscribed');
         qc.invalidateQueries({ queryKey: ['push-subscriptions'] });
       }
-    } catch (err: any) {
+    } catch (err) {
       setPushStatus('error');
       let errMsg = 'An unknown error occurred.';
       if (err instanceof Error) {

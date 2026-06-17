@@ -56,9 +56,9 @@ export async function createStudioPreview(
       await handleResponseError(response);
     }
     return response.json() as Promise<StudioPreviewResponse>;
-  } catch (error: any) {
+  } catch (error) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new ApiError(408, 'Studio preview request timed out (60s limit)');
     }
     throw error;
