@@ -457,12 +457,3 @@ frontend/         React 19 + Vite + Tailwind CSS
 ## License
 
 Source-available for non-commercial use under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).
-
----
-
-## Support
-
-If you like this project and want to support its development, you can buy me a coffee:
-
-* **Buy Me a Coffee:** [buymeacoffee.com/ferges](https://buymeacoffee.com/ferges)
-* **Ko-fi:** [ko-fi.com/ferges](https://ko-fi.com/ferges)
