@@ -1,10 +1,7 @@
-# Plan: Add Filter for Processed Photos
+# Plan: Exclude dailyFX Processed Photos
 
 | Task | Status | Details |
 | :--- | :---: | :--- |
-| Explore project context | ⏳ in_progress | Find AI photo selection logic and analyze how photo filenames are processed. |
-| Ask clarifying questions | ⏳ pending | Ask user clarifying questions about name match criteria. |
-| Propose 2-3 approaches | ⏳ pending | Outline approaches to filter files containing "dailyFX" and present trade-offs. |
-| Present design sections | ⏳ pending | Present design detail sections for user approval. |
-| Write design doc | ⏳ pending | Document the approved design in `docs/plans/` and commit. |
-| Transition to implementation | ⏳ pending | Invoke writing-plans skill to create implementation plan. |
+| Task 1: Write and Verify Failing Unit Tests | ✅ completed | Add unit tests to `backend/tests/test_engine.py` for filename exclusion and manual override. |
+| Task 2: Implement Asset Exclusion Logic in assets.py | ✅ completed | Filter assets in `_prepare_page_items_for_module` when no `selected_asset_ids` are provided. |
+| Task 3: Bump Version of Application | ✅ completed | Bump version from 0.3.15 to 0.3.16 in `package.json`, `version.ts`, and `package-lock.json`. |
