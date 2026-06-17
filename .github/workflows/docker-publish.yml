@@ -71,7 +71,7 @@ jobs:
           cache-from: type=gha
 
       - name: Scan API image with Trivy
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'dailyfx-api:scan'
           format: 'table'
@@ -100,7 +100,7 @@ jobs:
           cache-from: type=gha
 
       - name: Scan Web image with Trivy
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'dailyfx-web:scan'
           format: 'table'
