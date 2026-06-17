@@ -106,6 +106,24 @@ def _prepare_page_items_for_module(
     if not page_items:
         return None
 
+    # Filter out already processed dailyFX assets for automatic runs (case-insensitive)
+    if not selected_asset_ids:
+        original_count = len(page_items)
+        page_items = [
+            item for item in page_items
+            if not (
+                getattr(item, "original_file_name", None)
+                and "dailyfx" in getattr(item, "original_file_name", "").lower()
+            )
+        ]
+        removed_count = original_count - len(page_items)
+        if removed_count > 0:
+            debug_log(
+                "Filtered out processed dailyFX assets from selection",
+                task_id=task_id,
+                removed_count=removed_count,
+            )
+
     unique_items = _dedupe_page_items(page_items)
     if not unique_items:
         return None
