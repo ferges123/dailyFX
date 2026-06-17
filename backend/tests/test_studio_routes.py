@@ -230,9 +230,13 @@ def test_studio_modules_include_ai_and_exclude_multisource(authenticated_client:
     response = authenticated_client.get("/api/studio/modules")
 
     assert response.status_code == 200
-    names = {item["name"] for item in response.json()}
+    data = response.json()
+    assert len(data) > 0
+    names = {item["name"] for item in data}
     assert "collage" not in names
     assert any(name.startswith("ai_") for name in names)
+    for item in data:
+        assert "display_group" in item
 
 
 def test_studio_preview_ai_vision_resolves_provider_from_schedule(

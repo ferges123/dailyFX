@@ -52,6 +52,32 @@ LOCAL_MODULE_CLASSES = [
     AerochromeModule,
 ]
 
+LOCAL_MODULE_GROUPS = {
+    "apple_weather": "Portrait",
+    "instaweather": "Portrait",
+    "museum_archive": "Poster",
+    "bokeh_blur": "Portrait",
+    "vintage_film": "Photography",
+    "huji": "Photography",
+    "collage": "Poster",
+    "instafilter": "Photography",
+    "filmstrip": "Photography",
+    "popart": "Artistic",
+    "duotone": "Artistic",
+    "halftone": "Artistic",
+    "glitch": "Artistic",
+    "light_leak": "Photography",
+    "neon_bloom": "Artistic",
+    "cyanotype": "Photography",
+    "polaroid": "Photography",
+    "prism_split": "Photography",
+    "paper_cutout": "Artistic",
+    "pencil_sketch": "Artistic",
+    "cartoon": "Illustration",
+    "hdr": "Photography",
+    "aerochrome": "Photography",
+}
+
 
 class GenerationModuleRegistry:
     def __init__(self) -> None:

@@ -89,6 +89,7 @@ class GenerationModuleResponse(BaseModel):
     name: str
     label: str
     description: str
+    display_group: str | None = None
     default_weight: int = 1
     default_config: dict = Field(default_factory=dict)
     config_schema: list[GenerationModuleConfigField] = Field(default_factory=list)

@@ -13,7 +13,7 @@ from app.schemas.generation import GenerationModuleResponse
 from app.security import require_auth
 from app.services.generation.ai_effects import get_seed_hidden_map
 from app.services.generation.ai_vision import analyze_image
-from app.services.generation.modules import MODULES
+from app.services.generation.modules import LOCAL_MODULE_GROUPS, MODULES
 from app.services.generation.stream import record_history_snapshot
 from app.services.immich import get_or_create_settings
 from app.services.studio.local_asset import StudioLocalAssetClient, build_studio_asset
@@ -275,6 +275,7 @@ async def list_studio_modules(_: None = Depends(require_auth)) -> list[Generatio
                 name=module.name,
                 label=module.label,
                 description=module.description,
+                display_group=getattr(module, "display_group", None) or LOCAL_MODULE_GROUPS.get(module.name),
                 default_weight=module.default_weight,
                 default_config=module.default_config or {},
                 config_schema=getattr(module, "config_schema", None) or [],

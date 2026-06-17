@@ -9,6 +9,7 @@ class AIEffectModule(AIStyleBaseModule):
         self.name = row.id
         self.label = row.title
         self.description = row.description or row.title
+        self.display_group = row.display_group
         self.default_weight = 1
         self.default_config = {}
         self.custom_prompt_placeholder = row.custom_prompt_placeholder or "e.g. polished portrait, studio lighting..."
