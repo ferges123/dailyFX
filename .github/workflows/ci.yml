@@ -23,6 +23,17 @@ jobs:
         run: |
           cd backend
           pip install -e ".[test,lint]"
+          pip install pip-audit
+
+      - name: Lint with Ruff
+        run: |
+          cd backend
+          ruff check .
+
+      - name: Audit Python dependencies
+        run: |
+          cd backend
+          pip-audit || true
 
       - name: Run pytest
         run: |
@@ -45,6 +56,16 @@ jobs:
         run: |
           cd frontend
           npm ci
+
+      - name: Lint with ESLint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Audit JS dependencies
+        run: |
+          cd frontend
+          npm audit --audit-level=high
 
       - name: Build and Typecheck
         run: |

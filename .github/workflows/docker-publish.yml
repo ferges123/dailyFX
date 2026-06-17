@@ -60,7 +60,25 @@ jobs:
           echo "api_tags=${API_TAGS}" >> $GITHUB_OUTPUT
           echo "web_tags=${WEB_TAGS}" >> $GITHUB_OUTPUT
 
-      # 1. Budowanie i wysyłanie obrazu API
+      # 1. Budowanie i skanowanie obrazu API
+      - name: Build API image for scanning
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          load: true
+          tags: dailyfx-api:scan
+          cache-from: type=gha
+
+      - name: Scan API image with Trivy
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: 'dailyfx-api:scan'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
       - name: Build and push API image
         uses: docker/build-push-action@v7
         with:
@@ -71,7 +89,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 2. Budowanie i wysyłanie obrazu Web (Frontend)
+      # 2. Budowanie i skanowanie obrazu Web (Frontend)
+      - name: Build Web image for scanning
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          load: true
+          tags: dailyfx-web:scan
+          cache-from: type=gha
+
+      - name: Scan Web image with Trivy
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: 'dailyfx-web:scan'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
       - name: Build and push Web image
         uses: docker/build-push-action@v7
         with:
