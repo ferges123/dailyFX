@@ -189,5 +189,5 @@ def _format_date(created_at: str | None) -> str:
 
         dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
         return dt.strftime("%Y")
-    except:
+    except Exception:
         return "N/A"

@@ -941,4 +941,3 @@ def test_prepare_page_items_retains_dailyfx_assets_manually():
 
     assert selected is not None
     assert [asset.id for asset in selected] == ["asset-2"]
-

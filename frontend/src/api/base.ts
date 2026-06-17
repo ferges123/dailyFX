@@ -52,19 +52,31 @@ export async function handleResponseError(response: Response): Promise<never> {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(),
-      ...init?.headers,
-    },
-    ...init,
-  });
-  if (!response.ok) {
-    await handleResponseError(response);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${apiBase}${path}`, {
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+        ...init?.headers,
+      },
+      ...init,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      await handleResponseError(response);
+    }
+    if (response.status === 204) {
+      return {} as T;
+    }
+    return response.json() as Promise<T>;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new ApiError(408, 'API request timed out (15s limit)');
+    }
+    throw error;
   }
-  if (response.status === 204) {
-    return {} as T;
-  }
-  return response.json() as Promise<T>;
 }

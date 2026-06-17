@@ -21,14 +21,15 @@ def build_generation_history_page(
     if search:
         from sqlalchemy import func as sqlfunc
 
-        search_term = f"%{search.lower()}%"
+        escaped_search = search.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_term = f"%{escaped_search}%"
         q = q.filter(
-            (sqlfunc.lower(GenerationHistoryModel.title).like(search_term))
-            | (sqlfunc.lower(GenerationHistoryModel.summary).like(search_term))
-            | (sqlfunc.lower(GenerationHistoryModel.generation_type).like(search_term))
-            | (sqlfunc.lower(GenerationHistoryModel.provider).like(search_term))
-            | (sqlfunc.lower(GenerationHistoryModel.model).like(search_term))
-            | (sqlfunc.lower(GenerationHistoryModel.album_name).like(search_term))
+            (sqlfunc.lower(GenerationHistoryModel.title).like(search_term, escape="\\"))
+            | (sqlfunc.lower(GenerationHistoryModel.summary).like(search_term, escape="\\"))
+            | (sqlfunc.lower(GenerationHistoryModel.generation_type).like(search_term, escape="\\"))
+            | (sqlfunc.lower(GenerationHistoryModel.provider).like(search_term, escape="\\"))
+            | (sqlfunc.lower(GenerationHistoryModel.model).like(search_term, escape="\\"))
+            | (sqlfunc.lower(GenerationHistoryModel.album_name).like(search_term, escape="\\"))
         )
     total = q.count()
     items = q.offset(offset).limit(limit).all()

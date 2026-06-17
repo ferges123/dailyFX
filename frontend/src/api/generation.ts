@@ -1,4 +1,4 @@
-import { request, getAuthHeader, handleResponseError, apiBase } from './base';
+import { request, getAuthHeader, handleResponseError, apiBase, ApiError } from './base';
 import {
   type GenerationModuleInfo,
   type StudioPreviewResponse,
@@ -40,19 +40,29 @@ export async function createStudioPreview(
     options.promptEnrichmentEnabled ? 'true' : 'false',
   );
 
-  const response = await fetch(`${apiBase}/api/studio/preview`, {
-    method: 'POST',
-    headers: {
-      ...getAuthHeader(),
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    await handleResponseError(response);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for preview
+  try {
+    const response = await fetch(`${apiBase}/api/studio/preview`, {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        ...getAuthHeader(),
+      },
+      body: formData,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      await handleResponseError(response);
+    }
+    return response.json() as Promise<StudioPreviewResponse>;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new ApiError(408, 'Studio preview request timed out (60s limit)');
+    }
+    throw error;
   }
-
-  return response.json() as Promise<StudioPreviewResponse>;
 }
 
 export function getGenerationExamples() {

@@ -1,6 +1,6 @@
 [project]
 name = "dailyfx-backend"
-version = "0.3.15"
+version = "0.3.16"
 description = "FastAPI backend for DailyFX for immich"
 requires-python = ">=3.13"
 dependencies = [

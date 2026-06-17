@@ -487,3 +487,51 @@ def test_delete_history_by_status(tmp_path):
 
     finally:
         db.close()
+
+
+def test_generation_history_search_wildcard_escaping():
+    db = _setup_generation_routes_db()
+    try:
+        db.query(GenerationHistoryModel).delete()
+        db.commit()
+
+        # Insert rows with wildcards
+        _add_history_row(db, "task-1", status="PENDING_REVIEW")
+        row1 = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == "task-1").first()
+        row1.title = "photo%test"
+        db.commit()
+
+        _add_history_row(db, "task-2", status="PENDING_REVIEW")
+        row2 = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == "task-2").first()
+        row2.title = "photo_test"
+        db.commit()
+
+        _add_history_row(db, "task-3", status="PENDING_REVIEW")
+        row3 = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == "task-3").first()
+        row3.title = "photo\\test"
+        db.commit()
+
+        _add_history_row(db, "task-4", status="PENDING_REVIEW")
+        row4 = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == "task-4").first()
+        row4.title = "phototest"
+        db.commit()
+
+        from app.api.routes_generation import get_generation_history
+
+        # Search literal "%"
+        res = asyncio.run(get_generation_history(db, search="%"))
+        assert len(res.items) == 1
+        assert res.items[0].task_id == "task-1"
+
+        # Search literal "_"
+        res = asyncio.run(get_generation_history(db, search="_"))
+        assert len(res.items) == 1
+        assert res.items[0].task_id == "task-2"
+
+        # Search literal "\\"
+        res = asyncio.run(get_generation_history(db, search="\\"))
+        assert len(res.items) == 1
+        assert res.items[0].task_id == "task-3"
+
+    finally:
+        db.close()
