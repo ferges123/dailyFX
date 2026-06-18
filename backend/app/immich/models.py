@@ -121,8 +121,6 @@ class ImmichUploadMetadata:
     def as_request_data(self) -> dict[str, str]:
         return {
             "filename": self.filename,
-            "deviceAssetId": self.device_asset_id,
-            "deviceId": self.device_id,
             "fileCreatedAt": self.file_created_at,
             "fileModifiedAt": self.file_modified_at,
         }

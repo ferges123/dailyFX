@@ -562,7 +562,7 @@ def test_get_asset_thumbnail_falls_back_to_original_download(monkeypatch: pytest
         seen_paths.append(request.url.path)
         if request.url.path.endswith("/thumbnail"):
             return httpx.Response(404, json={})
-        if request.url.path.endswith("/download/asset-1"):
+        if request.url.path.endswith("/assets/asset-1/file"):
             return httpx.Response(200, content=original_image_bytes, headers={"content-type": "image/png"})
         return httpx.Response(404, json={})
 
@@ -577,12 +577,12 @@ def test_get_asset_thumbnail_falls_back_to_original_download(monkeypatch: pytest
         ImmichClient("https://photos.example.com", "secret-key").get_asset_thumbnail("asset-1")
     )
 
-    assert "/api/asset/download/asset-1" in seen_paths
+    assert "/api/assets/asset-1/file" in seen_paths
     assert content.startswith(b"\xff\xd8")
     assert content_type == "image/jpeg"
 
 
-def test_upload_asset_sends_expected_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upload_asset_sends_v3_metadata_without_device_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
 
     async def fake_request_json(self, method, path, client, **kwargs):
@@ -611,11 +611,78 @@ def test_upload_asset_sends_expected_metadata(monkeypatch: pytest.MonkeyPatch) -
     assert seen["method"] == "POST"
     assert seen["path"] == "/assets"
     assert seen["data"]["filename"] == "collage.png"
-    assert seen["data"]["deviceAssetId"] == "device-asset-1"
+    assert "deviceAssetId" not in seen["data"]
+    assert "deviceId" not in seen["data"]
     assert seen["headers"]["x-immich-checksum"] is not None
     assert "assetData" in seen["files"]
     assert result.id == "asset-123"
     assert result.status == "created"
+
+
+def test_add_assets_to_album_uses_v3_patch_album_assets_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def fake_request(self, method, path, client, **kwargs):
+        seen["method"] = method
+        seen["path"] = path
+        seen["json"] = kwargs.get("json_payload")
+        return httpx.Response(200, json=[{"id": "asset-1", "success": True}])
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    asyncio.run(ImmichClient("https://photos.example.com", "secret-key").add_assets_to_album("album-1", ["asset-1"]))
+
+    assert seen == {
+        "method": "PATCH",
+        "path": "/albums/album-1/assets",
+        "json": {"ids": ["asset-1"]},
+    }
+
+
+def test_get_asset_data_uses_v3_asset_file_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_paths.append(request.url.path)
+        return httpx.Response(200, content=b"image-bytes", headers={"content-type": "image/jpeg"})
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    content = asyncio.run(ImmichClient("https://photos.example.com", "secret-key").get_asset_data("asset-1"))
+
+    assert seen_paths == ["/api/assets/asset-1/file"]
+    assert content == b"image-bytes"
+
+
+def test_update_asset_uses_v3_patch_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def fake_request(self, method, path, client, **kwargs):
+        seen["method"] = method
+        seen["path"] = path
+        seen["json"] = kwargs.get("json_payload")
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").update_asset(
+            "asset-1",
+            description="DailyFX result",
+            is_favorite=True,
+        )
+    )
+
+    assert seen == {
+        "method": "PATCH",
+        "path": "/assets/asset-1",
+        "json": {"description": "DailyFX result", "isFavorite": True},
+    }
 
 
 def test_upsert_tags_uses_put_tags_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
