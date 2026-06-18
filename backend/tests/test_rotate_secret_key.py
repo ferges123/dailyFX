@@ -1,7 +1,5 @@
-import os
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -10,9 +8,10 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root / "backend"))
 
 from app.database import SessionLocal, init_db
-from app.models.settings import SettingsModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.settings import SettingsModel
 from scripts.rotate_secret_key import decrypt_with_key, encrypt_with_key, main
+
 
 def test_rotate_secret_key(monkeypatch):
     # Initialize the test DB

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-import os
-import sys
-import shutil
 import base64
 import hashlib
+import os
+import shutil
+import sys
 from pathlib import Path
+
 from cryptography.fernet import Fernet, InvalidToken
 
 # Add backend directory to Python path
@@ -12,13 +13,15 @@ backend_dir = Path(__file__).resolve().parents[1]
 sys.path.append(str(backend_dir))
 
 from app.database import SessionLocal, get_settings
-from app.models.settings import SettingsModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.settings import SettingsModel
+
 
 def get_fernet(secret_key: str) -> Fernet:
     digest = hashlib.sha256(secret_key.encode("utf-8")).digest()
     key = base64.urlsafe_b64encode(digest)
     return Fernet(key)
+
 
 def decrypt_with_key(value: str | None, secret_key: str) -> str | None:
     if not value:
@@ -29,11 +32,13 @@ def decrypt_with_key(value: str | None, secret_key: str) -> str | None:
     except InvalidToken:
         raise ValueError("Decryption failed. Please check if the old secret key is correct.")
 
+
 def encrypt_with_key(value: str | None, secret_key: str) -> str | None:
     if not value:
         return None
     f = get_fernet(secret_key)
     return f.encrypt(value.encode("utf-8")).decode("utf-8")
+
 
 def main():
     # Read keys from env or command line
@@ -75,7 +80,7 @@ def main():
     db = SessionLocal()
     try:
         print("Re-encrypting database settings...")
-        
+
         # 1. Update settings
         settings_records = db.query(SettingsModel).all()
         settings_fields = [
@@ -87,7 +92,7 @@ def main():
             "encrypted_xiaomi_api_key",
             "encrypted_local_ai_api_key",
         ]
-        
+
         settings_updated = 0
         for record in settings_records:
             updated = False
@@ -130,6 +135,7 @@ def main():
         sys.exit(1)
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     main()

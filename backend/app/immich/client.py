@@ -809,7 +809,9 @@ class ImmichClient:
                             await asyncio.sleep(0.5 * (attempt + 1))
                             continue
                     else:
-                        logger.warning("Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint)
+                        logger.warning(
+                            "Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint
+                        )
                         break
                 except Exception as exc:
                     logger.warning("Error downloading from %s: %s", endpoint, exc)

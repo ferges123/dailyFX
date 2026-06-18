@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 import os
-import sys
-import shutil
-import base64
-import hashlib
 import secrets
+import shutil
+import sys
 from pathlib import Path
 
 # Add backend directory to Python path
@@ -16,6 +14,7 @@ if os.environ.get("DATABASE_URL") == "sqlite:////data/app.db":
     os.environ["DATABASE_URL"] = "sqlite:////opt/dailyFX/data/app.db"
 
 from app.config import get_settings
+
 settings = get_settings()
 if settings.database_url == "sqlite:////data/app.db":
     os.environ["DATABASE_URL"] = "sqlite:////opt/dailyFX/data/app.db"
@@ -23,9 +22,10 @@ if settings.database_url == "sqlite:////data/app.db":
     settings = get_settings()
 
 from app.database import SessionLocal, init_db
-from app.models.settings import SettingsModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.settings import SettingsModel
 from scripts.rotate_secret_key import decrypt_with_key, encrypt_with_key
+
 
 def main():
     env_path = backend_dir.parent / ".env"
@@ -35,14 +35,14 @@ def main():
 
     # Read current env contents
     env_content = env_path.read_text()
-    
+
     # Extract current APP_SECRET_KEY
     old_key = None
     for line in env_content.splitlines():
         if line.startswith("APP_SECRET_KEY="):
             old_key = line.split("=", 1)[1].strip()
             break
-            
+
     if not old_key:
         print("Error: APP_SECRET_KEY not found in .env file.")
         sys.exit(1)
@@ -76,7 +76,7 @@ def main():
     db = SessionLocal()
     try:
         print("Re-encrypting database settings...")
-        
+
         # 1. Update settings
         settings_records = db.query(SettingsModel).all()
         settings_fields = [
@@ -88,7 +88,7 @@ def main():
             "encrypted_xiaomi_api_key",
             "encrypted_local_ai_api_key",
         ]
-        
+
         settings_updated = 0
         for record in settings_records:
             updated = False
@@ -130,7 +130,7 @@ def main():
                 new_lines.append(f"APP_SECRET_KEY={new_key}")
             else:
                 new_lines.append(line)
-        
+
         # Ensure trailing newline
         env_path.write_text("\n".join(new_lines) + "\n")
         print("Successfully updated APP_SECRET_KEY in .env file.")
@@ -143,6 +143,7 @@ def main():
         sys.exit(1)
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     main()

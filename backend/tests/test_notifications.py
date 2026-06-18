@@ -664,4 +664,3 @@ def test_telegram_bot_token_id():
     assert len(token_id) == 8
     assert token_id != token[-6:]
     assert all(c in "0123456789abcdef" for c in token_id)
-
