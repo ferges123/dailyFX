@@ -230,13 +230,13 @@ Live `.env` zawiera domyślny placeholder `APP_SECRET_KEY=change-me-generate-a-l
 - [ ] Rozważ zmianę `ai_effects.id` na integer PK
 
 ### Faza 7: Cleanup (LOW)
-- [ ] Dodaj missing .gitignore entries (`.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`)
-- [ ] Dodaj `engines` do package.json
-- [ ] Dodaj CSP meta tag
-- [ ] Dodaj `aria-label` do mobile nav
-- [ ] Dodaj outside-click handler do AIEffectCard dropdown
-- [ ] Dodaj testy: modals, form submits, AIEffects CRUD
-- [ ] Dodaj SAST (bandit) do CI
+- [x] Dodaj missing .gitignore entries (`.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`)
+- [x] Dodaj `engines` do package.json
+- [x] Dodaj CSP meta tag
+- [x] Dodaj `aria-label` do mobile nav
+- [x] Dodaj outside-click handler do AIEffectCard dropdown
+- [x] Dodaj testy: modals, form submits, AIEffects CRUD
+- [x] Dodaj SAST (bandit) do CI
 
 ---
 
