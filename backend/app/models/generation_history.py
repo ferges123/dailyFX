@@ -12,7 +12,7 @@ class GenerationHistoryModel(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     generation_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default="PENDING_REVIEW")
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="PENDING_REVIEW", index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     source_asset_ids: Mapped[str] = mapped_column(Text, nullable=False)
@@ -36,7 +36,7 @@ class GenerationHistoryModel(Base):
     accept_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     accepted_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
-    schedule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    schedule_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

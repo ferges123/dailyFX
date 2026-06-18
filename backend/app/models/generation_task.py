@@ -10,7 +10,7 @@ class GenerationTaskModel(Base):
     __tablename__ = "generation_tasks"
 
     task_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued", index=True)
     step: Mapped[str | None] = mapped_column(String(64), nullable=True)
     progress: Mapped[float | None] = mapped_column(Float, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
