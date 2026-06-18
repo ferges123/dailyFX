@@ -8,6 +8,8 @@ def validate_module_config(module_name: str, group_config: dict) -> None:
     """
     module = MODULES.get(module_name)
     if module is None:
+        if isinstance(group_config, dict) and not group_config.get("enabled", False):
+            return
         raise ValueError(f"Unknown generation module '{module_name}'")
 
     if not isinstance(group_config, dict):

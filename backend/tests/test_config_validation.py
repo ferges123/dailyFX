@@ -48,7 +48,11 @@ def test_validate_module_config_success():
 
 def test_validate_module_config_invalid_module():
     with pytest.raises(ValueError, match="Unknown generation module 'unknown_xyz'"):
-        validate_module_config("unknown_xyz", {"config": {}})
+        validate_module_config("unknown_xyz", {"enabled": True, "config": {}})
+
+
+def test_validate_module_config_disabled_unknown_module_ignored():
+    validate_module_config("unknown_xyz", {"enabled": False, "config": {}})
 
 
 def test_validate_module_config_invalid_group_type():
