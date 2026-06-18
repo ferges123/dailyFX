@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import logging
 
 import httpx
@@ -11,6 +12,11 @@ from app.schemas.generation import GenerationAcceptRequest
 from app.security import decrypt_secret
 
 logger = logging.getLogger(__name__)
+
+
+def _get_token_id(token: str) -> str:
+    """Returns a secure, non-reversible, shortened hash identifier for the bot token."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()[:8]
 
 
 async def start_telegram_bot_listener():
@@ -37,7 +43,7 @@ async def start_telegram_bot_listener():
             # Cancel tasks for tokens no longer in DB
             for token in list(active_polls.keys()):
                 if token not in db_tokens:
-                    logger.info("Stopping Telegram Bot polling task for token ending in ...%s", token[-6:])
+                    logger.info("Stopping Telegram Bot polling task for token %s", _get_token_id(token))
                     active_polls[token].cancel()
                     del active_polls[token]
 
@@ -49,9 +55,9 @@ async def start_telegram_bot_listener():
                         try:
                             active_polls[token].result()
                         except Exception as e:
-                            logger.error("Telegram polling task for ...%s failed: %s", token[-6:], e)
+                            logger.error("Telegram polling task for token %s failed: %s", _get_token_id(token), e)
 
-                    logger.info("Starting Telegram Bot polling task for token ending in ...%s", token[-6:])
+                    logger.info("Starting Telegram Bot polling task for token %s", _get_token_id(token))
                     active_polls[token] = asyncio.create_task(_poll_bot_updates(token))
 
         except Exception as e:
@@ -71,7 +77,7 @@ async def _poll_bot_updates(token: str):
                 response = await client.get(url, params=params)
 
                 if response.status_code == 404:
-                    logger.error("Telegram Bot API returned 404 for token ending in ...%s. Is token valid?", token[-6:])
+                    logger.error("Telegram Bot API returned 404 for token %s. Is token valid?", _get_token_id(token))
                     await asyncio.sleep(30)
                     continue
                 elif response.status_code >= 400:
@@ -91,7 +97,7 @@ async def _poll_bot_updates(token: str):
                         await _handle_callback_query(client, token, update["callback_query"])
 
             except asyncio.CancelledError:
-                logger.info("Telegram Bot polling loop cancelled for token ending in ...%s", token[-6:])
+                logger.info("Telegram Bot polling loop cancelled for token %s", _get_token_id(token))
                 break
             except Exception as e:
                 logger.exception("Exception in Telegram Bot polling loop: %s", e)

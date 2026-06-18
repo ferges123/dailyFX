@@ -449,6 +449,24 @@ def test_get_review_page():
     assert "lb-img-original" in content
 
 
+def test_review_page_avoids_innerhtml_for_dynamic_api_values():
+    result = asyncio.run(get_review_page("task-review-xss-test"))
+
+    with open(result.path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "function createExifRow(iconSvg, label, value) {" in content
+    create_exif_row = content.split("function createExifRow(iconSvg, label, value) {", 1)[1].split(
+        "\nfunction renderProvenance", 1
+    )[0]
+    assert ".innerHTML" not in create_exif_row
+    assert ".textContent" in create_exif_row
+
+    render_timeline = content.split("function renderTimeline(taskTrace) {", 1)[1].split("\nfunction renderExif", 1)[0]
+    assert "row.innerHTML" not in render_timeline
+    assert "message.textContent" in render_timeline
+
+
 def test_delete_history_by_status(tmp_path):
     from app.api.routes_generation import delete_history_by_status
 

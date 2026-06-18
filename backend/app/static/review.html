@@ -668,16 +668,32 @@ function formatDateTime(value) {
   return parsed.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function appendStaticSvg(container, svgMarkup) {
+  const template = document.createElement('template');
+  template.innerHTML = svgMarkup.trim();
+  const svg = template.content.firstElementChild;
+  if (svg && svg.tagName.toLowerCase() === 'svg') {
+    container.appendChild(svg);
+  }
+}
+
 function createExifRow(iconSvg, label, value) {
   const row = document.createElement('div');
   row.className = 'lb-exif-row';
-  row.innerHTML = `
-    <div class="lb-exif-icon">${iconSvg}</div>
-    <div>
-      <div class="lb-exif-label">${label}</div>
-      <div class="lb-exif-value">${value}</div>
-    </div>
-  `;
+  const icon = document.createElement('div');
+  icon.className = 'lb-exif-icon';
+  appendStaticSvg(icon, iconSvg);
+  const content = document.createElement('div');
+  const labelEl = document.createElement('div');
+  labelEl.className = 'lb-exif-label';
+  labelEl.textContent = label;
+  const valueEl = document.createElement('div');
+  valueEl.className = 'lb-exif-value';
+  valueEl.textContent = value;
+  content.appendChild(labelEl);
+  content.appendChild(valueEl);
+  row.appendChild(icon);
+  row.appendChild(content);
   return row;
 }
 
@@ -753,11 +769,23 @@ function renderTimeline(taskTrace) {
     if (item.step) meta.push(item.step.replace(/_/g, ' '));
     if (typeof item.progress === 'number') meta.push(`${Math.round(item.progress * 100)}%`);
     const elapsed = formatElapsed(taskTrace[idx - 1]?.timestamp, item.timestamp);
-    row.innerHTML = `
-      <div class="timeline-stage">${String(item.stage || 'step').replace(/_/g, ' ')}</div>
-      <div class="timeline-message">${item.message || '—'}</div>
-      <div class="timeline-meta">${meta.map((part) => `<span class="timeline-pill">${part}</span>`).join('')}${elapsed ? `<span class="timeline-pill timeline-elapsed">${elapsed}</span>` : ''}</div>
-    `;
+    const stage = document.createElement('div');
+    stage.className = 'timeline-stage';
+    stage.textContent = String(item.stage || 'step').replace(/_/g, ' ');
+    const message = document.createElement('div');
+    message.className = 'timeline-message';
+    message.textContent = item.message || '—';
+    const metaEl = document.createElement('div');
+    metaEl.className = 'timeline-meta';
+    [...meta, ...(elapsed ? [elapsed] : [])].forEach((part) => {
+      const pill = document.createElement('span');
+      pill.className = part === elapsed ? 'timeline-pill timeline-elapsed' : 'timeline-pill';
+      pill.textContent = part;
+      metaEl.appendChild(pill);
+    });
+    row.appendChild(stage);
+    row.appendChild(message);
+    row.appendChild(metaEl);
     timelineEl.appendChild(row);
   });
 
@@ -852,20 +880,30 @@ function renderExif(e, selectedExif) {
     
     const row = document.createElement('div');
     row.className = 'lb-exif-row';
-    row.innerHTML = `
-      <div class="lb-exif-icon">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-      </div>
-      <div>
-        <div class="lb-exif-label">Location</div>
-        <div class="lb-exif-value">
-          <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lon}" target="_blank" rel="noopener">
-            <span>${locName}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
-        </div>
-      </div>
-    `;
+    const icon = document.createElement('div');
+    icon.className = 'lb-exif-icon';
+    appendStaticSvg(icon, '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>');
+    const content = document.createElement('div');
+    const label = document.createElement('div');
+    label.className = 'lb-exif-label';
+    label.textContent = 'Location';
+    const value = document.createElement('div');
+    value.className = 'lb-exif-value';
+    const link = document.createElement('a');
+    link.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    const locationText = document.createElement('span');
+    locationText.textContent = locName;
+    const externalIcon = document.createElement('span');
+    appendStaticSvg(externalIcon, '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>');
+    link.appendChild(locationText);
+    link.appendChild(externalIcon.firstChild);
+    value.appendChild(link);
+    content.appendChild(label);
+    content.appendChild(value);
+    row.appendChild(icon);
+    row.appendChild(content);
     container.appendChild(row);
   }
 }
@@ -942,12 +980,18 @@ function setUploadSuccessState(uploadedAssetId) {
   metaStatus.textContent = 'Uploaded';
   metaStatus.className = 'value uploaded';
   actionsEl.className = 'actions single';
-  actionsEl.innerHTML = immichUrl && uploadedAssetId
-    ? `<a class="btn btn-immich" href="${immichUrl}/photos/${uploadedAssetId}" target="_blank" rel="noopener">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        View in Immich
-      </a>`
-    : '';
+  actionsEl.textContent = '';
+  if (!immichUrl || !uploadedAssetId) return;
+  const link = document.createElement('a');
+  link.className = 'btn btn-immich';
+  link.href = `${immichUrl}/photos/${encodeURIComponent(uploadedAssetId)}`;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  const icon = document.createElement('span');
+  appendStaticSvg(icon, '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>');
+  link.appendChild(icon.firstChild);
+  link.appendChild(document.createTextNode('View in Immich'));
+  actionsEl.appendChild(link);
 }
 
 async function loadOriginalImage(assetId) {

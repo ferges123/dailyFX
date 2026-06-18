@@ -653,3 +653,15 @@ def test_test_subscription_endpoint_returns_404_for_unknown_subscription():
     client = TestClient(app)
     resp = client.post("/api/notifications/subscriptions/999999/test")
     assert resp.status_code == 404
+
+
+def test_telegram_bot_token_id():
+    from app.workers.telegram_bot import _get_token_id
+
+    token = "123456:ABC-DEF1234ghIkl-zyx"
+    token_id = _get_token_id(token)
+
+    assert len(token_id) == 8
+    assert token_id != token[-6:]
+    assert all(c in "0123456789abcdef" for c in token_id)
+
