@@ -21,7 +21,7 @@ vi.mock('../api/client', async (importOriginal) => {
   };
 });
 
-const mockEffects = [
+const mockEffects: client.AIEffect[] = [
   {
     id: 'portrait_classic',
     title: 'Portrait Classic',
