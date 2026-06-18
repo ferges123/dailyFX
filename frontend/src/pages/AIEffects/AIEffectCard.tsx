@@ -1,11 +1,5 @@
-import { useState } from 'react';
-import {
-  Copy,
-  MoreHorizontal,
-  Pencil,
-  RefreshCcw,
-  Trash2,
-} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Copy, MoreHorizontal, Pencil, RefreshCcw, Trash2 } from 'lucide-react';
 import { type AIEffect, type AIEffectUpsert } from '../../api/client';
 
 const AI_EFFECT_GROUP_ORDER = [
@@ -80,6 +74,22 @@ export function AIEffectCard({
   const statusTags = formatStatus(effect);
   const [showPrompts, setShowPrompts] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowActions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <div
@@ -111,7 +121,10 @@ export function AIEffectCard({
             ))}
           </div>
         </div>
-        <div className="relative flex flex-wrap gap-1.5 sm:justify-end">
+        <div
+          ref={dropdownRef}
+          className="relative flex flex-wrap gap-1.5 sm:justify-end"
+        >
           <button
             type="button"
             onClick={() => onEdit(effect)}
