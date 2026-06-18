@@ -537,13 +537,38 @@ class ImmichClient:
             return
 
         async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            await self._request(
-                "PATCH",
-                f"/albums/{album_id}/assets",
-                client,
-                json_payload={"ids": asset_ids},
-                not_found_message="Immich add-assets-to-album endpoint was not found",
-            )
+            last_error: Exception | None = None
+            # Try multiple HTTP method + path patterns.
+            # 1. PUT /albums/{album_id}/assets (Standard v3 and v2)
+            # 2. PATCH /albums/{album_id}/assets (Some v3 release candidates / variants)
+            # 3. PUT /albums/{album_id}/asset (Legacy v2 fallback)
+            endpoints = [
+                ("PUT", f"/albums/{album_id}/assets"),
+                ("PATCH", f"/albums/{album_id}/assets"),
+                ("PUT", f"/albums/{album_id}/asset"),
+            ]
+            for method, path in endpoints:
+                try:
+                    logger.info("Attempting to add assets to album %s via %s %s", album_id, method, path)
+                    await self._request(
+                        method,
+                        path,
+                        client,
+                        json_payload={"ids": asset_ids},
+                        not_found_message=f"Immich add-assets-to-album endpoint ({path}) was not found",
+                    )
+                    logger.info("Successfully added assets to album %s via %s %s", album_id, method, path)
+                    return
+                except ImmichUnexpectedResponseError as exc:
+                    last_error = exc
+                    # Only catch and retry on 404 (endpoint not found) or 405 (method not allowed/HTTP 405)
+                    exc_str = str(exc).lower()
+                    is_not_found = "not found" in exc_str
+                    is_method_not_allowed = "http 405" in exc_str or "method not allowed" in exc_str
+                    if not (is_not_found or is_method_not_allowed):
+                        raise
+            if last_error is not None:
+                raise last_error
 
     async def upload_asset(
         self,

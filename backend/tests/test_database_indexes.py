@@ -10,7 +10,7 @@ import app.database
 
 def test_database_indexes():
     app.database.init_db()  # Ensure database is initialized and migrations run
-    
+
     assert app.database.engine is not None, "Database engine was not initialized"
     inspector = inspect(app.database.engine)
 

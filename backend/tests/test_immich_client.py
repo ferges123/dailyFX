@@ -619,7 +619,7 @@ def test_upload_asset_sends_v3_metadata_without_device_fields(monkeypatch: pytes
     assert result.status == "created"
 
 
-def test_add_assets_to_album_uses_v3_patch_album_assets_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_add_assets_to_album_uses_v3_put_album_assets_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
 
     async def fake_request(self, method, path, client, **kwargs):
@@ -633,10 +633,98 @@ def test_add_assets_to_album_uses_v3_patch_album_assets_endpoint(monkeypatch: py
     asyncio.run(ImmichClient("https://photos.example.com", "secret-key").add_assets_to_album("album-1", ["asset-1"]))
 
     assert seen == {
-        "method": "PATCH",
+        "method": "PUT",
         "path": "/albums/album-1/assets",
         "json": {"ids": ["asset-1"]},
     }
+
+
+def test_add_assets_to_album_falls_back_to_patch_on_404_or_405(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.immich.errors import ImmichUnexpectedResponseError
+
+    calls = []
+
+    async def fake_request(self, method, path, client, **kwargs):
+        calls.append((method, path))
+        if len(calls) == 1:
+            # First call (PUT /albums/album-1/assets) fails with 404
+            raise ImmichUnexpectedResponseError("Immich add-assets-to-album endpoint was not found")
+        # Second call (PATCH /albums/album-1/assets) succeeds
+        return httpx.Response(200, json=[{"id": "asset-1", "success": True}])
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    asyncio.run(ImmichClient("https://photos.example.com", "secret-key").add_assets_to_album("album-1", ["asset-1"]))
+
+    assert calls == [
+        ("PUT", "/albums/album-1/assets"),
+        ("PATCH", "/albums/album-1/assets"),
+    ]
+
+
+def test_add_assets_to_album_falls_back_to_legacy_put_on_repeated_404_or_405(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.immich.errors import ImmichUnexpectedResponseError
+
+    calls = []
+
+    async def fake_request(self, method, path, client, **kwargs):
+        calls.append((method, path))
+        if len(calls) < 3:
+            raise ImmichUnexpectedResponseError("Immich endpoint was not found")
+        # Third call (PUT /albums/album-1/asset) succeeds
+        return httpx.Response(200, json=[{"id": "asset-1", "success": True}])
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    asyncio.run(ImmichClient("https://photos.example.com", "secret-key").add_assets_to_album("album-1", ["asset-1"]))
+
+    assert calls == [
+        ("PUT", "/albums/album-1/assets"),
+        ("PATCH", "/albums/album-1/assets"),
+        ("PUT", "/albums/album-1/asset"),
+    ]
+
+
+def test_add_assets_to_album_raises_last_error_when_all_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.immich.errors import ImmichUnexpectedResponseError
+
+    calls = []
+
+    async def fake_request(self, method, path, client, **kwargs):
+        calls.append((method, path))
+        raise ImmichUnexpectedResponseError(f"Failed method {method} path {path} - not found")
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    with pytest.raises(ImmichUnexpectedResponseError, match="Failed method PUT path /albums/album-1/asset - not found"):
+        asyncio.run(
+            ImmichClient("https://photos.example.com", "secret-key").add_assets_to_album("album-1", ["asset-1"])
+        )
+
+    assert calls == [
+        ("PUT", "/albums/album-1/assets"),
+        ("PATCH", "/albums/album-1/assets"),
+        ("PUT", "/albums/album-1/asset"),
+    ]
+
+
+def test_add_assets_to_album_does_not_retry_on_auth_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    async def fake_request(self, method, path, client, **kwargs):
+        calls.append((method, path))
+        raise ImmichAuthenticationError("Immich rejected the API key")
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    with pytest.raises(ImmichAuthenticationError):
+        asyncio.run(
+            ImmichClient("https://photos.example.com", "secret-key").add_assets_to_album("album-1", ["asset-1"])
+        )
+
+    assert calls == [
+        ("PUT", "/albums/album-1/assets"),
+    ]
 
 
 def test_get_asset_data_uses_v3_asset_file_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
