@@ -30,6 +30,11 @@ jobs:
           cd backend
           ruff check .
 
+      - name: Security scan with Bandit (SAST)
+        run: |
+          cd backend
+          bandit -r app/ -x tests/ -s B104,B311,B324 -ll
+
       - name: Audit Python dependencies
         run: |
           cd backend
