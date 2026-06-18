@@ -19,6 +19,8 @@
 
 ### Task 1: Add Missing .gitignore Entries
 
+**Status:** Done
+
 **Files:**
 - Modify: `/.gitignore`
 
@@ -43,6 +45,8 @@ git commit -m "chore: add editor and OS system files to gitignore"
 ---
 
 ### Task 2: Add engines to package.json
+
+**Status:** Done
 
 **Files:**
 - Modify: `/frontend/package.json`
@@ -69,6 +73,8 @@ git commit -m "chore: add node and npm engine constraints to package.json"
 
 ### Task 3: Add CSP Meta Tag
 
+**Status:** Done
+
 **Files:**
 - Modify: `/frontend/index.html`
 
@@ -87,6 +93,8 @@ git commit -m "security: add Content-Security-Policy meta tag to frontend index.
 ---
 
 ### Task 4: Add Navigation `aria-label`
+
+**Status:** Done
 
 **Files:**
 - Modify: `/frontend/src/App.tsx`
@@ -110,6 +118,8 @@ git commit -m "accessibility: add aria-label attributes to desktop and mobile na
 ---
 
 ### Task 5: Add Outside-Click Handler to AIEffectCard Dropdown
+
+**Status:** Done
 
 **Files:**
 - Modify: `/frontend/src/pages/AIEffects/AIEffectCard.tsx`
@@ -152,6 +162,8 @@ git commit -m "feat: add click-outside handler to AIEffectCard dropdown menu"
 ---
 
 ### Task 6: Add AI Effects CRUD and Modal tests
+
+**Status:** Done
 
 **Files:**
 - Create: `/frontend/src/__tests__/AIEffects.test.tsx`
@@ -416,6 +428,8 @@ git commit -m "test: add unit tests for AIEffects page CRUD operations and modal
 ---
 
 ### Task 7: Add SAST (Bandit) to CI
+
+**Status:** Done
 
 **Files:**
 - Modify: `/backend/pyproject.toml`
