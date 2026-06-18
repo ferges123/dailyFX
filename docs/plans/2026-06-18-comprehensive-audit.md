@@ -225,9 +225,9 @@ Live `.env` zawiera domyślny placeholder `APP_SECRET_KEY=change-me-generate-a-l
 - [ ] Dodaj `defaultdict(Lock)` eviction policy
 
 ### Faza 6: Baza danych (LOW)
-- [ ] Dodaj indeksy: `generation_history.status`, `generation_tasks.status`, `generation_history.schedule_id`
-- [ ] Dodaj `ON DELETE CASCADE/SET NULL` na schedule → preset FK
-- [ ] Rozważ zmianę `ai_effects.id` na integer PK
+- [x] Dodaj indeksy: `generation_history.status`, `generation_tasks.status`, `generation_history.schedule_id`
+- [ ] Dodaj `ON DELETE CASCADE/SET NULL` na schedule → preset FK (Decyzja: Odrzucono - zostawiono bez zmian)
+- [x] Rozważ zmianę `ai_effects.id` na integer PK (Przeanalizowano i odrzucono ze względu na koszty refaktoryzacji)
 
 ### Faza 7: Cleanup (LOW)
 - [x] Dodaj missing .gitignore entries (`.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`)
