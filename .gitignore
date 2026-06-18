@@ -35,3 +35,8 @@ data/temp/
 data/tests/
 backend/data/
 .mimocode/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
