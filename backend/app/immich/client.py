@@ -814,36 +814,56 @@ class ImmichClient:
         async with httpx.AsyncClient(
             base_url=self.api_base_url, timeout=httpx.Timeout(60.0, connect=10.0), follow_redirects=True
         ) as client:
-            endpoint = f"/assets/{asset_id}/file"
-            for attempt in range(3):
-                try:
-                    logger.info("Attempting download: %s", endpoint)
-                    response = await client.get(endpoint, headers=self._headers(json_type=False))
+            # Try multiple download endpoints. Immich has used different paths across versions.
+            # 1. /assets/{id}/original (Standard stable endpoint for v2 & v3)
+            # 2. /assets/{id}/file (Alternate endpoint)
+            # 3. /asset/download/{id} (Legacy endpoint 1)
+            # 4. /download/asset/{id} (Legacy endpoint 2)
+            endpoints = [
+                f"/assets/{asset_id}/original",
+                f"/assets/{asset_id}/file",
+                f"/asset/download/{asset_id}",
+                f"/download/asset/{asset_id}",
+            ]
+            for endpoint in endpoints:
+                for attempt in range(3):
+                    try:
+                        logger.info("Attempting download: %s (attempt %d/3)", endpoint, attempt + 1)
+                        # Use binary headers (no Accept: application/json)
+                        response = await client.get(endpoint, headers=self._headers(json_type=False))
 
-                    if response.status_code == 200:
-                        if response.content:
-                            logger.info("Success: downloaded %d bytes for %s", len(response.content), asset_id)
-                            return response.content
-                        logger.warning(
-                            "Immich returned 200 OK but empty content for asset %s at %s (attempt %d/3)",
-                            asset_id,
-                            endpoint,
-                            attempt + 1,
-                        )
+                        if response.status_code == 200:
+                            if response.content:
+                                logger.info(
+                                    "Success: downloaded %d bytes for %s via %s",
+                                    len(response.content),
+                                    asset_id,
+                                    endpoint,
+                                )
+                                return response.content
+                            logger.warning(
+                                "Immich returned 200 OK but empty content for asset %s at %s (attempt %d/3)",
+                                asset_id,
+                                endpoint,
+                                attempt + 1,
+                            )
+                            if attempt < 2:
+                                await asyncio.sleep(0.5 * (attempt + 1))
+                                continue
+                        elif response.status_code == 404:
+                            logger.debug("Endpoint %s not found for asset %s", endpoint, asset_id)
+                            break
+                        else:
+                            logger.warning(
+                                "Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint
+                            )
+                            break
+                    except Exception as exc:
+                        logger.warning("Error downloading from %s: %s", endpoint, exc)
                         if attempt < 2:
                             await asyncio.sleep(0.5 * (attempt + 1))
                             continue
-                    else:
-                        logger.warning(
-                            "Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint
-                        )
                         break
-                except Exception as exc:
-                    logger.warning("Error downloading from %s: %s", endpoint, exc)
-                    if attempt < 2:
-                        await asyncio.sleep(0.5 * (attempt + 1))
-                        continue
-                    break
 
         try:
             logger.info("Falling back to thumbnail for asset %s", asset_id)
@@ -852,10 +872,10 @@ class ImmichClient:
                 logger.info("Thumbnail fallback succeeded: %d bytes for %s", len(thumbnail_bytes), asset_id)
                 return thumbnail_bytes
         except Exception as exc:
-            logger.warning("Thumbnail fallback also failed for %s: %s", asset_id, exc)
+            logger.warning("Thumbnail fallback failed for asset %s: %s", asset_id, exc)
 
         raise ImmichUnexpectedResponseError(
-            f"Could not download original asset data for {asset_id} after trying multiple endpoints"
+            f"Could not download original asset data for {asset_id} after trying multiple endpoints and thumbnail fallback"
         )
 
     async def update_asset(

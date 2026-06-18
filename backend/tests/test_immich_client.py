@@ -727,7 +727,7 @@ def test_add_assets_to_album_does_not_retry_on_auth_errors(monkeypatch: pytest.M
     ]
 
 
-def test_get_asset_data_uses_v3_asset_file_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_asset_data_uses_v3_asset_original_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_paths: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -743,8 +743,36 @@ def test_get_asset_data_uses_v3_asset_file_endpoint(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
     content = asyncio.run(ImmichClient("https://photos.example.com", "secret-key").get_asset_data("asset-1"))
 
-    assert seen_paths == ["/api/assets/asset-1/file"]
+    assert seen_paths == ["/api/assets/asset-1/original"]
     assert content == b"image-bytes"
+
+
+def test_get_asset_data_falls_back_to_alternate_and_legacy_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        seen_paths.append(path)
+        if path == "/api/download/asset/asset-1":
+            return httpx.Response(200, content=b"image-bytes-legacy", headers={"content-type": "image/jpeg"})
+        return httpx.Response(404)
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    content = asyncio.run(ImmichClient("https://photos.example.com", "secret-key").get_asset_data("asset-1"))
+
+    assert seen_paths == [
+        "/api/assets/asset-1/original",
+        "/api/assets/asset-1/file",
+        "/api/asset/download/asset-1",
+        "/api/download/asset/asset-1",
+    ]
+    assert content == b"image-bytes-legacy"
 
 
 def test_update_asset_uses_v3_patch_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
