@@ -18,7 +18,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const res = await fetch(getApiUrl('/api/health'), {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         setToken(token);
@@ -39,13 +39,20 @@ export function LoginPage() {
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
             <Lock size={24} />
           </div>
-          <h2 className="text-2xl font-semibold text-stone-900">Protected Access</h2>
-          <p className="mt-2 text-stone-500">Please enter your application access token to continue.</p>
+          <h2 className="text-2xl font-semibold text-stone-900">
+            Protected Access
+          </h2>
+          <p className="mt-2 text-stone-500">
+            Please enter your application access token to continue.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="token" className="block text-sm font-medium text-stone-700">
+            <label
+              htmlFor="token"
+              className="block text-sm font-medium text-stone-700"
+            >
               Access Token
             </label>
             <input
@@ -57,9 +64,7 @@ export function LoginPage() {
               className="mt-1 block w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2 text-stone-900 focus:border-emerald-500 focus:ring-emerald-500 outline-hidden transition-colors"
               required
             />
-            {error && (
-              <p className="mt-2 text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           </div>
           <button
             type="submit"

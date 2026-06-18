@@ -1,4 +1,7 @@
-import type { ImmichAssetSearchFilters, ImmichPersonFilter } from '../api/client';
+import type {
+  ImmichAssetSearchFilters,
+  ImmichPersonFilter,
+} from '../api/client';
 import type { HistoryStatusFilter } from './history.types';
 
 export type PersonFilterMode = ImmichPersonFilter['mode'];

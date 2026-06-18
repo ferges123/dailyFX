@@ -184,7 +184,14 @@ export type GenerationHistoryEntry = {
   id: number;
   task_id: string;
   generation_type: string;
-  status: 'QUEUED' | 'RUNNING' | 'PENDING_REVIEW' | 'UPLOADED' | 'REJECTED' | 'FAILED' | string;
+  status:
+    | 'QUEUED'
+    | 'RUNNING'
+    | 'PENDING_REVIEW'
+    | 'UPLOADED'
+    | 'REJECTED'
+    | 'FAILED'
+    | string;
   title: string;
   summary: string;
   source_asset_ids: string;
@@ -244,7 +251,10 @@ export type FilterPreset = {
 export type EffectPreset = {
   id: number;
   name: string;
-  groups: Record<string, { enabled: boolean; weight: number; config: Record<string, unknown> }>;
+  groups: Record<
+    string,
+    { enabled: boolean; weight: number; config: Record<string, unknown> }
+  >;
   created_at: string;
 };
 

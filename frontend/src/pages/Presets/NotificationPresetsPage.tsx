@@ -1,13 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Bell,
-  BellOff,
-  Monitor,
-  Plus,
-  Trash2,
-  Smartphone,
-} from 'lucide-react';
+import { Bell, BellOff, Monitor, Plus, Trash2, Smartphone } from 'lucide-react';
 import { InlineSpinner, ErrorBanner } from '../../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../../components/FormUI';
 import {
@@ -225,13 +218,14 @@ export function NotificationPresetsTab() {
 
   const webPushSupport = {
     hasNotification: typeof window !== 'undefined' && 'Notification' in window,
-    hasServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
+    hasServiceWorker:
+      typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
     hasPushManager: typeof window !== 'undefined' && 'PushManager' in window,
     isSecureContext: typeof window !== 'undefined' && window.isSecureContext,
   };
 
   const [notificationPermission, setNotificationPermission] = useState<string>(
-    webPushSupport.hasNotification ? Notification.permission : 'unsupported'
+    webPushSupport.hasNotification ? Notification.permission : 'unsupported',
   );
 
   const requestNotificationPermission = async () => {
@@ -251,12 +245,14 @@ export function NotificationPresetsTab() {
     webPushSupport.isSecureContext &&
     notificationPermission !== 'denied';
 
-  const { diagnosticsText, diagnosticsColor, showPermissionButton } = getPushDiagnostics(
-    webPushSupport,
-    notificationPermission
-  );
+  const { diagnosticsText, diagnosticsColor, showPermissionButton } =
+    getPushDiagnostics(webPushSupport, notificationPermission);
 
-  const [testSubResult, setTestSubResult] = useState<{ id: number; ok: boolean; msg: string } | null>(null);
+  const [testSubResult, setTestSubResult] = useState<{
+    id: number;
+    ok: boolean;
+    msg: string;
+  } | null>(null);
 
   const testSubMutation = useMutation({
     mutationFn: (subId: number) => testPushSubscription(subId),
@@ -326,12 +322,24 @@ export function NotificationPresetsTab() {
         errMsg = err;
       }
 
-      if (errMsg.includes('Permission denied') || errMsg.includes('permission')) {
-        errMsg = 'Permission denied. Please enable notifications for this site in your browser settings.';
-      } else if (errMsg.includes('is not secure') || (typeof window !== 'undefined' && !window.isSecureContext)) {
-        errMsg = 'Web Push requires a secure context (HTTPS) or a local localhost context.';
-      } else if (errMsg.includes('VAPID') || errMsg.includes('applicationServerKey')) {
-        errMsg = 'Invalid or missing VAPID public key. Please check your server configuration.';
+      if (
+        errMsg.includes('Permission denied') ||
+        errMsg.includes('permission')
+      ) {
+        errMsg =
+          'Permission denied. Please enable notifications for this site in your browser settings.';
+      } else if (
+        errMsg.includes('is not secure') ||
+        (typeof window !== 'undefined' && !window.isSecureContext)
+      ) {
+        errMsg =
+          'Web Push requires a secure context (HTTPS) or a local localhost context.';
+      } else if (
+        errMsg.includes('VAPID') ||
+        errMsg.includes('applicationServerKey')
+      ) {
+        errMsg =
+          'Invalid or missing VAPID public key. Please check your server configuration.';
       }
 
       setPushError(errMsg);
@@ -450,7 +458,9 @@ export function NotificationPresetsTab() {
               <div className="grid gap-4">
                 {/* Diagnostics Status Badge */}
                 <div className="flex flex-wrap items-center gap-2">
-                   <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${diagnosticsColor}`}>
+                  <div
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${diagnosticsColor}`}
+                  >
                     <span className="h-1.5 w-1.5 rounded-full bg-current" />
                     Status: {diagnosticsText}
                   </div>
@@ -470,9 +480,7 @@ export function NotificationPresetsTab() {
                   <button
                     type="button"
                     onClick={handlePushToggle}
-                    disabled={
-                      pushStatus === 'pending' || !canSubscribeToPush
-                    }
+                    disabled={pushStatus === 'pending' || !canSubscribeToPush}
                     className="app-button-secondary h-8 w-full px-3 text-xs disabled:opacity-50 sm:w-auto"
                   >
                     {pushStatus === 'subscribed' ? (
@@ -502,109 +510,125 @@ export function NotificationPresetsTab() {
                 {/* Warn if no device is targeted */}
                 {(form.push_subscription_ids ?? []).length === 0 && (
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
-                    This preset will not send Web Push notifications until you select at least one device.
+                    This preset will not send Web Push notifications until you
+                    select at least one device.
                   </div>
                 )}
 
                 {/* Subscriptions List with Checkboxes */}
                 {subscriptions.data &&
-                  subscriptions.data.subscriptions.length > 0 ? (
-                    <div className="grid gap-2">
-                      <div className="text-xs font-semibold text-stone-500">
-                        Select devices to target with this preset:
-                      </div>
-                      {subscriptions.data.subscriptions.map((sub) => {
-                        const label =
-                          sub.device_label ||
-                          sub.user_agent ||
-                          'Unknown browser';
-                        const isMobile = /mobile|android|iphone|ipad/i.test(
-                          label,
-                        );
-                        const isChecked = (form.push_subscription_ids ?? []).includes(sub.id);
-                        const isTesting = testSubMutation.isPending && testSubMutation.variables === sub.id;
-                        const testStatus = testSubResult && testSubResult.id === sub.id ? testSubResult : null;
+                subscriptions.data.subscriptions.length > 0 ? (
+                  <div className="grid gap-2">
+                    <div className="text-xs font-semibold text-stone-500">
+                      Select devices to target with this preset:
+                    </div>
+                    {subscriptions.data.subscriptions.map((sub) => {
+                      const label =
+                        sub.device_label || sub.user_agent || 'Unknown browser';
+                      const isMobile = /mobile|android|iphone|ipad/i.test(
+                        label,
+                      );
+                      const isChecked = (
+                        form.push_subscription_ids ?? []
+                      ).includes(sub.id);
+                      const isTesting =
+                        testSubMutation.isPending &&
+                        testSubMutation.variables === sub.id;
+                      const testStatus =
+                        testSubResult && testSubResult.id === sub.id
+                          ? testSubResult
+                          : null;
 
-                        return (
-                          <div
-                            key={sub.id}
-                            className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 hover:bg-stone-100 transition-colors"
+                      return (
+                        <div
+                          key={sub.id}
+                          className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 hover:bg-stone-100 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`push-sub-${sub.id}`}
+                            checked={isChecked}
+                            onChange={(e) =>
+                              togglePushSubscriptionTarget(
+                                sub.id,
+                                e.target.checked,
+                              )
+                            }
+                            className="h-4 w-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
+                          />
+                          <label
+                            htmlFor={`push-sub-${sub.id}`}
+                            className="flex flex-1 items-center gap-2 cursor-pointer"
                           >
-                            <input
-                              type="checkbox"
-                              id={`push-sub-${sub.id}`}
-                              checked={isChecked}
-                              onChange={(e) => togglePushSubscriptionTarget(sub.id, e.target.checked)}
-                              className="h-4 w-4 rounded border-stone-300 text-stone-900 focus:ring-stone-900"
-                            />
-                            <label
-                              htmlFor={`push-sub-${sub.id}`}
-                              className="flex flex-1 items-center gap-2 cursor-pointer"
-                            >
-                              {isMobile ? (
-                                <Smartphone
-                                  size={14}
-                                  className="shrink-0 text-stone-400"
-                                />
-                              ) : (
-                                <Monitor
-                                  size={14}
-                                  className="shrink-0 text-stone-400"
-                                />
-                              )}
-                              <span className="flex-1 truncate text-xs text-stone-700 font-medium">
-                                {label}
-                              </span>
-                            </label>
-
-                            {testStatus && (
-                              <span className={`text-[10px] font-medium transition-opacity duration-300 ${testStatus.ok ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {testStatus.msg}
-                              </span>
+                            {isMobile ? (
+                              <Smartphone
+                                size={14}
+                                className="shrink-0 text-stone-400"
+                              />
+                            ) : (
+                              <Monitor
+                                size={14}
+                                className="shrink-0 text-stone-400"
+                              />
                             )}
+                            <span className="flex-1 truncate text-xs text-stone-700 font-medium">
+                              {label}
+                            </span>
+                          </label>
 
-                            <button
-                              type="button"
-                              onClick={() => testSubMutation.mutate(sub.id)}
-                              disabled={isTesting}
-                              className="shrink-0 text-[10px] font-semibold text-stone-600 hover:text-stone-900 bg-stone-200 hover:bg-stone-300 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-50"
+                          {testStatus && (
+                            <span
+                              className={`text-[10px] font-medium transition-opacity duration-300 ${testStatus.ok ? 'text-emerald-600' : 'text-rose-600'}`}
                             >
-                              {isTesting ? 'Testing...' : 'Test'}
-                            </button>
+                              {testStatus.msg}
+                            </span>
+                          )}
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setConfirmConfig({
-                                  isOpen: true,
-                                  title: 'Delete Subscription Globally',
-                                  description: 'Deleting this subscription will remove it from all preset targets. Continue?',
-                                  confirmLabel: 'Delete',
-                                  variant: 'danger',
-                                  onConfirm: () => {
-                                    deleteSubMutation.mutate(sub.id);
-                                    setForm((f) => ({
-                                      ...f,
-                                      push_subscription_ids: (f.push_subscription_ids ?? []).filter((id) => id !== sub.id),
-                                    }));
-                                  },
-                                });
-                              }}
-                              disabled={deleteSubMutation.isPending}
-                              className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50 transition-colors"
-                              title="Delete globally"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-stone-500 italic">
-                      No registered devices found. Register this browser above.
-                    </div>
-                  )}
+                          <button
+                            type="button"
+                            onClick={() => testSubMutation.mutate(sub.id)}
+                            disabled={isTesting}
+                            className="shrink-0 text-[10px] font-semibold text-stone-600 hover:text-stone-900 bg-stone-200 hover:bg-stone-300 px-2.5 py-0.5 rounded-full transition-colors disabled:opacity-50"
+                          >
+                            {isTesting ? 'Testing...' : 'Test'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmConfig({
+                                isOpen: true,
+                                title: 'Delete Subscription Globally',
+                                description:
+                                  'Deleting this subscription will remove it from all preset targets. Continue?',
+                                confirmLabel: 'Delete',
+                                variant: 'danger',
+                                onConfirm: () => {
+                                  deleteSubMutation.mutate(sub.id);
+                                  setForm((f) => ({
+                                    ...f,
+                                    push_subscription_ids: (
+                                      f.push_subscription_ids ?? []
+                                    ).filter((id) => id !== sub.id),
+                                  }));
+                                },
+                              });
+                            }}
+                            disabled={deleteSubMutation.isPending}
+                            className="shrink-0 text-stone-400 hover:text-rose-600 disabled:opacity-50 transition-colors"
+                            title="Delete globally"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-stone-500 italic">
+                    No registered devices found. Register this browser above.
+                  </div>
+                )}
               </div>
             </SectionCard>
           )}
@@ -802,7 +826,10 @@ export function NotificationPresetsTab() {
         </div>
       )}
 
-      <div aria-label="Notification presets list" className="grid gap-2 lg:grid-cols-2">
+      <div
+        aria-label="Notification presets list"
+        className="grid gap-2 lg:grid-cols-2"
+      >
         {presets.data?.map((p) => (
           <NotificationPresetCard
             key={p.id}

@@ -13,7 +13,10 @@ export function getImmichAssetExif(assetId: string) {
   return request<ImmichAssetExif>(`/api/immich/assets/${assetId}/exif`);
 }
 
-export function getImmichAssetDetailUrl(immichUrl: string | null | undefined, assetId: string | null | undefined) {
+export function getImmichAssetDetailUrl(
+  immichUrl: string | null | undefined,
+  assetId: string | null | undefined,
+) {
   if (!immichUrl || !assetId) return null;
   const base = immichUrl.replace(/\/$/, '');
   return `${base}/photos/${assetId}`;

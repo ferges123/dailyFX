@@ -20,7 +20,11 @@ import {
   MultiSelectPanel,
   PersonSelectPanel,
 } from '../../components/FilterPanels';
-import { PresetHeader, PresetFormActions, PresetActionRow } from './PresetHeader';
+import {
+  PresetHeader,
+  PresetFormActions,
+  PresetActionRow,
+} from './PresetHeader';
 
 type FilterFormState = {
   name: string;
@@ -466,7 +470,10 @@ export function FilterPresetsTab() {
         </div>
       )}
 
-      <div aria-label="Filter presets list" className="grid gap-2 lg:grid-cols-2">
+      <div
+        aria-label="Filter presets list"
+        className="grid gap-2 lg:grid-cols-2"
+      >
         {(() => {
           const albumNames = new Map(
             (options.data?.albums ?? []).map((a) => [a.id, a.album_name]),

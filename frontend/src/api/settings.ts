@@ -1,5 +1,9 @@
 import { request } from './base';
-import { type Settings, type SettingsUpdate, type ConnectionTest } from './types';
+import {
+  type Settings,
+  type SettingsUpdate,
+  type ConnectionTest,
+} from './types';
 
 export function getSettings() {
   return request<Settings>('/api/settings');
@@ -60,4 +64,3 @@ export function getProviderModels(provider: string) {
     image_models: Array<{ label: string; value: string }>;
   }>(`/api/settings/models/${provider}`);
 }
-

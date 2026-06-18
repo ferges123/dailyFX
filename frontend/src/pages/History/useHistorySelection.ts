@@ -9,18 +9,31 @@ export function useHistorySelection(
   setSelectedHistoryTaskId: (taskId: string | null) => void,
   allowFallbackSelection = true,
 ) {
-  const [mobileShowDetail, setMobileShowDetail] = useState(!allowFallbackSelection);
+  const [mobileShowDetail, setMobileShowDetail] = useState(
+    !allowFallbackSelection,
+  );
 
   const selectedHistoryEntry = useMemo(
-    () => filteredHistoryItems.find((item) => item.task_id === selectedHistoryTaskId) ?? null,
+    () =>
+      filteredHistoryItems.find(
+        (item) => item.task_id === selectedHistoryTaskId,
+      ) ?? null,
     [filteredHistoryItems, selectedHistoryTaskId],
   );
 
   useEffect(() => {
-    if (allowFallbackSelection && !selectedHistoryTaskId && filteredHistoryItems.length > 0) {
-      const lastStartedTaskId = sessionStorage.getItem(LAST_STARTED_TASK_ID_KEY);
+    if (
+      allowFallbackSelection &&
+      !selectedHistoryTaskId &&
+      filteredHistoryItems.length > 0
+    ) {
+      const lastStartedTaskId = sessionStorage.getItem(
+        LAST_STARTED_TASK_ID_KEY,
+      );
       if (lastStartedTaskId) {
-        const found = filteredHistoryItems.find((item) => item.task_id === lastStartedTaskId);
+        const found = filteredHistoryItems.find(
+          (item) => item.task_id === lastStartedTaskId,
+        );
         if (found) {
           setSelectedHistoryTaskId(lastStartedTaskId);
           sessionStorage.removeItem(LAST_STARTED_TASK_ID_KEY);
@@ -29,13 +42,32 @@ export function useHistorySelection(
       }
       setSelectedHistoryTaskId(filteredHistoryItems[0].task_id);
     }
-  }, [allowFallbackSelection, filteredHistoryItems, selectedHistoryTaskId, setSelectedHistoryTaskId]);
+  }, [
+    allowFallbackSelection,
+    filteredHistoryItems,
+    selectedHistoryTaskId,
+    setSelectedHistoryTaskId,
+  ]);
 
   useEffect(() => {
-    if (selectedHistoryTaskId && !filteredHistoryItems.some((item) => item.task_id === selectedHistoryTaskId)) {
-      setSelectedHistoryTaskId(allowFallbackSelection ? (filteredHistoryItems[0]?.task_id ?? null) : null);
+    if (
+      selectedHistoryTaskId &&
+      !filteredHistoryItems.some(
+        (item) => item.task_id === selectedHistoryTaskId,
+      )
+    ) {
+      setSelectedHistoryTaskId(
+        allowFallbackSelection
+          ? (filteredHistoryItems[0]?.task_id ?? null)
+          : null,
+      );
     }
-  }, [allowFallbackSelection, filteredHistoryItems, selectedHistoryTaskId, setSelectedHistoryTaskId]);
+  }, [
+    allowFallbackSelection,
+    filteredHistoryItems,
+    selectedHistoryTaskId,
+    setSelectedHistoryTaskId,
+  ]);
 
   return {
     selectedHistoryEntry,

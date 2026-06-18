@@ -136,7 +136,9 @@ describe('Presets pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
 
-    expect(await screen.findByText('Editing: Trip filters')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Editing: Trip filters'),
+    ).toBeInTheDocument();
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
   });
 
@@ -174,8 +176,6 @@ describe('Presets pages', () => {
       'lg:grid-cols-2',
     );
   });
-
-
 
   it('shows notification preset validation when creating a new preset', async () => {
     vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
@@ -300,11 +300,11 @@ describe('Presets pages', () => {
       'lg:grid-cols-2',
     );
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Edit AI Caricature' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit AI Caricature' }));
 
-    expect(await screen.findByText('Editing: AI Caricature')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Editing: AI Caricature'),
+    ).toBeInTheDocument();
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
   });
 
@@ -389,7 +389,9 @@ describe('Presets pages', () => {
       ),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Filter by group')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('AI effects group filter')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('AI effects group filter'),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('AI effects header actions')).toHaveClass(
       'sm:flex-row',
     );
@@ -410,7 +412,9 @@ describe('Presets pages', () => {
     };
 
     const mockPushManager = {
-      subscribe: vi.fn().mockRejectedValue(new Error('VAPID key error or permission denied')),
+      subscribe: vi
+        .fn()
+        .mockRejectedValue(new Error('VAPID key error or permission denied')),
       getSubscription: vi.fn().mockResolvedValue(null),
     };
     const mockServiceWorker = {
@@ -451,7 +455,9 @@ describe('Presets pages', () => {
       await screen.findByText(/Failed to update subscription:/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Permission denied. Please enable notifications for this site/),
+      screen.getByText(
+        /Permission denied. Please enable notifications for this site/,
+      ),
     ).toBeInTheDocument();
 
     // 7. Cleanup global mocks

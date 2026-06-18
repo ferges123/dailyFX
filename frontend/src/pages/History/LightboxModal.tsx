@@ -19,7 +19,9 @@ import { formatDateTime } from '../datetime.utils';
 import { logger } from '../../utils/logger';
 
 // Format shutter speed decimal into a readable fraction
-function formatShutterSpeed(seconds: number | string | undefined | null): string {
+function formatShutterSpeed(
+  seconds: number | string | undefined | null,
+): string {
   if (seconds === undefined || seconds === null) return '';
   const s = Number(seconds);
   if (isNaN(s)) return String(seconds);
@@ -82,7 +84,9 @@ export function LightboxModal({
   exif,
 }: LightboxModalProps) {
   const [isSharing, setIsSharing] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>(
+    'idle',
+  );
   const [showOriginal, setShowOriginal] = useState(false);
   const trapRef = useFocusTrap(isOpen);
 
@@ -99,7 +103,9 @@ export function LightboxModal({
       return null;
     }
   })();
-  const originalImageUrl = sourceAssetId ? `/api/immich/assets/${sourceAssetId}/thumbnail?size=preview` : null;
+  const originalImageUrl = sourceAssetId
+    ? `/api/immich/assets/${sourceAssetId}/thumbnail?size=preview`
+    : null;
 
   // Handle Escape key to close lightbox
   useEffect(() => {
@@ -121,7 +127,9 @@ export function LightboxModal({
     if (typeof navigator.share === 'function') {
       setIsSharing(true);
       try {
-        const response = await fetch(`/api/generation/history/${entry.task_id}/image`);
+        const response = await fetch(
+          `/api/generation/history/${entry.task_id}/image`,
+        );
         if (!response.ok) throw new Error('Failed to fetch image');
 
         const ext = entry.output_format || 'png';
@@ -130,7 +138,10 @@ export function LightboxModal({
           type: blob.type || `image/${ext}`,
         });
 
-        if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
+        if (
+          typeof navigator.canShare === 'function' &&
+          !navigator.canShare({ files: [file] })
+        ) {
           throw new Error('File sharing not supported by browser');
         }
 
@@ -244,13 +255,19 @@ export function LightboxModal({
                   <div className="flex items-start gap-2 text-xs">
                     <Cpu size={14} className="text-stone-500 shrink-0 mt-0.5" />
                     <div>
-                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Camera</div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                        Camera
+                      </div>
                       <div className="font-semibold text-white mt-0.5">
                         {(() => {
                           const make = exif.make || '';
                           const model = exif.model || '';
                           if (make && model) {
-                            return model.toLowerCase().includes(make.toLowerCase()) ? model : `${make} ${model}`;
+                            return model
+                              .toLowerCase()
+                              .includes(make.toLowerCase())
+                              ? model
+                              : `${make} ${model}`;
                           }
                           return make || model;
                         })()}
@@ -262,9 +279,14 @@ export function LightboxModal({
                 {/* Lens Model */}
                 {exif.lensModel && (
                   <div className="flex items-start gap-2 text-xs">
-                    <Layers size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <Layers
+                      size={14}
+                      className="text-stone-500 shrink-0 mt-0.5"
+                    />
                     <div>
-                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Lens</div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                        Lens
+                      </div>
                       <div className="font-semibold text-white mt-0.5 truncate max-w-[220px]">
                         {exif.lensModel}
                       </div>
@@ -273,13 +295,23 @@ export function LightboxModal({
                 )}
 
                 {/* Exposure Parameters (Shutter Speed, f-stop, ISO, Focal Length) */}
-                {(exif.exposureTime || exif.fNumber || exif.iso || exif.focalLength) && (
+                {(exif.exposureTime ||
+                  exif.fNumber ||
+                  exif.iso ||
+                  exif.focalLength) && (
                   <div className="flex items-start gap-2 text-xs">
-                    <Info size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <Info
+                      size={14}
+                      className="text-stone-500 shrink-0 mt-0.5"
+                    />
                     <div>
-                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Settings</div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                        Settings
+                      </div>
                       <div className="font-semibold text-stone-300 mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
-                        {exif.exposureTime && <span>{formatShutterSpeed(exif.exposureTime)}</span>}
+                        {exif.exposureTime && (
+                          <span>{formatShutterSpeed(exif.exposureTime)}</span>
+                        )}
                         {exif.fNumber && <span>f/{exif.fNumber}</span>}
                         {exif.iso && <span>ISO {exif.iso}</span>}
                         {exif.focalLength && <span>{exif.focalLength}mm</span>}
@@ -289,15 +321,26 @@ export function LightboxModal({
                 )}
 
                 {/* File Info (Size & Resolution) */}
-                {(exif.fileSizeInByte || exif.exifImageWidth || exif.exifImageHeight) && (
+                {(exif.fileSizeInByte ||
+                  exif.exifImageWidth ||
+                  exif.exifImageHeight) && (
                   <div className="flex items-start gap-2 text-xs">
-                    <HardDrive size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <HardDrive
+                      size={14}
+                      className="text-stone-500 shrink-0 mt-0.5"
+                    />
                     <div>
-                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">File / Dimension</div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                        File / Dimension
+                      </div>
                       <div className="font-semibold text-stone-300 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                        {exif.fileSizeInByte && <span>{formatFileSize(exif.fileSizeInByte)}</span>}
+                        {exif.fileSizeInByte && (
+                          <span>{formatFileSize(exif.fileSizeInByte)}</span>
+                        )}
                         {exif.exifImageWidth && exif.exifImageHeight && (
-                          <span>{exif.exifImageWidth} × {exif.exifImageHeight}</span>
+                          <span>
+                            {exif.exifImageWidth} × {exif.exifImageHeight}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -307,42 +350,57 @@ export function LightboxModal({
                 {/* Date Taken */}
                 {(exif.dateTimeOriginal || entry.created_at) && (
                   <div className="flex items-start gap-2 text-xs">
-                    <Calendar size={14} className="text-stone-500 shrink-0 mt-0.5" />
+                    <Calendar
+                      size={14}
+                      className="text-stone-500 shrink-0 mt-0.5"
+                    />
                     <div>
-                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Captured</div>
+                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                        Captured
+                      </div>
                       <div className="font-semibold text-stone-300 mt-0.5">
-                        {formatDateTime(exif.dateTimeOriginal || entry.created_at)}
+                        {formatDateTime(
+                          exif.dateTimeOriginal || entry.created_at,
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
 
                 {/* GPS Coordinates & Location */}
-                {typeof exif.latitude === 'number' && typeof exif.longitude === 'number' && (
-                  <div className="flex items-start gap-2 text-xs">
-                    <MapPin size={14} className="text-stone-500 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Location</div>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${exif.latitude},${exif.longitude}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 mt-0.5 hover:underline"
-                      >
-                        <span>
-                          {(() => {
-                            const parts = [];
-                            if (exif.city) parts.push(exif.city);
-                            if (exif.state) parts.push(exif.state);
-                            if (exif.country) parts.push(exif.country);
-                            return parts.length > 0 ? parts.join(', ') : `${exif.latitude.toFixed(5)}, ${exif.longitude.toFixed(5)}`;
-                          })()}
-                        </span>
-                        <ExternalLink size={10} />
-                      </a>
+                {typeof exif.latitude === 'number' &&
+                  typeof exif.longitude === 'number' && (
+                    <div className="flex items-start gap-2 text-xs">
+                      <MapPin
+                        size={14}
+                        className="text-stone-500 shrink-0 mt-0.5"
+                      />
+                      <div>
+                        <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                          Location
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${exif.latitude},${exif.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 mt-0.5 hover:underline"
+                        >
+                          <span>
+                            {(() => {
+                              const parts = [];
+                              if (exif.city) parts.push(exif.city);
+                              if (exif.state) parts.push(exif.state);
+                              if (exif.country) parts.push(exif.country);
+                              return parts.length > 0
+                                ? parts.join(', ')
+                                : `${exif.latitude.toFixed(5)}, ${exif.longitude.toFixed(5)}`;
+                            })()}
+                          </span>
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             ) : (
               <div className="text-[10px] text-stone-500 text-center py-4 bg-stone-950/20 border border-stone-850/50 rounded-xl">
@@ -363,7 +421,13 @@ export function LightboxModal({
                 disabled={isSharing}
                 className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-white shadow-lg transition hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Share image"
-                title={shareStatus === 'copied' ? 'Link copied!' : shareStatus === 'error' ? 'Failed to copy' : 'Share image'}
+                title={
+                  shareStatus === 'copied'
+                    ? 'Link copied!'
+                    : shareStatus === 'error'
+                      ? 'Failed to copy'
+                      : 'Share image'
+                }
               >
                 {shareStatus === 'copied' ? (
                   <Check size={14} className="text-emerald-500" />

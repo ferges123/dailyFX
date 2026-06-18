@@ -58,7 +58,9 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
 
   if (error) {
     return (
-      <div className={`${props.className} flex items-center justify-center bg-stone-100 text-stone-400`}>
+      <div
+        className={`${props.className} flex items-center justify-center bg-stone-100 text-stone-400`}
+      >
         <span className="text-xs">Failed to load</span>
       </div>
     );
@@ -66,7 +68,9 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
 
   if (loading || !blobUrl) {
     return (
-      <div className={`${props.className} animate-pulse rounded-[inherit] bg-stone-100/90`} />
+      <div
+        className={`${props.className} animate-pulse rounded-[inherit] bg-stone-100/90`}
+      />
     );
   }
 

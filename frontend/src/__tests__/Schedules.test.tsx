@@ -142,7 +142,9 @@ describe('SchedulesPage', () => {
     expect(screen.getAllByText('error · timeout').length).toBeGreaterThan(0);
     expect(screen.getByText('Vision: local (qwen2.5-vl)')).toBeInTheDocument();
     expect(screen.getByText('Image: local (flux.1)')).toBeInTheDocument();
-    expect(screen.getAllByText('AI photo selection on').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('AI photo selection on').length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('uses a two-column schedule list', async () => {
@@ -605,6 +607,8 @@ describe('SchedulesPage', () => {
 
     const formPanel = await screen.findByLabelText('Schedule form panel');
 
-    expect(within(formPanel).getByLabelText('AI photo selection')).toBeDisabled();
+    expect(
+      within(formPanel).getByLabelText('AI photo selection'),
+    ).toBeDisabled();
   });
 });

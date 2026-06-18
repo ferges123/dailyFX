@@ -71,8 +71,14 @@ export function ConfirmDeleteModal({
   const isDanger = config.isDanger;
 
   return (
-    <div ref={trapRef} className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <div
+      ref={trapRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-5 shadow-xl">
         <button
           type="button"
@@ -84,13 +90,16 @@ export function ConfirmDeleteModal({
         </button>
 
         <div className="flex items-start gap-3 mb-4">
-          <div className={`shrink-0 rounded-xl p-2.5 ${isDanger ? 'bg-red-100' : 'bg-amber-100'}`}>
-            <AlertTriangle size={18} className={isDanger ? 'text-red-600' : 'text-amber-600'} />
+          <div
+            className={`shrink-0 rounded-xl p-2.5 ${isDanger ? 'bg-red-100' : 'bg-amber-100'}`}
+          >
+            <AlertTriangle
+              size={18}
+              className={isDanger ? 'text-red-600' : 'text-amber-600'}
+            />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-stone-900">
-              {config.title}
-            </h3>
+            <h3 className="text-sm font-bold text-stone-900">{config.title}</h3>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
               {config.desc}
             </p>

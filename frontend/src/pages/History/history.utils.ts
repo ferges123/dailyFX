@@ -1,5 +1,8 @@
 import { type InfiniteData } from '@tanstack/react-query';
-import { type GenerationHistoryEntry, type GenerationHistoryPage } from '../../api/client';
+import {
+  type GenerationHistoryEntry,
+  type GenerationHistoryPage,
+} from '../../api/client';
 import { type GenerationStreamEvent } from '../../api/generationStream';
 import { type HistoryStatusFilter } from '../history.types';
 
@@ -19,9 +22,14 @@ export function matchesHistoryFilters(
     return true;
   }
 
-  return [item.title, item.summary, item.generation_type, item.provider, item.model, item.album_name].some((value) =>
-    (value ?? '').toLowerCase().includes(needle),
-  );
+  return [
+    item.title,
+    item.summary,
+    item.generation_type,
+    item.provider,
+    item.model,
+    item.album_name,
+  ].some((value) => (value ?? '').toLowerCase().includes(needle));
 }
 
 export function updateHistoryCacheForUpsert(
@@ -39,7 +47,9 @@ export function updateHistoryCacheForUpsert(
   let found = false;
 
   for (const page of pages) {
-    const index = page.items.findIndex((item) => item.task_id === entry.task_id);
+    const index = page.items.findIndex(
+      (item) => item.task_id === entry.task_id,
+    );
     if (index < 0) continue;
 
     found = true;
@@ -63,7 +73,10 @@ export function updateHistoryCacheForUpsert(
     } else {
       pages[0] = {
         ...pages[0],
-        items: [entry, ...pages[0].items.filter((item) => item.task_id !== entry.task_id)].slice(0, HISTORY_PAGE_LIMIT),
+        items: [
+          entry,
+          ...pages[0].items.filter((item) => item.task_id !== entry.task_id),
+        ].slice(0, HISTORY_PAGE_LIMIT),
         total: pages[0].total + 1,
       };
     }
@@ -98,7 +111,9 @@ export function updateHistoryCacheForTask(
   }));
 
   for (const page of pages) {
-    const index = page.items.findIndex((item) => item.task_id === payload.task_id);
+    const index = page.items.findIndex(
+      (item) => item.task_id === payload.task_id,
+    );
     if (index < 0) continue;
 
     const current = page.items[index];
@@ -106,8 +121,8 @@ export function updateHistoryCacheForTask(
       payload.status === 'failed'
         ? 'FAILED'
         : payload.status === 'running' && current.status === 'RUNNING'
-        ? 'RUNNING'
-        : current.status;
+          ? 'RUNNING'
+          : current.status;
     const merged: GenerationHistoryEntry = {
       ...current,
       status: nextStatus,
@@ -129,14 +144,16 @@ export function updateHistoryCacheForTask(
   };
 }
 
-export function historyStatusToStatusParam(historyStatus: HistoryStatusFilter): string | undefined {
+export function historyStatusToStatusParam(
+  historyStatus: HistoryStatusFilter,
+): string | undefined {
   return historyStatus === 'generated'
     ? 'PENDING_REVIEW'
     : historyStatus === 'uploaded'
-    ? 'UPLOADED'
-    : historyStatus === 'failed'
-    ? 'FAILED'
-    : historyStatus === 'rejected'
-    ? 'REJECTED'
-    : undefined;
+      ? 'UPLOADED'
+      : historyStatus === 'failed'
+        ? 'FAILED'
+        : historyStatus === 'rejected'
+          ? 'REJECTED'
+          : undefined;
 }

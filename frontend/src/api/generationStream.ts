@@ -1,10 +1,18 @@
 import { getApiUrl, getAuthToken } from './client';
 
-export type GenerationStreamConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+export type GenerationStreamConnectionState =
+  | 'connected'
+  | 'reconnecting'
+  | 'disconnected';
 
 export type GenerationStreamEvent = {
   id: number | null;
-  event: 'history-upsert' | 'task-upsert' | 'heartbeat' | 'resync-required' | string;
+  event:
+    | 'history-upsert'
+    | 'task-upsert'
+    | 'heartbeat'
+    | 'resync-required'
+    | string;
   data: unknown;
 };
 
@@ -60,7 +68,12 @@ async function consumeEventStream(
   let current: ParsedSseEvent = { id: null, event: 'message', data: '' };
 
   const dispatchCurrent = () => {
-    if (current.event === 'message' && current.data.length === 0 && current.id === null) return;
+    if (
+      current.event === 'message' &&
+      current.data.length === 0 &&
+      current.id === null
+    )
+      return;
     onDispatch(buildEventMessage(current));
     current = { id: null, event: 'message', data: '' };
   };
@@ -72,7 +85,11 @@ async function consumeEventStream(
         if (buffer.length > 0) {
           buffer += decoder.decode();
         }
-        if (current.event !== 'message' || current.data.length > 0 || current.id !== null) {
+        if (
+          current.event !== 'message' ||
+          current.data.length > 0 ||
+          current.id !== null
+        ) {
           dispatchCurrent();
         }
         return;
@@ -102,7 +119,9 @@ async function consumeEventStream(
         } else if (field === 'event') {
           current.event = rawValue || 'message';
         } else if (field === 'data') {
-          current.data = current.data ? `${current.data}\n${rawValue}` : rawValue;
+          current.data = current.data
+            ? `${current.data}\n${rawValue}`
+            : rawValue;
         }
       }
     }
@@ -111,7 +130,9 @@ async function consumeEventStream(
   }
 }
 
-export function openGenerationStream(options: OpenGenerationStreamOptions): { close: () => void } {
+export function openGenerationStream(options: OpenGenerationStreamOptions): {
+  close: () => void;
+} {
   const controller = new AbortController();
   let closed = false;
   let lastEventId = options.lastEventId ?? 0;

@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 
 type StatusTone = 'neutral' | 'success' | 'warning' | 'danger';
 
-const toneClasses: Record<StatusTone, { shell: string; label: string; value: string }> = {
+const toneClasses: Record<
+  StatusTone,
+  { shell: string; label: string; value: string }
+> = {
   neutral: {
     shell: 'border-stone-200/80 bg-white/85',
     label: 'text-stone-500',
@@ -40,13 +43,19 @@ export function StatusTile({
 }) {
   const classes = toneClasses[tone];
   return (
-    <div className={`rounded-2xl border p-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md md:p-4 ${classes.shell}`}>
+    <div
+      className={`rounded-2xl border p-3 shadow-[0_8px_24px_rgba(36,29,16,0.04)] backdrop-blur-md md:p-4 ${classes.shell}`}
+    >
       <div className={`flex items-center gap-2 ${classes.label}`}>
         {icon}
-        <span className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.2em]">
+          {label}
+        </span>
       </div>
       <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <div className={`text-base font-semibold ${classes.value}`}>{value}</div>
+        <div className={`text-base font-semibold ${classes.value}`}>
+          {value}
+        </div>
         {detail ? <div className="text-xs text-stone-500">{detail}</div> : null}
       </div>
     </div>

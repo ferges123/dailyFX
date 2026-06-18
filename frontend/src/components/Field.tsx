@@ -1,4 +1,8 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+} from 'react';
 import { HelpCircle } from 'lucide-react';
 
 type FieldProps = {
@@ -10,28 +14,55 @@ type FieldProps = {
   optional?: boolean;
 } & InputHTMLAttributes<HTMLInputElement>;
 
-export function Field({ label, hint, icon, error, required, optional, className = '', ...props }: FieldProps) {
+export function Field({
+  label,
+  hint,
+  icon,
+  error,
+  required,
+  optional,
+  className = '',
+  ...props
+}: FieldProps) {
   return (
     <label className="grid gap-1.5 text-sm font-medium text-stone-800">
       <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
         <span>{label}</span>
         {hint && typeof hint === 'string' ? (
-          <span title={hint} aria-label={hint} className="inline-flex items-center text-stone-400 transition hover:text-stone-600">
+          <span
+            title={hint}
+            aria-label={hint}
+            className="inline-flex items-center text-stone-400 transition hover:text-stone-600"
+          >
             <HelpCircle size={12} />
           </span>
         ) : null}
         {required && <span className="text-rose-500">*</span>}
-        {optional && !required && <span className="text-xs font-medium text-stone-400">optional</span>}
+        {optional && !required && (
+          <span className="text-xs font-medium text-stone-400">optional</span>
+        )}
       </span>
       <div className="relative">
-        {icon ? <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-400">{icon}</span> : null}
+        {icon ? (
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-400">
+            {icon}
+          </span>
+        ) : null}
         <input
           className={`app-control ${error ? 'border-rose-300 focus:border-rose-500' : ''} ${icon ? 'pl-9 pr-3' : ''} ${className}`}
           {...props}
         />
       </div>
-      {error ? <span className="text-xs font-normal leading-5 text-rose-600">{error}</span> : null}
-      {hint && typeof hint !== 'string' ? <span className="text-xs font-normal leading-5 text-stone-500">{hint}</span> : null}
+      {error ? (
+        <span className="text-xs font-normal leading-5 text-rose-600">
+          {error}
+        </span>
+      ) : null}
+      {hint && typeof hint !== 'string' ? (
+        <span className="text-xs font-normal leading-5 text-stone-500">
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }
@@ -44,13 +75,23 @@ type SelectFieldProps = {
   optional?: boolean;
 } & SelectHTMLAttributes<HTMLSelectElement>;
 
-export function SelectField({ label, children, error, required, optional, className = '', ...props }: SelectFieldProps) {
+export function SelectField({
+  label,
+  children,
+  error,
+  required,
+  optional,
+  className = '',
+  ...props
+}: SelectFieldProps) {
   return (
     <label className="grid gap-1.5 text-sm font-medium text-stone-800">
       <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
         <span>{label}</span>
         {required && <span className="text-rose-500">*</span>}
-        {optional && !required && <span className="text-xs font-medium text-stone-400">optional</span>}
+        {optional && !required && (
+          <span className="text-xs font-medium text-stone-400">optional</span>
+        )}
       </span>
       <select
         className={`app-control ${error ? 'border-rose-300 focus:border-rose-500' : ''} ${className}`}
@@ -58,7 +99,11 @@ export function SelectField({ label, children, error, required, optional, classN
       >
         {children}
       </select>
-      {error ? <span className="text-xs font-normal leading-5 text-rose-600">{error}</span> : null}
+      {error ? (
+        <span className="text-xs font-normal leading-5 text-rose-600">
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }

@@ -1,10 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save, Trash2 } from 'lucide-react';
-import {
-  type FormEvent,
-  useEffect,
-  useState,
-} from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import {
   getSettings,
@@ -59,10 +55,13 @@ type TestState = {
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<'rejected' | 'failed' | 'pending' | 'accepted' | 'all' | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<
+    'rejected' | 'failed' | 'pending' | 'accepted' | 'all' | null
+  >(null);
 
   const clearHistoryMutation = useMutation({
-    mutationFn: (status: 'rejected' | 'failed' | 'pending' | 'accepted') => clearHistoryByStatus(status),
+    mutationFn: (status: 'rejected' | 'failed' | 'pending' | 'accepted') =>
+      clearHistoryByStatus(status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
       setConfirmDeleteOpen(null);
@@ -234,9 +233,12 @@ export function SettingsPage() {
 
       {/* Danger Zone */}
       <div className="app-panel border border-red-200/50 bg-red-50/10 p-3 md:p-4 rounded-2xl">
-        <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-red-800 mb-2">Danger Zone</h3>
+        <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-red-800 mb-2">
+          Danger Zone
+        </h3>
         <p className="text-xs text-stone-500 mb-4 leading-relaxed">
-          The following actions will permanently delete history records and their associated files from disk. These actions cannot be undone.
+          The following actions will permanently delete history records and
+          their associated files from disk. These actions cannot be undone.
         </p>
         <div className="flex flex-wrap gap-2">
           <button

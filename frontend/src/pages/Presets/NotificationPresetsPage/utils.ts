@@ -5,13 +5,17 @@ export function getPushDiagnostics(
     hasPushManager: boolean;
     isSecureContext: boolean;
   },
-  notificationPermission: string
+  notificationPermission: string,
 ) {
   let diagnosticsText = '';
   let diagnosticsColor = 'text-stone-500 bg-stone-100 border-stone-200';
   let showPermissionButton = false;
 
-  if (!webPushSupport.hasNotification || !webPushSupport.hasServiceWorker || !webPushSupport.hasPushManager) {
+  if (
+    !webPushSupport.hasNotification ||
+    !webPushSupport.hasServiceWorker ||
+    !webPushSupport.hasPushManager
+  ) {
     diagnosticsText = 'This browser does not support Web Push';
     diagnosticsColor = 'text-rose-700 bg-rose-50 border-rose-200';
   } else if (!webPushSupport.isSecureContext) {

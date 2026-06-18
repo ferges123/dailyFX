@@ -26,19 +26,23 @@ describe('LoginPage', () => {
     render(
       <AuthProvider>
         <TestApp />
-      </AuthProvider>
+      </AuthProvider>,
     );
     expect(screen.getByPlaceholderText('Enter your token')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Authenticate' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Authenticate' }),
+    ).toBeInTheDocument();
   });
 
   it('authenticates when token is valid', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { status: 200 }),
+    );
 
     render(
       <AuthProvider>
         <TestApp />
-      </AuthProvider>
+      </AuthProvider>,
     );
 
     const input = screen.getByPlaceholderText('Enter your token');
@@ -48,18 +52,22 @@ describe('LoginPage', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByTestId('auth-success')).toHaveTextContent('Authenticated: my-secret-token');
+      expect(screen.getByTestId('auth-success')).toHaveTextContent(
+        'Authenticated: my-secret-token',
+      );
     });
     expect(localStorage.getItem('dailyfx_token')).toBe('my-secret-token');
   });
 
   it('shows error when token is invalid', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { status: 401 }),
+    );
 
     render(
       <AuthProvider>
         <TestApp />
-      </AuthProvider>
+      </AuthProvider>,
     );
 
     const input = screen.getByPlaceholderText('Enter your token');
@@ -69,7 +77,9 @@ describe('LoginPage', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText('Invalid token. Please try again.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Invalid token. Please try again.'),
+      ).toBeInTheDocument();
     });
     expect(screen.queryByTestId('auth-success')).not.toBeInTheDocument();
     expect(localStorage.getItem('dailyfx_token')).toBeNull();

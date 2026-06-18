@@ -2,11 +2,15 @@ import { request } from './base';
 import { type NotificationPreset, type PushSubscriptionInfo } from './types';
 
 export async function getVapidPublicKey(): Promise<string> {
-  const data = await request<{ publicKey: string }>('/api/notifications/vapid-public-key');
+  const data = await request<{ publicKey: string }>(
+    '/api/notifications/vapid-public-key',
+  );
   return data.publicKey;
 }
 
-export async function subscribeWebPush(subscription: PushSubscription): Promise<void> {
+export async function subscribeWebPush(
+  subscription: PushSubscription,
+): Promise<void> {
   const key = subscription.getKey('p256dh');
   const auth = subscription.getKey('auth');
   const userAgent = navigator.userAgent;
@@ -23,7 +27,9 @@ export async function subscribeWebPush(subscription: PushSubscription): Promise<
   });
 }
 
-export async function unsubscribeWebPush(subscription: PushSubscription): Promise<void> {
+export async function unsubscribeWebPush(
+  subscription: PushSubscription,
+): Promise<void> {
   const key = subscription.getKey('p256dh');
   const auth = subscription.getKey('auth');
   await request('/api/notifications/unsubscribe', {
@@ -36,7 +42,10 @@ export async function unsubscribeWebPush(subscription: PushSubscription): Promis
   });
 }
 
-export async function getPushSubscriptions(): Promise<{ count: number; subscriptions: PushSubscriptionInfo[] }> {
+export async function getPushSubscriptions(): Promise<{
+  count: number;
+  subscriptions: PushSubscriptionInfo[];
+}> {
   return request('/api/notifications/subscriptions');
 }
 
@@ -78,7 +87,8 @@ function getBrowserLabel(userAgent: string): string {
 }
 
 // Notification presets
-export const getNotificationPresets = () => request<NotificationPreset[]>('/api/presets/notifications');
+export const getNotificationPresets = () =>
+  request<NotificationPreset[]>('/api/presets/notifications');
 export const createNotificationPreset = (body: {
   name: string;
   provider: string;
@@ -88,23 +98,38 @@ export const createNotificationPreset = (body: {
   webhook_url?: string | null;
   push_subscription_ids?: number[];
 }) =>
-  request<NotificationPreset>('/api/presets/notifications', { method: 'POST', body: JSON.stringify(body) });
-export const updateNotificationPreset = (id: number, body: {
-  name: string;
-  provider: string;
-  url?: string | null;
-  topic?: string | null;
-  token?: string | null;
-  webhook_url?: string | null;
-  push_subscription_ids?: number[];
-}) =>
-  request<NotificationPreset>(`/api/presets/notifications/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  request<NotificationPreset>('/api/presets/notifications', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+export const updateNotificationPreset = (
+  id: number,
+  body: {
+    name: string;
+    provider: string;
+    url?: string | null;
+    topic?: string | null;
+    token?: string | null;
+    webhook_url?: string | null;
+    push_subscription_ids?: number[];
+  },
+) =>
+  request<NotificationPreset>(`/api/presets/notifications/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 export const deleteNotificationPreset = (id: number) =>
   request<void>(`/api/presets/notifications/${id}`, { method: 'DELETE' });
 export const testNotificationPreset = (id: number) =>
-  request<{ ok: boolean; sent: string[]; errors: string[] }>(`/api/presets/notifications/${id}/test`, { method: 'POST' });
+  request<{ ok: boolean; sent: string[]; errors: string[] }>(
+    `/api/presets/notifications/${id}/test`,
+    { method: 'POST' },
+  );
 export const testPushSubscription = (id: number) =>
-  request<{ ok: boolean; subscription_id: number }>(`/api/notifications/subscriptions/${id}/test`, { method: 'POST' });
+  request<{ ok: boolean; subscription_id: number }>(
+    `/api/notifications/subscriptions/${id}/test`,
+    { method: 'POST' },
+  );
 
 const NOTIFICATION_PROVIDER_LABELS: Record<string, string> = {
   web: 'Web Push',
@@ -118,7 +143,10 @@ const NOTIFICATION_PROVIDER_LABELS: Record<string, string> = {
 };
 
 export function splitNotificationProviders(provider: string) {
-  return provider.split(',').map((s) => s.trim()).filter(Boolean);
+  return provider
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 export function formatNotificationProvider(provider: string) {
@@ -126,5 +154,7 @@ export function formatNotificationProvider(provider: string) {
 }
 
 export function formatNotificationProviders(provider: string) {
-  return splitNotificationProviders(provider).map(formatNotificationProvider).join(' · ');
+  return splitNotificationProviders(provider)
+    .map(formatNotificationProvider)
+    .join(' · ');
 }

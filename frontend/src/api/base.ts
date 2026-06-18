@@ -12,7 +12,7 @@ export function getAuthToken(): string | null {
 
 export function getAuthHeader(): Record<string, string> {
   const token = getAuthToken();
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export class ApiError extends Error {

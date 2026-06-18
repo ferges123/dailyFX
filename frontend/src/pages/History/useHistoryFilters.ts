@@ -6,9 +6,13 @@ import { useDebounce } from './useDebounce';
 export function useHistoryFilters() {
   const [historySearch, setHistorySearch] = useState('');
   const debouncedSearch = useDebounce(historySearch, 300);
-  const [historyStatus, setHistoryStatus] = useState<HistoryStatusFilter>('all');
+  const [historyStatus, setHistoryStatus] =
+    useState<HistoryStatusFilter>('all');
 
-  const statusParam = useMemo(() => historyStatusToStatusParam(historyStatus), [historyStatus]);
+  const statusParam = useMemo(
+    () => historyStatusToStatusParam(historyStatus),
+    [historyStatus],
+  );
 
   return {
     historySearch,

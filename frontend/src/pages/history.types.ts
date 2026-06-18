@@ -1,1 +1,6 @@
-export type HistoryStatusFilter = 'all' | 'generated' | 'uploaded' | 'failed' | 'rejected';
+export type HistoryStatusFilter =
+  | 'all'
+  | 'generated'
+  | 'uploaded'
+  | 'failed'
+  | 'rejected';

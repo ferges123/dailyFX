@@ -8,7 +8,11 @@ import {
   getProviderModels,
 } from '../../api/client';
 import { Field, SelectField } from '../../components/Field';
-import { InlineError, ProviderModelField, SectionCard } from '../../components/FormUI';
+import {
+  InlineError,
+  ProviderModelField,
+  SectionCard,
+} from '../../components/FormUI';
 import { describeAutomationSchedule } from '../automation.utils';
 import {
   automationScheduleModeOptions,
@@ -58,12 +62,12 @@ export function ScheduleForm({
     }));
   }
 
-  const [visionModels, setVisionModels] = useState<Array<{ label: string; value: string }>>(() =>
-    getVisionModelOptions(form.ai_vision_provider)
-  );
-  const [imageModels, setImageModels] = useState<Array<{ label: string; value: string }>>(() =>
-    getImageModelOptions(form.ai_image_provider)
-  );
+  const [visionModels, setVisionModels] = useState<
+    Array<{ label: string; value: string }>
+  >(() => getVisionModelOptions(form.ai_vision_provider));
+  const [imageModels, setImageModels] = useState<
+    Array<{ label: string; value: string }>
+  >(() => getImageModelOptions(form.ai_image_provider));
 
   useEffect(() => {
     let active = true;
@@ -102,7 +106,6 @@ export function ScheduleForm({
       active = false;
     };
   }, [form.ai_image_provider]);
-
 
   return (
     <aside
@@ -311,8 +314,7 @@ export function ScheduleForm({
               </SelectField>
               <div className="grid gap-0.5">
                 <div className="text-sm font-medium text-stone-800">
-                  Notification presets{' '}
-                  <span className="text-rose-500">*</span>
+                  Notification presets <span className="text-rose-500">*</span>
                 </div>
                 <div className="rounded-2xl border border-stone-200 bg-white p-2.5 shadow-xs">
                   <div className="flex flex-wrap gap-1">
@@ -358,10 +360,7 @@ export function ScheduleForm({
                       value=""
                       onChange={(event) => {
                         const id = Number(event.target.value);
-                        if (
-                          id &&
-                          !form.notification_preset_ids.includes(id)
-                        ) {
+                        if (id && !form.notification_preset_ids.includes(id)) {
                           setForm((current) => ({
                             ...current,
                             notification_preset_ids: [
@@ -466,10 +465,7 @@ export function ScheduleForm({
                       ...current,
                       ai_image_provider: provider,
                     };
-                    if (
-                      provider !== 'openrouter' &&
-                      provider !== 'byteplus'
-                    ) {
+                    if (provider !== 'openrouter' && provider !== 'byteplus') {
                       const opts = getImageModelOptions(provider);
                       if (
                         !opts.some(
@@ -546,8 +542,8 @@ export function ScheduleForm({
                 <div className="grid gap-0.5">
                   <span>AI photo selection</span>
                   <span className="text-xs font-normal leading-5 text-stone-500">
-                    Pick the best photo from 4 candidates for
-                    single-image effects.
+                    Pick the best photo from 4 candidates for single-image
+                    effects.
                   </span>
                 </div>
               </label>

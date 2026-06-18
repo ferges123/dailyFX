@@ -39,10 +39,7 @@ import { ScheduleSummaryCard } from './Schedules/ScheduleSummaryCard';
 import { ScheduleForm } from './Schedules/ScheduleForm';
 import { ConfirmModal } from '../components/ConfirmModal';
 
-function normalizeModelSelection(
-  provider: string,
-  model: string,
-) {
+function normalizeModelSelection(provider: string, model: string) {
   if (provider === 'none') {
     return '';
   }
@@ -123,8 +120,6 @@ function isFailedSchedule(schedule: Schedule) {
     schedule.last_tick_status === 'failed'
   );
 }
-
-
 
 export function SchedulesPage() {
   const navigate = useNavigate();
@@ -262,8 +257,6 @@ export function SchedulesPage() {
     navigate('/schedules');
   }
 
-
-
   const routeIsNew = location.pathname.endsWith('/new');
   const routeEditId = scheduleId ? Number(scheduleId) : null;
   const showForm = isNew || editing !== null;
@@ -300,8 +293,6 @@ export function SchedulesPage() {
       closeForm();
     }
   }, [editing, isNew, routeEditId, routeIsNew, schedules.data]);
-
-
 
   const validationIssues: string[] = [];
   if (!form.name.trim()) validationIssues.push('Schedule name is required.');
@@ -358,10 +349,6 @@ export function SchedulesPage() {
     return sorted;
   }, [search, scheduleItems]);
   const noSchedules = scheduleItems.length === 0;
-
-
-
-
 
   useEffect(() => {
     if (!showForm) return;
@@ -509,7 +496,10 @@ export function SchedulesPage() {
 
         <div className="grid gap-2.5 lg:items-start">
           {!showForm && (
-            <div aria-label="Schedules list" className="grid gap-2 lg:grid-cols-2">
+            <div
+              aria-label="Schedules list"
+              className="grid gap-2 lg:grid-cols-2"
+            >
               {filteredSchedules.map((schedule) => {
                 return (
                   <article
@@ -600,7 +590,8 @@ export function SchedulesPage() {
                               description: `Are you sure you want to delete "${schedule.name}"?`,
                               confirmLabel: 'Delete',
                               variant: 'danger',
-                              onConfirm: () => deleteMutation.mutate(schedule.id),
+                              onConfirm: () =>
+                                deleteMutation.mutate(schedule.id),
                             });
                           }}
                           className="app-button-secondary items-center justify-center px-2 py-1 text-[11px] font-medium text-rose-700"

@@ -17,7 +17,9 @@ vi.mock('../api/client', () => {
     retryGenerationAcceptance: vi.fn(),
     clearRejectedCache: vi.fn(),
     clearGenerationCache: vi.fn(),
-    getImmichAssetDetailUrl: vi.fn((base, id) => id ? `${base}/photos/${id}` : null),
+    getImmichAssetDetailUrl: vi.fn((base, id) =>
+      id ? `${base}/photos/${id}` : null,
+    ),
   };
 });
 
@@ -75,8 +77,22 @@ const mockHistoryItem1 = {
       tag_injections: ['AI', 'Anime'],
     },
     task_trace: [
-      { stage: 'start', message: 'Generation started', step: 'running', status: 'running', progress: 0, timestamp: '2026-05-27T10:00:00.000Z' },
-      { stage: 'final_vision', message: 'Analyzing final generated image with AI', step: 'analyzing_final_image', status: 'running', progress: 0.7, timestamp: '2026-05-27T10:00:12.000Z' },
+      {
+        stage: 'start',
+        message: 'Generation started',
+        step: 'running',
+        status: 'running',
+        progress: 0,
+        timestamp: '2026-05-27T10:00:00.000Z',
+      },
+      {
+        stage: 'final_vision',
+        message: 'Analyzing final generated image with AI',
+        step: 'analyzing_final_image',
+        status: 'running',
+        progress: 0.7,
+        timestamp: '2026-05-27T10:00:12.000Z',
+      },
     ],
   }),
   task_step: null,
@@ -153,8 +169,18 @@ const mockQueuedHistoryPage = {
 
 const mockFilterOptions = {
   albums: [
-    { id: 'album-1', album_name: 'AI Sunset', asset_count: 5, thumbnail_asset_id: null },
-    { id: 'album-2', album_name: 'AI Anime', asset_count: 10, thumbnail_asset_id: null },
+    {
+      id: 'album-1',
+      album_name: 'AI Sunset',
+      asset_count: 5,
+      thumbnail_asset_id: null,
+    },
+    {
+      id: 'album-2',
+      album_name: 'AI Anime',
+      asset_count: 10,
+      thumbnail_asset_id: null,
+    },
   ],
   people: [],
 };
@@ -181,14 +207,16 @@ describe('HistoryPage', () => {
         <BrowserRouter>
           <HistoryPage />
         </BrowserRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
   }
 
   it('renders history entries list and displays selected details', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
@@ -197,7 +225,9 @@ describe('HistoryPage', () => {
     expect(screen.getByText('Anime Portrait')).toBeInTheDocument();
 
     // Verify detail panel displays selected item 1 by default
-    expect(screen.getByText('"Beautiful sunset with orange filter"')).toBeInTheDocument();
+    expect(
+      screen.getByText('"Beautiful sunset with orange filter"'),
+    ).toBeInTheDocument();
     expect(screen.getByText('#sunset')).toBeInTheDocument();
     expect(screen.getByText('#nature')).toBeInTheDocument();
     expect(screen.getByText('Metadata provenance')).toBeInTheDocument();
@@ -209,24 +239,38 @@ describe('HistoryPage', () => {
 
   it('renders queued run-now tasks in history immediately', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
-    vi.mocked(client.getGenerationHistory).mockResolvedValue(mockQueuedHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getGenerationHistory).mockResolvedValue(
+      mockQueuedHistoryPage,
+    );
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
     expect(await screen.findByText('Queued: Morning run')).toBeInTheDocument();
     expect(screen.getAllByText('Queued').length).toBeGreaterThan(0);
-    expect(screen.getByText('This task is queued and waiting for the worker to start it.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'This task is queued and waiting for the worker to start it.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('keeps history usable when settings cannot be loaded initially', async () => {
-    vi.mocked(client.getSettings).mockRejectedValue(new Error('Settings unavailable'));
+    vi.mocked(client.getSettings).mockRejectedValue(
+      new Error('Settings unavailable'),
+    );
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
-    expect(await screen.findByText('History links unavailable')).toBeInTheDocument();
+    expect(
+      await screen.findByText('History links unavailable'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Settings unavailable')).toBeInTheDocument();
     expect(screen.getAllByText('Mayfair Sunset').length).toBeGreaterThan(0);
   });
@@ -234,7 +278,9 @@ describe('HistoryPage', () => {
   it('switches selected entry when card is clicked', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
@@ -242,17 +288,23 @@ describe('HistoryPage', () => {
     fireEvent.click(secondCard);
 
     // Displays second card details
-    expect(screen.getByText('"Portrait stylized as anime"')).toBeInTheDocument();
+    expect(
+      screen.getByText('"Portrait stylized as anime"'),
+    ).toBeInTheDocument();
     expect(screen.getByText('#portrait')).toBeInTheDocument();
     expect(screen.getByText('#anime')).toBeInTheDocument();
-    expect(screen.queryByText('"Beautiful sunset with orange filter"')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('"Beautiful sunset with orange filter"'),
+    ).not.toBeInTheDocument();
     expect(window.location.pathname).toBe('/history/man-2');
   });
 
   it('keeps a direct history detail route selected', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory('/history/man-2');
 
@@ -263,7 +315,9 @@ describe('HistoryPage', () => {
   it('calls acceptGeneration when Accept button is clicked', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
@@ -282,7 +336,9 @@ describe('HistoryPage', () => {
   it('calls rejectGeneration when Reject button is clicked', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
@@ -298,12 +354,16 @@ describe('HistoryPage', () => {
   it('opens custom upload modal and submits custom destination options', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
     vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(mockFilterOptions);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
 
     renderHistory();
 
     // Click "Accept..." to open modal
-    const acceptMoreButton = await screen.findByRole('button', { name: 'Accept...' });
+    const acceptMoreButton = await screen.findByRole('button', {
+      name: 'Accept...',
+    });
     fireEvent.click(acceptMoreButton);
 
     // Verify modal elements are visible
@@ -318,7 +378,9 @@ describe('HistoryPage', () => {
     fireEvent.change(select, { target: { value: 'album-2' } });
 
     // Submit the modal form
-    const confirmButton = screen.getByRole('button', { name: 'Confirm Upload' });
+    const confirmButton = screen.getByRole('button', {
+      name: 'Confirm Upload',
+    });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {

@@ -15,13 +15,20 @@ import {
 } from '../../api/client';
 import { Field } from '../../components/Field';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { FilterRow, ModuleConfigEditor } from '../../components/EffectsComponents';
+import {
+  FilterRow,
+  ModuleConfigEditor,
+} from '../../components/EffectsComponents';
 import {
   createDefaultModificationGroups,
   parseModificationGroups,
 } from '../automation.utils';
 import { type ModificationGroupsConfig } from '../automation.types';
-import { PresetHeader, PresetFormActions, PresetActionRow } from './PresetHeader';
+import {
+  PresetHeader,
+  PresetFormActions,
+  PresetActionRow,
+} from './PresetHeader';
 
 type EffectModuleLike = GenerationModuleInfo;
 
@@ -344,10 +351,7 @@ export function EffectPresetsTab() {
     (mod) => groups[mod.name]?.enabled,
   ).length;
 
-  const currentModules =
-    effectTab === 'local'
-      ? localModules
-      : aiModules;
+  const currentModules = effectTab === 'local' ? localModules : aiModules;
   const isLoading = presets.isLoading && !presets.data;
   const isError = presets.isError && !presets.data;
   const validationIssues: string[] = [];
@@ -587,7 +591,10 @@ export function EffectPresetsTab() {
         </div>
       )}
 
-      <div aria-label="Effect presets list" className="grid gap-2 lg:grid-cols-2">
+      <div
+        aria-label="Effect presets list"
+        className="grid gap-2 lg:grid-cols-2"
+      >
         {presets.data?.map((p) => {
           const enabledEntries = Object.entries(p.groups).filter(
             ([, g]) => g.enabled,

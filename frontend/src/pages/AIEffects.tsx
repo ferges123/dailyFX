@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Download,
-  Plus,
-  Upload,
-} from 'lucide-react';
+import { Download, Plus, Upload } from 'lucide-react';
 import {
   AIEffectCard,
   emptyForm,
@@ -520,7 +516,8 @@ export function AIEffectsPage() {
                     });
                   }}
                   onDelete={(item) => {
-                    const verb = item.source === 'builtin' ? 'disable' : 'delete';
+                    const verb =
+                      item.source === 'builtin' ? 'disable' : 'delete';
                     setConfirmConfig({
                       isOpen: true,
                       title: `${verb === 'disable' ? 'Disable' : 'Delete'} AI Effect`,

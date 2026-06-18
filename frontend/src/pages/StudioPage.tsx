@@ -20,7 +20,9 @@ import { getAIEffectGroupOrder } from './AIEffects/AIEffectCard';
 export function StudioPage() {
   const [file, setFile] = useState<File | null>(null);
   const [selectedEffect, setSelectedEffect] = useState('');
-  const [configByEffect, setConfigByEffect] = useState<Record<string, Record<string, unknown>>>({});
+  const [configByEffect, setConfigByEffect] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
   const [aiVisionEnabled, setAiVisionEnabled] = useState(false);
   const [promptEnrichmentEnabled, setPromptEnrichmentEnabled] = useState(false);
   const [preview, setPreview] = useState<StudioPreviewResponse | null>(null);
@@ -72,7 +74,11 @@ export function StudioPage() {
       return;
     }
     const nameLower = file.name.toLowerCase();
-    const isHeic = nameLower.endsWith('.heic') || nameLower.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+    const isHeic =
+      nameLower.endsWith('.heic') ||
+      nameLower.endsWith('.heif') ||
+      file.type === 'image/heic' ||
+      file.type === 'image/heif';
     if (isHeic) {
       setFilePreviewUrl(null);
       return;
@@ -132,12 +138,16 @@ export function StudioPage() {
   }, [groupedModules]);
 
   const activeModule = useMemo(
-    () => modules.find((item) => item.name === selectedEffect) ?? sortedModules[0] ?? modules[0],
+    () =>
+      modules.find((item) => item.name === selectedEffect) ??
+      sortedModules[0] ??
+      modules[0],
     [modules, sortedModules, selectedEffect],
   );
 
   const activeEffectId = selectedEffect || activeModule?.name || '';
-  const activeConfig = configByEffect[activeEffectId] ?? activeModule?.default_config ?? {};
+  const activeConfig =
+    configByEffect[activeEffectId] ?? activeModule?.default_config ?? {};
   const activeEffectIsAi = activeEffectId.startsWith('ai_');
 
   const previewMutation = useMutation({
@@ -177,7 +187,9 @@ export function StudioPage() {
             onDragLeave={handleDrag}
             onDrop={handleDrop}
             className={`grid min-h-40 cursor-pointer place-items-center rounded-xl border border-dashed px-4 py-6 text-center transition ${
-              dragActive ? 'border-emerald-700 bg-emerald-50/50' : 'border-stone-300 bg-white/70 hover:border-emerald-700'
+              dragActive
+                ? 'border-emerald-700 bg-emerald-50/50'
+                : 'border-stone-300 bg-white/70 hover:border-emerald-700'
             }`}
           >
             <input
@@ -200,7 +212,8 @@ export function StudioPage() {
                   {file?.name}
                 </span>
                 <span className="text-xs text-stone-500">
-                  {file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB (Click or drag to change)
+                  {file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB (Click
+                  or drag to change)
                 </span>
               </div>
             ) : file ? (
@@ -210,9 +223,15 @@ export function StudioPage() {
                   {file.name}
                 </span>
                 <span className="text-xs text-stone-500">
-                  {(file.size / (1024 * 1024)).toFixed(2)} MB {file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif') ? '(HEIC format - preview not available)' : ''}
+                  {(file.size / (1024 * 1024)).toFixed(2)} MB{' '}
+                  {file.name.toLowerCase().endsWith('.heic') ||
+                  file.name.toLowerCase().endsWith('.heif')
+                    ? '(HEIC format - preview not available)'
+                    : ''}
                 </span>
-                <span className="text-xs text-stone-400">Click or drag to change</span>
+                <span className="text-xs text-stone-400">
+                  Click or drag to change
+                </span>
               </span>
             ) : (
               <span className="grid justify-items-center gap-2 text-sm text-stone-600">
@@ -272,12 +291,19 @@ export function StudioPage() {
                 type="checkbox"
                 disabled={!activeEffectIsAi}
                 checked={promptEnrichmentEnabled && activeEffectIsAi}
-                onChange={(event) => setPromptEnrichmentEnabled(event.target.checked)}
+                onChange={(event) =>
+                  setPromptEnrichmentEnabled(event.target.checked)
+                }
               />
             </label>
           </div>
 
-          {modulesQuery.isError && <InlineError title="Error" message="Failed to load Studio effects." />}
+          {modulesQuery.isError && (
+            <InlineError
+              title="Error"
+              message="Failed to load Studio effects."
+            />
+          )}
           {previewMutation.isError && (
             <InlineError
               title="Preview Failed"
@@ -295,7 +321,11 @@ export function StudioPage() {
             disabled={!file || !activeEffectId || previewMutation.isPending}
             onClick={() => previewMutation.mutate()}
           >
-            {previewMutation.isPending ? <InlineSpinner /> : <WandSparkles size={16} />}
+            {previewMutation.isPending ? (
+              <InlineSpinner />
+            ) : (
+              <WandSparkles size={16} />
+            )}
             Create preview
           </button>
         </div>
@@ -313,7 +343,10 @@ export function StudioPage() {
               />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Link className="app-button-primary justify-center" to={preview.history_url}>
+              <Link
+                className="app-button-primary justify-center"
+                to={preview.history_url}
+              >
                 <History size={16} />
                 Open in History
               </Link>
@@ -338,4 +371,3 @@ export function StudioPage() {
     </section>
   );
 }
-

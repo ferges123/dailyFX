@@ -78,21 +78,33 @@ describe('SettingsPage', () => {
 
     expect(await screen.findByText('Runtime Status')).toBeInTheDocument();
     expect(await screen.findByText('Immich Connection')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('http://immich-server')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('http://local-ai:11434/v1')).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue('http://immich-server'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue('http://local-ai:11434/v1'),
+    ).toBeInTheDocument();
     expect(screen.getByText('AI Budget Limits')).toBeInTheDocument();
   });
 
   it('shows a retryable error when the settings fetch fails initially', async () => {
     vi.mocked(client.getHealth).mockResolvedValue(mockHealth);
     vi.mocked(client.getDetailedHealth).mockResolvedValue(mockDetailedHealth);
-    vi.mocked(client.getSettings).mockRejectedValue(new client.ApiError(503, 'Settings service temporarily unavailable'));
+    vi.mocked(client.getSettings).mockRejectedValue(
+      new client.ApiError(503, 'Settings service temporarily unavailable'),
+    );
 
     renderSettings();
 
-    expect(await screen.findByText('Could not load settings')).toBeInTheDocument();
-    expect(screen.getByText('Settings service temporarily unavailable')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(
+      await screen.findByText('Could not load settings'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Settings service temporarily unavailable'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try again' }),
+    ).toBeInTheDocument();
   });
 
   it('blocks save when settings validation fails', async () => {
@@ -108,8 +120,14 @@ describe('SettingsPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByText('Fix the highlighted settings')).toBeInTheDocument();
-    expect(screen.getAllByText('Immich URL must be an absolute http:// or https:// URL.')).toHaveLength(2);
+    expect(
+      await screen.findByText('Fix the highlighted settings'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        'Immich URL must be an absolute http:// or https:// URL.',
+      ),
+    ).toHaveLength(2);
     expect(vi.mocked(client.updateSettings)).not.toHaveBeenCalled();
   });
 
@@ -131,7 +149,9 @@ describe('SettingsPage', () => {
   });
 
   it('only offers Xiaomi vision models that support image input', () => {
-    expect(XIAOMI_VISION_MODELS.map((option) => option.value)).toEqual(['mimo-v2.5']);
+    expect(XIAOMI_VISION_MODELS.map((option) => option.value)).toEqual([
+      'mimo-v2.5',
+    ]);
   });
 
   it('renders Danger Zone with status deletion buttons and calls API upon confirmation', async () => {
@@ -155,7 +175,9 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Delete failed items?')).toBeInTheDocument();
 
     // Confirm deletion
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete Failed' })[1]);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Delete Failed' })[1],
+    );
 
     await waitFor(() => {
       expect(client.clearHistoryByStatus).toHaveBeenCalledWith('failed');

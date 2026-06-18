@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  RefreshCw,
-  Search,
-  Layers,
-} from 'lucide-react';
+import { RefreshCw, Search, Layers } from 'lucide-react';
 import {
   acceptGeneration,
   getImmichAssetDetailUrl,
@@ -52,7 +48,9 @@ export function HistoryPage() {
   const historyListRef = useRef<HTMLDivElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedHistoryTaskId, setSelectedHistoryTaskId] = useState<string | null>(taskId ?? null);
+  const [selectedHistoryTaskId, setSelectedHistoryTaskId] = useState<
+    string | null
+  >(taskId ?? null);
 
   const {
     historySearch,
@@ -87,11 +85,13 @@ export function HistoryPage() {
     return [...list].sort((a, b) => a.album_name.localeCompare(b.album_name));
   }, [filterOptions.data]);
 
-  const {
-    selectedHistoryEntry,
-    mobileShowDetail,
-    setMobileShowDetail,
-  } = useHistorySelection(filteredHistoryItems, selectedHistoryTaskId, setSelectedHistoryTaskId, !taskId);
+  const { selectedHistoryEntry, mobileShowDetail, setMobileShowDetail } =
+    useHistorySelection(
+      filteredHistoryItems,
+      selectedHistoryTaskId,
+      setSelectedHistoryTaskId,
+      !taskId,
+    );
 
   useEffect(() => {
     setSelectedHistoryTaskId(taskId ?? null);
@@ -128,7 +128,10 @@ export function HistoryPage() {
 
   const selectedExif = useMemo(() => {
     if (dbExif) return dbExif;
-    if (fetchedExifQuery.data && Object.keys(fetchedExifQuery.data).length > 0) {
+    if (
+      fetchedExifQuery.data &&
+      Object.keys(fetchedExifQuery.data).length > 0
+    ) {
       return fetchedExifQuery.data;
     }
     return null;
@@ -167,8 +170,6 @@ export function HistoryPage() {
     },
   });
 
-
-
   const { streamStatus } = useHistoryStreamSync({
     enabled: !!data,
     historyQueryKey,
@@ -178,7 +179,11 @@ export function HistoryPage() {
   });
 
   const selectedHistoryImmichUrl = useMemo(
-    () => getImmichAssetDetailUrl(settings.data?.immich_url, selectedHistoryEntry?.uploaded_asset_id ?? undefined),
+    () =>
+      getImmichAssetDetailUrl(
+        settings.data?.immich_url,
+        selectedHistoryEntry?.uploaded_asset_id ?? undefined,
+      ),
     [selectedHistoryEntry?.uploaded_asset_id, settings.data?.immich_url],
   );
 
@@ -218,7 +223,9 @@ export function HistoryPage() {
         <div className="w-full md:w-[150px] md:shrink-0">
           <select
             value={historyStatus}
-            onChange={(event) => setHistoryStatus(event.target.value as HistoryStatusFilter)}
+            onChange={(event) =>
+              setHistoryStatus(event.target.value as HistoryStatusFilter)
+            }
             className="app-control app-control-muted h-8 cursor-pointer px-2 text-xs"
           >
             <option value="all">All statuses</option>
@@ -241,24 +248,28 @@ export function HistoryPage() {
 
           <div
             className={`flex h-8 w-full items-center justify-center gap-1.5 rounded-full border px-2.5 text-[10px] md:w-auto ${
-            streamStatus === 'connected'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : streamStatus === 'reconnecting'
-              ? 'border-amber-200 bg-amber-50 text-amber-800'
-              : 'border-stone-200 bg-stone-50 text-stone-500'
-          }`}
-          title="History stream connection"
+              streamStatus === 'connected'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : streamStatus === 'reconnecting'
+                  ? 'border-amber-200 bg-amber-50 text-amber-800'
+                  : 'border-stone-200 bg-stone-50 text-stone-500'
+            }`}
+            title="History stream connection"
           >
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 streamStatus === 'connected'
                   ? 'bg-emerald-500'
                   : streamStatus === 'reconnecting'
-                  ? 'bg-amber-500'
-                  : 'bg-stone-400'
+                    ? 'bg-amber-500'
+                    : 'bg-stone-400'
               }`}
             />
-            {streamStatus === 'connected' ? 'Live' : streamStatus === 'reconnecting' ? 'Reconnecting' : 'Disconnected'}
+            {streamStatus === 'connected'
+              ? 'Live'
+              : streamStatus === 'reconnecting'
+                ? 'Reconnecting'
+                : 'Disconnected'}
           </div>
         </div>
       </div>
@@ -269,25 +280,37 @@ export function HistoryPage() {
         </div>
       ) : isError ? (
         <div className="app-panel p-6">
-          <ErrorBanner title="Failed to load history" error={error} onRetry={() => refetchHistory()} />
+          <ErrorBanner
+            title="Failed to load history"
+            error={error}
+            onRetry={() => refetchHistory()}
+          />
         </div>
       ) : filteredHistoryItems.length > 0 ? (
         <div className="grid gap-4 lg:h-168 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
           {/* Left Panel: Cards List */}
           <div
             className={`flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 ${
-              mobileShowDetail ? 'hidden lg:flex lg:h-full' : 'flex h-152 lg:h-full'
+              mobileShowDetail
+                ? 'hidden lg:flex lg:h-full'
+                : 'flex h-152 lg:h-full'
             }`}
           >
-            <div ref={historyListRef} className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar">
+            <div
+              ref={historyListRef}
+              className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar"
+            >
               {filteredHistoryItems.map((item) => {
                 const status = (item.status || '').toUpperCase();
                 const isQueued = status === 'QUEUED';
                 const isRunning = status === 'RUNNING';
-                const isUploaded = status === 'UPLOADED' || Boolean(item.accepted_at);
+                const isUploaded =
+                  status === 'UPLOADED' || Boolean(item.accepted_at);
                 const isRejected = status === 'REJECTED';
                 const isFailed = status === 'FAILED';
-                const taskStep = item.task_step ? item.task_step.replace(/_/g, ' ') : '';
+                const taskStep = item.task_step
+                  ? item.task_step.replace(/_/g, ' ')
+                  : '';
 
                 return (
                   <button
@@ -338,14 +361,14 @@ export function HistoryPage() {
                               isUploaded
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                 : isRunning
-                                ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                                : isQueued
-                                ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                                : isRejected
-                                ? 'bg-stone-100 text-stone-600 border border-stone-200'
-                                : isFailed
-                                ? 'bg-red-50/70 text-red-600 border border-red-100'
-                                : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                                  : isQueued
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                                    : isRejected
+                                      ? 'bg-stone-100 text-stone-600 border border-stone-200'
+                                      : isFailed
+                                        ? 'bg-red-50/70 text-red-600 border border-red-100'
+                                        : 'bg-amber-50 text-amber-700 border border-amber-100'
                             }`}
                           >
                             <span
@@ -353,31 +376,33 @@ export function HistoryPage() {
                                 isUploaded
                                   ? 'bg-emerald-500'
                                   : isRunning
-                                  ? 'bg-blue-500'
-                                  : isQueued
-                                  ? 'bg-amber-500'
-                                  : isRejected
-                                  ? 'bg-stone-400'
-                                  : isFailed
-                                  ? 'bg-red-500'
-                                  : 'bg-amber-500'
+                                    ? 'bg-blue-500'
+                                    : isQueued
+                                      ? 'bg-amber-500'
+                                      : isRejected
+                                        ? 'bg-stone-400'
+                                        : isFailed
+                                          ? 'bg-red-500'
+                                          : 'bg-amber-500'
                               }`}
                             />
                             {isUploaded
                               ? 'Uploaded'
                               : isRunning
-                              ? 'Running'
-                              : isQueued
-                              ? 'Queued'
-                              : isRejected
-                              ? 'Rejected'
-                              : isFailed
-                              ? 'Failed'
-                              : 'Pending'}
+                                ? 'Running'
+                                : isQueued
+                                  ? 'Queued'
+                                  : isRejected
+                                    ? 'Rejected'
+                                    : isFailed
+                                      ? 'Failed'
+                                      : 'Pending'}
                           </span>
                         </div>
                         <span className="text-stone-400 font-medium">
-                          {item.created_at ? formatDateTime(item.created_at) : ''}
+                          {item.created_at
+                            ? formatDateTime(item.created_at)
+                            : ''}
                         </span>
                       </div>
                     </div>
@@ -396,7 +421,10 @@ export function HistoryPage() {
                   >
                     {isFetchingNextPage ? (
                       <>
-                        <RefreshCw size={12} className="animate-spin text-stone-500" />
+                        <RefreshCw
+                          size={12}
+                          className="animate-spin text-stone-500"
+                        />
                         Loading...
                       </>
                     ) : (
@@ -463,20 +491,20 @@ export function HistoryPage() {
 
       {/* destination album upload modal */}
       {selectedHistoryEntry && (
-      <UploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        entry={selectedHistoryEntry}
-        albums={sortedAlbums}
-        isPending={acceptHistoryMutation.isPending}
-        onConfirm={(variables) => {
-          if (!selectedHistoryEntry) return;
-          acceptHistoryMutation.mutate({
-            taskId: selectedHistoryEntry.task_id,
-            ...variables,
-          });
-        }}
-      />
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          entry={selectedHistoryEntry}
+          albums={sortedAlbums}
+          isPending={acceptHistoryMutation.isPending}
+          onConfirm={(variables) => {
+            if (!selectedHistoryEntry) return;
+            acceptHistoryMutation.mutate({
+              taskId: selectedHistoryEntry.task_id,
+              ...variables,
+            });
+          }}
+        />
       )}
 
       {/* Advanced Lightbox with EXIF Info Overlay */}
@@ -489,8 +517,6 @@ export function HistoryPage() {
           exif={selectedExif}
         />
       )}
-
-
     </section>
   );
 }

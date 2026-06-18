@@ -30,7 +30,9 @@ export function UploadModal({
   onConfirm,
   isPending,
 }: UploadModalProps) {
-  const [targetAlbumType, setTargetAlbumType] = useState<'existing' | 'new' | 'none'>('none');
+  const [targetAlbumType, setTargetAlbumType] = useState<
+    'existing' | 'new' | 'none'
+  >('none');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
   const [newAlbumName, setNewAlbumName] = useState<string>('');
   const trapRef = useFocusTrap(isOpen);
@@ -45,7 +47,7 @@ export function UploadModal({
         setNewAlbumName('');
       } else {
         const existing = albums.find(
-          (a) => a.album_name.toLowerCase() === defaultAlbumName.toLowerCase()
+          (a) => a.album_name.toLowerCase() === defaultAlbumName.toLowerCase(),
         );
         if (existing) {
           setTargetAlbumType('existing');
@@ -74,14 +76,17 @@ export function UploadModal({
         targetAlbumType === 'new'
           ? newAlbumName
           : targetAlbumType === 'existing'
-          ? albums.find((a) => a.id === selectedAlbumId)?.album_name ?? null
-          : null,
+            ? (albums.find((a) => a.id === selectedAlbumId)?.album_name ?? null)
+            : null,
       album_id: targetAlbumType === 'existing' ? selectedAlbumId : null,
     });
   };
 
   return (
-    <div ref={trapRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+    <div
+      ref={trapRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+    >
       <div className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl p-6 relative animate-scale-in">
         <button
           type="button"
@@ -96,7 +101,8 @@ export function UploadModal({
           Upload Destination Album
         </h3>
         <p className="text-xs text-stone-500 mt-1.5">
-          Specify which album in Immich this generated image should be associated with.
+          Specify which album in Immich this generated image should be
+          associated with.
         </p>
 
         <div className="mt-4 space-y-4">
@@ -188,7 +194,10 @@ export function UploadModal({
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-2.5 pointer-events-none text-stone-500" />
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-2.5 pointer-events-none text-stone-500"
+                />
               </div>
             </div>
           )}

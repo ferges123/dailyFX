@@ -17,7 +17,9 @@ vi.mock('../api/client', () => {
     retryGenerationAcceptance: vi.fn(),
     clearRejectedCache: vi.fn(),
     clearGenerationCache: vi.fn(),
-    getImmichAssetDetailUrl: vi.fn((base, id) => id ? `${base}/photos/${id}` : null),
+    getImmichAssetDetailUrl: vi.fn((base, id) =>
+      id ? `${base}/photos/${id}` : null,
+    ),
   };
 });
 
@@ -58,29 +60,49 @@ describe('HistoryPage Error and Empty States', () => {
         <BrowserRouter>
           <HistoryPage />
         </BrowserRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
   }
 
   it('renders error state when fetching history fails', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
-    vi.mocked(client.getGenerationHistory).mockRejectedValue(new Error('Network error or server crash'));
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue({ albums: [], people: [] });
+    vi.mocked(client.getGenerationHistory).mockRejectedValue(
+      new Error('Network error or server crash'),
+    );
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue({
+      albums: [],
+      people: [],
+    });
 
     renderHistory();
 
-    expect(await screen.findByText('Failed to load history')).toBeInTheDocument();
-    expect(screen.getByText('Network error or server crash')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to load history'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Network error or server crash'),
+    ).toBeInTheDocument();
   });
 
   it('renders empty placeholder when history is empty', async () => {
     vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
-    vi.mocked(client.getGenerationHistory).mockResolvedValue({ items: [], total: 0, latest_event_id: 0 });
-    vi.mocked(client.getImmichFilterOptions).mockResolvedValue({ albums: [], people: [] });
+    vi.mocked(client.getGenerationHistory).mockResolvedValue({
+      items: [],
+      total: 0,
+      latest_event_id: 0,
+    });
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue({
+      albums: [],
+      people: [],
+    });
 
     renderHistory();
 
     expect(await screen.findByText('No items found')).toBeInTheDocument();
-    expect(screen.getByText('There are no generations stored in the history database yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'There are no generations stored in the history database yet.',
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { registerOnUnauthorized } from './client';
 
@@ -11,7 +17,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(() => localStorage.getItem('dailyfx_token'));
+  const [token, setTokenState] = useState<string | null>(() =>
+    localStorage.getItem('dailyfx_token'),
+  );
 
   let queryClient: QueryClient | null = null;
   try {

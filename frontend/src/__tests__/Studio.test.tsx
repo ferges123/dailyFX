@@ -62,7 +62,9 @@ describe('StudioPage', () => {
     expect(await screen.findByText('AI Anime')).toBeInTheDocument();
     expect(screen.getByLabelText('AI Vision metadata')).toBeInTheDocument();
     expect(screen.getByLabelText('AI prompt enrichment')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /create preview/i })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: /create preview/i }),
+    ).toBeDisabled();
   });
 
   it('renders source image preview and handles drag and drop', async () => {
@@ -71,13 +73,15 @@ describe('StudioPage', () => {
 
     // Simulate drag over
     fireEvent.dragOver(dropzone);
-    
+
     // Simulate drop
-    const file = new File(['dummy content'], 'test-image.jpg', { type: 'image/jpeg' });
+    const file = new File(['dummy content'], 'test-image.jpg', {
+      type: 'image/jpeg',
+    });
     fireEvent.drop(dropzone, {
       dataTransfer: {
-        files: [file]
-      }
+        files: [file],
+      },
     });
 
     // Expect the preview image to render using the mocked object URL
@@ -92,7 +96,11 @@ describe('StudioPage', () => {
     renderStudio();
     const dropdown = await screen.findByRole('combobox');
     await screen.findByText('Pencil Sketch');
-    expect(dropdown.querySelector('optgroup[label="Artistic"]')).toBeInTheDocument();
-    expect(dropdown.querySelector('optgroup[label="Illustration"]')).toBeInTheDocument();
+    expect(
+      dropdown.querySelector('optgroup[label="Artistic"]'),
+    ).toBeInTheDocument();
+    expect(
+      dropdown.querySelector('optgroup[label="Illustration"]'),
+    ).toBeInTheDocument();
   });
 });

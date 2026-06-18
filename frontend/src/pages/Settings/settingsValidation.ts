@@ -7,7 +7,9 @@ export type SettingsFieldErrorKey =
   | 'ai_image_hourly_limit'
   | 'favorite_albums_json';
 
-export type SettingsFieldErrors = Partial<Record<SettingsFieldErrorKey, string>>;
+export type SettingsFieldErrors = Partial<
+  Record<SettingsFieldErrorKey, string>
+>;
 
 export function isHttpUrl(value: string) {
   try {
@@ -18,7 +20,9 @@ export function isHttpUrl(value: string) {
   }
 }
 
-export function validateSettingsForm(form: SettingsUpdate): SettingsFieldErrors {
+export function validateSettingsForm(
+  form: SettingsUpdate,
+): SettingsFieldErrors {
   const errors: SettingsFieldErrors = {};
 
   if (form.immich_url && !isHttpUrl(form.immich_url)) {

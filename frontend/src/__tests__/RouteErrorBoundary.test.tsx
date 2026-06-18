@@ -24,7 +24,11 @@ describe('RouteErrorBoundary', () => {
       </RouteErrorBoundary>,
     );
 
-    expect(screen.getByText('This page could not be rendered.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument();
+    expect(
+      screen.getByText('This page could not be rendered.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Reload page' }),
+    ).toBeInTheDocument();
   });
 });
