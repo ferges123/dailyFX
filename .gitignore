@@ -17,6 +17,8 @@ data/*.db
 data/*.db-*
 data/*.sqlite
 data/*.sqlite-*
+data/*.backup
+data/*.manual_rotation_backup
 data/previews/*
 data/results/*
 data/cache/*
