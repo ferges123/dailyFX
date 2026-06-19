@@ -24,7 +24,6 @@ import {
   parseAutomationSchedule,
   serializeAutomationSchedule,
 } from './automation.utils';
-import { formatDateTime } from './datetime.utils';
 import { type FormState, emptyForm } from './Schedules/types';
 import { ScheduleForm } from './Schedules/ScheduleForm';
 import { ConfirmModal } from '../components/ConfirmModal';

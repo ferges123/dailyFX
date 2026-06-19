@@ -4,6 +4,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { ConfirmDeleteModal } from '../pages/History/ConfirmDeleteModal';
 import { LightboxModal } from '../pages/History/LightboxModal';
 import { UploadModal } from '../pages/History/UploadModal';
+import { type GenerationHistoryEntry } from '../api/client';
 
 describe('ConfirmModal', () => {
   it('renders title, description, and triggers callbacks', () => {
@@ -67,7 +68,7 @@ describe('LightboxModal', () => {
       created_at: '2026-06-19T12:00:00Z',
       output_format: 'jpg',
       source_asset_ids: null,
-    } as any;
+    } as unknown as GenerationHistoryEntry;
 
     const mockExif = {
       make: 'Apple',
@@ -104,7 +105,7 @@ describe('UploadModal', () => {
       id: 'task-1',
       title: 'Test Generation',
       album_name: 'AI Photos',
-    } as any;
+    } as unknown as GenerationHistoryEntry;
     const mockAlbums = [
       { id: 'album-1', album_name: 'AI Photos', asset_count: 5 },
     ];

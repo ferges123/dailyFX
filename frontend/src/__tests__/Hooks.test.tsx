@@ -6,6 +6,7 @@ import { useHistorySelection } from '../pages/History/useHistorySelection';
 import { useHistoryStreamSync } from '../pages/History/useHistoryStreamSync';
 import { openGenerationStream } from '../api/generationStream';
 import React from 'react';
+import { type GenerationHistoryEntry } from '../api/client';
 
 vi.mock('../api/generationStream', () => {
   return {
@@ -46,7 +47,7 @@ describe('useHistorySelection', () => {
     const mockItems = [
       { task_id: 'task-1', title: 'Generation 1' },
       { task_id: 'task-2', title: 'Generation 2' },
-    ] as any[];
+    ] as unknown as GenerationHistoryEntry[];
 
     const setSelectedHistoryTaskId = vi.fn();
 

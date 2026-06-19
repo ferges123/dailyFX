@@ -18,10 +18,48 @@ export interface TaskTraceItem {
   };
 }
 
+export interface MetadataProvenance {
+  title_source?: string;
+  summary_source?: string;
+  tags_source?: string;
+  people_context?: {
+    attempted?: boolean;
+    used?: boolean;
+    names?: string[];
+    faces?: unknown[];
+    prompt_hint?: string;
+  };
+  source_vision?: VisionState | null;
+  photo_selection?: {
+    attempted?: boolean;
+    succeeded?: boolean;
+    provider?: string | null;
+    model?: string | null;
+    candidate_asset_ids?: string[];
+    selected_asset_id?: string | null;
+    error?: string | null;
+    fallback_reason?: string | null;
+  };
+  final_vision?: VisionState | null;
+  exif_info?: {
+    attempted?: boolean;
+    embedded?: boolean;
+    skip_reason?: string | null;
+  };
+  tag_injections?: string[];
+  prompt_enrichment_context?: {
+    album_name?: string | null;
+    people_names?: string[];
+    exif_summary?: string | null;
+    context_hint?: string | null;
+  } | null;
+}
+
 interface AdditionalInfoDetailsProps {
-  metadataProvenance: any;
+  metadataProvenance: MetadataProvenance | null;
   taskTrace: TaskTraceItem[] | null;
 }
+
 
 const formatVisionState = (vision: VisionState | null | undefined) => {
   if (!vision) return 'unknown';

@@ -4,6 +4,7 @@ import { StatusTile } from '../components/StatusTile';
 import { Field, SelectField } from '../components/Field';
 import { FilterRow, ModuleConfigEditor } from '../components/EffectsComponents';
 import React from 'react';
+import { type GenerationModuleInfo } from '../api/client';
 
 describe('StatusTile', () => {
   it('renders status tiles with detailed descriptors', () => {
@@ -95,8 +96,12 @@ describe('ModuleConfigEditor', () => {
   it('renders configuration inputs dynamically from metadata schema', () => {
     const onChange = vi.fn();
     const mockModule = {
-      name: 'ai_generator',
-      description: 'Image generator details',
+      name: 'test_module',
+      label: 'Test Module',
+      description: 'Module for testing',
+      enabled: true,
+      weight: 1.0,
+      config: {},
       config_schema: [
         {
           key: 'steps',
@@ -117,7 +122,7 @@ describe('ModuleConfigEditor', () => {
           ],
         },
       ],
-    } as any;
+    } as unknown as GenerationModuleInfo;
 
     render(
       <ModuleConfigEditor

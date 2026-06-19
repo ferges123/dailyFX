@@ -668,11 +668,7 @@ class ImmichClient:
             return []
 
         named = [p for p in people if p.name.strip()]
-        enriched = [
-            p
-            for p in named
-            if p.asset_count > 0 or not p.is_hidden
-        ]
+        enriched = [p for p in named if p.asset_count > 0 or not p.is_hidden]
         enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
         return enriched[:33]
 
@@ -717,9 +713,7 @@ class ImmichClient:
                 if not assets:
                     break
                 if exclude_ids:
-                    assets = [
-                        asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)
-                    ]
+                    assets = [asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)]
                 if not assets:
                     continue
                 return assets

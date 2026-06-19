@@ -49,10 +49,11 @@ describe('API Layer - Base', () => {
     try {
       await request('/bad-endpoint');
       throw new Error('Expected request to throw ApiError');
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(ApiError);
-      expect(error.status).toBe(400);
-      expect(error.detail).toBe('Invalid parameters');
+    } catch (error) {
+      const apiErr = error as ApiError;
+      expect(apiErr).toBeInstanceOf(ApiError);
+      expect(apiErr.status).toBe(400);
+      expect(apiErr.detail).toBe('Invalid parameters');
     }
   });
 
@@ -66,7 +67,7 @@ describe('API Layer - Base', () => {
     try {
       await request('/unauthorized');
       throw new Error('Expected request to throw');
-    } catch (error) {
+    } catch {
       expect(cb).toHaveBeenCalled();
     }
   });
@@ -79,10 +80,11 @@ describe('API Layer - Base', () => {
     try {
       await request('/timeout');
       throw new Error('Expected request to throw timeout error');
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(ApiError);
-      expect(error.status).toBe(408);
-      expect(error.message).toContain('API request timed out');
+    } catch (error) {
+      const apiErr = error as ApiError;
+      expect(apiErr).toBeInstanceOf(ApiError);
+      expect(apiErr.status).toBe(408);
+      expect(apiErr.message).toContain('API request timed out');
     }
   });
 });
