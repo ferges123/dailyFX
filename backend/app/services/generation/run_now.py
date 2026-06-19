@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import HTTPException
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
@@ -159,21 +162,27 @@ async def preview_run_now_assets(
         preview = await client.search_assets(filters)
     except ImmichConfigurationError as exc:
         update_task(db, task_id, status="failed", step="failed", progress=0.0, error=str(exc))
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        logger.exception("Immich configuration error: %s", exc)
+        raise HTTPException(status_code=400, detail="Immich configuration error") from exc
     except ImmichAuthenticationError as exc:
         update_task(db, task_id, status="failed", step="failed", progress=0.0, error=str(exc))
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
+        logger.exception("Immich authentication failed: %s", exc)
+        raise HTTPException(status_code=401, detail="Immich authentication failed") from exc
     except ImmichPermissionError as exc:
         update_task(db, task_id, status="failed", step="failed", progress=0.0, error=str(exc))
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        logger.exception("Permission denied by Immich: %s", exc)
+        raise HTTPException(status_code=403, detail="Permission denied by Immich") from exc
     except ImmichConnectionError as exc:
         update_task(db, task_id, status="failed", step="failed", progress=0.0, error=str(exc))
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        logger.exception("Failed to connect to Immich: %s", exc)
+        raise HTTPException(status_code=502, detail="Failed to connect to Immich") from exc
     except ImmichUnexpectedResponseError as exc:
         update_task(db, task_id, status="failed", step="failed", progress=0.0, error=str(exc))
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        logger.exception("Unexpected response from Immich: %s", exc)
+        raise HTTPException(status_code=502, detail="Unexpected response from Immich") from exc
     except Exception as exc:
         update_task(db, task_id, status="failed", step="failed", progress=0.0, error=str(exc))
+        logger.exception("Failed to preview assets: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to preview assets") from exc
 
     if not preview.items:

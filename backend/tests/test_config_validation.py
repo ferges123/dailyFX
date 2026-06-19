@@ -123,14 +123,15 @@ def test_preset_api_validation(authenticated_client, db_session):
         "/api/presets/effects", json={"name": "Test Invalid Preset", "groups": {"unknown_module": {"enabled": True}}}
     )
     assert response.status_code == 400
-    assert "Unknown generation module" in response.json()["detail"]
+    assert response.status_code == 400
+    assert "Invalid request value" in response.json()["detail"]
 
     # Test POST /api/presets/effects reject invalid weight
     response = authenticated_client.post(
         "/api/presets/effects", json={"name": "Test Invalid Weight Preset", "groups": {"bokeh_blur": {"weight": -5}}}
     )
     assert response.status_code == 400
-    assert "Weight for module 'bokeh_blur' must be >= 0" in response.json()["detail"]
+    assert "Invalid request value" in response.json()["detail"]
 
     # Test POST /api/presets/effects success
     response = authenticated_client.post(
@@ -149,7 +150,7 @@ def test_preset_api_validation(authenticated_client, db_session):
         json={"name": "Test Valid Preset", "groups": {"bokeh_blur": {"config": {"focus_area": "invalid_val"}}}},
     )
     assert response.status_code == 400
-    assert "contains invalid value" in response.json()["detail"]
+    assert "Invalid request value" in response.json()["detail"]
 
 
 def test_studio_api_validation(authenticated_client):
@@ -172,4 +173,4 @@ def test_studio_api_validation(authenticated_client):
         },
     )
     assert response.status_code == 400
-    assert "must be >= 5" in response.json()["detail"]
+    assert "Invalid request value" in response.json()["detail"]

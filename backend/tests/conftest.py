@@ -1,4 +1,7 @@
+import os
 import pytest
+
+os.environ.setdefault("APP_SECRET_KEY", "test-api-secret")
 
 from app.immich.client import _client_cache
 from app.limiter import limiter

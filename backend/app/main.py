@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -87,17 +90,20 @@ from app.services.studio.validation import StudioUploadValidationError
 
 @app.exception_handler(StudioUploadValidationError)
 async def studio_upload_validation_handler(request: Request, exc: StudioUploadValidationError):
-    return JSONResponse(status_code=415, content={"detail": str(exc)})
+    logger.exception("Studio upload validation error: %s", exc)
+    return JSONResponse(status_code=415, content={"detail": "Invalid studio upload payload"})
 
 
 @app.exception_handler(LocalAIConfigurationError)
 async def local_ai_configuration_handler(request: Request, exc: LocalAIConfigurationError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
+    logger.exception("Local AI configuration error: %s", exc)
+    return JSONResponse(status_code=400, content={"detail": "Local AI configuration error"})
 
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
+    logger.exception("Value error occurred: %s", exc)
+    return JSONResponse(status_code=400, content={"detail": "Invalid request value"})
 
 
 app.add_middleware(

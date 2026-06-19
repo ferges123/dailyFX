@@ -203,7 +203,7 @@ async def create_studio_preview(
         raise
     except Exception as exc:
         logger.exception("Studio preview failed for effect %s: %s", effect_id, exc)
-        raise HTTPException(status_code=500, detail=f"Studio preview failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Studio preview failed") from exc
     finally:
         settings.ai_prompt_enrichment = original_prompt_enrichment
 

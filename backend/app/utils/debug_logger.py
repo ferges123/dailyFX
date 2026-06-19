@@ -1,8 +1,11 @@
 """Debug logging utility for detailed troubleshooting."""
 
+import atexit
 import logging
 from datetime import datetime
 from pathlib import Path
+
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +14,19 @@ _debug_file = None
 
 _MAX_LOG_FILES = 10
 _MAX_LOG_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+def _cleanup_debug_file():
+    global _debug_file
+    if _debug_file is not None:
+        try:
+            _debug_file.close()
+        except Exception:
+            pass
+        _debug_file = None
+
+
+atexit.register(_cleanup_debug_file)
 
 
 def _rotate_logs(log_dir: Path) -> None:
@@ -25,17 +41,23 @@ def set_debug_mode(enabled: bool):
     _debug_enabled = enabled
 
     if enabled:
-        if _debug_file is None:
+        if _debug_file is not None:
             try:
-                log_dir = Path("/data/logs")
-                log_dir.mkdir(parents=True, exist_ok=True)
-                _rotate_logs(log_dir)
-                log_file = log_dir / f"debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-                _debug_file = open(log_file, "a", encoding="utf-8")
-                debug_log(f"Debug mode enabled - logging to {log_file}")
-            except Exception as e:
-                logger.warning(f"Failed to open debug log file: {e}")
-                _debug_enabled = False
+                _debug_file.close()
+            except Exception:
+                pass
+            _debug_file = None
+
+        try:
+            log_dir = get_settings().data_dir / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            _rotate_logs(log_dir)
+            log_file = log_dir / f"debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            _debug_file = open(log_file, "a", encoding="utf-8")
+            debug_log(f"Debug mode enabled - logging to {log_file}")
+        except Exception as e:
+            logger.warning(f"Failed to open debug log file: {e}")
+            _debug_enabled = False
     else:
         if _debug_file is not None:
             try:
@@ -47,6 +69,7 @@ def set_debug_mode(enabled: bool):
 
 def debug_log(message: str, **kwargs):
     """Log debug message if debug mode is enabled."""
+    global _debug_file
     if not _debug_enabled:
         return
 
@@ -65,9 +88,10 @@ def debug_log(message: str, **kwargs):
             # Rotate if file exceeds max size
             if _debug_file.tell() > _MAX_LOG_SIZE:
                 _debug_file.close()
-                _rotate_logs(Path("/data/logs"))
-                new_file = Path("/data/logs") / f"debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-                globals()["_debug_file"] = open(new_file, "a", encoding="utf-8")
+                log_dir = get_settings().data_dir / "logs"
+                _rotate_logs(log_dir)
+                new_file = log_dir / f"debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+                _debug_file = open(new_file, "a", encoding="utf-8")
             _debug_file.write(log_line + "\n")
             _debug_file.flush()
         except Exception:

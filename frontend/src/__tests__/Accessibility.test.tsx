@@ -30,7 +30,7 @@ vi.mock('../api/client', () => ({
   clearGenerationCache: vi.fn(() => Promise.resolve({})),
   getImmichAssetDetailUrl: vi.fn(() => 'http://localhost'),
   getHealth: vi.fn(() =>
-    Promise.resolve({ status: 'ok', version: '0.3.22', auth_enabled: false }),
+    Promise.resolve({ status: 'ok', version: '0.3.24', auth_enabled: false }),
   ),
   getDetailedHealth: vi.fn(() => Promise.resolve({ status: 'ok', checks: {} })),
   clearHistoryByStatus: vi.fn(() => Promise.resolve({})),
