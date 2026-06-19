@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 os.environ.setdefault("APP_SECRET_KEY", "test-api-secret")

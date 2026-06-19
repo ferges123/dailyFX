@@ -160,7 +160,7 @@ async def _handle_callback_query(client: httpx.AsyncClient, token: str, callback
             await reject_generation(task_id, db=db, _=None)
             await _edit_message_status(client, token, chat_id, message_id, message, "❌ Rejected")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error handling Telegram Bot callback action '%s' for task '%s'", action, task_id)
         await _answer_callback(client, token, callback_id, "Wystąpił błąd")
         # Note: Do not remove buttons, so user can try again once they resolve the issue.

@@ -1,10 +1,10 @@
 import asyncio
 import logging
+from dataclasses import replace
 from datetime import date, datetime, time, timezone
 from hashlib import sha1
 from itertools import combinations
 from random import Random
-from dataclasses import replace
 from typing import Any
 
 import httpx
@@ -669,9 +669,7 @@ class ImmichClient:
             return []
 
         named = [p for p in people if p.name.strip()]
-        stats = await asyncio.gather(
-            *(self._get_person_asset_count(client, p.id) for p in named)
-        )
+        stats = await asyncio.gather(*(self._get_person_asset_count(client, p.id) for p in named))
         enriched = []
         for p, count in zip(named, stats, strict=True):
             p_new = replace(p, asset_count=count)

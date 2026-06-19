@@ -49,4 +49,3 @@ def handle_immich_errors():
     except ImmichUnexpectedResponseError as exc:
         logger.exception("Unexpected response from Immich: %s", exc)
         raise HTTPException(status_code=502, detail="Unexpected response from Immich") from exc
-
