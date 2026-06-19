@@ -6,4 +6,4 @@
 | Implement Modal Accessibility Attributes | done | Update ConfirmModal, ConfirmDeleteModal, UploadModal, and LightboxModal with accessibility roles and attributes. |
 | Implement HistoryPage Controls Accessibility | done | Add aria-labels to the search input and the status select filter in HistoryPage.tsx. |
 | Implement Settings Saved Message Live Announcement | done | Wrap dynamic success/error status messages in Settings.tsx with an aria-live="polite" container. |
-| Verify and build | in_progress | Run all unit tests, linters, formatting, and Vite build to confirm correctness. |
+| Verify and build | done | Run all unit tests, linters, formatting, and Vite build to confirm correctness. |
