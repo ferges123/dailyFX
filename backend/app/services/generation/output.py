@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from urllib.parse import urlencode
 
 from app.notifications.client import (
@@ -27,7 +28,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
     if notification_preset is None:
         return
 
-    from app.services.generation import engine as engine_module
+    from app.config import get_settings
 
     providers = [p.strip() for p in (notification_preset.provider or "").split(",") if p.strip()]
     notification_url = notification_preset.url
@@ -37,7 +38,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
     review_token = create_review_token(task_id)
     app_url = _with_review_token(f"/api/generation/review/{task_id}", review_token)
 
-    ext_url = engine_module.get_settings().app_external_url
+    ext_url = get_settings().app_external_url
     if ext_url:
         ext_url = ext_url.rstrip("/")
         abs_image_url = _with_review_token(f"{ext_url}/api/generation/review/{task_id}/thumbnail", review_token)
@@ -89,9 +90,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     image_url=abs_image_url,
                 )
             elif provider == "telegram" and notification_topic:
-                from pathlib import Path as _Path
-
-                image_path = _Path(engine_module.get_settings().data_dir) / "results" / f"{task_id}.png"
+                image_path = Path(get_settings().data_dir) / "results" / f"{task_id}.png"
                 image_bytes = None
                 if image_path.exists():
                     try:
@@ -110,9 +109,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     review_url=abs_app_url,
                 )
             elif provider == "apprise" and notification_url:
-                from pathlib import Path as _Path
-
-                image_path = _Path(engine_module.get_settings().data_dir) / "results" / f"{task_id}.png"
+                image_path = Path(get_settings().data_dir) / "results" / f"{task_id}.png"
                 img_str = str(image_path) if image_path.exists() else None
 
                 await send_apprise_notification(
