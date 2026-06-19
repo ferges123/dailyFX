@@ -82,7 +82,7 @@ async def run_generation_pipeline(
     effects_config: dict | None = None,
     schedule_id: int | None = None,
     album_name: str | None = None,
-    notification_presets: list = None,
+    notification_presets: list | None = None,
     webhook_url: str | None = None,
     selected_asset_ids: list[str] | None = None,
     on_progress: Callable[[str], None] | None = None,

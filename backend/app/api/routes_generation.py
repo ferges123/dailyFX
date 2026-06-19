@@ -400,7 +400,7 @@ async def accept_generation(
         return row
     except Exception as exc:
         row.status = "FAILED"
-        row.accept_notes = f"Upload failed: {exc}"
+        row.accept_notes = "Upload failed"
         db.commit()
         db.refresh(row)
         record_history_snapshot(db, row)
@@ -472,7 +472,7 @@ async def retry_acceptance(
         return row
     except Exception as exc:
         row.status = "FAILED"
-        row.accept_notes = f"Retry failed: {exc}"
+        row.accept_notes = "Retry failed"
         db.commit()
         db.refresh(row)
         record_history_snapshot(db, row)
