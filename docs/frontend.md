@@ -10,7 +10,7 @@ The frontend has been upgraded to the following modern technologies:
 - **Programming Language**: TypeScript 6
 - **Styling**: Tailwind CSS v4.3 (leveraging the new CSS-first configuration system in [styles.css](../frontend/src/styles.css) instead of `tailwind.config.js` or PostCSS configurations)
 - **Data Fetching & Caching**: TanStack React Query v5.101.0
-- **Testing**: Vitest 4.1.8 with React Testing Library and JSDOM
+- **Testing**: Vitest 4.1.8 with React Testing Library and JSDOM (for unit and component testing), and Playwright 1.61.0 (for End-to-End automation testing)
 - **Icons**: Lucide React v1.17.0
 - **Progressive Web App (PWA)**: vite-plugin-pwa (Vite plugin to automate service worker building and manifest injection)
 
@@ -55,14 +55,24 @@ The frontend has been upgraded to the following modern technologies:
 - `frontend/src/api/`: typed API client and auth helpers.
 - `frontend/src/version.ts`: single source of truth for the application version, imported by the desktop sidebar and mobile settings footer.
 
-## Application Reliability
+## Application Reliability & Optimization
 - **Lazy Loading**: Route-level components are imported dynamically via `React.lazy()` and wrapped in `Suspense` with a graceful loading fallback to optimize bundle size.
 - **Error Boundaries**: Every page view is wrapped in a `RouteErrorBoundary` component. This prevents UI-level JavaScript runtime failures on one page from taking down the entire application workspace.
+- **Memory-Safe Caching**: Image display via the `SecureImage` component employs an in-memory `blobCache` (and tracking of `pendingFetches`) to prevent memory leaks and eliminate redundant HTTP requests when items re-render.
+- **Rendering Performance**: Heavy components such as `HistoryDetailPanel` and `HistoryItemCard` are wrapped in `React.memo` and utilize `useCallback` hook references for event handlers to prevent unnecessary component re-renders.
+
+## Accessibility (a11y)
+The user interface adheres to strict accessibility standards to ensure compatibility with screen readers and keyboard navigation:
+- **Interactive Modals**: Custom modal dialogues (`ConfirmModal`, `UploadModal`, `LightboxModal`, `ConfirmDeleteModal`) implement appropriate accessibility roles (`role="dialog"`, `aria-modal="true"`) and have explicit `aria-label` tags for close triggers.
+- **Inputs & Fields**: Every input, dropdown, and text area has a programmatically linked label or is explicitly annotated with `aria-label` tags.
+- **Dynamic Content Announcements**: Key workflow state updates, streaming items, and status indicators implement `aria-live` regions.
+- **Automated Verification**: The repository contains automated tests targeting component accessibility attributes to avoid regressions.
 
 ## Development
 - `cd frontend && npm run dev` starts the UI on port `8439`.
 - `cd frontend && npm run build` type-checks and builds production assets.
-- `cd frontend && npm test` runs the Vitest suite.
+- `cd frontend && npm test` runs the Vitest unit/component suite.
+- `cd frontend && npm run test:e2e` executes the Playwright E2E automated test suite.
 
 ## Deployment Notes
 - The frontend is served by nginx in the `web` container.

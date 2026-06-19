@@ -16,6 +16,7 @@ DailyFX is split into a small set of layers so the API contract, generation flow
 - `app/api/`
   - Thin FastAPI routes.
   - Handles validation, response models, and request/response shape.
+  - Centralized exception mapping is managed in `app/main.py` using custom exception handlers (converting model validation and domain-specific errors such as `ValueError`, `LocalAIConfigurationError`, and `StudioUploadValidationError` to clean API error payloads).
   - Should not contain core generation or persistence logic.
 - `app/services/generation/`
   - `pipeline/` package orchestrates the generation run using an explicit, decoupled staged pipeline split into modular files: `planning.py`, `assets.py`, `execution.py`, `metadata.py`, `persistence.py`, and `notifications.py` (with context/helpers in `shared.py` and coordination in `__init__.py`).

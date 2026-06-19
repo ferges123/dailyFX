@@ -67,7 +67,7 @@ Example response:
 ```json
 {
   "status": "ok",
-  "version": "0.1.0",
+  "version": "0.3.23",
   "auth_enabled": true
 }
 ```
@@ -462,7 +462,7 @@ Example response (Prometheus exposition format):
 ```text
 # HELP dailyfx_app_info Application metadata.
 # TYPE dailyfx_app_info gauge
-dailyfx_app_info{version="0.1.0"} 1
+dailyfx_app_info{version="0.3.23"} 1
 # HELP dailyfx_generation_task_status Count of active/queued generation tasks by status.
 # TYPE dailyfx_generation_task_status gauge
 dailyfx_generation_task_status{status="queued"} 0
