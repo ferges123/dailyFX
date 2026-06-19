@@ -86,6 +86,6 @@ class TestDebugLogger:
             mock_logger.reset_mock()
             try:
                 debug_logger.debug_log("test message", task_id="task-123", key="val")
-                mock_logger.info.assert_called_once_with("DEBUG: [task-123] test message | key=val")
+                mock_logger.info.assert_called_once_with("DEBUG: %s", "[task-123] test message | key=val")
             finally:
                 debug_logger.set_debug_mode(False)
