@@ -87,16 +87,22 @@ export const UploadModal = memo(function UploadModal({
       ref={trapRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
     >
-      <div className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl p-6 relative animate-scale-in">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-modal-title"
+        className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl p-6 relative animate-scale-in"
+      >
         <button
           type="button"
           onClick={onClose}
+          aria-label="Close"
           className="absolute top-4 right-4 p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition"
         >
           <X size={16} />
         </button>
 
-        <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
+        <h3 id="upload-modal-title" className="text-base font-bold text-stone-900 flex items-center gap-2">
           <FolderPlus size={18} className="text-emerald-700" />
           Upload Destination Album
         </h3>

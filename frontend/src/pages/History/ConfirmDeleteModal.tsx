@@ -79,11 +79,17 @@ export function ConfirmDeleteModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-5 shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-modal-title"
+        className="relative w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-5 shadow-xl"
+      >
         <button
           type="button"
           onClick={onClose}
           disabled={isPending}
+          aria-label="Close"
           className="absolute right-3 top-3 rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600 transition"
         >
           <X size={16} />
@@ -99,7 +105,7 @@ export function ConfirmDeleteModal({
             />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-stone-900">{config.title}</h3>
+            <h3 id="delete-modal-title" className="text-sm font-bold text-stone-900">{config.title}</h3>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
               {config.desc}
             </p>

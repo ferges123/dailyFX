@@ -189,6 +189,9 @@ export const LightboxModal = memo(function LightboxModal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lightbox-modal-title"
         className="relative flex w-full max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-2xl border border-stone-800 bg-stone-950/80 shadow-2xl animate-scale-in md:max-h-[92vh] md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
@@ -235,7 +238,7 @@ export const LightboxModal = memo(function LightboxModal({
               <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-1">
                 Image Metadata
               </h4>
-              <h3 className="text-sm font-bold text-white leading-snug truncate">
+              <h3 id="lightbox-modal-title" className="text-sm font-bold text-white leading-snug truncate">
                 {entry.title || 'Untitled Image'}
               </h3>
               {entry.summary && (
