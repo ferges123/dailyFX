@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+import httpx
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -196,12 +197,108 @@ async def _test_local_connection(row) -> ConnectionTestResponse:
     )
 
 
+def _parse_gemini_models(payload: dict) -> tuple[list[dict], list[dict]]:
+    vision_models = []
+    image_models = []
+    models_list = payload.get("models", [])
+    for m in models_list:
+        name = m.get("name", "")
+        display_name = m.get("displayName", name)
+        short_name = name.replace("models/", "")
+        methods = m.get("supportedGenerationMethods", [])
+        if "generateContent" in methods:
+            if "image" in name or "imagen" in name:
+                image_models.append({"label": display_name, "value": short_name})
+            else:
+                vision_models.append({"label": display_name, "value": short_name})
+    return vision_models, image_models
+
+
+def _parse_openai_models(payload: dict) -> tuple[list[dict], list[dict]]:
+    vision_models = []
+    image_models = []
+    models_list = payload.get("data", [])
+    for m in models_list:
+        model_id = m.get("id", "")
+        if "gpt-4o" in model_id or "gpt-4-vision" in model_id or "gpt-4" in model_id:
+            vision_models.append({"label": model_id, "value": model_id})
+        elif "dall-e" in model_id or "gpt-image" in model_id:
+            image_models.append({"label": model_id, "value": model_id})
+    return vision_models, image_models
+
+
+def _parse_openrouter_models(payload: dict) -> tuple[list[dict], list[dict]]:
+    vision_models = []
+    image_models = []
+    models_list = payload.get("data", [])
+    for m in models_list:
+        model_id = m.get("id", "")
+        name = m.get("name", model_id)
+        if any(x in model_id.lower() for x in ["vision", "-vl", "llava", "gemini-2", "gpt-4o", "claude-3"]):
+            vision_models.append({"label": name, "value": model_id})
+        if any(x in model_id.lower() for x in ["flux", "stable-diffusion", "midjourney", "dall-e", "imagen"]):
+            image_models.append({"label": name, "value": model_id})
+    return vision_models, image_models
+
+
+def _parse_byteplus_models(payload: dict) -> tuple[list[dict], list[dict]]:
+    vision_models = []
+    image_models = []
+    models_list = payload.get("data", [])
+    for m in models_list:
+        model_id = m.get("id", "")
+        name = m.get("name", model_id)
+        domain = m.get("domain", "")
+        task_types = m.get("task_type") or []
+        if not isinstance(task_types, list):
+            task_types = []
+
+        if "VisualQuestionAnswering" in task_types or domain == "VLM":
+            vision_models.append({"label": name, "value": model_id})
+
+        if "ImageToImage" in task_types:
+            if "seededit" not in model_id.lower():
+                image_models.append({"label": name, "value": model_id})
+    return vision_models, image_models
+
+
+def _parse_local_models(payload: dict) -> tuple[list[dict], list[dict]]:
+    vision_models = []
+    image_models = []
+    models_list = payload.get("data", [])
+    for m in models_list:
+        model_id = m.get("id", "")
+        vision_models.append({"label": model_id, "value": model_id})
+        image_models.append({"label": model_id, "value": model_id})
+    return vision_models, image_models
+
+
+def _parse_xiaomi_models(payload: dict) -> tuple[list[dict], list[dict]]:
+    vision_models = []
+    image_models = []
+    models_list = payload.get("models", [])
+    for m in models_list:
+        model_id = m.get("id", "")
+        name = m.get("name", model_id)
+        if "mimo" in model_id.lower():
+            vision_models.append({"label": name, "value": model_id})
+    return vision_models, image_models
+
+
+_PROVIDER_PARSERS = {
+    "gemini": _parse_gemini_models,
+    "openai": _parse_openai_models,
+    "openrouter": _parse_openrouter_models,
+    "byteplus": _parse_byteplus_models,
+    "local": _parse_local_models,
+    "xiaomi": _parse_xiaomi_models,
+}
+
+
 @router.get("/models/{provider}", response_model=AvailableModelsResponse)
 async def get_provider_models(
     provider: str, db: Session = Depends(get_db), _: None = Depends(require_auth)
 ) -> AvailableModelsResponse:
-    import httpx
-
     row = get_or_create_settings(db)
 
     # Fallback default hardcoded lists
@@ -269,72 +366,9 @@ async def get_provider_models(
         vision_models = []
         image_models = []
 
-        if provider == "gemini":
-            models_list = payload.get("models", [])
-            for m in models_list:
-                name = m.get("name", "")
-                display_name = m.get("displayName", name)
-                short_name = name.replace("models/", "")
-                methods = m.get("supportedGenerationMethods", [])
-                if "generateContent" in methods:
-                    if "image" in name or "imagen" in name:
-                        image_models.append({"label": display_name, "value": short_name})
-                    else:
-                        vision_models.append({"label": display_name, "value": short_name})
-
-        elif provider == "openai":
-            models_list = payload.get("data", [])
-            for m in models_list:
-                model_id = m.get("id", "")
-                if "gpt-4o" in model_id or "gpt-4-vision" in model_id or "gpt-4" in model_id:
-                    vision_models.append({"label": model_id, "value": model_id})
-                elif "dall-e" in model_id or "gpt-image" in model_id:
-                    image_models.append({"label": model_id, "value": model_id})
-
-        elif provider == "openrouter":
-            models_list = payload.get("data", [])
-            for m in models_list:
-                model_id = m.get("id", "")
-                name = m.get("name", model_id)
-                # Check typical vision/multimodal models
-                if any(x in model_id.lower() for x in ["vision", "-vl", "llava", "gemini-2", "gpt-4o", "claude-3"]):
-                    vision_models.append({"label": name, "value": model_id})
-                if any(x in model_id.lower() for x in ["flux", "stable-diffusion", "midjourney", "dall-e", "imagen"]):
-                    image_models.append({"label": name, "value": model_id})
-
-        elif provider == "byteplus":
-            models_list = payload.get("data", [])
-            for m in models_list:
-                model_id = m.get("id", "")
-                name = m.get("name", model_id)
-                domain = m.get("domain", "")
-                task_types = m.get("task_type") or []
-                if not isinstance(task_types, list):
-                    task_types = []
-
-                # AI Vision / VLM models (img2txt / VisualQuestionAnswering)
-                if "VisualQuestionAnswering" in task_types or domain == "VLM":
-                    vision_models.append({"label": name, "value": model_id})
-
-                # AI Image models here feed the app's img2img effects flow.
-                if "ImageToImage" in task_types:
-                    if "seededit" not in model_id.lower():
-                        image_models.append({"label": name, "value": model_id})
-
-        elif provider == "local":
-            models_list = payload.get("data", [])
-            for m in models_list:
-                model_id = m.get("id", "")
-                vision_models.append({"label": model_id, "value": model_id})
-                image_models.append({"label": model_id, "value": model_id})
-
-        elif provider == "xiaomi":
-            models_list = payload.get("models", [])
-            for m in models_list:
-                model_id = m.get("id", "")
-                name = m.get("name", model_id)
-                if "mimo" in model_id.lower():
-                    vision_models.append({"label": name, "value": model_id})
+        parser = _PROVIDER_PARSERS.get(provider)
+        if parser:
+            vision_models, image_models = parser(payload)
 
         # Ensure fallback lists are used if filtered results are empty
         return AvailableModelsResponse(

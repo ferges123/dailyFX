@@ -63,6 +63,66 @@ def _get_supported_module(effect_id: str):
     return module
 
 
+def _resolve_ai_provider_for_studio(settings, db: Session, field_prefix: str) -> tuple[str, str]:
+    from app.models.schedule import ScheduleModel
+    from app.security import decrypt_secret
+
+    if field_prefix == "vision":
+        schedule = (
+            db.query(ScheduleModel)
+            .filter(ScheduleModel.ai_vision_provider != "none")
+            .order_by(ScheduleModel.enabled.desc(), ScheduleModel.id.asc())
+            .first()
+        )
+        if schedule:
+            return schedule.ai_vision_provider, schedule.ai_vision_model
+
+        providers = ["gemini", "openai", "openrouter", "xiaomi", "local"]
+        default_models = {
+            "gemini": "gemini-1.5-flash",
+            "openai": "gpt-4o-mini",
+            "openrouter": "google/gemini-2.5-flash",
+            "xiaomi": "mimo-v2.5",
+            "local": "",
+        }
+    else:  # image
+        schedule = (
+            db.query(ScheduleModel)
+            .filter(ScheduleModel.ai_image_provider != "none")
+            .order_by(ScheduleModel.enabled.desc(), ScheduleModel.id.asc())
+            .first()
+        )
+        if schedule:
+            return schedule.ai_image_provider, schedule.ai_image_model
+
+        providers = ["gemini", "openai", "openrouter", "byteplus", "local"]
+        default_models = {
+            "gemini": "imagen-3.0-generate-002",
+            "openai": "dall-e-3",
+            "openrouter": "black-forest-labs/flux-1-schnell",
+            "byteplus": "",
+            "local": "",
+        }
+
+    def is_configured(val):
+        if not val:
+            return False
+        try:
+            return bool(decrypt_secret(val))
+        except Exception:
+            return False
+
+    for prov in providers:
+        key_attr = f"encrypted_{prov}_api_key"
+        if prov == "local":
+            key_attr = "encrypted_local_ai_api_key"
+        val = getattr(settings, key_attr, None)
+        if is_configured(val):
+            return prov, default_models[prov]
+
+    return "none", ""
+
+
 @router.post("/preview")
 @limiter.limit("5/minute")
 async def create_studio_preview(
@@ -79,82 +139,14 @@ async def create_studio_preview(
 
     # Resolve transient AI settings for Studio preview from schedules or active API keys
     if getattr(settings, "default_ai_provider", "none") == "none":
-        from app.models.schedule import ScheduleModel
-
-        schedule = (
-            db.query(ScheduleModel)
-            .filter(ScheduleModel.ai_vision_provider != "none")
-            .order_by(ScheduleModel.enabled.desc(), ScheduleModel.id.asc())
-            .first()
-        )
-        if schedule:
-            settings.default_ai_provider = schedule.ai_vision_provider
-            settings.default_ai_model = schedule.ai_vision_model
-        else:
-            from app.security import decrypt_secret
-
-            def is_configured(val):
-                if not val:
-                    return False
-                try:
-                    return bool(decrypt_secret(val))
-                except Exception:
-                    return False
-
-            if is_configured(settings.encrypted_gemini_api_key):
-                settings.default_ai_provider = "gemini"
-                settings.default_ai_model = "gemini-1.5-flash"
-            elif is_configured(settings.encrypted_openai_api_key):
-                settings.default_ai_provider = "openai"
-                settings.default_ai_model = "gpt-4o-mini"
-            elif is_configured(settings.encrypted_openrouter_api_key):
-                settings.default_ai_provider = "openrouter"
-                settings.default_ai_model = "google/gemini-2.5-flash"
-            elif is_configured(settings.encrypted_xiaomi_api_key):
-                settings.default_ai_provider = "xiaomi"
-                settings.default_ai_model = "mimo-v2.5"
-            elif is_configured(settings.encrypted_local_ai_api_key):
-                settings.default_ai_provider = "local"
-                settings.default_ai_model = ""
+        prov, model = _resolve_ai_provider_for_studio(settings, db, "vision")
+        settings.default_ai_provider = prov
+        settings.default_ai_model = model
 
     if getattr(settings, "ai_image_provider", "none") == "none":
-        from app.models.schedule import ScheduleModel
-
-        schedule = (
-            db.query(ScheduleModel)
-            .filter(ScheduleModel.ai_image_provider != "none")
-            .order_by(ScheduleModel.enabled.desc(), ScheduleModel.id.asc())
-            .first()
-        )
-        if schedule:
-            settings.ai_image_provider = schedule.ai_image_provider
-            settings.ai_image_model = schedule.ai_image_model
-        else:
-            from app.security import decrypt_secret
-
-            def is_configured(val):
-                if not val:
-                    return False
-                try:
-                    return bool(decrypt_secret(val))
-                except Exception:
-                    return False
-
-            if is_configured(settings.encrypted_gemini_api_key):
-                settings.ai_image_provider = "gemini"
-                settings.ai_image_model = "imagen-3.0-generate-002"
-            elif is_configured(settings.encrypted_openai_api_key):
-                settings.ai_image_provider = "openai"
-                settings.ai_image_model = "dall-e-3"
-            elif is_configured(settings.encrypted_openrouter_api_key):
-                settings.ai_image_provider = "openrouter"
-                settings.ai_image_model = "black-forest-labs/flux-1-schnell"
-            elif is_configured(settings.encrypted_byteplus_api_key):
-                settings.ai_image_provider = "byteplus"
-                settings.ai_image_model = ""
-            elif is_configured(settings.encrypted_local_ai_api_key):
-                settings.ai_image_provider = "local"
-                settings.ai_image_model = ""
+        prov, model = _resolve_ai_provider_for_studio(settings, db, "image")
+        settings.ai_image_provider = prov
+        settings.ai_image_model = model
 
     module = _get_supported_module(effect_id)
     parsed_config = _parse_config(config)
