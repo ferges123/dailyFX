@@ -159,12 +159,7 @@ async def _apply_album_and_tag(
             else:
                 connection = await client.test_connection()
                 if connection.user_id:
-                    await client.create_album(album_name, [upload_asset_id], user_id=connection.user_id)
-                    refreshed_albums = await client.list_albums()
-                    created_album = next(
-                        (album for album in refreshed_albums if album.album_name.lower() == album_name.lower()),
-                        None,
-                    )
+                    created_album = await client.create_album(album_name, [upload_asset_id], user_id=connection.user_id)
                     if created_album is not None:
                         album_id = created_album.id
                         album_created = True

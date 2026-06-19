@@ -347,7 +347,10 @@ def test_accept_generation(tmp_path):
         fake_client.upload_asset = AsyncMock(return_value=upload_result)
         fake_client.list_albums = AsyncMock(return_value=[])
         fake_client.test_connection = AsyncMock(return_value=MagicMock(user_id="user-1"))
-        fake_client.create_album = AsyncMock()
+        mock_album = MagicMock()
+        mock_album.id = "created-album-id-1"
+        mock_album.album_name = "AI Photos"
+        fake_client.create_album = AsyncMock(return_value=mock_album)
         fake_client.ensure_tag = AsyncMock(return_value=tag_mock)
         fake_client.tag_assets = AsyncMock()
 
