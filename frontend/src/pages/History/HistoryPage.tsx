@@ -12,7 +12,7 @@ import {
   type GenerationHistoryEntry,
 } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
-import { InlineSpinner, ErrorBanner } from '../../components/ErrorUI';
+import { ErrorBanner } from '../../components/ErrorUI';
 import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -146,6 +146,24 @@ const HistoryItemCard = memo(function HistoryItemCard({
     </button>
   );
 });
+
+const HistoryItemSkeleton = () => {
+  return (
+    <div
+      data-testid="history-item-skeleton"
+      className="w-full flex gap-2.5 md:gap-3 rounded-xl border border-stone-200 bg-white p-1.5 md:p-2 animate-pulse"
+    >
+      <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 rounded-lg bg-stone-200" />
+      <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
+        <div>
+          <div className="h-3 w-3/4 rounded bg-stone-200" />
+          <div className="h-2 w-1/2 rounded bg-stone-200 mt-2" />
+        </div>
+        <div className="h-4 w-16 rounded-full bg-stone-200 mt-2" />
+      </div>
+    </div>
+  );
+};
 
 export function HistoryPage() {
   const navigate = useNavigate();
@@ -383,6 +401,125 @@ export function HistoryPage() {
     settings.refetch();
   }, [settings]);
 
+  const renderContent = () => {
+    if (isLoading && filteredHistoryItems.length === 0) {
+      return (
+        <div className="grid gap-4 lg:h-168 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
+          {/* Left Panel: Cards Skeleton List */}
+          <div className="flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 h-152 lg:h-full">
+            <div className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar">
+              <HistoryItemSkeleton />
+              <HistoryItemSkeleton />
+              <HistoryItemSkeleton />
+              <HistoryItemSkeleton />
+              <HistoryItemSkeleton />
+            </div>
+          </div>
+          {/* Right Panel: Detail Panel Placeholder */}
+          <div className="app-panel-soft flex-1 flex flex-col items-center justify-center border-2 border-dashed border-stone-200 text-stone-300 p-8 hidden lg:flex animate-pulse">
+            <div className="h-8 w-8 rounded-full bg-stone-200" />
+            <div className="h-4 w-40 rounded bg-stone-200 mt-4" />
+            <div className="h-3 w-60 rounded bg-stone-200 mt-2" />
+          </div>
+        </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <div className="app-panel p-6">
+          <ErrorBanner
+            title="Failed to load history"
+            error={error}
+            onRetry={() => refetchHistory()}
+          />
+        </div>
+      );
+    }
+
+    if (filteredHistoryItems.length > 0) {
+      return (
+        <div className="grid gap-4 lg:h-168 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
+          {/* Left Panel: Cards List */}
+          <div
+            className={`flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 ${
+              mobileShowDetail
+                ? 'hidden lg:flex lg:h-full'
+                : 'flex h-152 lg:h-full'
+            }`}
+          >
+            <div
+              ref={historyListRef}
+              className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar"
+            >
+              {filteredHistoryItems.map((item) => (
+                <HistoryItemCard
+                  key={item.task_id}
+                  item={item}
+                  isSelected={selectedHistoryTaskId === item.task_id}
+                  onSelect={handleSelectCard}
+                />
+              ))}
+
+              {/* Load More Button */}
+              {hasNextPage && (
+                <div className="pt-2 pb-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-250 bg-white px-4 text-xs font-semibold text-stone-700 hover:bg-stone-50 active:scale-95 disabled:opacity-50 transition"
+                  >
+                    {isFetchingNextPage ? (
+                      <>
+                        <RefreshCw
+                          size={12}
+                          className="animate-spin text-stone-500"
+                        />
+                        Loading...
+                      </>
+                    ) : (
+                      'Load more entries'
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Panel: Detail Panel */}
+          <HistoryDetailPanel
+            entry={selectedHistoryEntry}
+            selectedHistoryImmichUrl={selectedHistoryImmichUrl}
+            sourceAssetImmichUrl={sourceAssetImmichUrl}
+            mobileShowDetail={mobileShowDetail}
+            onBackToList={handleBackToList}
+            onAccept={handleAccept}
+            onAcceptWithOptions={handleAcceptWithOptions}
+            onReject={handleReject}
+            onRetry={handleRetry}
+            onOpenLightbox={handleOpenLightbox}
+            acceptPending={acceptHistoryMutation.isPending}
+            rejectPending={rejectHistoryMutation.isPending}
+            retryPending={retryHistoryMutation.isPending}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center py-24 rounded-2xl border border-stone-200 bg-white p-6 text-center">
+        <Layers size={32} className="text-stone-300 mb-3" />
+        <h4 className="text-sm font-bold text-stone-900">No items found</h4>
+        <p className="text-xs text-stone-500 mt-1 max-w-xs">
+          {historySearch.trim()
+            ? 'No history matches the current search query or filter status.'
+            : 'There are no generations stored in the history database yet.'}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <section className="grid gap-4">
       {settings.isError && !settings.data && (
@@ -463,95 +600,7 @@ export function HistoryPage() {
         </div>
       </div>
 
-      {isLoading && filteredHistoryItems.length === 0 ? (
-        <div className="app-panel p-12">
-          <InlineSpinner />
-        </div>
-      ) : isError ? (
-        <div className="app-panel p-6">
-          <ErrorBanner
-            title="Failed to load history"
-            error={error}
-            onRetry={() => refetchHistory()}
-          />
-        </div>
-      ) : filteredHistoryItems.length > 0 ? (
-        <div className="grid gap-4 lg:h-168 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
-          {/* Left Panel: Cards List */}
-          <div
-            className={`flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 ${
-              mobileShowDetail
-                ? 'hidden lg:flex lg:h-full'
-                : 'flex h-152 lg:h-full'
-            }`}
-          >
-            <div
-              ref={historyListRef}
-              className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar"
-            >
-              {filteredHistoryItems.map((item) => (
-                <HistoryItemCard
-                  key={item.task_id}
-                  item={item}
-                  isSelected={selectedHistoryTaskId === item.task_id}
-                  onSelect={handleSelectCard}
-                />
-              ))}
-
-              {/* Load More Button */}
-              {hasNextPage && (
-                <div className="pt-2 pb-4 text-center">
-                  <button
-                    type="button"
-                    onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-250 bg-white px-4 text-xs font-semibold text-stone-700 hover:bg-stone-50 active:scale-95 disabled:opacity-50 transition"
-                  >
-                    {isFetchingNextPage ? (
-                      <>
-                        <RefreshCw
-                          size={12}
-                          className="animate-spin text-stone-500"
-                        />
-                        Loading...
-                      </>
-                    ) : (
-                      'Load more entries'
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Panel: Detail Panel */}
-          <HistoryDetailPanel
-            entry={selectedHistoryEntry}
-            selectedHistoryImmichUrl={selectedHistoryImmichUrl}
-            sourceAssetImmichUrl={sourceAssetImmichUrl}
-            mobileShowDetail={mobileShowDetail}
-            onBackToList={handleBackToList}
-            onAccept={handleAccept}
-            onAcceptWithOptions={handleAcceptWithOptions}
-            onReject={handleReject}
-            onRetry={handleRetry}
-            onOpenLightbox={handleOpenLightbox}
-            acceptPending={acceptHistoryMutation.isPending}
-            rejectPending={rejectHistoryMutation.isPending}
-            retryPending={retryHistoryMutation.isPending}
-          />
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-24 rounded-2xl border border-stone-200 bg-white p-6 text-center">
-          <Layers size={32} className="text-stone-300 mb-3" />
-          <h4 className="text-sm font-bold text-stone-900">No items found</h4>
-          <p className="text-xs text-stone-500 mt-1 max-w-xs">
-            {historySearch.trim()
-              ? 'No history matches the current search query or filter status.'
-              : 'There are no generations stored in the history database yet.'}
-          </p>
-        </div>
-      )}
+      {renderContent()}
 
       {/* destination album upload modal */}
       {selectedHistoryEntry && (

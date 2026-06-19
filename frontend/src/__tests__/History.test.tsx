@@ -391,4 +391,26 @@ describe('HistoryPage', () => {
       });
     });
   });
+
+  it('renders skeleton loaders when loading history data', () => {
+    vi.mocked(client.getGenerationHistory).mockImplementation(
+      () => new Promise(() => {}),
+    );
+    renderHistory();
+    const skeletons = screen.getAllByTestId('history-item-skeleton');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('skeleton loaders disappear after history data is loaded', async () => {
+    vi.mocked(client.getGenerationHistory).mockResolvedValue({
+      items: [mockHistoryItem1],
+      total: 1,
+      latest_event_id: 1,
+    });
+    renderHistory();
+    expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('history-item-skeleton'),
+    ).not.toBeInTheDocument();
+  });
 });
