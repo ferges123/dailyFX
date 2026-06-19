@@ -104,10 +104,19 @@ describe('API Layer - Settings', () => {
 
   it('updateSettings makes a PUT request with body', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
-    await updateSettings({ immich_url: 'http://test' });
+    const fullPayload = {
+      immich_url: 'http://test',
+      local_ai_base_url: 'http://local-ai:11434/v1',
+      ai_vision_hourly_limit: 10,
+      ai_image_hourly_limit: 10,
+      debug_mode: false,
+      favorite_albums_json: null,
+      ai_custom_prompt: null,
+    };
+    await updateSettings(fullPayload);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/settings'), expect.objectContaining({
       method: 'PUT',
-      body: JSON.stringify({ immich_url: 'http://test' }),
+      body: JSON.stringify(fullPayload),
     }));
   });
 });
