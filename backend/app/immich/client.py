@@ -35,6 +35,8 @@ from app.utils.url_utils import normalize_api_url
 
 logger = logging.getLogger(__name__)
 
+_client_cache: dict[tuple[str, float], httpx.AsyncClient] = {}
+
 
 class ImmichClient:
     def __init__(self, server_url: str, api_key: str, timeout: float = 30.0) -> None:
@@ -42,6 +44,19 @@ class ImmichClient:
         self.api_base_url = normalize_api_url(server_url)
         self.api_key = api_key
         self.timeout = timeout
+
+    def _get_client(self, timeout: float | None = None) -> httpx.AsyncClient:
+        t = timeout if timeout is not None else self.timeout
+        key = (self.api_base_url, t)
+        client = _client_cache.get(key)
+        if client is None or client.is_closed:
+            client = httpx.AsyncClient(
+                base_url=self.api_base_url,
+                timeout=t,
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+            )
+            _client_cache[key] = client
+        return client
 
     def _headers(self, json_type: bool = True) -> dict[str, str]:
         h = {"x-api-key": self.api_key}
@@ -370,9 +385,9 @@ class ImmichClient:
         return datetime.combine(value, time.max, tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
 
     async def test_connection(self) -> ImmichConnectionResult:
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            version = await self._get_server_version(client)
-            user_payload = await self._get_authenticated_probe(client)
+        client = self._get_client()
+        version = await self._get_server_version(client)
+        user_payload = await self._get_authenticated_probe(client)
 
         return ImmichConnectionResult(
             ok=True,
@@ -430,8 +445,8 @@ class ImmichClient:
         return await self.search_assets(ImmichSearchFilters())
 
     async def list_albums(self) -> list[ImmichAlbumSummary]:
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            payload = await self._get_any_json("/albums", client)
+        client = self._get_client()
+        payload = await self._get_any_json("/albums", client)
 
         if not isinstance(payload, list):
             raise ImmichUnexpectedResponseError("Immich returned unexpected album list")
@@ -455,14 +470,14 @@ class ImmichClient:
             payload["role"] = "editor"
             payload["albumUsers"] = []
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            response = await self._request(
-                "POST",
-                "/albums",
-                client,
-                json_payload=payload,
-                not_found_message="Immich album creation endpoint was not found",
-            )
+        client = self._get_client()
+        response = await self._request(
+            "POST",
+            "/albums",
+            client,
+            json_payload=payload,
+            not_found_message="Immich album creation endpoint was not found",
+        )
         if response.headers.get("content-type", "").startswith("application/json"):
             try:
                 response_payload = response.json()
@@ -485,14 +500,14 @@ class ImmichClient:
         if not normalized_names:
             return []
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            payload = await self._request_any_json(
-                "PUT",
-                "/tags",
-                client,
-                json_payload={"tags": normalized_names},
-                not_found_message="Immich tag upsert endpoint was not found",
-            )
+        client = self._get_client()
+        payload = await self._request_any_json(
+            "PUT",
+            "/tags",
+            client,
+            json_payload={"tags": normalized_names},
+            not_found_message="Immich tag upsert endpoint was not found",
+        )
 
         raw_tags: Any
         if isinstance(payload, list):
@@ -525,52 +540,52 @@ class ImmichClient:
         if not asset_ids:
             return
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            await self._request_any_json(
-                "PUT",
-                f"/tags/{tag_id}/assets",
-                client,
-                json_payload={"ids": asset_ids},
-                not_found_message="Immich tag-assets endpoint was not found",
-            )
+        client = self._get_client()
+        await self._request_any_json(
+            "PUT",
+            f"/tags/{tag_id}/assets",
+            client,
+            json_payload={"ids": asset_ids},
+            not_found_message="Immich tag-assets endpoint was not found",
+        )
 
     async def add_assets_to_album(self, album_id: str, asset_ids: list[str]) -> None:
         if not asset_ids:
             return
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            last_error: Exception | None = None
-            # Try multiple HTTP method + path patterns.
-            # 1. PUT /albums/{album_id}/assets (Standard v3 and v2)
-            # 2. PATCH /albums/{album_id}/assets (Some v3 release candidates / variants)
-            # 3. PUT /albums/{album_id}/asset (Legacy v2 fallback)
-            endpoints = [
-                ("PUT", f"/albums/{album_id}/assets"),
-                ("PATCH", f"/albums/{album_id}/assets"),
-                ("PUT", f"/albums/{album_id}/asset"),
-            ]
-            for method, path in endpoints:
-                try:
-                    logger.info("Attempting to add assets to album %s via %s %s", album_id, method, path)
-                    await self._request(
-                        method,
-                        path,
-                        client,
-                        json_payload={"ids": asset_ids},
-                        not_found_message=f"Immich add-assets-to-album endpoint ({path}) was not found",
-                    )
-                    logger.info("Successfully added assets to album %s via %s %s", album_id, method, path)
-                    return
-                except ImmichUnexpectedResponseError as exc:
-                    last_error = exc
-                    # Only catch and retry on 404 (endpoint not found) or 405 (method not allowed/HTTP 405)
-                    exc_str = str(exc).lower()
-                    is_not_found = "not found" in exc_str
-                    is_method_not_allowed = "http 405" in exc_str or "method not allowed" in exc_str
-                    if not (is_not_found or is_method_not_allowed):
-                        raise
-            if last_error is not None:
-                raise last_error
+        client = self._get_client()
+        last_error: Exception | None = None
+        # Try multiple HTTP method + path patterns.
+        # 1. PUT /albums/{album_id}/assets (Standard v3 and v2)
+        # 2. PATCH /albums/{album_id}/assets (Some v3 release candidates / variants)
+        # 3. PUT /albums/{album_id}/asset (Legacy v2 fallback)
+        endpoints = [
+            ("PUT", f"/albums/{album_id}/assets"),
+            ("PATCH", f"/albums/{album_id}/assets"),
+            ("PUT", f"/albums/{album_id}/asset"),
+        ]
+        for method, path in endpoints:
+            try:
+                logger.info("Attempting to add assets to album %s via %s %s", album_id, method, path)
+                await self._request(
+                    method,
+                    path,
+                    client,
+                    json_payload={"ids": asset_ids},
+                    not_found_message=f"Immich add-assets-to-album endpoint ({path}) was not found",
+                )
+                logger.info("Successfully added assets to album %s via %s %s", album_id, method, path)
+                return
+            except ImmichUnexpectedResponseError as exc:
+                last_error = exc
+                # Only catch and retry on 404 (endpoint not found) or 405 (method not allowed/HTTP 405)
+                exc_str = str(exc).lower()
+                is_not_found = "not found" in exc_str
+                is_method_not_allowed = "http 405" in exc_str or "method not allowed" in exc_str
+                if not (is_not_found or is_method_not_allowed):
+                    raise
+        if last_error is not None:
+            raise last_error
 
     async def upload_asset(
         self,
@@ -594,28 +609,28 @@ class ImmichClient:
         if not filename or not file_created_at or not file_modified_at:
             raise ImmichUnexpectedResponseError("Immich upload metadata is incomplete")
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            response_payload = await self._request_json(
-                "POST",
-                "/assets",
-                client,
-                data=ImmichUploadMetadata(
-                    filename=filename,
-                    device_asset_id=device_asset_id or "",
-                    device_id=device_id or "",
-                    file_created_at=file_created_at,
-                    file_modified_at=file_modified_at,
-                ).as_request_data(),
-                files={
-                    "assetData": (
-                        filename,
-                        content,
-                        metadata.content_type if metadata is not None else "image/png",
-                    )
-                },
-                headers={"x-immich-checksum": checksum or self._checksum(content)},
-                not_found_message="Immich upload endpoint was not found",
-            )
+        client = self._get_client()
+        response_payload = await self._request_json(
+            "POST",
+            "/assets",
+            client,
+            data=ImmichUploadMetadata(
+                filename=filename,
+                device_asset_id=device_asset_id or "",
+                device_id=device_id or "",
+                file_created_at=file_created_at,
+                file_modified_at=file_modified_at,
+            ).as_request_data(),
+            files={
+                "assetData": (
+                    filename,
+                    content,
+                    metadata.content_type if metadata is not None else "image/png",
+                )
+            },
+            headers={"x-immich-checksum": checksum or self._checksum(content)},
+            not_found_message="Immich upload endpoint was not found",
+        )
         asset_id = response_payload.get("id")
         if not isinstance(asset_id, str) or not asset_id.strip():
             raise ImmichUnexpectedResponseError("Immich returned unexpected upload response")
@@ -623,43 +638,43 @@ class ImmichClient:
         return ImmichUploadResult(id=asset_id, status=status if isinstance(status, str) else None)
 
     async def list_people(self) -> list[ImmichPersonSummary]:
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            people: list[ImmichPersonSummary] = []
-            page = 1
-            while True:
-                payload = await self._get_any_json(
-                    "/people",
-                    client,
-                    params={"page": page, "size": 1000, "withHidden": False},
-                )
-                if not isinstance(payload, dict):
-                    raise ImmichUnexpectedResponseError("Immich returned unexpected people response")
-                raw_people = payload.get("people", [])
-                if not isinstance(raw_people, list):
-                    raise ImmichUnexpectedResponseError("Immich returned unexpected people list")
-                page_people = [
-                    summary
-                    for item in raw_people
-                    if isinstance(item, dict) and (summary := self._coerce_person_summary(item)) is not None
-                ]
-                if not page_people:
-                    break
-                people.extend(page_people)
-                if not payload.get("hasNextPage"):
-                    break
-                page += 1
-
-            if not people:
-                return []
-
-            named = [p for p in people if p.name.strip()]
-            enriched = [
-                p
-                for p in named
-                if p.asset_count > 0 or not p.is_hidden
+        client = self._get_client()
+        people: list[ImmichPersonSummary] = []
+        page = 1
+        while True:
+            payload = await self._get_any_json(
+                "/people",
+                client,
+                params={"page": page, "size": 1000, "withHidden": False},
+            )
+            if not isinstance(payload, dict):
+                raise ImmichUnexpectedResponseError("Immich returned unexpected people response")
+            raw_people = payload.get("people", [])
+            if not isinstance(raw_people, list):
+                raise ImmichUnexpectedResponseError("Immich returned unexpected people list")
+            page_people = [
+                summary
+                for item in raw_people
+                if isinstance(item, dict) and (summary := self._coerce_person_summary(item)) is not None
             ]
-            enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
-            return enriched[:33]
+            if not page_people:
+                break
+            people.extend(page_people)
+            if not payload.get("hasNextPage"):
+                break
+            page += 1
+
+        if not people:
+            return []
+
+        named = [p for p in people if p.name.strip()]
+        enriched = [
+            p
+            for p in named
+            if p.asset_count > 0 or not p.is_hidden
+        ]
+        enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
+        return enriched[:33]
 
     async def _get_person_asset_count(self, client: httpx.AsyncClient, person_id: str) -> int:
         payload = await self._get_json(f"/people/{person_id}/statistics", client)
@@ -694,20 +709,20 @@ class ImmichClient:
         request_sets = self._build_person_request_sets(filters)
         Random().shuffle(request_sets)
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            for person_ids in request_sets:
-                attempts = 3 if exclude_ids else 1
-                for _ in range(attempts):
-                    assets = await self._post_random_assets(client, filters, person_ids)
-                    if not assets:
-                        break
-                    if exclude_ids:
-                        assets = [
-                            asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)
-                        ]
-                    if not assets:
-                        continue
-                    return assets
+        client = self._get_client()
+        for person_ids in request_sets:
+            attempts = 3 if exclude_ids else 1
+            for _ in range(attempts):
+                assets = await self._post_random_assets(client, filters, person_ids)
+                if not assets:
+                    break
+                if exclude_ids:
+                    assets = [
+                        asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)
+                    ]
+                if not assets:
+                    continue
+                return assets
         return []
 
     @staticmethod
@@ -805,59 +820,57 @@ class ImmichClient:
     async def get_asset_data(self, asset_id: str) -> bytes:
         """Download the original asset content."""
         # Use a longer timeout for full file downloads
-        async with httpx.AsyncClient(
-            base_url=self.api_base_url, timeout=httpx.Timeout(60.0, connect=10.0), follow_redirects=True
-        ) as client:
-            # Try multiple download endpoints. Immich has used different paths across versions.
-            # 1. /assets/{id}/original (Standard stable endpoint for v2 & v3)
-            # 2. /assets/{id}/file (Alternate endpoint)
-            # 3. /asset/download/{id} (Legacy endpoint 1)
-            # 4. /download/asset/{id} (Legacy endpoint 2)
-            endpoints = [
-                f"/assets/{asset_id}/original",
-                f"/assets/{asset_id}/file",
-                f"/asset/download/{asset_id}",
-                f"/download/asset/{asset_id}",
-            ]
-            for endpoint in endpoints:
-                for attempt in range(3):
-                    try:
-                        logger.info("Attempting download: %s (attempt %d/3)", endpoint, attempt + 1)
-                        # Use binary headers (no Accept: application/json)
-                        response = await client.get(endpoint, headers=self._headers(json_type=False))
+        client = self._get_client(timeout=60.0)
+        # Try multiple download endpoints. Immich has used different paths across versions.
+        # 1. /assets/{id}/original (Standard stable endpoint for v2 & v3)
+        # 2. /assets/{id}/file (Alternate endpoint)
+        # 3. /asset/download/{id} (Legacy endpoint 1)
+        # 4. /download/asset/{id} (Legacy endpoint 2)
+        endpoints = [
+            f"/assets/{asset_id}/original",
+            f"/assets/{asset_id}/file",
+            f"/asset/download/{asset_id}",
+            f"/download/asset/{asset_id}",
+        ]
+        for endpoint in endpoints:
+            for attempt in range(3):
+                try:
+                    logger.info("Attempting download: %s (attempt %d/3)", endpoint, attempt + 1)
+                    # Use binary headers (no Accept: application/json)
+                    response = await client.get(endpoint, headers=self._headers(json_type=False))
 
-                        if response.status_code == 200:
-                            if response.content:
-                                logger.info(
-                                    "Success: downloaded %d bytes for %s via %s",
-                                    len(response.content),
-                                    asset_id,
-                                    endpoint,
-                                )
-                                return response.content
-                            logger.warning(
-                                "Immich returned 200 OK but empty content for asset %s at %s (attempt %d/3)",
+                    if response.status_code == 200:
+                        if response.content:
+                            logger.info(
+                                "Success: downloaded %d bytes for %s via %s",
+                                len(response.content),
                                 asset_id,
                                 endpoint,
-                                attempt + 1,
                             )
-                            if attempt < 2:
-                                await asyncio.sleep(0.5 * (attempt + 1))
-                                continue
-                        elif response.status_code == 404:
-                            logger.debug("Endpoint %s not found for asset %s", endpoint, asset_id)
-                            break
-                        else:
-                            logger.warning(
-                                "Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint
-                            )
-                            break
-                    except Exception as exc:
-                        logger.warning("Error downloading from %s: %s", endpoint, exc)
+                            return response.content
+                        logger.warning(
+                            "Immich returned 200 OK but empty content for asset %s at %s (attempt %d/3)",
+                            asset_id,
+                            endpoint,
+                            attempt + 1,
+                        )
                         if attempt < 2:
                             await asyncio.sleep(0.5 * (attempt + 1))
                             continue
+                    elif response.status_code == 404:
+                        logger.debug("Endpoint %s not found for asset %s", endpoint, asset_id)
                         break
+                    else:
+                        logger.warning(
+                            "Immich returned %d for asset %s at %s", response.status_code, asset_id, endpoint
+                        )
+                        break
+                except Exception as exc:
+                    logger.warning("Error downloading from %s: %s", endpoint, exc)
+                    if attempt < 2:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                    break
 
         try:
             logger.info("Falling back to thumbnail for asset %s", asset_id)
@@ -885,14 +898,14 @@ class ImmichClient:
         if not payload:
             return
 
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            await self._request(
-                "PATCH",
-                f"/assets/{asset_id}",
-                client,
-                json_payload=payload,
-                not_found_message="Immich asset update endpoint was not found",
-            )
+        client = self._get_client()
+        await self._request(
+            "PATCH",
+            f"/assets/{asset_id}",
+            client,
+            json_payload=payload,
+            not_found_message="Immich asset update endpoint was not found",
+        )
 
     async def get_asset_thumbnail(
         self,
@@ -901,53 +914,53 @@ class ImmichClient:
         *,
         allow_original_fallback: bool = True,
     ) -> tuple[bytes, str | None]:
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout, follow_redirects=True) as client:
-            last_error: Exception | None = None
-            thumbnail_format = "WEBP" if size == "preview" else "JPEG"
-            path = f"/assets/{asset_id}/thumbnail"
-            try:
-                url = f"{self.api_base_url}{path}"
-                logger.debug("Trying Immich thumbnail: %s (size=%s)", url, size)
-                response = await client.get(
-                    path,
-                    params={"format": thumbnail_format},
-                    headers=self._headers(json_type=False),
-                )
-                self._handle_response_errors(response, f"Immich thumbnail endpoint ({path}) failed")
-                return response.content, response.headers.get("content-type")
-            except Exception as exc:
-                logger.debug("Immich thumbnail error for %s: %s", path, exc)
-                last_error = exc
+        client = self._get_client()
+        last_error: Exception | None = None
+        thumbnail_format = "WEBP" if size == "preview" else "JPEG"
+        path = f"/assets/{asset_id}/thumbnail"
+        try:
+            url = f"{self.api_base_url}{path}"
+            logger.debug("Trying Immich thumbnail: %s (size=%s)", url, size)
+            response = await client.get(
+                path,
+                params={"format": thumbnail_format},
+                headers=self._headers(json_type=False),
+            )
+            self._handle_response_errors(response, f"Immich thumbnail endpoint ({path}) failed")
+            return response.content, response.headers.get("content-type")
+        except Exception as exc:
+            logger.debug("Immich thumbnail error for %s: %s", path, exc)
+            last_error = exc
 
-            if not allow_original_fallback:
-                if last_error:
-                    raise last_error
-                raise ImmichUnexpectedResponseError("Immich thumbnail endpoint failed")
+        if not allow_original_fallback:
+            if last_error:
+                raise last_error
+            raise ImmichUnexpectedResponseError("Immich thumbnail endpoint failed")
 
-            # If the thumbnail endpoint fails, try to download original and resize it as a last resort
-            logger.warning("All thumbnail endpoints failed for asset %s, falling back to original data", asset_id)
-            try:
-                original_bytes = await self.get_asset_data(asset_id)
-                if not original_bytes:
-                    raise ValueError("Downloaded original asset data is empty")
+        # If the thumbnail endpoint fails, try to download original and resize it as a last resort
+        logger.warning("All thumbnail endpoints failed for asset %s, falling back to original data", asset_id)
+        try:
+            original_bytes = await self.get_asset_data(asset_id)
+            if not original_bytes:
+                raise ValueError("Downloaded original asset data is empty")
 
-                # Quick resize using PIL to mimic a thumbnail
-                from io import BytesIO
+            # Quick resize using PIL to mimic a thumbnail
+            from io import BytesIO
 
-                from PIL import Image
+            from PIL import Image
 
-                img = Image.open(BytesIO(original_bytes))
-                img.thumbnail((1024, 1024))
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
-                out = BytesIO()
-                img.save(out, format="JPEG", quality=80)
-                return out.getvalue(), "image/jpeg"
-            except Exception as fallback_exc:
-                logger.error("Thumbnail fallback to original failed for %s: %s", asset_id, fallback_exc)
-                if last_error:
-                    raise last_error
-                raise ImmichUnexpectedResponseError(f"Immich thumbnail not found and fallback failed: {fallback_exc}")
+            img = Image.open(BytesIO(original_bytes))
+            img.thumbnail((1024, 1024))
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            out = BytesIO()
+            img.save(out, format="JPEG", quality=80)
+            return out.getvalue(), "image/jpeg"
+        except Exception as fallback_exc:
+            logger.error("Thumbnail fallback to original failed for %s: %s", asset_id, fallback_exc)
+            if last_error:
+                raise last_error
+            raise ImmichUnexpectedResponseError(f"Immich thumbnail not found and fallback failed: {fallback_exc}")
 
     async def get_asset_exif(self, asset_id: str) -> ImmichExifInfo:
         """Return the exifInfo dict from GET /assets/{id}, or {} on failure."""
@@ -964,5 +977,5 @@ class ImmichClient:
 
     async def get_asset_info(self, asset_id: str) -> dict[str, Any]:
         """Return the full asset payload from GET /assets/{id}."""
-        async with httpx.AsyncClient(base_url=self.api_base_url, timeout=self.timeout) as client:
-            return await self._get_json(f"/assets/{asset_id}", client)
+        client = self._get_client()
+        return await self._get_json(f"/assets/{asset_id}", client)

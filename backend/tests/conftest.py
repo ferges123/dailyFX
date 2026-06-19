@@ -1,20 +1,12 @@
-import os
-from pathlib import Path
-
-# Ensure all tests run with development settings and database/data inside data/tests
-project_root = Path(__file__).resolve().parents[2]
-test_data_dir = project_root / "data" / "tests"
-test_data_dir.mkdir(parents=True, exist_ok=True)
-
-os.environ["APP_ENV"] = "development"
-os.environ["APP_SECRET_KEY"] = "test-api-secret"
-os.environ["DATA_DIR"] = str(test_data_dir)
-os.environ["APP_ACCESS_TOKEN"] = ""
-
-if "DATABASE_URL" not in os.environ:
-    os.environ["DATABASE_URL"] = f"sqlite:///{test_data_dir / 'app.db'}"
-
-# Disable rate limiting globally during test suite execution
+import pytest
+from app.immich.client import _client_cache
 from app.limiter import limiter
 
-limiter.enabled = False
+@pytest.fixture(autouse=True)
+def clear_immich_client_cache():
+    _client_cache.clear()
+
+@pytest.fixture(autouse=True)
+def configure_limiter(request):
+    if "test_rate_limits" not in request.node.fspath.strpath:
+        limiter.enabled = False
