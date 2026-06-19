@@ -162,7 +162,7 @@ async def _handle_callback_query(client: httpx.AsyncClient, token: str, callback
 
     except Exception as e:
         logger.exception("Error handling Telegram Bot callback action '%s' for task '%s'", action, task_id)
-        await _answer_callback(client, token, callback_id, f"Error: {str(e)}")
+        await _answer_callback(client, token, callback_id, "Wystąpił błąd")
         # Note: Do not remove buttons, so user can try again once they resolve the issue.
     finally:
         db.close()

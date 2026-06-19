@@ -1,6 +1,9 @@
+import logging
 from fastapi import APIRouter, Depends, Request
 import httpx
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.immich.errors import handle_immich_errors
@@ -376,5 +379,6 @@ async def get_provider_models(
             image_models=image_models if image_models else fallback_image,
         )
 
-    except Exception:
+    except Exception as exc:
+        logger.debug("Failed to fetch models for provider %s: %s", provider, exc)
         return AvailableModelsResponse(vision_models=fallback_vision, image_models=fallback_image)
