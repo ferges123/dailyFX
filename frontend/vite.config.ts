@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { configDefaults } from 'vitest/config';
 
 export default defineConfig({
   base: '/',
@@ -54,5 +55,6 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/test-setup.ts',
     testTimeout: 20000,
+    exclude: [...configDefaults.exclude, '**/e2e/**'],
   },
 });
