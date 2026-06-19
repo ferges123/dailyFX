@@ -56,7 +56,7 @@ def set_debug_mode(enabled: bool):
             _debug_file = open(log_file, "a", encoding="utf-8")
             debug_log(f"Debug mode enabled - logging to {log_file}")
         except Exception as e:
-            logger.warning(f"Failed to open debug log file: {e}")
+            logger.warning("Failed to open debug log file: %s", e)
             _debug_enabled = False
     else:
         if _debug_file is not None:
@@ -104,4 +104,4 @@ def debug_log(message: str, **kwargs):
     if kwargs:
         std_message += " | " + " | ".join(f"{k}={v}" for k, v in kwargs.items())
 
-    logger.info(f"DEBUG: {std_message}")
+    logger.info("DEBUG: %s", std_message)

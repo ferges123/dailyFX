@@ -97,7 +97,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     try:
                         image_bytes = image_path.read_bytes()
                     except Exception as read_err:
-                        logger.warning(f"Failed to read image bytes for Telegram: {read_err}")
+                        logger.warning("Failed to read image bytes for Telegram: %s", read_err)
 
                 await send_telegram_notification(
                     token=notification_token or "",
@@ -141,7 +141,7 @@ async def send_generation_notification(notification_preset, title: str, summary:
                     image_url=abs_image_url,
                 )
         except Exception as e:
-            logger.warning(f"Failed to send {provider} notification: {e}")
+            logger.warning("Failed to send %s notification: %s", provider, e)
 
 
 async def send_webhook(webhook_url: str | None, task_id: str, generation_type: str, title: str) -> None:
@@ -154,7 +154,7 @@ async def send_webhook(webhook_url: str | None, task_id: str, generation_type: s
         async with httpx.AsyncClient(timeout=10.0) as client:
             await client.post(webhook_url, json=payload)
     except Exception as e:
-        logger.warning(f"Webhook failed: {e}")
+        logger.warning("Webhook failed: %s", e)
 
 
 async def dispatch_generation_outputs(
