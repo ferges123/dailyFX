@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import random
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -85,6 +86,7 @@ def apply_screen(base: Image.Image, overlay: Image.Image) -> Image.Image:
     return ImageChops.screen(base, overlay)
 
 
+@lru_cache(maxsize=128)
 def get_font(name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Load a font from static/fonts or fallback to standard ones."""
     # Path logic: common.py is in app/services/generation/modules/

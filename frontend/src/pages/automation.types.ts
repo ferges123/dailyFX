@@ -205,6 +205,54 @@ export const fallbackModules: GenerationModuleInfo[] = [
     ],
   },
   {
+    name: 'instaweather',
+    label: 'InstaWeather',
+    description: 'Instagram-style weather and location overlay card.',
+    display_group: 'Portrait',
+    default_weight: 2,
+    default_config: {
+      layout_style: 'classic',
+      units: 'celsius',
+      protect_faces: 'true',
+    },
+    config_schema: [
+      {
+        key: 'layout_style',
+        label: 'Layout Style',
+        type: 'select',
+        description: 'Visual theme of the watermark overlay card.',
+        options: [
+          { label: 'Classic (Inter Sans)', value: 'classic' },
+          { label: 'Postcard (Playfair Serif)', value: 'postcard' },
+        ],
+        default: 'classic',
+      },
+      {
+        key: 'units',
+        label: 'Temperature Unit',
+        type: 'select',
+        description: 'Units to show temperature.',
+        options: [
+          { label: 'Celsius (°C)', value: 'celsius' },
+          { label: 'Fahrenheit (°F)', value: 'fahrenheit' },
+        ],
+        default: 'celsius',
+      },
+      {
+        key: 'protect_faces',
+        label: 'Face protection',
+        type: 'select',
+        description:
+          'Auto-shift the watermark overlay to avoid covering detected faces.',
+        options: [
+          { label: 'Enabled', value: 'true' },
+          { label: 'Disabled', value: 'false' },
+        ],
+        default: 'true',
+      },
+    ],
+  },
+  {
     name: 'filmstrip',
     label: 'Filmstrip',
     description: 'Retro filmstrip layout with date and time labels.',

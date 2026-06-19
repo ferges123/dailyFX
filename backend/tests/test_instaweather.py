@@ -184,7 +184,7 @@ def test_collision_avoidance():
     }
 
     # Render with left face -> should resolve to "swapped"
-    res1 = _draw_graphics_overlay(
+    res1, pos1 = _draw_graphics_overlay(
         img=img,
         mode="instaweather",
         location=("ZAKOPANE", "POLAND"),
@@ -196,10 +196,10 @@ def test_collision_avoidance():
     )
     assert res1 is not None
     assert res1.size == (1000, 1000)
-    assert res1.info.get("resolved_position") == "swapped"
+    assert pos1 == "swapped"
 
     # Render with no faces -> should resolve to "standard"
-    res2 = _draw_graphics_overlay(
+    res2, pos2 = _draw_graphics_overlay(
         img=img,
         mode="instaweather",
         location=("ZAKOPANE", "POLAND"),
@@ -210,10 +210,10 @@ def test_collision_avoidance():
         font_style="classic",
     )
     assert res2 is not None
-    assert res2.info.get("resolved_position") == "standard"
+    assert pos2 == "standard"
 
     # Render with "postcard" style -> should complete successfully
-    res3 = _draw_graphics_overlay(
+    res3, _ = _draw_graphics_overlay(
         img=img,
         mode="instaweather",
         location=("ZAKOPANE", "POLAND"),
@@ -242,7 +242,7 @@ def test_instaweather_reference_layout_returns_square_image():
         "sunset": "20:46",
     }
 
-    res = _draw_graphics_overlay(
+    res, _ = _draw_graphics_overlay(
         img=img,
         mode="instaweather",
         location=("Zakopane", "Polska"),
@@ -263,3 +263,108 @@ def test_instaweather_reference_layout_uses_english_labels():
     assert _cloudiness_label_en("LOW") == "LOW"
     assert _cloudiness_label_en("MEDIUM") == "MEDIUM"
     assert _cloudiness_label_en("HIGH") == "HIGH"
+
+
+def test_degrees_to_cardinal_and_format_time():
+    from app.services.generation.modules.instaweather import degrees_to_cardinal, format_time_str
+
+    assert degrees_to_cardinal(0) == "N"
+    assert degrees_to_cardinal(45) == "NE"
+    assert degrees_to_cardinal(90) == "E"
+    assert degrees_to_cardinal(135) == "SE"
+    assert degrees_to_cardinal(180) == "S"
+    assert degrees_to_cardinal(225) == "SW"
+    assert degrees_to_cardinal(270) == "W"
+    assert degrees_to_cardinal(315) == "NW"
+    assert degrees_to_cardinal(360) == "N"
+
+    assert format_time_str("05:12") == "05:12"
+    assert format_time_str("2024-05-18T05:12:00Z") == "05:12"
+    assert format_time_str(None) == ""
+
+
+def test_instaweather_fahrenheit_and_postcard():
+    from app.services.generation.modules.instaweather import _draw_graphics_overlay
+
+    img = Image.new("RGB", (1000, 1000), "white")
+    weather_info = {
+        "temp_c": 22.0,
+        "weather_code": 0,
+        "apparent_temp_c": 21.0,
+        "cloud_cover": 10,
+        "humidity": 45,
+        "wind_speed": 12.0,
+        "wind_dir": "NE",
+        "sunrise": "05:12",
+        "sunset": "20:45",
+    }
+
+    # Test fahrenheit units
+    res_f, _ = _draw_graphics_overlay(
+        img=img,
+        weather_info=weather_info,
+        units="fahrenheit",
+        font_style="classic",
+    )
+    assert res_f is not None
+
+    # Test postcard font style
+    res_p, _ = _draw_graphics_overlay(
+        img=img,
+        weather_info=weather_info,
+        units="celsius",
+        font_style="postcard",
+    )
+    assert res_p is not None
+
+
+def test_instaweather_edge_cases():
+    from app.services.generation.modules.instaweather import _draw_graphics_overlay
+
+    # Small image
+    img_small = Image.new("RGB", (10, 10), "white")
+    res_small, _ = _draw_graphics_overlay(
+        img=img_small,
+        weather_info=None,
+        units="celsius",
+        font_style="classic",
+    )
+    assert res_small is not None
+
+    # weather_info is None
+    img = Image.new("RGB", (1000, 1000), "white")
+    res_none_weather, _ = _draw_graphics_overlay(
+        img=img,
+        weather_info=None,
+        units="celsius",
+        font_style="classic",
+    )
+    assert res_none_weather is not None
+
+
+def test_instaweather_run_exception_path(monkeypatch):
+    from app.services.generation.modules import instaweather
+
+    async def mock_reverse_geocode_error(lat, lon):
+        raise RuntimeError("Geocoding failed")
+
+    monkeypatch.setattr(instaweather, "reverse_geocode_detailed", mock_reverse_geocode_error)
+
+    module = InstaWeatherModule()
+    client = MockImmichClient(
+        exif_data={
+            "latitude": 52.0725,
+            "longitude": 21.02,
+            "dateTimeOriginal": "2025-06-04T12:34:56Z",
+        }
+    )
+    settings = SettingsModel()
+
+    class DummyAsset:
+        id = "asset-exception"
+        created_at = "2025-06-04T12:34:56Z"
+        original_file_name = "exception.jpg"
+
+    res = asyncio.run(module.run([DummyAsset()], {}, client, settings))
+    assert res is not None
+    assert res.generation_type == "instaweather"

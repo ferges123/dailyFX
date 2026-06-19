@@ -1,16 +1,28 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import UTC, datetime
 
 import httpx
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from app.immich.models import ImmichFaceSummary
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.modules.common import get_font, load_rgb, save_png
 
 logger = logging.getLogger(__name__)
+
+_shared_client: httpx.AsyncClient | None = None
+
+
+def get_shared_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None:
+        _shared_client = httpx.AsyncClient(timeout=10.0)
+    return _shared_client
 
 
 def map_wmo_code(code: int) -> tuple[str, str]:
@@ -138,19 +150,19 @@ async def fetch_weather(lat: float, lon: float, dt: datetime) -> dict | None:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, params=params)
+        client = get_shared_client()
+        response = await client.get(url, params=params)
+        if response.status_code != 200:
+            # Try the other API as fallback
+            fallback_url = (
+                "https://api.open-meteo.com/v1/forecast"
+                if url != "https://api.open-meteo.com/v1/forecast"
+                else "https://archive-api.open-meteo.com/v1/archive"
+            )
+            response = await client.get(fallback_url, params=params)
             if response.status_code != 200:
-                # Try the other API as fallback
-                fallback_url = (
-                    "https://api.open-meteo.com/v1/forecast"
-                    if url != "https://api.open-meteo.com/v1/forecast"
-                    else "https://archive-api.open-meteo.com/v1/archive"
-                )
-                response = await client.get(fallback_url, params=params)
-                if response.status_code != 200:
-                    logger.warning("Open-Meteo weather fetch failed: HTTP %d", response.status_code)
-                    return None
+                logger.warning("Open-Meteo weather fetch failed: HTTP %d", response.status_code)
+                return None
 
             data = response.json()
             hourly = data.get("hourly", {})
@@ -214,15 +226,15 @@ async def reverse_geocode(lat: float, lon: float) -> str | None:
     headers = {"User-Agent": "DailyFX/1.0 (dailyfx@localhost)"}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, params=params, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                address = data.get("address", {})
-                for field in ("city", "town", "village", "municipality", "suburb", "county", "state", "country"):
-                    val = address.get(field)
-                    if val:
-                        return val
+        client = get_shared_client()
+        response = await client.get(url, params=params, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            address = data.get("address", {})
+            for field in ("city", "town", "village", "municipality", "suburb", "county", "state", "country"):
+                val = address.get(field)
+                if val:
+                    return val
     except Exception as exc:
         logger.warning("Reverse geocoding failed: %s", exc)
     return None
@@ -240,19 +252,19 @@ async def reverse_geocode_detailed(lat: float, lon: float) -> tuple[str | None, 
     headers = {"User-Agent": "DailyFX/1.0 (dailyfx@localhost)"}
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, params=params, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                address = data.get("address", {})
-                city = None
-                for field in ("city", "town", "village", "municipality", "suburb", "county"):
-                    val = address.get(field)
-                    if val:
-                        city = val
-                        break
-                country = address.get("country")
-                return city, country
+        client = get_shared_client()
+        response = await client.get(url, params=params, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            address = data.get("address", {})
+            city = None
+            for field in ("city", "town", "village", "municipality", "suburb", "county"):
+                val = address.get(field)
+                if val:
+                    city = val
+                    break
+            country = address.get("country")
+            return city, country
     except Exception as exc:
         logger.warning("Detailed reverse geocoding failed: %s", exc)
     return None, None
@@ -275,8 +287,6 @@ def get_fallback_weather(lat: float, month: int) -> dict:
     # Seasonal variation amplitude (larger at higher latitudes)
     amplitude = 15 * (abs_lat / 90.0)
 
-    import math
-
     seasonal_variation = amplitude * math.sin(math.pi * (season_month - 4) / 6)
     temp_c = base_temp + seasonal_variation
 
@@ -295,8 +305,34 @@ def get_fallback_weather(lat: float, month: int) -> dict:
     humidity = 85 if code in (3, 61, 71) else 45
     wind_speed = 12.5
     wind_dir = "NE"
-    sunrise = "05:12"
-    sunset = "20:45"
+
+    # Calculate day length approximation
+    lat_rad = math.radians(lat)
+    hemisphere_sign = 1 if lat >= 0 else -1
+    # Day length variation amplitude based on latitude (max 10 hours at poles)
+    variation_amplitude = 10.0 * math.sin(abs(lat_rad))
+    # Seasonal variation (June is max day length in North, Dec in South)
+    seasonal_factor = math.cos(math.pi * (month - 6) / 6)
+    day_length = 12.0 + variation_amplitude * seasonal_factor * hemisphere_sign
+    day_length = max(2.0, min(22.0, day_length))
+
+    sunrise_hour = 12.0 - day_length / 2.0
+    sunset_hour = 12.0 + day_length / 2.0
+
+    sunrise_m = int(round((sunrise_hour - int(sunrise_hour)) * 60))
+    sunrise_h = int(sunrise_hour)
+    if sunrise_m == 60:
+        sunrise_h += 1
+        sunrise_m = 0
+
+    sunset_m = int(round((sunset_hour - int(sunset_hour)) * 60))
+    sunset_h = int(sunset_hour)
+    if sunset_m == 60:
+        sunset_h += 1
+        sunset_m = 0
+
+    sunrise = f"{sunrise_h:02d}:{sunrise_m:02d}"
+    sunset = f"{sunset_h:02d}:{sunset_m:02d}"
 
     return {
         "temp_c": round(temp_c, 1),
@@ -416,7 +452,6 @@ def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: 
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=int(w))
     ray_len = size * 0.10
     ray_gap = size * 0.06
-    import math
 
     for i in range(8):
         angle = i * (math.pi / 4)
@@ -577,7 +612,6 @@ class InstaWeatherModule:
         city = None
         country = None
         weather_info = None
-        mode = "instaweather"
 
         try:
             if has_gps:
@@ -591,17 +625,16 @@ class InstaWeatherModule:
                 weather_info = await fetch_weather(lat_f, lon_f, dt)
                 if not weather_info:
                     weather_info = get_fallback_weather(lat_f, dt.month)
+                    weather_info["simulated"] = True
             else:
                 # No GPS on asset
-                lat_f = 52.23
-                lon_f = 21.01
-                weather_info = await fetch_weather(lat_f, lon_f, dt)
-                if not weather_info:
-                    weather_info = get_fallback_weather(lat_f, dt.month)
+                weather_info = get_fallback_weather(0.0, dt.month)
+                weather_info["simulated"] = True
         except Exception as e:
             logger.warning("Metadata fetch failed for InstaWeather: %s", e)
             if not weather_info:
-                weather_info = get_fallback_weather(52.23, dt.month)
+                weather_info = get_fallback_weather(0.0, dt.month)
+                weather_info["simulated"] = True
 
         # 2. Extract faces for collision detection
         faces = []
@@ -614,11 +647,11 @@ class InstaWeatherModule:
                 )
                 if isinstance(raw_faces, list):
                     for face_payload in raw_faces:
-                        face = client._coerce_face_summary(face_payload)
+                        face = _normalize_face_summary(face_payload)
                         if face:
                             faces.append(face)
                 elif isinstance(raw_faces, dict):
-                    face = client._coerce_face_summary(raw_faces)
+                    face = _normalize_face_summary(raw_faces)
                     if face:
                         faces.append(face)
         except Exception as e:
@@ -631,9 +664,8 @@ class InstaWeatherModule:
         protect_faces = str(protect_faces_val).lower() == "true"
 
         # 4. Render graphics overlay
-        result_img = _draw_graphics_overlay(
+        result_img, resolved_position = _draw_graphics_overlay(
             img,
-            mode=mode,
             location=(city, country) if (city or country) else None,
             weather_info=weather_info,
             dt=dt,
@@ -642,10 +674,8 @@ class InstaWeatherModule:
             font_style=layout_style,
         )
 
-        resolved_position = result_img.info.get("resolved_position", "standard")
-
         weather_summary = ""
-        if mode == "instaweather" and weather_info:
+        if weather_info:
             w_desc, _ = map_wmo_code(weather_info["weather_code"])
             temp_val = weather_info["temp_c"]
             temp_str = f"{int(temp_val)}°C" if units == "celsius" else f"{int((temp_val * 9 / 5) + 32)}°F"
@@ -664,10 +694,111 @@ class InstaWeatherModule:
                 "units": units,
                 "protect_faces": protect_faces,
                 "resolved_position": resolved_position,
-                "mode": mode,
+                "mode": "instaweather",
             },
             source_asset_ids=[asset.id],
         )
+
+
+def _normalize_face_summary(
+    payload: dict,
+    *,
+    person_id: str | None = None,
+    person_name: str | None = None,
+) -> ImmichFaceSummary | None:
+    if not isinstance(payload, dict):
+        return None
+    face_id = payload.get("id") if isinstance(payload.get("id"), str) else payload.get("faceId")
+    image_width = payload.get("imageWidth")
+    if image_width is None:
+        image_width = payload.get("image_width")
+    image_height = payload.get("imageHeight")
+    if image_height is None:
+        image_height = payload.get("image_height")
+    source_type = payload.get("sourceType")
+    if source_type is None:
+        source_type = payload.get("source_type")
+
+    x1 = payload.get("boundingBoxX1")
+    if x1 is None:
+        x1 = payload.get("bounding_box_x1")
+    y1 = payload.get("boundingBoxY1")
+    if y1 is None:
+        y1 = payload.get("bounding_box_y1")
+    x2 = payload.get("boundingBoxX2")
+    if x2 is None:
+        x2 = payload.get("bounding_box_x2")
+    y2 = payload.get("boundingBoxY2")
+    if y2 is None:
+        y2 = payload.get("bounding_box_y2")
+
+    if x1 is None or y1 is None or x2 is None or y2 is None:
+        x = payload.get("x")
+        y = payload.get("y")
+        width = payload.get("width")
+        height = payload.get("height")
+        if None not in (x, y, width, height):
+            x1 = x
+            y1 = y
+            x2 = x + width
+            y2 = y + height
+
+    if x1 is None or y1 is None or x2 is None or y2 is None:
+        return None
+
+    return ImmichFaceSummary(
+        id=face_id if isinstance(face_id, str) else None,
+        person_id=person_id,
+        person_name=person_name,
+        image_width=image_width if isinstance(image_width, int) else None,
+        image_height=image_height if isinstance(image_height, int) else None,
+        bounding_box_x1=float(x1) if isinstance(x1, (int, float)) else None,
+        bounding_box_y1=float(y1) if isinstance(y1, (int, float)) else None,
+        bounding_box_x2=float(x2) if isinstance(x2, (int, float)) else None,
+        bounding_box_y2=float(y2) if isinstance(y2, (int, float)) else None,
+        source_type=source_type if isinstance(source_type, str) else None,
+    )
+
+
+def _check_column_collision(
+    col_x1: float, col_x2: float, col_y1: float, col_y2: float, faces: list, width: int, height: int
+) -> bool:
+    for face in faces:
+        if (
+            face.bounding_box_x1 is None
+            or face.bounding_box_y1 is None
+            or face.bounding_box_x2 is None
+            or face.bounding_box_y2 is None
+        ):
+            continue
+
+        is_normalized = (
+            face.bounding_box_x1 <= 1.0
+            and face.bounding_box_y1 <= 1.0
+            and face.bounding_box_x2 <= 1.0
+            and face.bounding_box_y2 <= 1.0
+        )
+        if is_normalized:
+            fx1_c = face.bounding_box_x1 * width
+            fy1_c = face.bounding_box_y1 * height
+            fx2_c = face.bounding_box_x2 * width
+            fy2_c = face.bounding_box_y2 * height
+        else:
+            orig_width = getattr(face, "image_width", None) or width
+            orig_height = getattr(face, "image_height", None) or height
+            side = min(orig_width, orig_height)
+            left = max(0, (orig_width - side) // 2)
+            top = max(0, (orig_height - side) // 2)
+
+            fx1_c = (face.bounding_box_x1 - left) * (width / side)
+            fy1_c = (face.bounding_box_y1 - top) * (width / side)
+            fx2_c = (face.bounding_box_x2 - left) * (width / side)
+            fy2_c = (face.bounding_box_y2 - top) * (width / side)
+
+        if fx1_c < col_x2 and fx2_c > col_x1 and fy1_c < col_y2 and fy2_c > col_y1:
+            return True
+
+    return False
 
 
 def check_weather_column_collision(
@@ -679,43 +810,7 @@ def check_weather_column_collision(
         col_x1, col_x2 = width - margin - int(380 * scale), width
 
     col_y1, col_y2 = int(70 * scale), height
-
-    for face in faces:
-        if (
-            face.bounding_box_x1 is None
-            or face.bounding_box_y1 is None
-            or face.bounding_box_x2 is None
-            or face.bounding_box_y2 is None
-        ):
-            continue
-
-        is_normalized = (
-            face.bounding_box_x1 <= 1.0
-            and face.bounding_box_y1 <= 1.0
-            and face.bounding_box_x2 <= 1.0
-            and face.bounding_box_y2 <= 1.0
-        )
-        if is_normalized:
-            fx1_c = face.bounding_box_x1 * width
-            fy1_c = face.bounding_box_y1 * height
-            fx2_c = face.bounding_box_x2 * width
-            fy2_c = face.bounding_box_y2 * height
-        else:
-            orig_width = getattr(face, "image_width", None) or width
-            orig_height = getattr(face, "image_height", None) or height
-            side = min(orig_width, orig_height)
-            left = max(0, (orig_width - side) // 2)
-            top = max(0, (orig_height - side) // 2)
-
-            fx1_c = (face.bounding_box_x1 - left) * (width / side)
-            fy1_c = (face.bounding_box_y1 - top) * (width / side)
-            fx2_c = (face.bounding_box_x2 - left) * (width / side)
-            fy2_c = (face.bounding_box_y2 - top) * (width / side)
-
-        if fx1_c < col_x2 and fx2_c > col_x1 and fy1_c < col_y2 and fy2_c > col_y1:
-            return True
-
-    return False
+    return _check_column_collision(col_x1, col_x2, col_y1, col_y2, faces, width, height)
 
 
 def check_metrics_column_collision(
@@ -727,55 +822,21 @@ def check_metrics_column_collision(
         col_x1, col_x2 = 0, margin + int(320 * scale)
 
     col_y1, col_y2 = int(70 * scale), height
-
-    for face in faces:
-        if (
-            face.bounding_box_x1 is None
-            or face.bounding_box_y1 is None
-            or face.bounding_box_x2 is None
-            or face.bounding_box_y2 is None
-        ):
-            continue
-
-        is_normalized = (
-            face.bounding_box_x1 <= 1.0
-            and face.bounding_box_y1 <= 1.0
-            and face.bounding_box_x2 <= 1.0
-            and face.bounding_box_y2 <= 1.0
-        )
-        if is_normalized:
-            fx1_c = face.bounding_box_x1 * width
-            fy1_c = face.bounding_box_y1 * height
-            fx2_c = face.bounding_box_x2 * width
-            fy2_c = face.bounding_box_y2 * height
-        else:
-            orig_width = getattr(face, "image_width", None) or width
-            orig_height = getattr(face, "image_height", None) or height
-            side = min(orig_width, orig_height)
-            left = max(0, (orig_width - side) // 2)
-            top = max(0, (orig_height - side) // 2)
-
-            fx1_c = (face.bounding_box_x1 - left) * (width / side)
-            fy1_c = (face.bounding_box_y1 - top) * (width / side)
-            fx2_c = (face.bounding_box_x2 - left) * (width / side)
-            fy2_c = (face.bounding_box_y2 - top) * (width / side)
-
-        if fx1_c < col_x2 and fx2_c > col_x1 and fy1_c < col_y2 and fy2_c > col_y1:
-            return True
-
-    return False
+    return _check_column_collision(col_x1, col_x2, col_y1, col_y2, faces, width, height)
 
 
 def _draw_graphics_overlay(
     img: Image.Image,
-    mode: str,
-    location: tuple[str | None, str | None] | None,
-    weather_info: dict | None,
-    dt: datetime | None,
-    faces: list,
-    units: str,
-    font_style: str,
+    mode: str = "instaweather",
+    location: tuple[str | None, str | None] | None = None,
+    weather_info: dict | None = None,
+    dt: datetime | None = None,
+    faces: list = None,
+    units: str = "celsius",
+    font_style: str = "classic",
 ) -> Image.Image:
+    if faces is None:
+        faces = []
     img = _center_square_crop(img)
     width, height = img.size
     size = min(width, height)
@@ -867,41 +928,41 @@ def _draw_graphics_overlay(
     draw = ImageDraw.Draw(overlay_layer)
 
     shade = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    shade_draw = ImageDraw.Draw(shade)
+    alpha_arr = np.zeros((height, width), dtype=np.uint8)
 
     left_w = int(size * 0.48)
     if layout_position == "standard":
-        for x in range(left_w):
-            alpha = int(118 * (1 - x / left_w))
-            shade_draw.line([(x, 0), (x, height)], fill=(0, 0, 0, alpha))
+        x_indices = np.arange(left_w, dtype=np.float32)
+        grad_1d = (118 * (1.0 - x_indices / left_w)).astype(np.uint8)
+        alpha_arr[:, :left_w] = grad_1d[np.newaxis, :]
     else:
-        for x in range(width - left_w, width):
-            alpha = int(118 * ((x - (width - left_w)) / left_w))
-            shade_draw.line([(x, 0), (x, height)], fill=(0, 0, 0, alpha))
+        x_indices = np.arange(left_w, dtype=np.float32)
+        grad_1d = (118 * (x_indices / left_w)).astype(np.uint8)
+        alpha_arr[:, width - left_w :] = grad_1d[np.newaxis, :]
 
     top_right_w = int(size * 0.34)
     top_right_h = int(size * 0.23)
-    if layout_position == "standard":
-        for x in range(width - top_right_w, width):
-            x_factor = (x - (width - top_right_w)) / top_right_w
-            for y in range(0, top_right_h):
-                y_factor = 1 - (y / top_right_h)
-                alpha = int(84 * x_factor * y_factor)
-                if alpha:
-                    shade_draw.point((x, y), fill=(0, 0, 0, alpha))
-    else:
-        for x in range(0, top_right_w):
-            x_factor = 1 - (x / top_right_w)
-            for y in range(0, top_right_h):
-                y_factor = 1 - (y / top_right_h)
-                alpha = int(84 * x_factor * y_factor)
-                if alpha:
-                    shade_draw.point((x, y), fill=(0, 0, 0, alpha))
+    if top_right_w > 0 and top_right_h > 0:
+        x_indices = np.arange(top_right_w, dtype=np.float32)
+        y_indices = np.arange(top_right_h, dtype=np.float32)
+        if layout_position == "standard":
+            x_factors = x_indices / top_right_w
+        else:
+            x_factors = 1.0 - (x_indices / top_right_w)
+        y_factors = 1.0 - (y_indices / top_right_h)
+        grad_2d = (84 * (y_factors[:, np.newaxis] * x_factors[np.newaxis, :])).astype(np.uint8)
+        if layout_position == "standard":
+            alpha_arr[:top_right_h, width - top_right_w :] = grad_2d
+        else:
+            alpha_arr[:top_right_h, :top_right_w] = grad_2d
 
     bottom_h = int(size * 0.38)
-    for y in range(height - bottom_h, height):
-        alpha = int(112 * ((y - (height - bottom_h)) / bottom_h))
-        shade_draw.line([(0, y), (width, y)], fill=(0, 0, 0, alpha))
+    if bottom_h > 0:
+        y_indices = np.arange(bottom_h, dtype=np.float32)
+        grad_1d = (112 * (y_indices / bottom_h)).astype(np.uint8)
+        alpha_arr[height - bottom_h :, :] = grad_1d[:, np.newaxis]
+
+    shade.putalpha(Image.fromarray(alpha_arr, mode="L"))
     overlay_layer = Image.alpha_composite(overlay_layer, shade)
     draw = ImageDraw.Draw(overlay_layer)
 
@@ -1015,8 +1076,7 @@ def _draw_graphics_overlay(
 
     combined = Image.alpha_composite(img, overlay_layer)
     result = combined.convert("RGB")
-    result.info["resolved_position"] = layout_position
-    return result
+    return result, layout_position
 
 
 def _center_square_crop(img: Image.Image) -> Image.Image:
