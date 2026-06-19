@@ -131,7 +131,7 @@ export function FilterPresetsTab() {
     queryFn: getFilterPresets,
   });
   const options = useQuery<ImmichFilterOptions>({
-    queryKey: ['immich-filter-options'],
+    queryKey: ['immich-options'],
     queryFn: getImmichFilterOptions,
     staleTime: 1000 * 60 * 60, // 1 hour
     initialData: () => {

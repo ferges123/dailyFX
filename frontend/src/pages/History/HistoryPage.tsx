@@ -16,6 +16,7 @@ import { ErrorBanner } from '../../components/ErrorUI';
 import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
 import { useNavigate, useParams } from 'react-router-dom';
+import { logger } from '../../utils/logger';
 
 import { UploadModal } from './UploadModal';
 import { LightboxModal } from './LightboxModal';
@@ -209,7 +210,29 @@ export function HistoryPage() {
   const filterOptions = useQuery({
     queryKey: ['immich-options'],
     queryFn: getImmichFilterOptions,
+    staleTime: 1000 * 60 * 60, // 1 hour
+    initialData: () => {
+      try {
+        const cached = localStorage.getItem('dailyfx_immich_filter_options');
+        return cached ? JSON.parse(cached) : undefined;
+      } catch {
+        return undefined;
+      }
+    },
   });
+
+  useEffect(() => {
+    if (filterOptions.data) {
+      try {
+        localStorage.setItem(
+          'dailyfx_immich_filter_options',
+          JSON.stringify(filterOptions.data),
+        );
+      } catch (err) {
+        logger.warn('Failed to cache Immich filter options in history:', err);
+      }
+    }
+  }, [filterOptions.data]);
 
   const sortedAlbums = useMemo(() => {
     const list = filterOptions.data?.albums ?? [];

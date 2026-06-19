@@ -507,6 +507,10 @@ def test_list_people_orders_by_asset_count(monkeypatch: pytest.MonkeyPatch) -> N
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/people":
             return httpx.Response(200, json=next(payloads))
+        if request.url.path == "/api/people/person-1/statistics":
+            return httpx.Response(200, json={"assets": 12})
+        if request.url.path == "/api/people/person-2/statistics":
+            return httpx.Response(200, json={"assets": 34})
         raise AssertionError(f"Unexpected request to {request.url.path}")
 
     original_async_client = httpx.AsyncClient
@@ -884,6 +888,8 @@ def test_list_people_limits_to_33(monkeypatch: pytest.MonkeyPatch) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/people":
             return httpx.Response(200, json=next(payloads))
+        if request.url.path.startswith("/api/people/") and request.url.path.endswith("/statistics"):
+            return httpx.Response(200, json={"assets": 1})
         raise AssertionError(f"Unexpected request to {request.url.path}")
 
     original_async_client = httpx.AsyncClient

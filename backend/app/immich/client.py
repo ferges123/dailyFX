@@ -4,6 +4,7 @@ from datetime import date, datetime, time, timezone
 from hashlib import sha1
 from itertools import combinations
 from random import Random
+from dataclasses import replace
 from typing import Any
 
 import httpx
@@ -668,7 +669,14 @@ class ImmichClient:
             return []
 
         named = [p for p in people if p.name.strip()]
-        enriched = [p for p in named if p.asset_count > 0 or not p.is_hidden]
+        stats = await asyncio.gather(
+            *(self._get_person_asset_count(client, p.id) for p in named)
+        )
+        enriched = []
+        for p, count in zip(named, stats, strict=True):
+            p_new = replace(p, asset_count=count)
+            if count > 0 or not p_new.is_hidden:
+                enriched.append(p_new)
         enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
         return enriched[:33]
 
