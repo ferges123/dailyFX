@@ -308,12 +308,14 @@ export function SettingsPage() {
           <Save size={14} />
           Save
         </button>
-        {saved.status === 'success' && (
-          <span className="text-xs text-emerald-700">{saved.message}</span>
-        )}
-        {saved.status === 'error' && (
-          <span className="text-xs text-red-700">{saved.message}</span>
-        )}
+        <div aria-live="polite" className="flex items-center" data-testid="save-status-container">
+          {saved.status === 'success' && (
+            <span className="text-xs text-emerald-700">{saved.message}</span>
+          )}
+          {saved.status === 'error' && (
+            <span className="text-xs text-red-700">{saved.message}</span>
+          )}
+        </div>
       </div>
 
       {/* Version Footer for Mobile */}
