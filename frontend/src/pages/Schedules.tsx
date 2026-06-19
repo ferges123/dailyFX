@@ -2,17 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays,
-  Clock3,
   HelpCircle,
-  Pencil,
-  Play,
   Plus,
-  RefreshCw,
   Search,
-  ToggleLeft,
-  ToggleRight,
-  Trash2,
-  X,
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -31,13 +23,13 @@ import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import {
   parseAutomationSchedule,
   serializeAutomationSchedule,
-  describeAutomationSchedule,
 } from './automation.utils';
 import { formatDateTime } from './datetime.utils';
 import { type FormState, emptyForm } from './Schedules/types';
-import { ScheduleSummaryCard } from './Schedules/ScheduleSummaryCard';
 import { ScheduleForm } from './Schedules/ScheduleForm';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ScheduleItemCard } from './Schedules/ScheduleItemCard';
+import { ScheduleStats } from './Schedules/ScheduleStats';
 
 function normalizeModelSelection(provider: string, model: string) {
   if (provider === 'none') {
@@ -73,35 +65,6 @@ function scheduleToForm(schedule: Schedule): FormState {
     ai_prompt_enrichment: schedule.ai_prompt_enrichment ?? false,
     ai_photo_selection_enabled: schedule.ai_photo_selection_enabled ?? false,
   };
-}
-
-function statusBadge(status: string | null) {
-  if (!status) return null;
-  const colors: Record<string, string> = {
-    completed: 'bg-emerald-100 text-emerald-800',
-    started: 'bg-blue-100 text-blue-800',
-    error: 'bg-red-100 text-red-800',
-    not_due: 'bg-stone-100 text-stone-600',
-    disabled: 'bg-stone-100 text-stone-400',
-  };
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${colors[status] ?? 'bg-stone-100 text-stone-600'}`}
-    >
-      {status}
-    </span>
-  );
-}
-
-function scheduleEnabledClass(enabled: boolean) {
-  return enabled
-    ? 'border-emerald-200 bg-emerald-50/40'
-    : 'border-stone-200 bg-white';
-}
-
-function tickSummary(status: string | null, reason: string | null) {
-  if (!status) return 'No runs yet';
-  return reason ? `${status} · ${reason}` : status;
 }
 
 function countByStatus(
@@ -431,44 +394,13 @@ export function SchedulesPage() {
 
         {!showForm && (
           <>
-            <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-              <ScheduleSummaryCard
-                title="Active schedules"
-                value={String(activeCount)}
-                description={`of ${scheduleItems.length} total`}
-                tone="green"
-                icon={<CalendarDays size={18} />}
-              />
-              <ScheduleSummaryCard
-                title="Disabled"
-                value={String(disabledCount)}
-                description={`of ${scheduleItems.length} total`}
-                tone="default"
-                icon={<ToggleLeft size={18} />}
-              />
-              <ScheduleSummaryCard
-                title="Failed last run"
-                value={String(failedCount)}
-                description={
-                  failedCount > 0
-                    ? 'Review the last result on the schedule cards'
-                    : 'No errors'
-                }
-                tone="red"
-                icon={<X size={18} />}
-              />
-              <ScheduleSummaryCard
-                title="Next run"
-                value={nextRunItem ? nextRunItem.name : 'None'}
-                description={
-                  nextRunItem?.next_run_at
-                    ? formatDateTime(nextRunItem.next_run_at)
-                    : 'Not scheduled'
-                }
-                tone="blue"
-                icon={<Clock3 size={18} />}
-              />
-            </div>
+            <ScheduleStats
+              activeCount={activeCount}
+              disabledCount={disabledCount}
+              failedCount={failedCount}
+              totalCount={scheduleItems.length}
+              nextRunItem={nextRunItem}
+            />
 
             <div className="grid gap-2 rounded-2xl border border-stone-200/70 bg-white/70 p-2 md:flex md:flex-wrap md:items-center md:gap-2 md:p-2.5">
               <div className="relative min-w-0 w-full md:flex-1">
@@ -500,178 +432,27 @@ export function SchedulesPage() {
               aria-label="Schedules list"
               className="grid gap-2 lg:grid-cols-2"
             >
-              {filteredSchedules.map((schedule) => {
-                return (
-                  <article
-                    key={schedule.id}
-                    className={`group w-full rounded-xl border px-2.5 py-2 text-left transition ${scheduleEnabledClass(schedule.enabled)} hover:border-emerald-500/30`}
-                  >
-                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-sm font-semibold text-stone-900">
-                            {schedule.name}
-                          </span>
-                          <span
-                            className={`app-chip px-1.5 py-0.5 text-[10px] font-medium ${schedule.enabled ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'text-stone-500'}`}
-                          >
-                            {schedule.enabled ? 'enabled' : 'disabled'}
-                          </span>
-                          {statusBadge(schedule.last_tick_status)}
-                        </div>
-                        <div className="mt-0.5 text-xs text-stone-500">
-                          {describeAutomationSchedule(
-                            parseAutomationSchedule(schedule.schedule_expr),
-                          )}
-                          {' · '}
-                          Album:{' '}
-                          <span className="font-medium">
-                            {schedule.album_name}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1 sm:justify-end">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleMutation.mutate(schedule);
-                          }}
-                          disabled={toggleMutation.isPending}
-                          title={schedule.enabled ? 'Disable' : 'Enable'}
-                          className={`app-button-secondary items-center gap-1 px-2 py-1 text-[11px] font-medium disabled:opacity-50 ${
-                            schedule.enabled
-                              ? 'text-emerald-700'
-                              : 'text-stone-500'
-                          }`}
-                        >
-                          {schedule.enabled ? (
-                            <ToggleRight size={14} />
-                          ) : (
-                            <ToggleLeft size={14} />
-                          )}
-                          {schedule.enabled ? 'On' : 'Off'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            runMutation.mutate(schedule.id);
-                          }}
-                          disabled={runningId === schedule.id}
-                          title="Run now"
-                          className="app-button-secondary items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 disabled:opacity-50"
-                        >
-                          {runningId === schedule.id ? (
-                            <RefreshCw size={12} className="animate-spin" />
-                          ) : (
-                            <Play size={12} />
-                          )}
-                          Run now
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openEdit(schedule);
-                          }}
-                          className="app-button-secondary items-center gap-1 px-2 py-1 text-[11px] font-medium text-stone-500"
-                        >
-                          <Pencil size={12} />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setConfirmConfig({
-                              isOpen: true,
-                              title: 'Delete Schedule',
-                              description: `Are you sure you want to delete "${schedule.name}"?`,
-                              confirmLabel: 'Delete',
-                              variant: 'danger',
-                              onConfirm: () =>
-                                deleteMutation.mutate(schedule.id),
-                            });
-                          }}
-                          className="app-button-secondary items-center justify-center px-2 py-1 text-[11px] font-medium text-rose-700"
-                          title="Delete schedule"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 grid gap-1.5 text-xs text-stone-600 sm:grid-cols-3">
-                      <CompactMeta
-                        label="Next"
-                        value={
-                          schedule.next_run_at
-                            ? formatDateTime(schedule.next_run_at)
-                            : 'Not scheduled'
-                        }
-                      />
-                      <CompactMeta
-                        label="Last"
-                        value={
-                          schedule.last_run_at
-                            ? formatDateTime(schedule.last_run_at)
-                            : 'No runs yet'
-                        }
-                      />
-                      <CompactMeta
-                        label="Result"
-                        value={tickSummary(
-                          schedule.last_tick_status,
-                          schedule.last_tick_reason,
-                        )}
-                      />
-                    </div>
-
-                    <div className="mt-1.5 flex flex-wrap gap-1 text-[10px] text-stone-500">
-                      {schedule.filter_preset_name && (
-                        <span className="app-chip px-2 py-0.5">
-                          Filter: {schedule.filter_preset_name}
-                        </span>
-                      )}
-                      {schedule.effect_preset_name && (
-                        <span className="app-chip px-2 py-0.5">
-                          Effect: {schedule.effect_preset_name}
-                        </span>
-                      )}
-                      {schedule.notification_preset_names &&
-                        schedule.notification_preset_names.length > 0 && (
-                          <span className="app-chip px-2 py-0.5">
-                            Notifications:{' '}
-                            {schedule.notification_preset_names.join(', ')}
-                          </span>
-                        )}
-                      {schedule.ai_vision_provider !== 'none' && (
-                        <span className="app-chip px-2 py-0.5">
-                          Vision: {schedule.ai_vision_provider} (
-                          {schedule.ai_vision_model})
-                        </span>
-                      )}
-                      {schedule.ai_image_provider !== 'none' && (
-                        <span className="app-chip px-2 py-0.5">
-                          Image: {schedule.ai_image_provider} (
-                          {schedule.ai_image_model})
-                        </span>
-                      )}
-                      {schedule.ai_prompt_enrichment && (
-                        <span className="app-chip px-2 py-0.5">
-                          Prompt enrichment on
-                        </span>
-                      )}
-                      {schedule.ai_photo_selection_enabled && (
-                        <span className="app-chip px-2 py-0.5">
-                          AI photo selection on
-                        </span>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
+              {filteredSchedules.map((schedule) => (
+                <ScheduleItemCard
+                  key={schedule.id}
+                  schedule={schedule}
+                  runningId={runningId}
+                  togglePending={toggleMutation.isPending}
+                  onToggle={(sch) => toggleMutation.mutate(sch)}
+                  onRunNow={(id) => runMutation.mutate(id)}
+                  onEdit={openEdit}
+                  onDelete={(sch) => {
+                    setConfirmConfig({
+                      isOpen: true,
+                      title: 'Delete Schedule',
+                      description: `Are you sure you want to delete "${sch.name}"?`,
+                      confirmLabel: 'Delete',
+                      variant: 'danger',
+                      onConfirm: () => deleteMutation.mutate(sch.id),
+                    });
+                  }}
+                />
+              ))}
 
               {filteredSchedules.length === 0 && (
                 <EmptyState
@@ -736,15 +517,6 @@ export function SchedulesPage() {
         />
       )}
     </section>
-  );
-}
-
-function CompactMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <span className="font-semibold text-stone-900">{label}: </span>
-      <span className="text-stone-600">{value}</span>
-    </div>
   );
 }
 
