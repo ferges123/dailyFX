@@ -294,10 +294,12 @@ class ImmichClient:
             face = ImmichClient._coerce_face_summary(raw_faces, person_id=person_id, person_name=name)
             if face is not None:
                 faces = [face]
+        count = payload.get("count", 0)
         return ImmichPersonSummary(
             id=person_id,
             name=name,
             is_hidden=bool(payload.get("isHidden", False)),
+            asset_count=count if isinstance(count, int) else 0,
             faces=faces,
         )
 
@@ -651,18 +653,10 @@ class ImmichClient:
                 return []
 
             named = [p for p in people if p.name.strip()]
-            async with httpx.AsyncClient(
-                base_url=self.api_base_url,
-                timeout=self.timeout,
-                limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
-            ) as count_client:
-                stats = await asyncio.gather(
-                    *(self._get_person_asset_count(count_client, person.id) for person in named)
-                )
             enriched = [
-                ImmichPersonSummary(id=p.id, name=p.name, is_hidden=p.is_hidden, asset_count=c)
-                for p, c in zip(named, stats, strict=True)
-                if c > 0 or not p.is_hidden
+                p
+                for p in named
+                if p.asset_count > 0 or not p.is_hidden
             ]
             enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
             return enriched[:33]

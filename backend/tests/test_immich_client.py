@@ -496,22 +496,18 @@ def test_list_people_orders_by_asset_count(monkeypatch: pytest.MonkeyPatch) -> N
         [
             {
                 "people": [
-                    {"id": "person-1", "name": "Alice", "isHidden": False},
-                    {"id": "person-2", "name": "Bob", "isHidden": False},
+                    {"id": "person-1", "name": "Alice", "isHidden": False, "count": 12},
+                    {"id": "person-2", "name": "Bob", "isHidden": False, "count": 34},
                 ],
                 "hasNextPage": False,
             },
         ]
     )
-    stats = {
-        "/api/people/person-1/statistics": {"assets": 12},
-        "/api/people/person-2/statistics": {"assets": 34},
-    }
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/people":
             return httpx.Response(200, json=next(payloads))
-        return httpx.Response(200, json=stats[request.url.path])
+        raise AssertionError(f"Unexpected request to {request.url.path}")
 
     original_async_client = httpx.AsyncClient
 
@@ -882,13 +878,13 @@ def test_immich_client_default_timeout():
 
 
 def test_list_people_limits_to_33(monkeypatch: pytest.MonkeyPatch) -> None:
-    mock_people = [{"id": f"person-{i}", "name": f"Person {i}", "isHidden": False} for i in range(1, 41)]
+    mock_people = [{"id": f"person-{i}", "name": f"Person {i}", "isHidden": False, "count": 1} for i in range(1, 41)]
     payloads = iter([{"people": mock_people, "hasNextPage": False}])
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/people":
             return httpx.Response(200, json=next(payloads))
-        return httpx.Response(200, json={"assets": 1})
+        raise AssertionError(f"Unexpected request to {request.url.path}")
 
     original_async_client = httpx.AsyncClient
 
