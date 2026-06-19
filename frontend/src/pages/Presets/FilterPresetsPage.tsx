@@ -55,6 +55,7 @@ function FilterPresetCard({
     .map((pf) => ({
       id: pf.personId,
       name: personNames.get(pf.personId) ?? pf.personId,
+      mode: pf.mode,
     }))
     .slice(0, 5);
   const tags: string[] = [];
@@ -86,14 +87,24 @@ function FilterPresetCard({
               📁 {item.name}
             </span>
           ))}
-          {peopleList.map((item) => (
-            <span
-              key={item.id}
-              className="app-chip px-2 py-0.5 text-[10px] font-medium"
-            >
-              👤 {item.name}
-            </span>
-          ))}
+          {peopleList.map((item) => {
+            let chipClass = 'app-chip px-2 py-0.5 text-[10px] font-medium';
+            let prefix = '👤';
+            if (item.mode === 'obligatory') {
+              chipClass =
+                'app-chip border-amber-200 bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-semibold';
+              prefix = '⭐';
+            } else if (item.mode === 'exclude') {
+              chipClass =
+                'app-chip border-rose-200 bg-rose-50/80 text-rose-800 px-2 py-0.5 text-[10px] font-medium line-through decoration-rose-300';
+              prefix = '🚫';
+            }
+            return (
+              <span key={item.id} className={chipClass}>
+                {prefix} {item.name}
+              </span>
+            );
+          })}
           {tags.map((t) => (
             <span
               key={t}
