@@ -665,7 +665,7 @@ class ImmichClient:
                 if c > 0 or not p.is_hidden
             ]
             enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
-            return enriched[:20]
+            return enriched[:33]
 
     async def _get_person_asset_count(self, client: httpx.AsyncClient, person_id: str) -> int:
         payload = await self._get_json(f"/people/{person_id}/statistics", client)

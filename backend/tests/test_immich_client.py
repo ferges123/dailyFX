@@ -879,3 +879,27 @@ def test_tag_assets_uses_put_tag_assets_endpoint(monkeypatch: pytest.MonkeyPatch
 def test_immich_client_default_timeout():
     client = ImmichClient("https://photos.example.com", "secret-key")
     assert client.timeout == 30.0
+
+
+def test_list_people_limits_to_33(monkeypatch: pytest.MonkeyPatch) -> None:
+    mock_people = [
+        {"id": f"person-{i}", "name": f"Person {i}", "isHidden": False}
+        for i in range(1, 41)
+    ]
+    payloads = iter([{"people": mock_people, "hasNextPage": False}])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/people":
+            return httpx.Response(200, json=next(payloads))
+        return httpx.Response(200, json={"assets": 1})
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    people = asyncio.run(ImmichClient("https://photos.example.com", "secret-key").list_people())
+
+    assert len(people) == 33
