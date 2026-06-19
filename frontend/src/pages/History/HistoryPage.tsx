@@ -404,6 +404,7 @@ export function HistoryPage() {
             value={historySearch}
             onChange={(event) => setHistorySearch(event.target.value)}
             placeholder="Search history..."
+            aria-label="Search history"
             className="app-control app-control-muted h-8 pl-8 pr-2.5 text-xs"
           />
         </div>
@@ -413,6 +414,7 @@ export function HistoryPage() {
             onChange={(event) =>
               setHistoryStatus(event.target.value as HistoryStatusFilter)
             }
+            aria-label="Filter history by status"
             className="app-control app-control-muted h-8 cursor-pointer px-2 text-xs"
           >
             <option value="all">All statuses</option>
