@@ -78,6 +78,28 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+from app.services.local_ai import LocalAIConfigurationError
+from app.services.studio.validation import StudioUploadValidationError
+
+
+@app.exception_handler(StudioUploadValidationError)
+async def studio_upload_validation_handler(request: Request, exc: StudioUploadValidationError):
+    return JSONResponse(status_code=415, content={"detail": str(exc)})
+
+
+@app.exception_handler(LocalAIConfigurationError)
+async def local_ai_configuration_handler(request: Request, exc: LocalAIConfigurationError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origin_list,

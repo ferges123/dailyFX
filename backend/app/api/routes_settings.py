@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,7 +8,7 @@ from app.schemas.settings import AvailableModelsResponse, ConnectionTestResponse
 from app.security import decrypt_secret, encrypt_secret, require_auth
 from app.services.generation.ai_vision import XIAOMI_API_BASE_URL
 from app.services.immich import build_immich_client, get_or_create_settings
-from app.services.local_ai import LocalAIConfigurationError, get_local_ai_api_key, get_local_ai_base_url
+from app.services.local_ai import get_local_ai_api_key, get_local_ai_base_url
 from app.services.settings.connection_tests import (
     build_connection_test_response as _connection_test_response,
 )
@@ -171,10 +171,7 @@ async def test_local_ai_connection(
     db: Session = Depends(get_db), _: None = Depends(require_auth), request: Request = None
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
-    try:
-        return await _test_local_connection(row)
-    except LocalAIConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return await _test_local_connection(row)
 
 
 async def _test_provider_connection(row, provider_key: str) -> ConnectionTestResponse:

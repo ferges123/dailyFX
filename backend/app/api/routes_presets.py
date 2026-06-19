@@ -119,10 +119,7 @@ def list_effect_presets(db: Session = Depends(get_db), _: None = Depends(require
 def create_effect_preset(body: EffectPresetCreate, db: Session = Depends(get_db), _: None = Depends(require_auth)):
     from app.services.generation.config_validation import validate_effects_config
 
-    try:
-        validate_effects_config(body.groups)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    validate_effects_config(body.groups)
 
     if db.query(EffectPresetModel).filter_by(name=body.name).first():
         raise HTTPException(status_code=409, detail="Effect preset with this name already exists")
@@ -142,10 +139,7 @@ def update_effect_preset(
 ):
     from app.services.generation.config_validation import validate_effects_config
 
-    try:
-        validate_effects_config(body.groups)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    validate_effects_config(body.groups)
 
     row = db.query(EffectPresetModel).filter_by(id=preset_id).first()
     if not row:
@@ -267,10 +261,7 @@ async def test_notification_preset(
     row = db.query(NotificationPresetModel).filter_by(id=preset_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Notification preset not found")
-    try:
-        results, errors = await run_notification_preset_test(row)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    results, errors = await run_notification_preset_test(row)
     if not results and errors:
         raise HTTPException(status_code=400, detail="; ".join(errors))
     return NotificationPresetTestResponse(ok=True, sent=results, errors=errors)

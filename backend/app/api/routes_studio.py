@@ -18,7 +18,6 @@ from app.services.generation.stream import record_history_snapshot
 from app.services.immich import get_or_create_settings
 from app.services.studio.local_asset import StudioLocalAssetClient, build_studio_asset
 from app.services.studio.validation import (
-    StudioUploadValidationError,
     create_studio_session_dir,
     validate_studio_image_upload,
 )
@@ -161,10 +160,7 @@ async def create_studio_preview(
     parsed_config = _parse_config(config)
     from app.services.generation.config_validation import validate_module_config
 
-    try:
-        validate_module_config(effect_id, {"config": parsed_config})
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    validate_module_config(effect_id, {"config": parsed_config})
 
     module_config = {
         **(getattr(module, "default_config", None) or {}),
@@ -172,14 +168,11 @@ async def create_studio_preview(
     }
 
     content = await file.read()
-    try:
-        validated = validate_studio_image_upload(
-            filename=file.filename or "upload",
-            content_type=file.content_type,
-            content=content,
-        )
-    except StudioUploadValidationError as exc:
-        raise HTTPException(status_code=415, detail=str(exc)) from exc
+    validated = validate_studio_image_upload(
+        filename=file.filename or "upload",
+        content_type=file.content_type,
+        content=content,
+    )
 
     temp_root = get_settings().data_dir / "temp" / "studio"
     session_id, session_dir = create_studio_session_dir(temp_root)
