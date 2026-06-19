@@ -36,6 +36,8 @@
 - Keep secrets in `.env`; never commit API keys, tokens, or generated database files.
 - `APP_SECRET_KEY`, `IMMICH_URL`, and `IMMICH_API_KEY` are required for a working local setup.
 - Treat `data/` as persistent runtime state.
+- **NEVER** track, stage, commit, or push files under `docs/plans/` (e.g., `task.md`, `AUDIT_REPORT.md`) to Git/GitHub.
+
 
 ## Versioning & Release Rules
 - Always use standard Semantic Versioning (SemVer) with three segments: `MAJOR.MINOR.PATCH` (e.g. `0.1.0` is standard and preferred over non-standard `0.01` or `0.0.1` when introducing new features).
