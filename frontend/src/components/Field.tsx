@@ -1,7 +1,8 @@
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
+import {
+  memo,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
 } from 'react';
 import { HelpCircle } from 'lucide-react';
 
@@ -14,7 +15,7 @@ type FieldProps = {
   optional?: boolean;
 } & InputHTMLAttributes<HTMLInputElement>;
 
-export function Field({
+export const Field = memo(function Field({
   label,
   hint,
   icon,
@@ -65,7 +66,7 @@ export function Field({
       ) : null}
     </label>
   );
-}
+});
 
 type SelectFieldProps = {
   label: string;
@@ -75,7 +76,7 @@ type SelectFieldProps = {
   optional?: boolean;
 } & SelectHTMLAttributes<HTMLSelectElement>;
 
-export function SelectField({
+export const SelectField = memo(function SelectField({
   label,
   children,
   error,
@@ -106,4 +107,4 @@ export function SelectField({
       ) : null}
     </label>
   );
-}
+});

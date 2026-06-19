@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import {
   ArrowLeft,
   ExternalLink,
@@ -50,7 +50,39 @@ interface HistoryDetailPanelProps {
   retryPending: boolean;
 }
 
-export function HistoryDetailPanel({
+const formatVisionState = (vision: VisionState | null | undefined) => {
+  if (!vision) return 'unknown';
+  if (!vision.attempted) return 'not used';
+  return vision.succeeded ? 'succeeded' : 'failed';
+};
+
+const formatElapsed = (
+  previousTimestamp: string | undefined,
+  currentTimestamp: string | undefined,
+) => {
+  if (!previousTimestamp || !currentTimestamp) return '';
+  const previous = Date.parse(previousTimestamp);
+  const current = Date.parse(currentTimestamp);
+  if (Number.isNaN(previous) || Number.isNaN(current) || current <= previous)
+    return '';
+  const totalSeconds = Math.round((current - previous) / 1000);
+  if (totalSeconds < 60) return `+${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `+${minutes}m ${String(seconds).padStart(2, '0')}s`;
+};
+
+const formatDuration = (seconds: number | null | undefined) => {
+  if (seconds == null) return null;
+  const totalSeconds = Math.max(0, Math.round(Number(seconds)));
+  const minutes = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  if (minutes && secs) return `${minutes} min ${secs} sec`;
+  if (minutes) return `${minutes} min`;
+  return `${secs} sec`;
+};
+
+export const HistoryDetailPanel = memo(function HistoryDetailPanel({
   entry,
   selectedHistoryImmichUrl,
   sourceAssetImmichUrl,
@@ -71,7 +103,7 @@ export function HistoryDetailPanel({
     setShowOriginal(false);
   }, [entry]);
 
-  const sourceAssetId = (() => {
+  const sourceAssetId = useMemo(() => {
     if (!entry?.source_asset_ids) return null;
     try {
       const ids = JSON.parse(entry.source_asset_ids);
@@ -79,8 +111,9 @@ export function HistoryDetailPanel({
     } catch {
       return null;
     }
-  })();
-  const metadataProvenance = (() => {
+  }, [entry?.source_asset_ids]);
+
+  const metadataProvenance = useMemo(() => {
     if (!entry?.config_json) return null;
     try {
       const config = JSON.parse(entry.config_json);
@@ -88,9 +121,9 @@ export function HistoryDetailPanel({
     } catch {
       return null;
     }
-  })();
+  }, [entry?.config_json]);
 
-  const taskTrace = (() => {
+  const taskTrace = useMemo(() => {
     if (!entry?.config_json) return null;
     try {
       const config = JSON.parse(entry.config_json);
@@ -100,39 +133,17 @@ export function HistoryDetailPanel({
     } catch {
       return null;
     }
-  })();
+  }, [entry?.config_json]);
 
-  const formatVisionState = (vision: VisionState | null | undefined) => {
-    if (!vision) return 'unknown';
-    if (!vision.attempted) return 'not used';
-    return vision.succeeded ? 'succeeded' : 'failed';
-  };
-
-  const formatElapsed = (
-    previousTimestamp: string | undefined,
-    currentTimestamp: string | undefined,
-  ) => {
-    if (!previousTimestamp || !currentTimestamp) return '';
-    const previous = Date.parse(previousTimestamp);
-    const current = Date.parse(currentTimestamp);
-    if (Number.isNaN(previous) || Number.isNaN(current) || current <= previous)
-      return '';
-    const totalSeconds = Math.round((current - previous) / 1000);
-    if (totalSeconds < 60) return `+${totalSeconds}s`;
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `+${minutes}m ${String(seconds).padStart(2, '0')}s`;
-  };
-
-  const formatDuration = (seconds: number | null | undefined) => {
-    if (seconds == null) return null;
-    const totalSeconds = Math.max(0, Math.round(Number(seconds)));
-    const minutes = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    if (minutes && secs) return `${minutes} min ${secs} sec`;
-    if (minutes) return `${minutes} min`;
-    return `${secs} sec`;
-  };
+  const tags = useMemo(() => {
+    if (!entry?.tags_json) return [];
+    try {
+      const parsed = JSON.parse(entry.tags_json);
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      return [];
+    }
+  }, [entry?.tags_json]);
 
   if (!entry) {
     return (
@@ -184,26 +195,18 @@ export function HistoryDetailPanel({
             </p>
           )}
           {/* AI Tags List */}
-          {entry.tags_json &&
-            (() => {
-              try {
-                const tags: string[] = JSON.parse(entry.tags_json);
-                return tags.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full border border-emerald-100/60 bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-700"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                ) : null;
-              } catch {
-                return null;
-              }
-            })()}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-0.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-emerald-100/60 bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-700"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
           {/* Original image link */}
           {sourceAssetImmichUrl && (
             <div className="flex items-center gap-1.5 text-[9.5px] text-stone-500 font-medium pt-0.5">
@@ -704,4 +707,4 @@ export function HistoryDetailPanel({
       </div>
     </div>
   );
-}
+});

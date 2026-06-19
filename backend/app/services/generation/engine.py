@@ -2,35 +2,14 @@ from __future__ import annotations
 
 import random  # noqa: F401
 from collections.abc import Callable
-from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
 from app.config import get_settings  # noqa: F401
-from app.immich.models import ImmichExifInfo, ImmichSearchFilters
+from app.immich.models import ImmichSearchFilters
 from app.services.generation.ai_vision import analyze_image  # noqa: F401
 from app.services.generation.modules import MODULES
 from app.services.immich import build_immich_client  # noqa: F401
-
-
-@dataclass(frozen=True)
-class GenerationModuleSelection:
-    name: str
-    module: object
-    config: dict
-
-
-@dataclass(frozen=True)
-class GenerationArtifacts:
-    ai_title: str
-    ai_summary: str
-    ai_tags: list[str]
-    ai_token_count: int | None
-    ai_provider: str | None
-    ai_model: str | None
-    exif_info: ImmichExifInfo | None
-    final_bytes: bytes
-    source_asset: object | None = None
 
 
 def _merge_module_defaults(groups_config: dict) -> dict:
@@ -105,14 +84,6 @@ async def _dispatch_generation_outputs(
                 await _send_webhook(np_preset.webhook_url, task_id, result.generation_type, title)
     elif webhook_url:
         await _send_webhook(webhook_url, task_id, result.generation_type, title)
-
-
-def _failed_history_provider(group_name: str, settings) -> tuple[str, str | None]:
-    if group_name.startswith("ai_"):
-        provider = (settings.ai_image_provider or "").strip().lower() or "unknown"
-        model = (settings.ai_image_model or "").strip() or None
-        return provider, model
-    return "local", None
 
 
 async def run_generation_cycle(

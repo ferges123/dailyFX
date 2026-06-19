@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { X, FolderPlus, ChevronDown } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -22,7 +22,7 @@ interface UploadModalProps {
   isPending: boolean;
 }
 
-export function UploadModal({
+export const UploadModal = memo(function UploadModal({
   isOpen,
   onClose,
   entry,
@@ -239,4 +239,4 @@ export function UploadModal({
       </div>
     </div>
   );
-}
+});

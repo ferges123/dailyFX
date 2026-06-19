@@ -247,7 +247,11 @@ def test_reject_already_uploaded():
         db.close()
 
 
-def test_get_generation_image(tmp_path):
+def test_get_generation_image(tmp_path, monkeypatch):
+    import app.config
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
     db = _setup_generation_routes_db()
     try:
         img_path = tmp_path / "task-img.png"
@@ -257,6 +261,8 @@ def test_get_generation_image(tmp_path):
         response = get_generation_image("task-img", db=db)
         assert response.path == img_path
     finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
         db.close()
 
 
@@ -282,6 +288,7 @@ def test_get_generation_image_accepts_review_token_when_review_auth_enabled(monk
 
     monkeypatch.setenv("APP_ACCESS_TOKEN", "full-access-token")
     monkeypatch.setenv("REQUIRE_AUTH_FOR_REVIEW", "true")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
     app.config.get_settings.cache_clear()
 
     db = _setup_generation_routes_db()
@@ -301,6 +308,7 @@ def test_get_generation_image_accepts_review_token_when_review_auth_enabled(monk
     finally:
         monkeypatch.delenv("APP_ACCESS_TOKEN", raising=False)
         monkeypatch.delenv("REQUIRE_AUTH_FOR_REVIEW", raising=False)
+        monkeypatch.delenv("DATA_DIR", raising=False)
         app.config.get_settings.cache_clear()
         db.close()
 

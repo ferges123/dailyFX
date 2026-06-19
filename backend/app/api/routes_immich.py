@@ -1,17 +1,11 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.immich.errors import (
-    ImmichAuthenticationError,
-    ImmichConfigurationError,
-    ImmichConnectionError,
-    ImmichPermissionError,
-    ImmichUnexpectedResponseError,
-)
+from app.immich.errors import handle_immich_errors
 from app.immich.models import ImmichPersonFilter, ImmichSearchFilters
 from app.schemas.immich import (
     ImmichAssetPageResponse,
@@ -35,18 +29,8 @@ async def list_filter_options(
     _: None = Depends(require_auth),
 ) -> ImmichFilterOptionsResponse:
     row = _get_or_create_settings(db)
-    try:
+    with handle_immich_errors():
         albums, people = await _list_filter_options(row)
-    except ImmichConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ImmichAuthenticationError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    except ImmichPermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ImmichConnectionError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except ImmichUnexpectedResponseError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return ImmichFilterOptionsResponse.from_domain(albums=albums, people=people)
 
@@ -68,7 +52,7 @@ async def list_assets(
     person_filters = _query_person_filters(person_ids, person_modes, person_mode)
 
     row = _get_or_create_settings(db)
-    try:
+    with handle_immich_errors():
         result = await _search_assets(
             row,
             ImmichSearchFilters(
@@ -79,16 +63,6 @@ async def list_assets(
                 media_type=media_type,
             ),
         )
-    except ImmichConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ImmichAuthenticationError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    except ImmichPermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ImmichConnectionError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except ImmichUnexpectedResponseError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return ImmichAssetPageResponse.from_domain(result)
 
@@ -101,18 +75,8 @@ async def get_asset_thumbnail(
     _: None = Depends(require_auth),
 ) -> Response:
     row = _get_or_create_settings(db)
-    try:
+    with handle_immich_errors():
         content, content_type = await _get_asset_thumbnail(row, asset_id, size=size)
-    except ImmichConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ImmichAuthenticationError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    except ImmichPermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ImmichConnectionError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except ImmichUnexpectedResponseError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return Response(content=content, media_type=content_type or "image/jpeg")
 
@@ -124,19 +88,9 @@ async def get_asset_exif(
     _: None = Depends(require_auth),
 ) -> ImmichExifResponse:
     row = _get_or_create_settings(db)
-    try:
+    with handle_immich_errors():
         client = _build_immich_client(row)
         return ImmichExifResponse.from_domain(await client.get_asset_exif(asset_id))
-    except ImmichConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ImmichAuthenticationError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    except ImmichPermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ImmichConnectionError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except ImmichUnexpectedResponseError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 def _query_person_mode(value: Any) -> str:

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Search, Layers } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
   retryGenerationAcceptance,
   getImmichFilterOptions,
   getImmichAssetExif,
+  type GenerationHistoryEntry,
 } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { InlineSpinner, ErrorBanner } from '../../components/ErrorUI';
@@ -33,6 +34,118 @@ function shouldRetrySettingsQuery(failureCount: number, error: unknown) {
   }
   return true;
 }
+
+const HistoryItemCard = memo(function HistoryItemCard({
+  item,
+  isSelected,
+  onSelect,
+}: {
+  item: GenerationHistoryEntry;
+  isSelected: boolean;
+  onSelect: (taskId: string) => void;
+}) {
+  const status = (item.status || '').toUpperCase();
+  const isQueued = status === 'QUEUED';
+  const isRunning = status === 'RUNNING';
+  const isUploaded = status === 'UPLOADED' || Boolean(item.accepted_at);
+  const isRejected = status === 'REJECTED';
+  const isFailed = status === 'FAILED';
+  const taskStep = item.task_step ? item.task_step.replace(/_/g, ' ') : '';
+
+  const handleClick = () => {
+    onSelect(item.task_id);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`group w-full flex gap-2.5 md:gap-3 rounded-xl border p-1.5 md:p-2 text-left transition-all duration-200 ${
+        isSelected
+          ? 'border-emerald-500 bg-emerald-50/30 shadow-2xs'
+          : 'border-stone-200 bg-white hover:border-emerald-500/30 hover:bg-stone-50/30'
+      }`}
+    >
+      {item.image_url ? (
+        <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100">
+          <SecureImage
+            src={`${item.image_url}?thumbnail=true`}
+            alt={item.title}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center">
+          <Layers size={16} className="text-stone-400" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
+        <div>
+          <div className="truncate text-xs font-bold text-stone-900 group-hover:text-stone-950">
+            {item.title || 'Untitled Generation'}
+          </div>
+          <div className="truncate text-[10px] font-medium text-stone-500 mt-0.5">
+            {item.generation_type.replace(/_/g, ' ')}
+          </div>
+          {isRunning && taskStep && (
+            <div className="truncate text-[9px] font-medium text-blue-700 mt-0.5">
+              {taskStep}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-1.5 text-[9px] mt-1.5">
+          <div className="flex items-center gap-1">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
+                isUploaded
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                  : isRunning
+                    ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                    : isQueued
+                      ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                      : isRejected
+                        ? 'bg-stone-100 text-stone-600 border border-stone-200'
+                        : isFailed
+                          ? 'bg-red-50/70 text-red-600 border border-red-100'
+                          : 'bg-amber-50 text-amber-700 border border-amber-100'
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isUploaded
+                    ? 'bg-emerald-500'
+                    : isRunning
+                      ? 'bg-blue-500'
+                      : isQueued
+                        ? 'bg-amber-500'
+                        : isRejected
+                          ? 'bg-stone-400'
+                          : isFailed
+                            ? 'bg-red-500'
+                            : 'bg-amber-500'
+                }`}
+              />
+              {isUploaded
+                ? 'Uploaded'
+                : isRunning
+                  ? 'Running'
+                  : isQueued
+                    ? 'Queued'
+                    : isRejected
+                      ? 'Rejected'
+                      : isFailed
+                        ? 'Failed'
+                        : 'Pending'}
+            </span>
+          </div>
+          <span className="text-stone-400 font-medium">
+            {item.created_at ? formatDateTime(item.created_at) : ''}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+});
 
 export function HistoryPage() {
   const navigate = useNavigate();
@@ -192,9 +305,83 @@ export function HistoryPage() {
     [sourceAssetId, settings.data?.immich_url],
   );
 
-  const handleRefreshAll = async () => {
+  const handleRefreshAll = useCallback(async () => {
     await refetchHistory();
-  };
+  }, [refetchHistory]);
+
+  const handleSelectCard = useCallback(
+    (id: string) => {
+      setSelectedHistoryTaskId(id);
+      navigate(`/history/${id}`);
+      setMobileShowDetail(true);
+    },
+    [navigate],
+  );
+
+  const handleBackToList = useCallback(() => {
+    setMobileShowDetail(false);
+    navigate('/history');
+  }, [navigate]);
+
+  const handleAccept = useCallback(() => {
+    if (selectedHistoryEntry) {
+      acceptHistoryMutation.mutate({
+        taskId: selectedHistoryEntry.task_id,
+        create_album: false,
+        album_name: selectedHistoryEntry.album_name || null,
+        album_id: null,
+      });
+    }
+  }, [selectedHistoryEntry, acceptHistoryMutation]);
+
+  const handleAcceptWithOptions = useCallback(() => {
+    setIsUploadModalOpen(true);
+  }, []);
+
+  const handleReject = useCallback(() => {
+    if (selectedHistoryEntry) {
+      rejectHistoryMutation.mutate(selectedHistoryEntry.task_id);
+    }
+  }, [selectedHistoryEntry, rejectHistoryMutation]);
+
+  const handleRetry = useCallback(() => {
+    if (selectedHistoryEntry) {
+      retryHistoryMutation.mutate(selectedHistoryEntry.task_id);
+    }
+  }, [selectedHistoryEntry, retryHistoryMutation]);
+
+  const handleOpenLightbox = useCallback((imageUrl: string) => {
+    if (imageUrl) {
+      setLightboxUrl(imageUrl);
+    }
+  }, []);
+
+  const handleCloseUploadModal = useCallback(() => {
+    setIsUploadModalOpen(false);
+  }, []);
+
+  const handleConfirmUpload = useCallback(
+    (variables: {
+      create_album: boolean;
+      album_name: string | null;
+      album_id: string | null;
+    }) => {
+      if (!selectedHistoryEntry) return;
+      acceptHistoryMutation.mutate({
+        taskId: selectedHistoryEntry.task_id,
+        ...variables,
+      });
+    },
+    [selectedHistoryEntry, acceptHistoryMutation],
+  );
+
+  const handleCloseLightbox = useCallback(() => {
+    setLightboxUrl(null);
+  }, []);
+
+  const handleRetrySettings = useCallback(() => {
+    settings.refetch();
+  }, [settings]);
 
   return (
     <section className="grid gap-4">
@@ -202,7 +389,7 @@ export function HistoryPage() {
         <ErrorBanner
           title="History links unavailable"
           error={settings.error as Error | string | null}
-          onRetry={() => settings.refetch()}
+          onRetry={handleRetrySettings}
         />
       )}
 
@@ -300,115 +487,14 @@ export function HistoryPage() {
               ref={historyListRef}
               className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar"
             >
-              {filteredHistoryItems.map((item) => {
-                const status = (item.status || '').toUpperCase();
-                const isQueued = status === 'QUEUED';
-                const isRunning = status === 'RUNNING';
-                const isUploaded =
-                  status === 'UPLOADED' || Boolean(item.accepted_at);
-                const isRejected = status === 'REJECTED';
-                const isFailed = status === 'FAILED';
-                const taskStep = item.task_step
-                  ? item.task_step.replace(/_/g, ' ')
-                  : '';
-
-                return (
-                  <button
-                    key={item.task_id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedHistoryTaskId(item.task_id);
-                      navigate(`/history/${item.task_id}`);
-                      setMobileShowDetail(true);
-                    }}
-                    className={`group w-full flex gap-2.5 md:gap-3 rounded-xl border p-1.5 md:p-2 text-left transition-all duration-200 ${
-                      selectedHistoryTaskId === item.task_id
-                        ? 'border-emerald-500 bg-emerald-50/30 shadow-2xs'
-                        : 'border-stone-200 bg-white hover:border-emerald-500/30 hover:bg-stone-50/30'
-                    }`}
-                  >
-                    {item.image_url ? (
-                      <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100">
-                        <SecureImage
-                          src={`${item.image_url}?thumbnail=true`}
-                          alt={item.title}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center">
-                        <Layers size={16} className="text-stone-400" />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
-                      <div>
-                        <div className="truncate text-xs font-bold text-stone-900 group-hover:text-stone-950">
-                          {item.title || 'Untitled Generation'}
-                        </div>
-                        <div className="truncate text-[10px] font-medium text-stone-500 mt-0.5">
-                          {item.generation_type.replace(/_/g, ' ')}
-                        </div>
-                        {isRunning && taskStep && (
-                          <div className="truncate text-[9px] font-medium text-blue-700 mt-0.5">
-                            {taskStep}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between gap-1.5 text-[9px] mt-1.5">
-                        <div className="flex items-center gap-1">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
-                              isUploaded
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                : isRunning
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                                  : isQueued
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                                    : isRejected
-                                      ? 'bg-stone-100 text-stone-600 border border-stone-200'
-                                      : isFailed
-                                        ? 'bg-red-50/70 text-red-600 border border-red-100'
-                                        : 'bg-amber-50 text-amber-700 border border-amber-100'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                isUploaded
-                                  ? 'bg-emerald-500'
-                                  : isRunning
-                                    ? 'bg-blue-500'
-                                    : isQueued
-                                      ? 'bg-amber-500'
-                                      : isRejected
-                                        ? 'bg-stone-400'
-                                        : isFailed
-                                          ? 'bg-red-500'
-                                          : 'bg-amber-500'
-                              }`}
-                            />
-                            {isUploaded
-                              ? 'Uploaded'
-                              : isRunning
-                                ? 'Running'
-                                : isQueued
-                                  ? 'Queued'
-                                  : isRejected
-                                    ? 'Rejected'
-                                    : isFailed
-                                      ? 'Failed'
-                                      : 'Pending'}
-                          </span>
-                        </div>
-                        <span className="text-stone-400 font-medium">
-                          {item.created_at
-                            ? formatDateTime(item.created_at)
-                            : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+              {filteredHistoryItems.map((item) => (
+                <HistoryItemCard
+                  key={item.task_id}
+                  item={item}
+                  isSelected={selectedHistoryTaskId === item.task_id}
+                  onSelect={handleSelectCard}
+                />
+              ))}
 
               {/* Load More Button */}
               {hasNextPage && (
@@ -442,36 +528,12 @@ export function HistoryPage() {
             selectedHistoryImmichUrl={selectedHistoryImmichUrl}
             sourceAssetImmichUrl={sourceAssetImmichUrl}
             mobileShowDetail={mobileShowDetail}
-            onBackToList={() => {
-              setMobileShowDetail(false);
-              navigate('/history');
-            }}
-            onAccept={() => {
-              if (selectedHistoryEntry) {
-                acceptHistoryMutation.mutate({
-                  taskId: selectedHistoryEntry.task_id,
-                  create_album: false,
-                  album_name: selectedHistoryEntry.album_name || null,
-                  album_id: null,
-                });
-              }
-            }}
-            onAcceptWithOptions={() => setIsUploadModalOpen(true)}
-            onReject={() => {
-              if (selectedHistoryEntry) {
-                rejectHistoryMutation.mutate(selectedHistoryEntry.task_id);
-              }
-            }}
-            onRetry={() => {
-              if (selectedHistoryEntry) {
-                retryHistoryMutation.mutate(selectedHistoryEntry.task_id);
-              }
-            }}
-            onOpenLightbox={(imageUrl) => {
-              if (imageUrl) {
-                setLightboxUrl(imageUrl);
-              }
-            }}
+            onBackToList={handleBackToList}
+            onAccept={handleAccept}
+            onAcceptWithOptions={handleAcceptWithOptions}
+            onReject={handleReject}
+            onRetry={handleRetry}
+            onOpenLightbox={handleOpenLightbox}
             acceptPending={acceptHistoryMutation.isPending}
             rejectPending={rejectHistoryMutation.isPending}
             retryPending={retryHistoryMutation.isPending}
@@ -493,17 +555,11 @@ export function HistoryPage() {
       {selectedHistoryEntry && (
         <UploadModal
           isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
+          onClose={handleCloseUploadModal}
           entry={selectedHistoryEntry}
           albums={sortedAlbums}
           isPending={acceptHistoryMutation.isPending}
-          onConfirm={(variables) => {
-            if (!selectedHistoryEntry) return;
-            acceptHistoryMutation.mutate({
-              taskId: selectedHistoryEntry.task_id,
-              ...variables,
-            });
-          }}
+          onConfirm={handleConfirmUpload}
         />
       )}
 
@@ -511,7 +567,7 @@ export function HistoryPage() {
       {lightboxUrl && selectedHistoryEntry && (
         <LightboxModal
           isOpen={!!lightboxUrl}
-          onClose={() => setLightboxUrl(null)}
+          onClose={handleCloseLightbox}
           imageUrl={lightboxUrl}
           entry={selectedHistoryEntry}
           exif={selectedExif}

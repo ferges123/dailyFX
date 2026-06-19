@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import SessionLocal, get_db
 from app.immich.errors import ImmichError
 from app.models.generation_history import GenerationHistoryModel
@@ -270,11 +271,16 @@ async def get_review_thumbnail(
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row or not row.output_path:
         raise HTTPException(status_code=404, detail="Not found")
-    path = Path(row.output_path)
+    path = Path(row.output_path).resolve()
+    data_dir = get_settings().data_dir.resolve()
+    if not path.is_relative_to(data_dir):
+        raise HTTPException(status_code=400, detail="Invalid path")
     if not path.exists():
         raise HTTPException(status_code=404, detail="Not found")
 
-    thumb_path = get_or_create_thumbnail(path)
+    thumb_path = get_or_create_thumbnail(path).resolve()
+    if not thumb_path.is_relative_to(data_dir):
+        raise HTTPException(status_code=400, detail="Invalid path")
     if thumb_path != path and thumb_path.exists():
         return FileResponse(thumb_path, media_type="image/jpeg")
 
@@ -324,13 +330,18 @@ def get_generation_image(
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row or not row.output_path:
         raise HTTPException(status_code=404, detail="Image not found")
-    path = Path(row.output_path)
+    path = Path(row.output_path).resolve()
+    data_dir = get_settings().data_dir.resolve()
+    if not path.is_relative_to(data_dir):
+        raise HTTPException(status_code=400, detail="Invalid path")
     if not path.exists():
         raise HTTPException(status_code=404, detail="Image file not found on disk")
 
     headers = {"Cache-Control": "private, max-age=604800"}
     if thumbnail:
-        thumb_path = get_or_create_thumbnail(path)
+        thumb_path = get_or_create_thumbnail(path).resolve()
+        if not thumb_path.is_relative_to(data_dir):
+            raise HTTPException(status_code=400, detail="Invalid path")
         if thumb_path != path and thumb_path.exists():
             return FileResponse(thumb_path, media_type="image/jpeg", headers=headers)
 
@@ -491,13 +502,16 @@ async def reject_generation(task_id: str, db: Session = Depends(get_db), _: None
     return row
 
 
-@router.delete("/history/rejected", status_code=204)
-async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
-    """Delete all rejected generations (files + DB records)."""
+def _delete_history_records_and_files(db: Session, status: str | None = None) -> None:
+    """Helper to physically delete generated files/thumbnails and purge database history records."""
     from app.models.generation_stream_event import GenerationStreamEventModel
     from app.models.generation_task import GenerationTaskModel
 
-    rows = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "REJECTED").all()
+    query = db.query(GenerationHistoryModel)
+    if status is not None:
+        query = query.filter(GenerationHistoryModel.status == status)
+
+    rows = query.all()
     task_ids = [row.task_id for row in rows]
 
     for row in rows:
@@ -509,7 +523,7 @@ async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends
             if thumb.exists():
                 thumb.unlink(missing_ok=True)
 
-    db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "REJECTED").delete()
+    query.delete(synchronize_session=False)
     if task_ids:
         db.query(GenerationTaskModel).filter(GenerationTaskModel.task_id.in_(task_ids)).delete(
             synchronize_session=False
@@ -517,6 +531,12 @@ async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends
         db.query(GenerationStreamEventModel).filter(GenerationStreamEventModel.task_id.in_(task_ids)).delete(
             synchronize_session=False
         )
+
+
+@router.delete("/history/rejected", status_code=204)
+async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    """Delete all rejected generations (files + DB records)."""
+    _delete_history_records_and_files(db, "REJECTED")
     db.commit()
 
 
@@ -533,50 +553,12 @@ async def delete_history_by_status(status: str, db: Session = Depends(get_db), _
     if not db_status:
         raise HTTPException(status_code=400, detail=f"Invalid or unsupported status: {status}")
 
-    from app.models.generation_stream_event import GenerationStreamEventModel
-    from app.models.generation_task import GenerationTaskModel
-
-    rows = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == db_status).all()
-    task_ids = [row.task_id for row in rows]
-
-    for row in rows:
-        if row.output_path:
-            path = Path(row.output_path)
-            if path.exists():
-                path.unlink(missing_ok=True)
-            thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
-            if thumb.exists():
-                thumb.unlink(missing_ok=True)
-
-    db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == db_status).delete()
-    if task_ids:
-        db.query(GenerationTaskModel).filter(GenerationTaskModel.task_id.in_(task_ids)).delete(
-            synchronize_session=False
-        )
-        db.query(GenerationStreamEventModel).filter(GenerationStreamEventModel.task_id.in_(task_ids)).delete(
-            synchronize_session=False
-        )
+    _delete_history_records_and_files(db, db_status)
     db.commit()
 
 
 @router.delete("/history/cache", status_code=204)
 async def clear_generation_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
     """Delete all generation history (files + DB records)."""
-    from app.models.generation_stream_event import GenerationStreamEventModel
-    from app.models.generation_task import GenerationTaskModel
-
-    rows = db.query(GenerationHistoryModel).all()
-
-    for row in rows:
-        if row.output_path:
-            path = Path(row.output_path)
-            if path.exists():
-                path.unlink(missing_ok=True)
-            thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
-            if thumb.exists():
-                thumb.unlink(missing_ok=True)
-
-    db.query(GenerationHistoryModel).delete()
-    db.query(GenerationTaskModel).delete()
-    db.query(GenerationStreamEventModel).delete()
+    _delete_history_records_and_files(db)
     db.commit()

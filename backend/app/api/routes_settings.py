@@ -2,13 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.immich.errors import (
-    ImmichAuthenticationError,
-    ImmichConfigurationError,
-    ImmichConnectionError,
-    ImmichPermissionError,
-    ImmichUnexpectedResponseError,
-)
+from app.immich.errors import handle_immich_errors
 from app.limiter import limiter
 from app.schemas.settings import AvailableModelsResponse, ConnectionTestResponse, SettingsResponse, SettingsUpdate
 from app.security import decrypt_secret, encrypt_secret, require_auth
@@ -113,18 +107,8 @@ async def test_immich_connection(
     db: Session = Depends(get_db), _: None = Depends(require_auth), request: Request = None
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
-    try:
+    with handle_immich_errors():
         result = await build_immich_client(row).test_connection()
-    except ImmichConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ImmichAuthenticationError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    except ImmichPermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except ImmichConnectionError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except ImmichUnexpectedResponseError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return _connection_test_response(
         "immich",

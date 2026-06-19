@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { getAuthToken } from '../api/client';
 
 interface SecureImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
 }
 
-export function SecureImage({ src, ...props }: SecureImageProps) {
+const blobCache = new Map<string, string>();
+const pendingFetches = new Map<string, Promise<string>>();
+
+export const SecureImage = memo(function SecureImage({
+  src,
+  ...props
+}: SecureImageProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -14,24 +20,45 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
     if (!src) return;
 
     let isMounted = true;
-    let createdUrl: string | null = null;
+
+    // Check synchronous cache first
+    const cached = blobCache.get(src);
+    if (cached) {
+      setBlobUrl(cached);
+      setLoading(false);
+      setError(false);
+      return;
+    }
+
     const token = getAuthToken();
 
     async function fetchImage() {
       try {
         setLoading(true);
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+
+        let promise = pendingFetches.get(src);
+        if (!promise) {
+          promise = (async () => {
+            const headers: Record<string, string> = {};
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(src, { headers });
+            if (!response.ok) throw new Error('Failed to fetch image');
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            blobCache.set(src, url);
+            pendingFetches.delete(src);
+            return url;
+          })();
+          pendingFetches.set(src, promise);
         }
 
-        const response = await fetch(src, { headers });
-        if (!response.ok) throw new Error('Failed to fetch image');
+        const url = await promise;
 
-        const blob = await response.blob();
         if (isMounted) {
-          const url = URL.createObjectURL(blob);
-          createdUrl = url;
           setBlobUrl(url);
           setError(false);
         }
@@ -50,9 +77,6 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
 
     return () => {
       isMounted = false;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
     };
   }, [src]);
 
@@ -75,4 +99,4 @@ export function SecureImage({ src, ...props }: SecureImageProps) {
   }
 
   return <img src={blobUrl} {...props} />;
-}
+});

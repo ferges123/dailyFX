@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import {
   X,
   Cpu,
@@ -76,7 +76,7 @@ interface LightboxModalProps {
   exif: ExifData | null;
 }
 
-export function LightboxModal({
+export const LightboxModal = memo(function LightboxModal({
   isOpen,
   onClose,
   imageUrl,
@@ -467,4 +467,4 @@ export function LightboxModal({
       </div>
     </div>
   );
-}
+});

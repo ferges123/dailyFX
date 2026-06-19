@@ -882,10 +882,7 @@ def test_immich_client_default_timeout():
 
 
 def test_list_people_limits_to_33(monkeypatch: pytest.MonkeyPatch) -> None:
-    mock_people = [
-        {"id": f"person-{i}", "name": f"Person {i}", "isHidden": False}
-        for i in range(1, 41)
-    ]
+    mock_people = [{"id": f"person-{i}", "name": f"Person {i}", "isHidden": False} for i in range(1, 41)]
     payloads = iter([{"people": mock_people, "hasNextPage": False}])
 
     def handler(request: httpx.Request) -> httpx.Response:

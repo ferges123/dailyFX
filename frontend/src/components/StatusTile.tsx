@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 
 type StatusTone = 'neutral' | 'success' | 'warning' | 'danger';
 
@@ -28,7 +28,7 @@ const toneClasses: Record<
   },
 };
 
-export function StatusTile({
+export const StatusTile = memo(function StatusTile({
   icon,
   label,
   value,
@@ -60,4 +60,4 @@ export function StatusTile({
       </div>
     </div>
   );
-}
+});

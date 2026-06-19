@@ -59,24 +59,9 @@ def _resolve_schedule_ai_settings(db: Session, settings: SettingsModel, schedule
 
 
 def _merge_module_defaults(groups_config: dict) -> dict:
-    from app.services.generation import engine as engine_module
+    from app.services.generation.engine import _merge_module_defaults as merge_defaults
 
-    modules = getattr(engine_module, "MODULES", {}) or {}
-    merged = {}
-    for name, module in modules.items():
-        current = groups_config.get(name) if isinstance(groups_config, dict) else None
-        if not isinstance(current, dict):
-            current = {}
-        in_preset = isinstance(groups_config, dict) and name in groups_config
-        merged[name] = {
-            "enabled": current.get("enabled", False) if in_preset else False,
-            "weight": current.get("weight", module.default_weight),
-            "config": {
-                **(module.default_config or {}),
-                **(current.get("config") if isinstance(current.get("config"), dict) else {}),
-            },
-        }
-    return merged
+    return merge_defaults(groups_config)
 
 
 def _select_generation_module(effects_config: dict) -> GenerationModuleSelection | None:

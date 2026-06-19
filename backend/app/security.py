@@ -1,6 +1,9 @@
 import base64
 import hashlib
 import hmac
+import logging
+
+logger = logging.getLogger(__name__)
 import json
 import secrets
 from datetime import datetime, timezone
@@ -77,7 +80,11 @@ def verify_review_token(token: str | None, task_id: str, *, now: datetime | None
         if not hmac.compare_digest(supplied_signature, expected_signature):
             return False
         payload = json.loads(_b64url_decode(payload_part))
-    except Exception:
+    except (ValueError, json.JSONDecodeError) as exc:
+        logger.warning("Failed to decode review token: %s", exc)
+        return False
+    except Exception as exc:
+        logger.exception("Unexpected error verifying review token: %s", exc)
         return False
 
     if not isinstance(payload, dict):
