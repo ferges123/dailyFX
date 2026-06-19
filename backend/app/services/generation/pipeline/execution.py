@@ -3,7 +3,10 @@ from collections.abc import Callable
 
 from sqlalchemy.orm import Session
 
+from app.immich.client import ImmichClient
+from app.immich.models import ImmichAssetSummary
 from app.models.settings import SettingsModel
+from app.services.generation.modules.base import GenerationResult
 from app.utils.debug_logger import debug_log
 
 from .shared import (
@@ -73,9 +76,9 @@ async def _run_selected_module(
 async def _pipeline_execute_module(
     ctx: GenerationPipelineContext,
     module_selection: GenerationModuleSelection,
-    page_items: list[object],
-    client: object,
-) -> object:
+    page_items: list[ImmichAssetSummary],
+    client: ImmichClient,
+) -> GenerationResult:
     original_album_name = getattr(ctx.settings, "_generation_album_name", _ALBUM_NAME_SENTINEL)
     if ctx.album_name is not None:
         ctx.settings._generation_album_name = ctx.album_name

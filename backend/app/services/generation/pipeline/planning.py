@@ -43,7 +43,8 @@ def _resolve_schedule_ai_settings(db: Session, settings: SettingsModel, schedule
             settings.ai_image_model = ""
             settings.ai_prompt_enrichment = False
             settings.ai_photo_selection_enabled = False
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to resolve schedule AI settings, falling back to defaults: %s", exc, exc_info=True)
         if not hasattr(settings, "default_ai_provider"):
             settings.default_ai_provider = "none"
         if not hasattr(settings, "default_ai_model"):
@@ -93,7 +94,7 @@ def _select_generation_module(effects_config: dict) -> GenerationModuleSelection
 
 def _pipeline_setup_and_planning(ctx: GenerationPipelineContext) -> GenerationModuleSelection | None:
     ctx.source = "MANUAL" if ctx.force else "AUTOMATION"
-    logger.info(f"🔵 run_generation_cycle START - task_id={ctx.task_id}, source={ctx.source}")
+    logger.info("🔵 run_generation_cycle START - task_id=%s, source=%s", ctx.task_id, ctx.source)
     ctx.pipeline_start_time = time.time()
 
     _resolve_schedule_ai_settings(ctx.db, ctx.settings, ctx.schedule_id)
@@ -158,7 +159,7 @@ def _pipeline_setup_and_planning(ctx: GenerationPipelineContext) -> GenerationMo
         module=ctx.selected_group_name,
         config=module_selection.config.get("config", {}),
     )
-    logger.info(f"🎯 Selected generation group: {ctx.selected_group_name} (task_id={ctx.task_id})")
+    logger.info("🎯 Selected generation group: %s (task_id=%s)", ctx.selected_group_name, ctx.task_id)
     _trace_stage(
         ctx.db,
         ctx.task_id,

@@ -14,7 +14,8 @@ def _load_existing_history_config(existing: GenerationHistoryModel | None) -> di
 
     try:
         parsed = json.loads(existing.config_json)
-    except Exception:
+    except Exception as exc:
+        logger.debug("Failed to load existing history config: %s", exc, exc_info=True)
         return {}
 
     return parsed if isinstance(parsed, dict) else {}
@@ -49,7 +50,7 @@ def _prime_generation_thumbnail(output_path) -> None:
     try:
         get_or_create_thumbnail(output_path)
     except Exception as thumb_err:
-        logger.warning(f"Failed to pre-generate thumbnail during generation cycle: {thumb_err}")
+        logger.warning("Failed to pre-generate thumbnail during generation cycle: %s", thumb_err)
 
 
 def persist_generation_result(
@@ -70,7 +71,7 @@ def persist_generation_result(
 
     _save_generation_output(output_path, artifacts.final_bytes)
     _prime_generation_thumbnail(output_path)
-    logger.info(f"💾 Saved result to {output_path} (task_id={task_id})")
+    logger.info("💾 Saved result to %s (task_id=%s)", output_path, task_id)
 
     upsert_history_entry(
         db,

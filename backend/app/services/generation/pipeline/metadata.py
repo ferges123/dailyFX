@@ -4,8 +4,11 @@ from collections.abc import Callable
 
 from sqlalchemy.orm import Session
 
+from app.immich.client import ImmichClient
+from app.immich.models import ImmichAssetPage, ImmichAssetSummary
 from app.models.settings import SettingsModel
 from app.services.generation.exif_embedder import embed_exif_metadata
+from app.services.generation.modules.base import GenerationResult
 from app.services.generation.people_context import load_people_context
 from app.utils.debug_logger import debug_log
 
@@ -397,11 +400,11 @@ async def _build_generation_artifacts(
 async def _pipeline_enrich_metadata(
     ctx: GenerationPipelineContext,
     module_selection: GenerationModuleSelection,
-    result: object,
-    page: object,
-    client: object,
+    result: GenerationResult,
+    page: ImmichAssetPage,
+    client: ImmichClient,
     photo_selection_trace: dict | None,
-) -> tuple[object, GenerationArtifacts]:
+) -> tuple[ImmichAssetSummary | None, GenerationArtifacts]:
     source_asset, people_context = await _resolve_generation_source_context(
         page=page,
         result=result,

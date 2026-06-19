@@ -26,6 +26,7 @@ class SettingsModel(Base):
     ai_image_provider: str = "none"
     ai_image_model: str = "gpt-image-1"
     ai_prompt_enrichment: bool = False
+    ai_photo_selection_enabled: bool = False
 
     ai_vision_hourly_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     ai_image_hourly_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
