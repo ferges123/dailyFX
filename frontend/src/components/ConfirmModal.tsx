@@ -86,7 +86,12 @@ export function ConfirmModal({
             )}
           </div>
           <div>
-            <h3 id="confirm-modal-title" className="text-sm font-bold text-stone-900">{title}</h3>
+            <h3
+              id="confirm-modal-title"
+              className="text-sm font-bold text-stone-900"
+            >
+              {title}
+            </h3>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
               {description}
             </p>

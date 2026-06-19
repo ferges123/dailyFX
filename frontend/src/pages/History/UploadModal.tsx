@@ -102,7 +102,10 @@ export const UploadModal = memo(function UploadModal({
           <X size={16} />
         </button>
 
-        <h3 id="upload-modal-title" className="text-base font-bold text-stone-900 flex items-center gap-2">
+        <h3
+          id="upload-modal-title"
+          className="text-base font-bold text-stone-900 flex items-center gap-2"
+        >
           <FolderPlus size={18} className="text-emerald-700" />
           Upload Destination Album
         </h3>

@@ -308,7 +308,11 @@ export function SettingsPage() {
           <Save size={14} />
           Save
         </button>
-        <div aria-live="polite" className="flex items-center" data-testid="save-status-container">
+        <div
+          aria-live="polite"
+          className="flex items-center"
+          data-testid="save-status-container"
+        >
           {saved.status === 'success' && (
             <span className="text-xs text-emerald-700">{saved.message}</span>
           )}

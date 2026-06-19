@@ -238,7 +238,10 @@ export const LightboxModal = memo(function LightboxModal({
               <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-1">
                 Image Metadata
               </h4>
-              <h3 id="lightbox-modal-title" className="text-sm font-bold text-white leading-snug truncate">
+              <h3
+                id="lightbox-modal-title"
+                className="text-sm font-bold text-white leading-snug truncate"
+              >
                 {entry.title || 'Untitled Image'}
               </h3>
               {entry.summary && (
