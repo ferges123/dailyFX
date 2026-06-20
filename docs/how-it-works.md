@@ -49,7 +49,8 @@ To protect user privacy, DailyFX automatically anonymizes people's real names in
 ## What Happens During A Run
 
 - The background scheduler loop starts the task or you trigger a selected schedule manually.
-- DailyFX searches Immich for matching assets.
+- DailyFX searches Immich for matching assets, requesting a random pool of 30 assets to prevent duplicates.
+- DailyFX applies history-based deduplication, checking the last 25 unique used photos and preferring unused or oldest-used images (bypassed if explicit assets are selected manually).
 - A generation module runs and produces the output image.
 - Optional AI Vision can create or refine titles, summaries, and tags.
 - EXIF metadata is embedded before the file is saved.
