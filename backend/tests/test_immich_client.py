@@ -571,7 +571,7 @@ def test_get_asset_thumbnail_returns_bytes(monkeypatch: pytest.MonkeyPatch) -> N
     )
 
     assert seen_request["path"] == "/api/assets/asset-1/thumbnail"
-    assert seen_request["query"] == {"format": "WEBP"}
+    assert seen_request["query"] == {"format": "WEBP", "size": "preview"}
     assert content == b"thumb-bytes"
     assert content_type == "image/webp"
 

@@ -921,9 +921,12 @@ class ImmichClient:
         try:
             url = f"{self.api_base_url}{path}"
             logger.debug("Trying Immich thumbnail: %s (size=%s)", url, size)
+            params = {"format": thumbnail_format}
+            if size:
+                params["size"] = size
             response = await client.get(
                 path,
-                params={"format": thumbnail_format},
+                params=params,
                 headers=self._headers(json_type=False),
             )
             self._handle_response_errors(response, f"Immich thumbnail endpoint ({path}) failed")
