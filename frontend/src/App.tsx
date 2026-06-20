@@ -25,6 +25,7 @@ import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { APP_VERSION } from './version';
 
 const GITHUB_URL = 'https://github.com/ferges123/dailyFX';
+const BRAND_LOGO_LIGHT = '/logo_light.png';
 
 const HistoryPage = lazy(() => import('./pages/History/HistoryPage'));
 const StudioPage = lazy(() =>
@@ -123,9 +124,7 @@ function AppShell() {
       <header className="sticky top-0 z-20 border-b border-white/70 bg-[rgba(248,246,239,0.82)] backdrop-blur-xl md:hidden">
         <div className="mx-auto flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-900/10 bg-emerald-900 text-white shadow-[0_14px_28px_rgba(15,81,50,0.22)]">
-              <Sparkles className="h-4.5 w-4.5 md:h-[18px] md:w-[18px]" />
-            </div>
+            <BrandLogo className="h-10 w-10" />
             <div>
               <h1 className="text-base font-semibold leading-none text-stone-950">
                 DailyFX for immich
@@ -150,9 +149,7 @@ function AppShell() {
 
       <aside className="hidden border-r border-white/70 bg-[rgba(248,246,239,0.72)] px-4 py-5 backdrop-blur-xl md:flex md:flex-col md:sticky md:top-0 md:h-screen">
         <div className="flex items-center gap-3 px-1">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-900/10 bg-emerald-900 text-white shadow-[0_10px_22px_rgba(15,81,50,0.18)]">
-            <Sparkles className="h-[18px] w-[18px]" />
-          </div>
+          <BrandLogo className="h-14 w-14" />
           <div>
             <h1 className="text-lg font-semibold leading-none text-stone-950">
               DailyFX for immich
@@ -376,6 +373,16 @@ export default function App() {
         <AppShell />
       </AuthProvider>
     </BrowserRouter>
+  );
+}
+
+function BrandLogo({ className }: { className: string }) {
+  return (
+    <img
+      src={BRAND_LOGO_LIGHT}
+      alt="DailyFX logo"
+      className={`${className} shrink-0 rounded-xl object-cover shadow-[0_10px_22px_rgba(36,29,16,0.16)]`}
+    />
   );
 }
 

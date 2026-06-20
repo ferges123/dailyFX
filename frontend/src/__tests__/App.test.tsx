@@ -72,6 +72,21 @@ describe('App', () => {
     ).toHaveLength(2);
   });
 
+  it('uses the light logo for the app chrome brand icon', async () => {
+    renderApp();
+
+    expect(
+      await screen.findAllByRole('img', { name: 'DailyFX logo' }),
+    ).toHaveLength(2);
+    expect(screen.getAllByRole('img', { name: 'DailyFX logo' })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          src: expect.stringContaining('/logo_light.png'),
+        }),
+      ]),
+    );
+  });
+
   it('shows the shared frontend app version in desktop and mobile chrome', async () => {
     renderApp('/settings');
 
