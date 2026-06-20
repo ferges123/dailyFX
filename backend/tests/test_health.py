@@ -3,8 +3,10 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 
-from app.api.routes_health import health
+from app.api.routes_health import auth_validate, health
 from app.main import app
 from app.version import APP_VERSION
 
@@ -12,6 +14,35 @@ from app.version import APP_VERSION
 def test_health_and_fastapi_metadata_use_shared_app_version():
     assert health()["version"] == APP_VERSION
     assert app.version == APP_VERSION
+
+
+def test_auth_validate_requires_valid_app_token(monkeypatch):
+    import app.config
+    import app.security
+
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "valid-token")
+    app.config.get_settings.cache_clear()
+
+    for credentials in (
+        None,
+        HTTPAuthorizationCredentials(
+            scheme="Bearer",
+            credentials="wrong-token",
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            app.security.require_auth(credentials)
+        assert exc_info.value.status_code == 401
+
+    app.security.require_auth(
+        HTTPAuthorizationCredentials(
+            scheme="Bearer",
+            credentials="valid-token",
+        )
+    )
+
+    assert auth_validate() == {"status": "ok"}
 
 
 def mock_sys_exit(code=0):

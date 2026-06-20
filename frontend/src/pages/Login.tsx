@@ -1,13 +1,19 @@
-import { useState } from 'react';
-import { Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../api/AuthContext';
 import { getApiUrl } from '../api/client';
+import { BrandLogo } from '../components/BrandLogo';
 
 export function LoginPage() {
   const [inputToken, setInputToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { setToken } = useAuth();
+  const { setToken, authError, clearAuthError } = useAuth();
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +23,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(getApiUrl('/api/health'), {
+      const res = await fetch(getApiUrl('/api/auth/validate'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -36,9 +42,7 @@ export function LoginPage() {
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-6 md:p-8 shadow-xs">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-            <Lock size={24} />
-          </div>
+          <BrandLogo className="mb-4 h-20 w-20 md:h-24 md:w-24" />
           <h2 className="text-2xl font-semibold text-stone-900">
             Protected Access
           </h2>
@@ -59,7 +63,11 @@ export function LoginPage() {
               id="token"
               type="password"
               value={inputToken}
-              onChange={(e) => setInputToken(e.target.value)}
+              onChange={(e) => {
+                setInputToken(e.target.value);
+                setError('');
+                clearAuthError();
+              }}
               placeholder="Enter your token"
               className="mt-1 block w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2 text-stone-900 focus:border-emerald-500 focus:ring-emerald-500 outline-hidden transition-colors"
               required

@@ -26,6 +26,11 @@ def health() -> dict:
     }
 
 
+@router.get("/auth/validate")
+def auth_validate(_: None = Depends(require_auth)) -> dict:
+    return {"status": "ok"}
+
+
 @router.get("/health/detailed")
 async def health_detailed(db: Session = Depends(get_db), _: None = Depends(require_auth)) -> dict:
     app_settings = get_settings()
