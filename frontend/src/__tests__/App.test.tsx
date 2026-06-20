@@ -97,10 +97,10 @@ describe('App', () => {
     });
   });
 
-  it('shows a route loading fallback while lazy page modules load', () => {
+  it('shows a route loading fallback while lazy page modules load', async () => {
     renderApp('/schedules');
 
-    expect(screen.getByText('Loading page...')).toBeInTheDocument();
+    expect(await screen.findByText('Loading page...')).toBeInTheDocument();
   });
 
   it('redirects from / to history', async () => {
@@ -122,6 +122,8 @@ describe('App', () => {
 
   it('changes route and active nav state when clicking navigation links', async () => {
     const { container } = renderApp('/history');
+
+    await screen.findAllByText('DailyFX for immich');
 
     await act(async () => {
       fireEvent.click(container.querySelector('a[href="/schedules"]')!);

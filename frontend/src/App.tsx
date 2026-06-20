@@ -95,6 +95,14 @@ function AppShell() {
   });
   const location = useLocation();
 
+  if (health.isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-stone-50">
+        <div className="text-sm font-medium text-stone-600">Loading...</div>
+      </div>
+    );
+  }
+
   const authRequiredByBackend = health.data?.auth_enabled;
   if (authRequiredByBackend && !isAuthenticated) {
     return (
