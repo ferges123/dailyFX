@@ -1046,7 +1046,60 @@ def test_prepare_page_items_applies_history_ordering_before_ai_selection_trim():
             recent_source_asset_ids=recent_source_asset_ids,
         )
 
-    assert [asset.id for asset in selected] == ["asset-5", "asset-6", "asset-7", "asset-4"]
+    assert [asset.id for asset in selected] == ["asset-5", "asset-6", "asset-7"]
+
+
+def test_prepare_page_items_uses_used_assets_when_no_unused_assets_exist():
+    from app.services.generation.pipeline.assets import _prepare_page_items_for_module
+
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 5)])
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+    recent_source_asset_ids = {
+        "asset-1": 0,
+        "asset-2": 1,
+        "asset-3": 2,
+        "asset-4": 3,
+    }
+
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=None,
+        ai_photo_selection_enabled=True,
+        task_id="task-ranking-used-candidates",
+        _task_update=lambda **kwargs: None,
+        recent_source_asset_ids=recent_source_asset_ids,
+    )
+
+    # All are used, so it falls back to used assets ordered from oldest-used to newest-used
+    assert [asset.id for asset in selected] == ["asset-4", "asset-3", "asset-2", "asset-1"]
+
+
+def test_prepare_page_items_returns_single_candidate_when_ai_selection_disabled():
+    from app.services.generation.pipeline.assets import _prepare_page_items_for_module
+
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 5)])
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+    recent_source_asset_ids = {
+        "asset-1": 0,
+        "asset-2": 1,
+    }
+
+    with patch("app.services.generation.pipeline.assets.random.shuffle") as shuffle:
+        shuffle.side_effect = lambda items: None
+        selected = _prepare_page_items_for_module(
+            page=page,
+            module=module,
+            selected_asset_ids=None,
+            ai_photo_selection_enabled=False,
+            task_id="task-single-candidate",
+            _task_update=lambda **kwargs: None,
+            recent_source_asset_ids=recent_source_asset_ids,
+        )
+
+    # Since AI selection is disabled, and source_asset_count is 1, only 1 candidate should be returned.
+    # It should be the first unused asset (asset-3)
+    assert [asset.id for asset in selected] == ["asset-3"]
 
 
 def test_prepare_page_items_skips_history_ordering_for_explicit_selection():

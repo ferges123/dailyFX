@@ -175,9 +175,27 @@ def _prepare_page_items_for_module(
         return None
 
     if not selected_asset_ids and recent_source_asset_ids:
-        unique_items = _order_page_items_by_recent_history(unique_items, recent_source_asset_ids)
-        if not unique_items:
-            return None
+        # Separate unused and used items to prefer unused completely
+        unused_items = [item for item in unique_items if getattr(item, "id", None) not in recent_source_asset_ids]
+        used_items = [item for item in unique_items if getattr(item, "id", None) in recent_source_asset_ids]
+
+        if unused_items:
+            random.shuffle(unused_items)
+        used_items.sort(key=lambda item: recent_source_asset_ids[getattr(item, "id", "")], reverse=True)
+
+        source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
+        if source_asset_count > 1:
+            ordered = unused_items + used_items
+            return ordered[:source_asset_count]
+
+        if ai_photo_selection_enabled:
+            if unused_items:
+                return unused_items[:4]
+            return used_items[:4]
+        else:
+            if unused_items:
+                return unused_items[:1]
+            return used_items[:1]
 
     source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
     if source_asset_count > 1:
@@ -338,7 +356,7 @@ async def _pipeline_retrieve_and_select_assets(
         return None
 
     photo_selection_trace = None
-    if ai_photo_selection_enabled:
+    if ai_photo_selection_enabled and len(page_items) > 1:
         photo_selection_trace = {}
         selected_asset = await rank_source_assets_for_effect(
             client=client,
