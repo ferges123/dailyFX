@@ -389,34 +389,34 @@ def test_prepare_page_items_uses_four_collage_assets():
     assert [asset.id for asset in selected] == ["asset-1", "asset-2", "asset-3", "asset-4"]
 
 
-def test_search_filters_request_four_assets_for_collage():
+def test_search_filters_request_larger_pool_for_collage():
     filters = _get_test_filters()
     module = SimpleNamespace(source_asset_count=4, name="collage")
     settings = MagicMock(ai_photo_selection_enabled=False)
 
     updated = _search_filters_for_module(filters=filters, module=module, settings=settings)
 
-    assert updated.random_size == 4
+    assert updated.random_size == 30
 
 
-def test_search_filters_request_four_assets_for_ai_photo_selection():
+def test_search_filters_request_larger_pool_for_ai_photo_selection():
     filters = _get_test_filters()
     module = SimpleNamespace(source_asset_count=1, name="instafilter")
     settings = MagicMock(ai_photo_selection_enabled=True)
 
     updated = _search_filters_for_module(filters=filters, module=module, settings=settings)
 
-    assert updated.random_size == 4
+    assert updated.random_size == 30
 
 
-def test_search_filters_keep_single_asset_for_regular_single_image_effect():
+def test_search_filters_request_larger_pool_for_regular_single_image_effect():
     filters = _get_test_filters()
     module = SimpleNamespace(source_asset_count=1, name="instafilter")
     settings = MagicMock(ai_photo_selection_enabled=False)
 
     updated = _search_filters_for_module(filters=filters, module=module, settings=settings)
 
-    assert updated.random_size == 1
+    assert updated.random_size == 30
 
 
 def test_prepare_page_items_preserves_single_image_default_without_ranking():
@@ -941,3 +941,132 @@ def test_prepare_page_items_retains_dailyfx_assets_manually():
 
     assert selected is not None
     assert [asset.id for asset in selected] == ["asset-2"]
+
+
+def test_order_page_items_prefers_unused_then_oldest_used_assets():
+    from app.services.generation.pipeline.assets import _order_page_items_by_recent_history
+
+    page_items = [_make_fake_asset(f"asset-{index}") for index in range(1, 7)]
+    recent_source_asset_ids = {
+        "asset-1": 0,
+        "asset-3": 1,
+        "asset-5": 2,
+    }
+
+    with patch("app.services.generation.pipeline.assets.random.shuffle") as shuffle:
+        shuffle.side_effect = lambda items: items.reverse()
+        ordered = _order_page_items_by_recent_history(page_items, recent_source_asset_ids)
+
+    assert [asset.id for asset in ordered] == [
+        "asset-6",
+        "asset-4",
+        "asset-2",
+        "asset-5",
+        "asset-3",
+        "asset-1",
+    ]
+    shuffle.assert_called_once()
+
+
+def test_order_page_items_falls_back_to_lru_when_all_candidates_are_recent():
+    from app.services.generation.pipeline.assets import _order_page_items_by_recent_history
+
+    page_items = [_make_fake_asset(f"asset-{index}") for index in range(1, 5)]
+    recent_source_asset_ids = {
+        "asset-1": 0,
+        "asset-2": 3,
+        "asset-3": 1,
+        "asset-4": 2,
+    }
+
+    with patch("app.services.generation.pipeline.assets.random.shuffle") as shuffle:
+        ordered = _order_page_items_by_recent_history(page_items, recent_source_asset_ids)
+
+    assert [asset.id for asset in ordered] == ["asset-2", "asset-4", "asset-3", "asset-1"]
+    shuffle.assert_not_called()
+
+
+def test_recent_source_asset_ids_limits_flattened_unique_assets():
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.generation.pipeline.assets import _recent_source_asset_id_recency
+
+    db = _setup_db()
+    try:
+        db.query(GenerationHistoryModel).delete()
+        db.commit()
+        now = datetime.now(timezone.utc)
+        for index in range(1, 6):
+            db.add(
+                GenerationHistoryModel(
+                    task_id=f"history-{index}",
+                    generation_type="instafilter",
+                    status="PENDING_REVIEW",
+                    title=f"History {index}",
+                    summary="History entry",
+                    source_asset_ids=json.dumps([f"asset-{index}", f"asset-extra-{index}"]),
+                    config_json="{}",
+                    created_at=now - timedelta(minutes=index),
+                )
+            )
+        db.commit()
+
+        recency = _recent_source_asset_id_recency(db, limit=3)
+
+        assert recency == {
+            "asset-1": 0,
+            "asset-extra-1": 1,
+            "asset-2": 2,
+        }
+    finally:
+        db.close()
+
+
+def test_prepare_page_items_applies_history_ordering_before_ai_selection_trim():
+    from app.services.generation.pipeline.assets import _prepare_page_items_for_module
+
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 8)])
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+    recent_source_asset_ids = {
+        "asset-1": 0,
+        "asset-2": 1,
+        "asset-3": 2,
+        "asset-4": 3,
+    }
+
+    with patch("app.services.generation.pipeline.assets.random.shuffle") as shuffle:
+        shuffle.side_effect = lambda items: None
+        selected = _prepare_page_items_for_module(
+            page=page,
+            module=module,
+            selected_asset_ids=None,
+            ai_photo_selection_enabled=True,
+            task_id="task-ranking-candidates",
+            _task_update=lambda **kwargs: None,
+            recent_source_asset_ids=recent_source_asset_ids,
+        )
+
+    assert [asset.id for asset in selected] == ["asset-5", "asset-6", "asset-7", "asset-4"]
+
+
+def test_prepare_page_items_skips_history_ordering_for_explicit_selection():
+    from app.services.generation.pipeline.assets import _prepare_page_items_for_module
+
+    page = _make_fake_page([_make_fake_asset(f"asset-{index}") for index in range(1, 6)])
+    module = SimpleNamespace(source_asset_count=1, name="instafilter")
+    recent_source_asset_ids = {
+        "asset-3": 0,
+        "asset-2": 1,
+    }
+
+    selected = _prepare_page_items_for_module(
+        page=page,
+        module=module,
+        selected_asset_ids=["asset-3", "asset-2"],
+        ai_photo_selection_enabled=False,
+        task_id="task-explicit-selection",
+        _task_update=lambda **kwargs: None,
+        recent_source_asset_ids=recent_source_asset_ids,
+    )
+
+    assert [asset.id for asset in selected] == ["asset-2", "asset-3"]

@@ -185,6 +185,31 @@ def test_search_assets_uses_requested_random_size_and_returns_all_assets(monkeyp
     assert result.count == 4
 
 
+def test_search_assets_allows_random_size_up_to_100(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(json.loads(request.content.decode()))
+        return httpx.Response(200, json=[])
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+
+    result = asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").search_assets(
+            ImmichSearchFilters(random_size=30, media_type="photo")
+        )
+    )
+
+    assert requests[0]["size"] == 30
+    assert result.count == 0
+
+
 def test_search_assets_parses_people_faces() -> None:
     payload = {
         "id": "asset-1",

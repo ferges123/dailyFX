@@ -767,7 +767,7 @@ class ImmichClient:
         person_ids: list[str],
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
-            "size": max(1, min(4, int(getattr(filters, "random_size", 1) or 1))),
+            "size": max(1, min(100, int(getattr(filters, "random_size", 1) or 1))),
             "withDeleted": False,
             "withExif": False,
             "withPeople": True,

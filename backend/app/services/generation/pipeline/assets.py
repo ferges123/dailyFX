@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 from collections.abc import Callable
 from dataclasses import replace
 
@@ -42,10 +43,7 @@ async def _search_assets_for_generation(
 
 
 def _search_filters_for_module(*, filters: ImmichSearchFilters, module, settings: SettingsModel) -> ImmichSearchFilters:
-    source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
-    ai_photo_selection_enabled = bool(getattr(settings, "ai_photo_selection_enabled", False))
-    random_size = 4 if source_asset_count > 1 or ai_photo_selection_enabled else 1
-    return replace(filters, random_size=random_size)
+    return replace(filters, random_size=30)
 
 
 def _select_page_items(
@@ -91,6 +89,52 @@ def _dedupe_page_items(items: list) -> list:
     return unique_items
 
 
+def _recent_source_asset_id_recency(db, *, limit: int = 25) -> dict[str, int]:
+    from app.models.generation_history import GenerationHistoryModel
+
+    row_limit = max(limit * 4, limit)
+    rows = (
+        db.query(GenerationHistoryModel.source_asset_ids)
+        .order_by(GenerationHistoryModel.created_at.desc())
+        .limit(row_limit)
+        .all()
+    )
+
+    recency: dict[str, int] = {}
+    for row in rows:
+        source_ids_json = row[0] if isinstance(row, tuple) else getattr(row, "source_asset_ids", None)
+        if not source_ids_json:
+            continue
+        try:
+            source_ids = json.loads(source_ids_json)
+        except Exception:
+            continue
+        if not isinstance(source_ids, list):
+            continue
+        for source_id in source_ids:
+            if not isinstance(source_id, str) or not source_id.strip() or source_id in recency:
+                continue
+            recency[source_id] = len(recency)
+            if len(recency) >= limit:
+                return recency
+    return recency
+
+
+def _order_page_items_by_recent_history(page_items: list, recent_source_asset_ids: dict[str, int]) -> list:
+    unique_items = _dedupe_page_items(page_items)
+    if not unique_items or not recent_source_asset_ids:
+        return unique_items
+
+    unused_items = [item for item in unique_items if getattr(item, "id", None) not in recent_source_asset_ids]
+    used_items = [item for item in unique_items if getattr(item, "id", None) in recent_source_asset_ids]
+
+    if unused_items:
+        random.shuffle(unused_items)
+
+    used_items.sort(key=lambda item: recent_source_asset_ids[getattr(item, "id", "")], reverse=True)
+    return unused_items + used_items
+
+
 def _prepare_page_items_for_module(
     *,
     page,
@@ -99,6 +143,7 @@ def _prepare_page_items_for_module(
     ai_photo_selection_enabled: bool,
     task_id: str,
     _task_update: Callable[..., None],
+    recent_source_asset_ids: dict[str, int] | None = None,
 ) -> list | None:
     page_items = _select_page_items(
         page=page, selected_asset_ids=selected_asset_ids, task_id=task_id, _task_update=_task_update
@@ -129,12 +174,17 @@ def _prepare_page_items_for_module(
     if not unique_items:
         return None
 
+    if not selected_asset_ids and recent_source_asset_ids:
+        unique_items = _order_page_items_by_recent_history(unique_items, recent_source_asset_ids)
+        if not unique_items:
+            return None
+
     source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
     if source_asset_count > 1:
         return unique_items[:source_asset_count]
     if ai_photo_selection_enabled:
         return unique_items[:4]
-    return page_items
+    return unique_items
 
 
 def _parse_ranking_payload(result) -> dict:
@@ -274,6 +324,9 @@ async def _pipeline_retrieve_and_select_assets(
         bool(getattr(ctx.settings, "ai_photo_selection_enabled", False))
         and int(getattr(module_selection.module, "source_asset_count", 1) or 1) == 1
     )
+    recent_source_asset_ids = (
+        _recent_source_asset_id_recency(ctx.db, limit=25) if not ctx.selected_asset_ids else None
+    )
     page_items = _prepare_page_items_for_module(
         page=page,
         module=module_selection.module,
@@ -281,6 +334,7 @@ async def _pipeline_retrieve_and_select_assets(
         ai_photo_selection_enabled=ai_photo_selection_enabled,
         task_id=ctx.task_id,
         _task_update=ctx.task_update,
+        recent_source_asset_ids=recent_source_asset_ids,
     )
     if not page_items:
         return None
