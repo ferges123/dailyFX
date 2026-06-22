@@ -2,11 +2,60 @@ from __future__ import annotations
 
 import random
 
+import numpy as np
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.modules.common import add_grain, apply_vignette, load_rgb, save_png
+
+# Leak origin presets: (x_fraction, y_fraction) — where the leak starts
+_LEAK_ORIGINS = [
+    (0.9, 0.1),   # top-right
+    (0.1, 0.9),   # bottom-left
+    (0.85, 0.85), # bottom-right
+    (0.15, 0.15), # top-left
+    (0.5, 0.0),   # top-center
+]
+
+
+def _build_radial_gradient(
+    width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]
+) -> Image.Image:
+    """Build a radial gradient image fading from *color* at (cx,cy) to black."""
+    y_idx, x_idx = np.ogrid[:height, :width]
+    dx = (x_idx - cx) / width
+    dy = (y_idx - cy) / height
+    dist = np.sqrt(dx * dx + dy * dy)
+    # Normalize so the furthest corner is ~1.0
+    max_dist = np.sqrt(2.0)
+    alpha = np.clip(1.0 - dist / max_dist, 0.0, 1.0)
+    # Apply gamma to shape the falloff (softer than linear)
+    alpha = np.power(alpha, 1.8)
+
+    arr = np.zeros((height, width, 3), dtype=np.uint8)
+    arr[:, :, 0] = (color[0] * alpha).astype(np.uint8)
+    arr[:, :, 1] = (color[1] * alpha).astype(np.uint8)
+    arr[:, :, 2] = (color[2] * alpha).astype(np.uint8)
+    return Image.fromarray(arr, "RGB")
+
+
+def _build_accent_gradient(
+    width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]
+) -> Image.Image:
+    """Build a tighter accent gradient for depth."""
+    y_idx, x_idx = np.ogrid[:height, :width]
+    dx = (x_idx - cx) / width
+    dy = (y_idx - cy) / height
+    dist = np.sqrt(dx * dx + dy * dy)
+    alpha = np.clip(1.0 - dist / 0.7, 0.0, 1.0)
+    alpha = np.power(alpha, 2.5)
+
+    arr = np.zeros((height, width, 3), dtype=np.uint8)
+    arr[:, :, 0] = (color[0] * alpha).astype(np.uint8)
+    arr[:, :, 1] = (color[1] * alpha).astype(np.uint8)
+    arr[:, :, 2] = (color[2] * alpha).astype(np.uint8)
+    return Image.fromarray(arr, "RGB")
 
 
 class LightLeakModule:
@@ -52,26 +101,35 @@ class LightLeakModule:
         faded = ImageEnhance.Color(faded).enhance(1.15)
         faded = ImageEnhance.Brightness(faded).enhance(1.08)
 
-        # Color-specific leaks
         width, height = faded.size
-        if color_mode == "cool":
-            overlay = Image.new("RGB", (width, height), (120, 200, 255))
-            accent = Image.new("RGB", (width, height), (30, 150, 220))
-        elif color_mode == "sunset":
-            overlay = Image.new("RGB", (width, height), (255, 140, 180))
-            accent = Image.new("RGB", (width, height), (200, 80, 150))
-        else:  # warm
-            overlay = Image.new("RGB", (width, height), (255, 180, 100))
-            accent = Image.new("RGB", (width, height), (255, 100, 40))
 
-        # Build leak with screen blend
-        leak = Image.new("RGB", (width, height), (0, 0, 0))
-        leak = ImageChops.screen(leak, overlay)
-        leak = ImageChops.screen(leak, accent)
-        leak = leak.filter(ImageFilter.GaussianBlur(radius=max(width, height) * 0.15))
-        leak = ImageChops.offset(
-            leak, random.randint(-width // 10, width // 10), random.randint(-height // 12, height // 12)
-        )
+        # Color-specific leak palettes
+        if color_mode == "cool":
+            primary = (120, 200, 255)
+            accent = (30, 150, 220)
+        elif color_mode == "sunset":
+            primary = (255, 140, 180)
+            accent = (200, 80, 150)
+        else:  # warm
+            primary = (255, 180, 100)
+            accent = (255, 100, 40)
+
+        # Pick a random origin for the leak
+        ox_frac, oy_frac = random.choice(_LEAK_ORIGINS)
+        # Add some jitter
+        ox = ox_frac * width + random.randint(-width // 10, width // 10)
+        oy = oy_frac * height + random.randint(-height // 12, height // 12)
+        ox = max(0, min(width - 1, ox))
+        oy = max(0, min(height - 1, oy))
+
+        # Build radial gradients
+        overlay = _build_radial_gradient(width, height, ox, oy, primary)
+        accent_img = _build_accent_gradient(width, height, ox, oy, accent)
+
+        # Compose leak: screen blend the two radial gradients
+        leak = ImageChops.screen(overlay, accent_img)
+        # Soften with blur
+        leak = leak.filter(ImageFilter.GaussianBlur(radius=max(width, height) * 0.12))
 
         # Blend with intensity control
         combined = Image.blend(faded, leak, intensity)
@@ -85,7 +143,7 @@ class LightLeakModule:
             image_bytes=save_png(combined),
             generation_type="light_leak",
             provider="local",
-            model="pil",
+            model="pil+numpy",
             config={"intensity": intensity, "color": color_mode},
             source_asset_ids=[asset.id],
         )

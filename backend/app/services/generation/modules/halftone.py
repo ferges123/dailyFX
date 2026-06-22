@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import random
-
+import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
@@ -56,34 +55,63 @@ class HalftoneModule:
         canvas = Image.new("RGB", (width, height), light)
         draw = ImageDraw.Draw(canvas)
 
-        # Create varied halftone dots
-        for y in range(0, height, cell_size):
-            for x in range(0, width, cell_size):
-                sample = gray.crop((x, y, min(x + cell_size, width), min(y + cell_size, height)))
-                value = sample.resize((1, 1), Image.Resampling.BOX).getpixel((0, 0))
-                ratio = max(0.1, 1.0 - value / 255.0)
+        # Vectorized dot generation via numpy downsampling
+        gray_arr = np.array(gray, dtype=np.float64)
 
-                # Varied dot sizes for organic look
-                if style == "varied":
-                    jitter = random.uniform(0.85, 1.15)
-                    radius = max(1, int((cell_size / 2.2) * ratio * jitter))
-                    cx = x + cell_size // 2 + random.randint(-2, 2)
-                    cy = y + cell_size // 2 + random.randint(-2, 2)
-                else:
-                    radius = max(1, int((cell_size / 2.2) * ratio))
-                    cx = x + cell_size // 2
-                    cy = y + cell_size // 2
+        # Downsample to grid: average each cell
+        rows = height // cell_size
+        cols = width // cell_size
+        if rows == 0 or cols == 0:
+            # Image smaller than cell_size, skip dots
+            overlay = ImageOps.colorize(gray, black=dark, white=light)
+            mixed = Image.blend(canvas, overlay, 0.25)
+        else:
+            cropped = gray_arr[: rows * cell_size, : cols * cell_size]
+            grid = cropped.reshape(rows, cell_size, cols, cell_size).mean(axis=(1, 3))
+            # ratio: 0=light (small dot), 1=dark (big dot)
+            ratios = np.clip(1.0 - grid / 255.0, 0.1, 1.0)
 
-                # Gradient dots for depth
-                if ratio > 0.5:
-                    mid_color = tuple(int(dark[i] * 0.7 + light[i] * 0.3) for i in range(3))
-                    draw.ellipse((cx - radius - 1, cy - radius - 1, cx + radius + 1, cy + radius + 1), fill=mid_color)
+            max_radius = cell_size / 2.2
 
-                draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=dark)
+            if style == "varied":
+                jitters = np.random.uniform(0.85, 1.15, size=ratios.shape)
+                radii = (max_radius * ratios * jitters).astype(np.int32)
+                radii = np.maximum(radii, 1)
+                offsets_x = np.random.randint(-2, 3, size=ratios.shape)
+                offsets_y = np.random.randint(-2, 3, size=ratios.shape)
+            else:
+                radii = (max_radius * ratios).astype(np.int32)
+                radii = np.maximum(radii, 1)
+                offsets_x = np.zeros_like(radii)
+                offsets_y = np.zeros_like(radii)
 
-        # Blend with colorized version for richness
-        overlay = ImageOps.colorize(gray, black=dark, white=light)
-        mixed = Image.blend(canvas, overlay, 0.25)
+            # Precompute mid_color
+            mid_color = tuple(int(dark[i] * 0.7 + light[i] * 0.3) for i in range(3))
+
+            # Build all ellipses as lists for batch draw
+            mid_ellipses = []
+            main_ellipses = []
+            cy_base = np.arange(rows) * cell_size + cell_size // 2
+            cx_base = np.arange(cols) * cell_size + cell_size // 2
+
+            for ri in range(rows):
+                for ci in range(cols):
+                    r = int(radii[ri, ci])
+                    cx = int(cx_base[ci] + offsets_x[ri, ci])
+                    cy = int(cy_base[ri] + offsets_y[ri, ci])
+                    if style == "varied" and ratios[ri, ci] > 0.5:
+                        mid_ellipses.append((cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1))
+                    main_ellipses.append((cx - r, cy - r, cx + r, cy + r))
+
+            # Batch draw: all mid-layer first, then all main dots
+            for box in mid_ellipses:
+                draw.ellipse(box, fill=mid_color)
+            for box in main_ellipses:
+                draw.ellipse(box, fill=dark)
+
+            overlay = ImageOps.colorize(gray, black=dark, white=light)
+            mixed = Image.blend(canvas, overlay, 0.25)
+
         mixed = ImageEnhance.Contrast(mixed).enhance(1.2)
         mixed = ImageEnhance.Color(mixed).enhance(1.1)
 
@@ -97,7 +125,7 @@ class HalftoneModule:
             image_bytes=save_png(mixed),
             generation_type="halftone",
             provider="local",
-            model="pil",
+            model="pil+numpy",
             config={"cell_size": cell_size, "style": style, "palette": [list(dark), list(light)]},
             source_asset_ids=[asset.id],
         )

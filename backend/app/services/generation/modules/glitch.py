@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 
+import numpy as np
 from PIL import Image, ImageChops, ImageEnhance
 
 from app.models.settings import SettingsModel
@@ -57,28 +58,36 @@ class GlitchModule:
         merged = ImageEnhance.Sharpness(merged).enhance(1.2)
         merged = ImageEnhance.Color(merged).enhance(1.1)
 
-        # Softer scanlines
+        # Scanlines via numpy — much faster than per-row paste loop
         width, height = merged.size
-        scanlines = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        for y in range(0, height, 3):
-            if y % 6 == 0:
-                scanlines.paste((8, 8, 12, int(25 * intensity)), (0, y, width, min(height, y + 1)))
-        merged = Image.alpha_composite(merged.convert("RGBA"), scanlines).convert("RGB")
+        arr = np.array(merged, dtype=np.uint8)
 
-        # Selective row distortion (fewer rows)
-        rows = []
+        # Build scanline mask: dark line every 3rd row, skip every 6th (pattern: 2 dark, 1 gap)
+        scanline_alpha = np.zeros(height, dtype=np.float32)
+        scanline_alpha[0::3] = 25.0 * intensity  # every 3rd row
+        scanline_alpha[0::6] = 0.0               # but not every 6th (creates double-line pattern)
+
+        # Apply scanlines: darken affected rows
+        scanline_mask = (1.0 - scanline_alpha[:, np.newaxis] / 255.0)
+        arr = (arr.astype(np.float32) * scanline_mask[:, np.newaxis]).astype(np.uint8)
+
+        # Selective row distortion via numpy slicing
         row_height = 32
-        for y in range(0, height, row_height):
-            slice_img = merged.crop((0, y, width, min(height, y + row_height)))
-            if random.random() < 0.3 * intensity:  # Only 30% of rows
-                slice_img = ImageChops.offset(slice_img, random.randint(-shift // 2, shift // 2), 0)
-            rows.append(slice_img)
+        n_rows = height // row_height
+        if n_rows > 0:
+            # Decide which rows get shifted (30% chance each)
+            shift_mask = np.random.random(n_rows) < 0.3 * intensity
+            # Generate random offsets for selected rows
+            offsets = np.zeros(n_rows, dtype=np.int32)
+            offsets[shift_mask] = np.random.randint(-shift // 2, shift // 2 + 1, size=shift_mask.sum())
 
-        glitched = Image.new("RGB", (width, height))
-        cursor = 0
-        for row in rows:
-            glitched.paste(row, (0, cursor))
-            cursor += row.size[1]
+            for i in range(n_rows):
+                if offsets[i] != 0:
+                    y_start = i * row_height
+                    y_end = min(y_start + row_height, height)
+                    arr[y_start:y_end] = np.roll(arr[y_start:y_end], offsets[i], axis=1)
+
+        glitched = Image.fromarray(arr)
 
         # Subtle grain and vignette
         glitched = add_grain(glitched, strength=0.05, blur=0.15)
@@ -90,7 +99,7 @@ class GlitchModule:
             image_bytes=save_png(glitched),
             generation_type="glitch",
             provider="local",
-            model="pil",
+            model="pil+numpy",
             config={"shift": shift, "intensity": intensity},
             source_asset_ids=[asset.id],
         )
