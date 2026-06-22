@@ -139,4 +139,38 @@ describe('ModuleConfigEditor', () => {
     fireEvent.change(select, { target: { value: 'natural' } });
     expect(onChange).toHaveBeenCalledWith('prompt_style', 'natural');
   });
+
+  it('renders checkbox inputs for boolean fields', () => {
+    const onChange = vi.fn();
+    const mockModule = {
+      name: 'test_module_bool',
+      label: 'Test Module Bool',
+      description: 'Module for testing boolean config',
+      enabled: true,
+      weight: 1.0,
+      config: {},
+      config_schema: [
+        {
+          key: 'enable_feature',
+          label: 'Enable Feature',
+          type: 'boolean',
+          default: true,
+        },
+      ],
+    } as unknown as GenerationModuleInfo;
+
+    render(
+      <ModuleConfigEditor
+        module={mockModule}
+        config={{ enable_feature: true }}
+        onChange={onChange}
+      />
+    );
+
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(onChange).toHaveBeenCalledWith('enable_feature', false);
+  });
 });

@@ -115,6 +115,25 @@ export function ModuleConfigEditor({
       {schema.map((field) => {
         const value = config[field.key] ?? field.default;
         if (field.type === 'multiselect' && presets.length > 0) return null;
+        if (field.type === 'boolean') {
+          const checked = typeof value === 'boolean' ? value : value === 'true';
+          return (
+            <label
+              key={field.key}
+              className="flex items-center gap-1.5 text-xs w-full sm:inline-flex sm:w-auto sm:justify-start"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => onChange(field.key, e.target.checked)}
+                className="h-4 w-4 rounded-sm border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              />
+              <span className="text-stone-500 font-medium sm:font-normal">
+                {field.label}
+              </span>
+            </label>
+          );
+        }
         if (field.type === 'number') {
           const numericValue =
             typeof value === 'number'

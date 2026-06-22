@@ -178,7 +178,7 @@ export const fallbackModules: GenerationModuleInfo[] = [
       'Apple-style weather card with frosted glass and clean typography.',
     display_group: 'Portrait',
     default_weight: 2,
-    default_config: { units: 'celsius', protect_faces: 'true' },
+    default_config: { units: 'celsius', protect_faces: true },
     config_schema: [
       {
         key: 'units',
@@ -194,13 +194,9 @@ export const fallbackModules: GenerationModuleInfo[] = [
       {
         key: 'protect_faces',
         label: 'Face protection',
-        type: 'select',
+        type: 'boolean',
         description: 'Shift the card to avoid detected faces.',
-        options: [
-          { label: 'Enabled', value: 'true' },
-          { label: 'Disabled', value: 'false' },
-        ],
-        default: 'true',
+        default: true,
       },
     ],
   },
@@ -213,7 +209,7 @@ export const fallbackModules: GenerationModuleInfo[] = [
     default_config: {
       layout_style: 'classic',
       units: 'celsius',
-      protect_faces: 'true',
+      protect_faces: true,
     },
     config_schema: [
       {
@@ -241,14 +237,10 @@ export const fallbackModules: GenerationModuleInfo[] = [
       {
         key: 'protect_faces',
         label: 'Face protection',
-        type: 'select',
+        type: 'boolean',
         description:
           'Auto-shift the watermark overlay to avoid covering detected faces.',
-        options: [
-          { label: 'Enabled', value: 'true' },
-          { label: 'Disabled', value: 'false' },
-        ],
-        default: 'true',
+        default: true,
       },
     ],
   },

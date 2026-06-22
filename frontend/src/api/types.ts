@@ -142,7 +142,7 @@ export type GenerationModuleConfigOption = {
 export type GenerationModuleConfigField = {
   key: string;
   label: string;
-  type: 'select' | 'multiselect' | 'number' | 'text';
+  type: 'select' | 'multiselect' | 'number' | 'text' | 'boolean';
   description?: string | null;
   default?: unknown;
   options?: GenerationModuleConfigOption[];
