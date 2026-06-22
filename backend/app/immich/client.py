@@ -1,8 +1,8 @@
 import asyncio
+import hashlib
 import logging
 from dataclasses import replace
 from datetime import date, datetime, time, timezone
-from hashlib import sha1
 from itertools import combinations
 from random import Random
 from typing import Any
@@ -67,7 +67,7 @@ class ImmichClient:
 
     @staticmethod
     def _checksum(content: bytes) -> str:
-        return sha1(content).hexdigest()
+        return hashlib.sha1(content, usedforsecurity=False).hexdigest()
 
     def _handle_response_errors(self, response: httpx.Response, not_found_message: str) -> None:
         if response.status_code == 401:
