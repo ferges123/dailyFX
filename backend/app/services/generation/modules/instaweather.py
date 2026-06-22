@@ -555,7 +555,7 @@ class InstaWeatherModule:
     default_config = {
         "layout_style": "classic",
         "units": "celsius",
-        "protect_faces": "true",
+        "protect_faces": True,
     }
     config_schema = [
         {
@@ -583,13 +583,9 @@ class InstaWeatherModule:
         {
             "key": "protect_faces",
             "label": "Face protection",
-            "type": "select",
+            "type": "boolean",
             "description": "Auto-shift the watermark overlay to avoid covering detected faces.",
-            "options": [
-                {"value": "true", "label": "Enabled"},
-                {"value": "false", "label": "Disabled"},
-            ],
-            "default": "true",
+            "default": True,
         },
     ]
 
@@ -660,8 +656,7 @@ class InstaWeatherModule:
         # 3. Layout Options
         layout_style = config.get("layout_style", "classic")
         units = config.get("units", "celsius")
-        protect_faces_val = config.get("protect_faces", "true")
-        protect_faces = str(protect_faces_val).lower() == "true"
+        protect_faces = config.get("protect_faces", True)
 
         # 4. Render graphics overlay
         result_img, resolved_position = _draw_graphics_overlay(

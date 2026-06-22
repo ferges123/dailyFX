@@ -12,7 +12,7 @@ class GenerationModuleConfigOption(BaseModel):
 class GenerationModuleConfigField(BaseModel):
     key: str
     label: str
-    type: Literal["select", "multiselect", "number", "text"]
+    type: Literal["select", "multiselect", "number", "text", "boolean"]
     description: str | None = None
     default: object | None = None
     options: list[GenerationModuleConfigOption] = Field(default_factory=list)

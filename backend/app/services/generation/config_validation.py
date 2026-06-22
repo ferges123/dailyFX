@@ -76,6 +76,21 @@ def validate_module_config(module_name: str, group_config: dict) -> None:
                 errors.append(f"'{key}' must be >= {mn}, got {v}")
             if (mx := field.get("max")) is not None and v > mx:
                 errors.append(f"'{key}' must be <= {mx}, got {v}")
+        elif field_type == "boolean":
+            if isinstance(value, str):
+                val_lower = value.lower()
+                if val_lower in ("true", "1", "yes", "on"):
+                    config[key] = True
+                elif val_lower in ("false", "0", "no", "off"):
+                    config[key] = False
+                else:
+                    errors.append(f"'{key}' must be a boolean, got {value!r}")
+            elif isinstance(value, bool):
+                pass
+            elif isinstance(value, (int, float)):
+                config[key] = bool(value)
+            else:
+                errors.append(f"'{key}' must be a boolean, got {value!r}")
         elif field_type in ("select", "multiselect"):
             options = {opt["value"] for opt in (field.get("options") or [])}
             if not options:

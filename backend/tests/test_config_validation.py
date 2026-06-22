@@ -108,6 +108,33 @@ def test_validate_module_config_select_options():
         validate_module_config("bokeh_blur", {"config": {"focus_area": "invalid_option"}})
 
 
+def test_validate_module_config_boolean():
+    class DummyModule:
+        name = "dummy"
+        label = "Dummy"
+        description = "Dummy module"
+        config_schema = [
+            {"key": "test_bool", "label": "Test Bool", "type": "boolean", "default": True}
+        ]
+        async def run(self, page_items, config, client, settings):
+            pass
+
+    from app.services.generation.modules import MODULES
+    MODULES._ensure()["dummy"] = DummyModule()
+    try:
+        # 1. Test success with true boolean
+        validate_module_config("dummy", {"config": {"test_bool": True}})
+        # 2. Test success with coercion from string
+        cfg = {"test_bool": "false"}
+        validate_module_config("dummy", {"config": cfg})
+        assert cfg["test_bool"] is False
+        # 3. Test failure on invalid string
+        with pytest.raises(ValueError, match="'test_bool' must be a boolean"):
+            validate_module_config("dummy", {"config": {"test_bool": "invalid"}})
+    finally:
+        MODULES._ensure().pop("dummy", None)
+
+
 def test_validate_effects_config_success():
     validate_effects_config({"bokeh_blur": {"enabled": True, "weight": 2.5, "config": {"blur_strength": 10}}})
 

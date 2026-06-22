@@ -77,7 +77,7 @@ class AppleWeatherModule:
     default_weight = 2
     default_config = {
         "units": "celsius",
-        "protect_faces": "true",
+        "protect_faces": True,
     }
     config_schema = [
         {
@@ -94,13 +94,9 @@ class AppleWeatherModule:
         {
             "key": "protect_faces",
             "label": "Face protection",
-            "type": "select",
+            "type": "boolean",
             "description": "Shift the card to avoid detected faces.",
-            "options": [
-                {"value": "true", "label": "Enabled"},
-                {"value": "false", "label": "Disabled"},
-            ],
-            "default": "true",
+            "default": True,
         },
     ]
 
@@ -132,7 +128,7 @@ class AppleWeatherModule:
             logger.warning("Failed to load asset faces for Apple Weather: %s", exc)
 
         units = config.get("units", "celsius")
-        protect_faces = str(config.get("protect_faces", "true")).lower() == "true"
+        protect_faces = config.get("protect_faces", True)
 
         layout_position = "bottom_left"
         if protect_faces and faces:

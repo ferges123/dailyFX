@@ -15,17 +15,13 @@ class HujiModule:
     label = "Huji Cam"
     description = "Disposable film camera look — warm tones, light leaks, grain and date stamp."
     default_weight = 3
-    default_config = {"date_stamp": "true"}
+    default_config = {"date_stamp": True}
     config_schema = [
         {
             "key": "date_stamp",
             "label": "Date stamp",
-            "type": "select",
-            "options": [
-                {"value": "true", "label": "On"},
-                {"value": "false", "label": "Off"},
-            ],
-            "default": "true",
+            "type": "boolean",
+            "default": True,
         },
     ]
 
@@ -33,7 +29,7 @@ class HujiModule:
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
-        date_stamp = str(config.get("date_stamp", "true")).lower() != "false"
+        date_stamp = config.get("date_stamp", True)
         result = _apply_huji(source, asset.created_at, date_stamp)
         return GenerationResult(
             title=f"Huji: {asset.original_file_name or asset.id}",

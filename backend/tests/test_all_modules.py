@@ -164,15 +164,17 @@ def test_halftone_uniform():
 def test_huji_with_date_stamp():
     from app.services.generation.modules.huji import HujiModule
 
-    r = _run(HujiModule(), {"date_stamp": "true"})
+    r = _run(HujiModule(), {"date_stamp": True})
     assert r.generation_type == "huji"
+    assert r.config.get("date_stamp") is True
     assert _png(r.image_bytes)
 
 
 def test_huji_no_date_stamp():
     from app.services.generation.modules.huji import HujiModule
 
-    r = _run(HujiModule(), {"date_stamp": "false"})
+    r = _run(HujiModule(), {"date_stamp": False})
+    assert r.config.get("date_stamp") is False
     assert _png(r.image_bytes)
 
 
