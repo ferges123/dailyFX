@@ -8,34 +8,44 @@ from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.modules.common import add_grain, apply_vignette, load_rgb, save_png
 
-# Film presets with S-curve parameters
+# Film presets with per-channel LUT parameters and characteristic curve shape
+# Each preset defines toe/shoulder behaviour plus per-channel response
 _FILM_PRESETS = {
     "kodachrome": {
+        # Kodachrome 25: high contrast, warm reds, tight shoulder
+        "curve_gamma": 0.55,
+        "toe_falloff": 0.12,
+        "shoulder_falloff": 0.18,
         "red_boost": 1.15,
         "green_boost": 0.95,
         "blue_boost": 0.90,
         "contrast": 1.25,
         "saturation": 1.20,
         "warmth": (255, 240, 220),
-        "curve_strength": 0.6,  # S-curve intensity
     },
     "fuji": {
+        # Fuji Superia: softer shoulder, cooler greens, smoother transitions
+        "curve_gamma": 0.50,
+        "toe_falloff": 0.08,
+        "shoulder_falloff": 0.22,
         "red_boost": 1.05,
         "green_boost": 1.10,
         "blue_boost": 1.05,
         "contrast": 1.15,
         "saturation": 1.15,
         "warmth": (245, 250, 255),
-        "curve_strength": 0.5,
     },
     "agfa": {
+        # Agfa Vista: golden warmth, gentle toe, moderate shoulder
+        "curve_gamma": 0.48,
+        "toe_falloff": 0.10,
+        "shoulder_falloff": 0.20,
         "red_boost": 1.10,
         "green_boost": 1.00,
         "blue_boost": 0.85,
         "contrast": 1.20,
         "saturation": 1.10,
         "warmth": (255, 245, 230),
-        "curve_strength": 0.55,
     },
 }
 
@@ -102,8 +112,8 @@ def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) ->
     # Convert to OpenCV
     img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
-    # Apply S-curve (film characteristic curve)
-    img_cv = _apply_film_curve(img_cv, preset["curve_strength"])
+    # Apply film characteristic curve (H&D toe/shoulder)
+    img_cv = _apply_film_curve(img_cv, preset)
 
     # CLAHE for local contrast (film grain structure)
     lab = cv2.cvtColor(img_cv, cv2.COLOR_BGR2LAB)
@@ -142,16 +152,53 @@ def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) ->
     return result
 
 
-def _apply_film_curve(img: np.ndarray, strength: float) -> np.ndarray:
-    """Apply S-curve LUT for film characteristic curve."""
-    # Create S-curve lookup table
-    lut = np.zeros(256, dtype=np.uint8)
-    for i in range(256):
-        x = i / 255.0
-        # S-curve formula: smooth transition with lifted shadows and compressed highlights
-        y = x + strength * (np.sin(2 * np.pi * (x - 0.5)) / (2 * np.pi))
-        y = np.clip(y, 0, 1)
-        lut[i] = int(y * 255)
+def _build_characteristic_lut(
+    gamma: float, toe_falloff: float, shoulder_falloff: float
+) -> np.ndarray:
+    """Build a film H&D characteristic curve LUT.
 
-    # Apply LUT to each channel
+    Real film stocks have three regions:
+      Toe      – shadows gently lift off zero (toe_falloff controls how much)
+      Linear   – midtones roughly linear, gamma controls overall slope
+      Shoulder – highlights compress gently (shoulder_falloff controls rolloff)
+
+    The curve is built as a smooth blend of a power-law (gamma) and a
+    logistic sigmoid that creates the toe and shoulder.
+    """
+    x = np.linspace(0.0, 1.0, 256, dtype=np.float64)
+
+    # Power-law base (gamma encodes film speed / overall contrast)
+    base = np.power(x, gamma)
+
+    # Logistic sigmoid for smooth toe/shoulder rolloff
+    # Midpoint at x=0.5, steepness controls transition width
+    steepness = 8.0
+    sigmoid = 1.0 / (1.0 + np.exp(-steepness * (x - 0.5)))
+
+    # Blend: mostly power-law in midtones, sigmoid dominates at extremes
+    # The blend factor is shaped by x so toe/shoulder regions get more sigmoid
+    blend = np.where(x < 0.5, toe_falloff, shoulder_falloff)
+    # Modulate blend: stronger at extremes, weaker in midtones
+    blend_curve = blend * (4.0 * (x - 0.5) ** 2)
+    y = base * (1.0 - blend_curve) + sigmoid * blend_curve
+
+    # Normalize so black stays black and white stays white
+    y = np.clip(y, 0.0, 1.0)
+    # Remap output range to preserve full dynamic range
+    y_min, y_max = y.min(), y.max()
+    if y_max - y_min > 1e-6:
+        y = (y - y_min) / (y_max - y_min)
+    else:
+        y = x  # degenerate: keep linear
+
+    return (y * 255.0 + 0.5).astype(np.uint8)
+
+
+def _apply_film_curve(img: np.ndarray, preset: dict) -> np.ndarray:
+    """Apply film characteristic curve LUT to each channel."""
+    lut = _build_characteristic_lut(
+        preset["curve_gamma"],
+        preset["toe_falloff"],
+        preset["shoulder_falloff"],
+    )
     return cv2.LUT(img, lut)

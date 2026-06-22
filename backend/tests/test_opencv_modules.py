@@ -47,51 +47,58 @@ class TestBokehBlur:
 
 
 class TestVintageFilm:
-    """Tests for Vintage Film with S-curves."""
+    """Tests for Vintage Film with characteristic curves."""
 
     def test_apply_film_curve_shape(self):
         """Film curve should preserve image shape."""
         img = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-        result = _apply_film_curve(img, strength=0.5)
+        preset = {"curve_gamma": 0.55, "toe_falloff": 0.12, "shoulder_falloff": 0.18}
+        result = _apply_film_curve(img, preset)
         assert result.shape == img.shape
         assert result.dtype == np.uint8
 
     def test_apply_film_curve_range(self):
         """Film curve should keep values in valid range."""
         img = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-        result = _apply_film_curve(img, strength=0.6)
+        preset = {"curve_gamma": 0.50, "toe_falloff": 0.08, "shoulder_falloff": 0.22}
+        result = _apply_film_curve(img, preset)
         assert result.min() >= 0
         assert result.max() <= 255
 
-    def test_apply_film_curve_zero_strength(self):
-        """Zero strength should return similar image."""
+    def test_apply_film_curve_linear_preserve(self):
+        """Gamma=1.0 with no toe/shoulder should return nearly linear."""
         img = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-        result = _apply_film_curve(img, strength=0.0)
-        # Should be very similar (not identical due to LUT rounding)
+        preset = {"curve_gamma": 1.0, "toe_falloff": 0.0, "shoulder_falloff": 0.0}
+        result = _apply_film_curve(img, preset)
         diff = np.abs(result.astype(int) - img.astype(int)).mean()
-        assert diff < 5  # Allow small rounding errors
+        assert diff < 3
 
     def test_apply_film_curve_s_shape(self):
-        """S-curve should lift shadows and compress highlights."""
-        # Create gradient from black to white (256 columns)
+        """Characteristic curve should produce valid monotonic-ish response."""
         gradient = np.arange(0, 256, dtype=np.uint8)
-        img = np.tile(gradient, (100, 1))  # 100 rows, 256 columns
-        img = np.stack([img, img, img], axis=2)  # Make RGB
+        img = np.tile(gradient, (100, 1))
+        img = np.stack([img, img, img], axis=2)
 
-        result = _apply_film_curve(img, strength=0.5)
+        preset = {"curve_gamma": 0.55, "toe_falloff": 0.12, "shoulder_falloff": 0.18}
+        result = _apply_film_curve(img, preset)
 
-        # Check shadow lift (dark values should be brighter or similar)
-        int(img[0, 50, 0])  # Mid-dark value (column 50)
         dark_output = int(result[0, 50, 0])
-        # S-curve can lift or lower depending on position, just check it's valid
         assert 0 <= dark_output <= 255, f"Output {dark_output} out of range"
 
-    def test_apply_film_curve_different_strengths(self):
-        """Different strengths should produce different results."""
+    def test_apply_film_curve_different_presets(self):
+        """Different presets should produce different results."""
         img = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-        result1 = _apply_film_curve(img, strength=0.3)
-        result2 = _apply_film_curve(img, strength=0.7)
-
-        # Results should be different
+        preset1 = {"curve_gamma": 0.40, "toe_falloff": 0.05, "shoulder_falloff": 0.15}
+        preset2 = {"curve_gamma": 0.70, "toe_falloff": 0.20, "shoulder_falloff": 0.30}
+        result1 = _apply_film_curve(img, preset1)
+        result2 = _apply_film_curve(img, preset2)
         diff = np.abs(result1.astype(int) - result2.astype(int)).mean()
-        assert diff > 1  # Should have noticeable difference
+        assert diff > 1
+
+    def test_build_characteristic_lut_endpoints(self):
+        """LUT should map 0->0 and 255->255."""
+        from app.services.generation.modules.vintage_film import _build_characteristic_lut
+        lut = _build_characteristic_lut(0.55, 0.12, 0.18)
+        assert lut[0] == 0
+        assert lut[255] == 255
+        assert len(lut) == 256
