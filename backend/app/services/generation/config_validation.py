@@ -1,11 +1,10 @@
-from app.services.generation.modules import MODULES
-
 
 def validate_module_config(module_name: str, group_config: dict) -> None:
     """
     Validates a single module group dictionary: {enabled, weight, config}
     and its parameters inside 'config' according to the module's schema.
     """
+    from app.services.generation.modules import MODULES
     module = MODULES.get(module_name)
     if module is None:
         if isinstance(group_config, dict) and not group_config.get("enabled", False):
