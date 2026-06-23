@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getEffectStats } from '../api/client';
 import { BarChart3, ThumbsUp, ThumbsDown, Play } from 'lucide-react';
@@ -8,6 +9,8 @@ export function StatisticsPage() {
     queryKey: ['effect-stats'],
     queryFn: getEffectStats,
   });
+
+  const [activeTab, setActiveTab] = useState<'standard' | 'ai'>('standard');
 
   if (isLoading) {
     return (
@@ -28,6 +31,12 @@ export function StatisticsPage() {
   // Sort stats by runs descending
   const sortedStats = [...(stats || [])].sort((a, b) => b.total_runs - a.total_runs);
 
+  // Group stats
+  const standardStats = sortedStats.filter((stat) => !stat.effect_id.startsWith('ai_'));
+  const aiStats = sortedStats.filter((stat) => stat.effect_id.startsWith('ai_'));
+
+  const currentStats = activeTab === 'standard' ? standardStats : aiStats;
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4 md:space-y-6">
       <div className="flex items-center gap-3">
@@ -44,77 +53,123 @@ export function StatisticsPage() {
         </div>
       </div>
 
-      <div className="app-surface p-4 md:p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-stone-200 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                <th className="pb-3 px-4">Effect</th>
-                <th className="pb-3 px-4">Total Runs</th>
-                <th className="pb-3 px-4">Likes</th>
-                <th className="pb-3 px-4">Dislikes</th>
-                <th className="pb-3 px-4">Popularity</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100 text-sm">
-              {sortedStats.map((stat) => {
-                const totalRatings = stat.likes + stat.dislikes;
-                const likedPercent = totalRatings > 0 
-                  ? Math.round((stat.likes / totalRatings) * 100) 
-                  : 0;
-                  
-                return (
-                  <tr key={stat.effect_id} className="hover:bg-stone-50/50 transition">
-                    <td className="py-3 px-4 font-semibold text-stone-950">
-                      {stat.title}
-                    </td>
-                    <td className="py-3 px-4 text-stone-600">
-                      <span className="inline-flex items-center gap-1.5 font-medium">
-                        <Play size={13} className="text-stone-400" />
-                        {stat.total_runs}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-emerald-800">
-                      <span className="inline-flex items-center gap-1.5 font-semibold">
-                        <ThumbsUp size={13} />
-                        {stat.likes}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-rose-800">
-                      <span className="inline-flex items-center gap-1.5 font-semibold">
-                        <ThumbsDown size={13} />
-                        {stat.dislikes}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {totalRatings > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-24 bg-stone-200 rounded-full overflow-hidden shrink-0">
-                            <div 
-                              className="h-full bg-emerald-700 transition-all duration-500" 
-                              style={{ width: `${likedPercent}%` }}
-                            />
+      <div className="grid gap-4">
+        {/* Tabs for Standard and AI Effects */}
+        <div className="flex gap-1.5 border-b border-stone-200/70 pb-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('standard')}
+            className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
+              activeTab === 'standard'
+                ? 'border-emerald-600 bg-transparent text-emerald-700'
+                : 'border-transparent bg-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>Standard</span>
+            <span
+              className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
+                activeTab === 'standard'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-stone-100 text-stone-500'
+              }`}
+            >
+              {standardStats.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ai')}
+            className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
+              activeTab === 'ai'
+                ? 'border-emerald-600 bg-transparent text-emerald-700'
+                : 'border-transparent bg-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>AI</span>
+            <span
+              className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
+                activeTab === 'ai'
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-stone-100 text-stone-500'
+              }`}
+            >
+              {aiStats.length}
+            </span>
+          </button>
+        </div>
+
+        <div className="app-surface p-4 md:p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-stone-200 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                  <th className="pb-3 px-4">Effect</th>
+                  <th className="pb-3 px-4">Total Runs</th>
+                  <th className="pb-3 px-4">Likes</th>
+                  <th className="pb-3 px-4">Dislikes</th>
+                  <th className="pb-3 px-4">Popularity</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 text-sm">
+                {currentStats.map((stat) => {
+                  const totalRatings = stat.likes + stat.dislikes;
+                  const likedPercent = totalRatings > 0 
+                    ? Math.round((stat.likes / totalRatings) * 100) 
+                    : 0;
+                    
+                  return (
+                    <tr key={stat.effect_id} className="hover:bg-stone-50/50 transition">
+                      <td className="py-3 px-4 font-semibold text-stone-950">
+                        {stat.title}
+                      </td>
+                      <td className="py-3 px-4 text-stone-600">
+                        <span className="inline-flex items-center gap-1.5 font-medium">
+                          <Play size={13} className="text-stone-400" />
+                          {stat.total_runs}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-emerald-800">
+                        <span className="inline-flex items-center gap-1.5 font-semibold">
+                          <ThumbsUp size={13} />
+                          {stat.likes}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-rose-800">
+                        <span className="inline-flex items-center gap-1.5 font-semibold">
+                          <ThumbsDown size={13} />
+                          {stat.dislikes}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {totalRatings > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-24 bg-stone-200 rounded-full overflow-hidden shrink-0">
+                              <div 
+                                className="h-full bg-emerald-700 transition-all duration-500" 
+                                style={{ width: `${likedPercent}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-stone-500 font-semibold whitespace-nowrap">
+                              {likedPercent}% liked
+                            </span>
                           </div>
-                          <span className="text-xs text-stone-500 font-semibold whitespace-nowrap">
-                            {likedPercent}% liked
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-stone-400">—</span>
-                      )}
+                        ) : (
+                          <span className="text-xs text-stone-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {currentStats.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-sm text-stone-400">
+                      No statistics logged yet.
                     </td>
                   </tr>
-                );
-              })}
-              {sortedStats.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-sm text-stone-400">
-                    No statistics logged yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

@@ -524,7 +524,7 @@ export const LightboxModal = memo(function LightboxModal({
                 onClick={(e) => e.stopPropagation()}
               >
                 <Download size={14} />
-                Download Full-Res {(entry.output_format || 'png').toUpperCase()}
+                Download
               </a>
             </div>
           </div>
