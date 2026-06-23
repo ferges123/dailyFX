@@ -65,10 +65,10 @@ class GlitchModule:
         # Build scanline mask: dark line every 3rd row, skip every 6th (pattern: 2 dark, 1 gap)
         scanline_alpha = np.zeros(height, dtype=np.float32)
         scanline_alpha[0::3] = 25.0 * intensity  # every 3rd row
-        scanline_alpha[0::6] = 0.0               # but not every 6th (creates double-line pattern)
+        scanline_alpha[0::6] = 0.0  # but not every 6th (creates double-line pattern)
 
         # Apply scanlines: darken affected rows
-        scanline_mask = (1.0 - scanline_alpha[:, np.newaxis] / 255.0)
+        scanline_mask = 1.0 - scanline_alpha[:, np.newaxis] / 255.0
         arr = (arr.astype(np.float32) * scanline_mask[:, np.newaxis]).astype(np.uint8)
 
         # Selective row distortion via numpy slicing

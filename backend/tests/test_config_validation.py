@@ -113,13 +113,13 @@ def test_validate_module_config_boolean():
         name = "dummy"
         label = "Dummy"
         description = "Dummy module"
-        config_schema = [
-            {"key": "test_bool", "label": "Test Bool", "type": "boolean", "default": True}
-        ]
+        config_schema = [{"key": "test_bool", "label": "Test Bool", "type": "boolean", "default": True}]
+
         async def run(self, page_items, config, client, settings):
             pass
 
     from app.services.generation.modules import MODULES
+
     MODULES._ensure()["dummy"] = DummyModule()
     try:
         # 1. Test success with true boolean

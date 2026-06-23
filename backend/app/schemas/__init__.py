@@ -8,6 +8,7 @@ from .ai_effects import (
     AIEffectUpdate,
 )
 from .generation import (
+    EffectStatsResponse,
     GenerationAcceptRequest,
     GenerationHistoryCreate,
     GenerationHistoryResponse,
@@ -40,6 +41,7 @@ __all__ = [
     "GenerationHistoryCreate",
     "GenerationHistoryResponse",
     "GenerationAcceptRequest",
+    "EffectStatsResponse",
     "AIEffectCreate",
     "AIEffectUpdate",
     "AIEffectResponse",

@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Request, Security
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -16,6 +17,7 @@ from app.immich.errors import ImmichError
 from app.models.generation_history import GenerationHistoryModel
 from app.models.settings import SettingsModel
 from app.schemas.generation import (
+    EffectStatsResponse,
     GenerationAcceptRequest,
     GenerationExampleResponse,
     GenerationHistoryPage,
@@ -557,3 +559,85 @@ async def clear_generation_cache(db: Session = Depends(get_db), _: None = Depend
     """Delete all generation history (files + DB records)."""
     _delete_history_records_and_files(db)
     db.commit()
+
+
+@router.post("/history/{task_id}/like", response_model=GenerationHistoryResponse)
+async def like_generation(task_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    from app.models.effect_statistics_log import EffectStatisticsLogModel
+
+    log = db.query(EffectStatisticsLogModel).filter_by(task_id=task_id).first()
+    if not log:
+        log = EffectStatisticsLogModel(effect_id=row.generation_type, task_id=task_id)
+        db.add(log)
+
+    log.liked = None if log.liked is True else True
+    db.commit()
+    db.refresh(row)
+    record_history_snapshot(db, row)
+    return row
+
+
+@router.post("/history/{task_id}/dislike", response_model=GenerationHistoryResponse)
+async def dislike_generation(task_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    from app.models.effect_statistics_log import EffectStatisticsLogModel
+
+    log = db.query(EffectStatisticsLogModel).filter_by(task_id=task_id).first()
+    if not log:
+        log = EffectStatisticsLogModel(effect_id=row.generation_type, task_id=task_id)
+        db.add(log)
+
+    log.liked = None if log.liked is False else False
+    db.commit()
+    db.refresh(row)
+    record_history_snapshot(db, row)
+    return row
+
+
+@router.get("/stats/effects", response_model=list[EffectStatsResponse])
+def get_effect_stats(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    from app.models.effect_statistics_log import EffectStatisticsLogModel
+    from app.services.generation.modules import MODULES
+
+    # Query stats grouped by effect_id
+    stats = (
+        db.query(
+            EffectStatisticsLogModel.effect_id,
+            sa.func.count(EffectStatisticsLogModel.id).label("total_runs"),
+            sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(True), 1), else_=0)).label("likes"),
+            sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
+        )
+        .group_by(EffectStatisticsLogModel.effect_id)
+        .all()
+    )
+
+    results = []
+    # Merge titles from MODULES registry
+    for effect_id, total, likes, dislikes in stats:
+        module = MODULES.get(effect_id)
+        title = getattr(module, "label", effect_id) if module else effect_id
+        results.append(
+            EffectStatsResponse(
+                effect_id=effect_id,
+                title=title,
+                total_runs=total,
+                likes=likes or 0,
+                dislikes=dislikes or 0,
+            )
+        )
+
+    # Also add any built-in/AI effects that have 0 runs yet
+    seen_effects = {effect_id for effect_id, _, _, _ in stats}
+    for key, module in MODULES.items():
+        if key not in seen_effects:
+            title = getattr(module, "label", key)
+            results.append(EffectStatsResponse(effect_id=key, title=title, total_runs=0, likes=0, dislikes=0))
+
+    return results

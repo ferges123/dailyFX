@@ -47,6 +47,7 @@ class GenerationHistoryBase(BaseModel):
     album_updated: bool = False
     accept_notes: str | None = None
     accepted_at: datetime | None = None
+    liked: bool | None = None
 
 
 class GenerationHistoryCreate(GenerationHistoryBase):
@@ -137,3 +138,11 @@ class GenerationTaskStatusResponse(BaseModel):
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
+
+
+class EffectStatsResponse(BaseModel):
+    effect_id: str
+    title: str
+    total_runs: int
+    likes: int
+    dislikes: int

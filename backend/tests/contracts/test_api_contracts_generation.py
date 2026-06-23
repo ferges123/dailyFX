@@ -117,6 +117,7 @@ def test_generation_history_contract():
                     "frame_count": None,
                     "created_at": "2026-05-12T10:00:00Z",
                     "updated_at": "2026-05-12T10:31:00Z",
+                    "liked": None,
                 }
             ],
             "total": 1,

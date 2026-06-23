@@ -100,3 +100,11 @@ def persist_generation_result(
         ),
         task_step="review_ready",
     )
+
+    from app.models.effect_statistics_log import EffectStatisticsLogModel
+
+    existing_log = db.query(EffectStatisticsLogModel).filter_by(task_id=task_id).first()
+    if not existing_log:
+        new_log = EffectStatisticsLogModel(effect_id=result.generation_type, task_id=task_id)
+        db.add(new_log)
+        db.commit()

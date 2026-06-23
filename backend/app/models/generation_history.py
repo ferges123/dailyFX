@@ -1,9 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, UTCDateTime
+from app.models.effect_statistics_log import EffectStatisticsLogModel
 
 
 class GenerationHistoryModel(Base):
@@ -44,3 +45,14 @@ class GenerationHistoryModel(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+    stats_log: Mapped["EffectStatisticsLogModel | None"] = relationship(
+        "EffectStatisticsLogModel",
+        primaryjoin="GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id",
+        foreign_keys="[EffectStatisticsLogModel.task_id]",
+        uselist=False,
+    )
+
+    @property
+    def liked(self) -> bool | None:
+        return self.stats_log.liked if self.stats_log else None

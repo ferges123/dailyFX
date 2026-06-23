@@ -98,6 +98,7 @@ class TestVintageFilm:
     def test_build_characteristic_lut_endpoints(self):
         """LUT should map 0->0 and 255->255."""
         from app.services.generation.modules.vintage_film import _build_characteristic_lut
+
         lut = _build_characteristic_lut(0.55, 0.12, 0.18)
         assert lut[0] == 0
         assert lut[255] == 255

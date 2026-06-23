@@ -1,6 +1,7 @@
 from app.models.ai_effect import AIEffectModel
 from app.models.ai_usage import AIUsageEventModel
 from app.models.effect_preset import EffectPresetModel
+from app.models.effect_statistics_log import EffectStatisticsLogModel
 from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.generation_stream_event import GenerationStreamEventModel
@@ -23,4 +24,5 @@ __all__ = [
     "EffectPresetModel",
     "NotificationPresetModel",
     "ScheduleModel",
+    "EffectStatisticsLogModel",
 ]

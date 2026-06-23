@@ -20,6 +20,7 @@ import {
   type AIEffectImportResult,
   type AIEffectExport,
   type Schedule,
+  type EffectStats,
 } from './types';
 
 export function getGenerationModules() {
@@ -146,6 +147,29 @@ export function clearHistoryByStatus(
 export function clearGenerationCache() {
   return request<void>('/api/generation/history/cache', { method: 'DELETE' });
 }
+
+export function likeGeneration(taskId: string) {
+  return request<GenerationHistoryEntry>(
+    `/api/generation/history/${taskId}/like`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+export function dislikeGeneration(taskId: string) {
+  return request<GenerationHistoryEntry>(
+    `/api/generation/history/${taskId}/dislike`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+export function getEffectStats() {
+  return request<EffectStats[]>('/api/generation/stats/effects');
+}
+
 
 // Filter presets
 export const getFilterPresets = () =>

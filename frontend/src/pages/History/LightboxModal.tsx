@@ -11,8 +11,16 @@ import {
   Download,
   Share2,
   Check,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
-import { type GenerationHistoryEntry } from '../../api/client';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  type GenerationHistoryEntry,
+  likeGeneration,
+  dislikeGeneration,
+} from '../../api/client';
+
 import { SecureImage } from '../../components/SecureImage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { formatDateTime } from '../datetime.utils';
@@ -89,6 +97,35 @@ export const LightboxModal = memo(function LightboxModal({
   );
   const [showOriginal, setShowOriginal] = useState(false);
   const trapRef = useFocusTrap(isOpen);
+  const qc = useQueryClient();
+  const [liked, setLiked] = useState<boolean | null>(entry.liked ?? null);
+
+  useEffect(() => {
+    setLiked(entry.liked ?? null);
+  }, [entry.liked]);
+
+  const handleLike = async () => {
+    try {
+      const updated = await likeGeneration(entry.task_id);
+      setLiked(updated.liked ?? null);
+      void qc.invalidateQueries({ queryKey: ['generation-history'] });
+      void qc.invalidateQueries({ queryKey: ['effect-stats'] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDislike = async () => {
+    try {
+      const updated = await dislikeGeneration(entry.task_id);
+      setLiked(updated.liked ?? null);
+      void qc.invalidateQueries({ queryKey: ['generation-history'] });
+      void qc.invalidateQueries({ queryKey: ['effect-stats'] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   useEffect(() => {
     setShowOriginal(false);
@@ -418,6 +455,38 @@ export const LightboxModal = memo(function LightboxModal({
           {/* Lightbox Footer Actions */}
           <div className="sticky bottom-0 mt-4 border-t border-stone-800 bg-stone-900 pt-4 md:mt-0">
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleLike();
+                }}
+                className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-lg transition active:scale-95 ${
+                  liked === true
+                    ? 'bg-emerald-800 text-white'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white'
+                }`}
+                aria-label="Like image"
+                title="Like image"
+              >
+                <ThumbsUp size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDislike();
+                }}
+                className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-lg transition active:scale-95 ${
+                  liked === false
+                    ? 'bg-rose-900 text-white'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white'
+                }`}
+                aria-label="Dislike image"
+                title="Dislike image"
+              >
+                <ThumbsDown size={14} />
+              </button>
               <button
                 type="button"
                 onClick={(e) => {

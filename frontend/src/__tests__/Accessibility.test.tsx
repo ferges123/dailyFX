@@ -138,15 +138,19 @@ describe('Accessibility Attributes', () => {
       config_json: '{}',
       created_at: '2026-06-19T00:00:00Z',
     };
+    const queryClient = new QueryClient();
     const { container } = render(
-      <LightboxModal
-        isOpen={true}
-        onClose={() => {}}
-        imageUrl="url"
-        entry={mockEntry as unknown as GenerationHistoryEntry}
-        exif={null}
-      />,
+      <QueryClientProvider client={queryClient}>
+        <LightboxModal
+          isOpen={true}
+          onClose={() => {}}
+          imageUrl="url"
+          entry={mockEntry as unknown as GenerationHistoryEntry}
+          exif={null}
+        />
+      </QueryClientProvider>,
     );
+
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveAttribute('aria-modal', 'true');

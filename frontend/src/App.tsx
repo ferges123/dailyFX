@@ -8,7 +8,9 @@ import {
   LogOut,
   Settings,
   Sparkles,
+  BarChart3,
 } from 'lucide-react';
+
 import {
   BrowserRouter,
   Link,
@@ -68,6 +70,12 @@ const LoginPage = lazy(() =>
     default: module.LoginPage,
   })),
 );
+const StatisticsPage = lazy(() =>
+  import('./pages/Statistics').then((module) => ({
+    default: module.StatisticsPage,
+  })),
+);
+
 
 function PageLoadingFallback() {
   return (
@@ -117,6 +125,8 @@ function AppShell() {
   const isSchedulesRoute = location.pathname.startsWith('/schedules');
   const isPresetsRoute = location.pathname.startsWith('/presets');
   const isSettingsRoute = location.pathname.startsWith('/settings');
+  const isStatisticsRoute = location.pathname.startsWith('/statistics');
+
 
   function handleLogout() {
     setToken(null);
@@ -198,12 +208,20 @@ function AppShell() {
             Studio
           </SidebarNavLink>
           <SidebarNavLink
+            to="/statistics"
+            active={isStatisticsRoute}
+            icon={<BarChart3 size={17} />}
+          >
+            Statistics
+          </SidebarNavLink>
+          <SidebarNavLink
             to="/settings"
             active={isSettingsRoute}
             icon={<Settings size={17} />}
           >
             Settings
           </SidebarNavLink>
+
         </nav>
 
         <div className="mt-auto pt-6">
@@ -330,6 +348,14 @@ function AppShell() {
               />
             </Route>
             <Route
+              path="/statistics"
+              element={
+                <RouteView>
+                  <StatisticsPage />
+                </RouteView>
+              }
+            />
+            <Route
               path="/settings"
               element={
                 <RouteView>
@@ -337,6 +363,7 @@ function AppShell() {
                 </RouteView>
               }
             />
+
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
@@ -362,6 +389,9 @@ function AppShell() {
         <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
           <Camera size={18} />
         </BottomNavLink>
+        <BottomNavLink to="/statistics" active={isStatisticsRoute} label="Stats">
+          <BarChart3 size={18} />
+        </BottomNavLink>
         <BottomNavLink
           to="/settings"
           active={location.pathname === '/settings'}
@@ -369,6 +399,7 @@ function AppShell() {
         >
           <Settings size={18} />
         </BottomNavLink>
+
       </nav>
     </div>
   );

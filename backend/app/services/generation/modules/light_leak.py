@@ -11,17 +11,15 @@ from app.services.generation.modules.common import add_grain, apply_vignette, lo
 
 # Leak origin presets: (x_fraction, y_fraction) — where the leak starts
 _LEAK_ORIGINS = [
-    (0.9, 0.1),   # top-right
-    (0.1, 0.9),   # bottom-left
-    (0.85, 0.85), # bottom-right
-    (0.15, 0.15), # top-left
-    (0.5, 0.0),   # top-center
+    (0.9, 0.1),  # top-right
+    (0.1, 0.9),  # bottom-left
+    (0.85, 0.85),  # bottom-right
+    (0.15, 0.15),  # top-left
+    (0.5, 0.0),  # top-center
 ]
 
 
-def _build_radial_gradient(
-    width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]
-) -> Image.Image:
+def _build_radial_gradient(width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]) -> Image.Image:
     """Build a radial gradient image fading from *color* at (cx,cy) to black."""
     y_idx, x_idx = np.ogrid[:height, :width]
     dx = (x_idx - cx) / width
@@ -40,9 +38,7 @@ def _build_radial_gradient(
     return Image.fromarray(arr, "RGB")
 
 
-def _build_accent_gradient(
-    width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]
-) -> Image.Image:
+def _build_accent_gradient(width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]) -> Image.Image:
     """Build a tighter accent gradient for depth."""
     y_idx, x_idx = np.ogrid[:height, :width]
     dx = (x_idx - cx) / width

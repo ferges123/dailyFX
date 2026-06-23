@@ -213,9 +213,19 @@ export type GenerationHistoryEntry = {
   accepted_at: string | null;
   output_format?: 'png' | 'gif' | 'webp';
   frame_count?: number | null;
+  liked?: boolean | null;
   created_at: string;
   updated_at: string;
 };
+
+export type EffectStats = {
+  effect_id: string;
+  title: string;
+  total_runs: number;
+  likes: number;
+  dislikes: number;
+};
+
 
 export type GenerationAcceptRequest = {
   create_album: boolean;

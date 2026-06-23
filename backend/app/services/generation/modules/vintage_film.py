@@ -152,9 +152,7 @@ def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) ->
     return result
 
 
-def _build_characteristic_lut(
-    gamma: float, toe_falloff: float, shoulder_falloff: float
-) -> np.ndarray:
+def _build_characteristic_lut(gamma: float, toe_falloff: float, shoulder_falloff: float) -> np.ndarray:
     """Build a film H&D characteristic curve LUT.
 
     Real film stocks have three regions:

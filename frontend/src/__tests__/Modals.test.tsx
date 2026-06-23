@@ -5,6 +5,8 @@ import { ConfirmDeleteModal } from '../pages/History/ConfirmDeleteModal';
 import { LightboxModal } from '../pages/History/LightboxModal';
 import { UploadModal } from '../pages/History/UploadModal';
 import { type GenerationHistoryEntry } from '../api/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 
 describe('ConfirmModal', () => {
   it('renders title, description, and triggers callbacks', () => {
@@ -76,15 +78,19 @@ describe('LightboxModal', () => {
       fileSizeInByte: 2048,
     };
 
+    const queryClient = new QueryClient();
     render(
-      <LightboxModal
-        isOpen={true}
-        imageUrl="http://test.com/img.png"
-        entry={mockEntry}
-        exif={mockExif}
-        onClose={onClose}
-      />
+      <QueryClientProvider client={queryClient}>
+        <LightboxModal
+          isOpen={true}
+          imageUrl="http://test.com/img.png"
+          entry={mockEntry}
+          exif={mockExif}
+          onClose={onClose}
+        />
+      </QueryClientProvider>
     );
+
 
     expect(screen.getByAltText('Preview')).toBeInTheDocument();
     expect(screen.getByText('Test Lightbox Title')).toBeInTheDocument();
