@@ -15,7 +15,7 @@ import { SecureImage } from '../../components/SecureImage';
 import { ErrorBanner } from '../../components/ErrorUI';
 import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { logger } from '../../utils/logger';
 
 import { UploadModal } from './UploadModal';
@@ -168,6 +168,7 @@ const HistoryItemSkeleton = () => {
 
 export function HistoryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { taskId } = useParams<{ taskId?: string }>();
   const settings = useQuery({
     queryKey: ['settings'],
@@ -353,16 +354,22 @@ export function HistoryPage() {
   const handleSelectCard = useCallback(
     (id: string) => {
       setSelectedHistoryTaskId(id);
-      navigate(`/history/${id}`);
+      navigate({
+        pathname: `/history/${id}`,
+        search: location.search,
+      });
       setMobileShowDetail(true);
     },
-    [navigate],
+    [navigate, location.search],
   );
 
   const handleBackToList = useCallback(() => {
     setMobileShowDetail(false);
-    navigate('/history');
-  }, [navigate]);
+    navigate({
+      pathname: '/history',
+      search: location.search,
+    });
+  }, [navigate, location.search]);
 
   const handleAccept = useCallback(() => {
     if (selectedHistoryEntry) {
