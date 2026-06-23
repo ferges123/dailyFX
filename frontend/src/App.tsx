@@ -349,6 +349,10 @@ function AppShell() {
             </Route>
             <Route
               path="/statistics"
+              element={<Navigate to="/statistics/standard" replace />}
+            />
+            <Route
+              path="/statistics/:tab"
               element={
                 <RouteView>
                   <StatisticsPage />

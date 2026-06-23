@@ -1,17 +1,18 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getEffectStats } from '../api/client';
 import { BarChart3, ThumbsUp, ThumbsDown, Play } from 'lucide-react';
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
 
 export function StatisticsPage() {
+  const navigate = useNavigate();
+  const { tab } = useParams<{ tab?: string }>();
+  const activeTab = tab === 'ai' ? 'ai' : 'standard';
+
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['effect-stats'],
     queryFn: getEffectStats,
   });
-
-  const [activeTab, setActiveTab] = useState<'standard' | 'ai'>('standard');
 
   if (isLoading) {
     return (
@@ -59,7 +60,7 @@ export function StatisticsPage() {
         <div className="flex gap-1.5 border-b border-stone-200/70 pb-2">
           <button
             type="button"
-            onClick={() => setActiveTab('standard')}
+            onClick={() => navigate('/statistics/standard')}
             className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
               activeTab === 'standard'
                 ? 'border-emerald-600 bg-transparent text-emerald-700'
@@ -79,7 +80,7 @@ export function StatisticsPage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('ai')}
+            onClick={() => navigate('/statistics/ai')}
             className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
               activeTab === 'ai'
                 ? 'border-emerald-600 bg-transparent text-emerald-700'

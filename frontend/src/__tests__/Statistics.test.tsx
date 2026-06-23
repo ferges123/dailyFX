@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { StatisticsPage } from '../pages/Statistics';
 import * as client from '../api/client';
 
@@ -15,15 +15,17 @@ const mockStats: client.EffectStats[] = [
   { effect_id: 'vignette', title: 'Vignette', total_runs: 2, likes: 1, dislikes: 0 },
 ];
 
-function renderPage() {
+function renderPage(initialRoute = '/statistics/standard') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <StatisticsPage />
-      </BrowserRouter>
+      <MemoryRouter initialEntries={[initialRoute]}>
+        <Routes>
+          <Route path="/statistics/:tab" element={<StatisticsPage />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
