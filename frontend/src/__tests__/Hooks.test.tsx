@@ -7,6 +7,7 @@ import { useHistoryStreamSync } from '../pages/History/useHistoryStreamSync';
 import { openGenerationStream } from '../api/generationStream';
 import React from 'react';
 import { type GenerationHistoryEntry } from '../api/client';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../api/generationStream', () => {
   return {
@@ -25,7 +26,12 @@ const createWrapper = () => {
 
 describe('useHistoryFilters', () => {
   it('initializes and updates search filters correctly', () => {
-    const { result } = renderHook(() => useHistoryFilters());
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <MemoryRouter>
+        {children}
+      </MemoryRouter>
+    );
+    const { result } = renderHook(() => useHistoryFilters(), { wrapper });
 
     expect(result.current.historyStatus).toBe('all');
     expect(result.current.historySearch).toBe('');

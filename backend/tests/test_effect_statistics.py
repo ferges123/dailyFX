@@ -33,6 +33,8 @@ def db_session():
     db = SessionLocal()
     try:
         db.query(EffectStatisticsLogModel).delete()
+        from app.models.generation_history import GenerationHistoryModel
+        db.query(GenerationHistoryModel).delete()
         db.commit()
         yield db
     finally:

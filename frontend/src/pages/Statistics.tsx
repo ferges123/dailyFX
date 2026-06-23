@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { getEffectStats } from '../api/client';
 import { BarChart3, ThumbsUp, ThumbsDown, Play } from 'lucide-react';
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
@@ -120,7 +121,12 @@ export function StatisticsPage() {
                   return (
                     <tr key={stat.effect_id} className="hover:bg-stone-50/50 transition">
                       <td className="py-3 px-4 font-semibold text-stone-950">
-                        {stat.title}
+                        <Link
+                          to={`/history?search=${encodeURIComponent(stat.effect_id)}`}
+                          className="hover:text-emerald-800 hover:underline transition-colors duration-150"
+                        >
+                          {stat.title}
+                        </Link>
                       </td>
                       <td className="py-3 px-4 text-stone-600">
                         <span className="inline-flex items-center gap-1.5 font-medium">

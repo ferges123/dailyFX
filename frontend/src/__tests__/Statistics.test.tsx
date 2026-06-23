@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 import { StatisticsPage } from '../pages/Statistics';
 import * as client from '../api/client';
 
@@ -20,7 +21,9 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <StatisticsPage />
+      <BrowserRouter>
+        <StatisticsPage />
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

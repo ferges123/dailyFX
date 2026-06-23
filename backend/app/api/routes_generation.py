@@ -604,7 +604,20 @@ async def dislike_generation(task_id: str, db: Session = Depends(get_db), _: Non
 @router.get("/stats/effects", response_model=list[EffectStatsResponse])
 def get_effect_stats(db: Session = Depends(get_db), _: None = Depends(require_auth)):
     from app.models.effect_statistics_log import EffectStatisticsLogModel
+    from app.models.generation_history import GenerationHistoryModel
     from app.services.generation.modules import MODULES
+
+    # Backfill missing statistics logs from generation history
+    missing_tasks = (
+        db.query(GenerationHistoryModel.task_id, GenerationHistoryModel.generation_type)
+        .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
+        .filter(EffectStatisticsLogModel.id.is_(None))
+        .all()
+    )
+    if missing_tasks:
+        for task_id, gen_type in missing_tasks:
+            db.add(EffectStatisticsLogModel(effect_id=gen_type, task_id=task_id))
+        db.commit()
 
     # Query stats grouped by effect_id
     stats = (
