@@ -165,6 +165,8 @@ def test_review_token_round_trip_for_task(monkeypatch):
     token = app.security.create_review_token("task-review-1", now=now, ttl_seconds=300)
 
     assert token
+    assert len(token) < 80
+    assert "{" not in app.security._b64url_decode(token.split(".")[0]).decode("utf-8")
     assert app.security.verify_review_token(token, "task-review-1", now=now + timedelta(seconds=299)) is True
 
 

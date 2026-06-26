@@ -52,18 +52,17 @@ def create_review_token(
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     ttl = ttl_seconds if ttl_seconds is not None else get_settings().review_token_ttl_seconds
-    payload = {
-        "task_id": task_id,
-        "exp": int(current.timestamp()) + ttl,
-    }
-    payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    exp = int(current.timestamp()) + ttl
+    payload_str = f"{exp}:{task_id}"
+    payload_bytes = payload_str.encode("utf-8")
     payload_part = _b64url_encode(payload_bytes)
     signature = hmac.new(
         get_settings().secret_key_material.encode("utf-8"),
         payload_part.encode("ascii"),
         hashlib.sha256,
     ).digest()
-    return f"{payload_part}.{_b64url_encode(signature)}"
+    signature_part = _b64url_encode(signature[:12])
+    return f"{payload_part}.{signature_part}"
 
 
 def verify_review_token(token: str | None, task_id: str, *, now: datetime | None = None) -> bool:
@@ -76,24 +75,21 @@ def verify_review_token(token: str | None, task_id: str, *, now: datetime | None
             payload_part.encode("ascii"),
             hashlib.sha256,
         ).digest()
+        expected_sig_compare = expected_signature[:12]
         supplied_signature = _b64url_decode(signature_part)
-        if not hmac.compare_digest(supplied_signature, expected_signature):
+        if not hmac.compare_digest(supplied_signature, expected_sig_compare):
             return False
-        payload = json.loads(_b64url_decode(payload_part))
-    except (ValueError, json.JSONDecodeError) as exc:
+        decoded_payload = _b64url_decode(payload_part).decode("utf-8")
+        if ":" not in decoded_payload:
+            return False
+        exp_str, payload_task_id = decoded_payload.split(":", 1)
+        if payload_task_id != task_id:
+            return False
+        exp = int(exp_str)
+    except Exception as exc:
         logger.warning("Failed to decode review token: %s", exc)
         return False
-    except Exception as exc:
-        logger.exception("Unexpected error verifying review token: %s", exc)
-        return False
 
-    if not isinstance(payload, dict):
-        return False
-    if payload.get("task_id") != task_id:
-        return False
-    exp = payload.get("exp")
-    if not isinstance(exp, int):
-        return False
     current = now or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
