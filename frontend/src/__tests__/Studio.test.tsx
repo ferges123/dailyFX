@@ -29,6 +29,20 @@ vi.mock('../api/client', async () => {
     ]),
     createStudioPreview: vi.fn(),
     createStudioPreviewFromImmich: vi.fn(),
+    getImmichAlbums: vi.fn(async () => ({
+      items: [
+        {
+          id: 'immich-album-123',
+          album_name: 'Summer 2026',
+          asset_count: 5,
+          thumbnail_asset_id: 'immich-asset-123',
+        },
+      ],
+      total: 1,
+      count: 1,
+      pages: 1,
+      current_page: 1,
+    })),
     getImmichAssets: vi.fn(async () => ({
       items: [
         {
@@ -160,10 +174,15 @@ describe('StudioPage', () => {
     // Click browse button to open modal
     fireEvent.click(browseBtn);
 
-    // Modal header should be visible
-    expect(await screen.findByText('Select an image from your library as the source for Studio effects')).toBeInTheDocument();
+    // Modal header should be visible with Album view instructions
+    expect(await screen.findByText('Select an album to browse its photos')).toBeInTheDocument();
 
-    // Mocked asset thumbnail should render
+    // Find the album Summer 2026 and click it
+    const albumCard = await screen.findByText('Summer 2026');
+    expect(albumCard).toBeInTheDocument();
+    fireEvent.click(albumCard);
+
+    // After entering the album, the asset thumbnail should render
     const assetThumb = await screen.findByAltText('sunset.jpg');
     expect(assetThumb).toBeInTheDocument();
     expect(assetThumb).toHaveAttribute('src', '/api/immich/assets/immich-asset-123/thumbnail');
@@ -172,7 +191,7 @@ describe('StudioPage', () => {
     fireEvent.click(assetThumb);
 
     // Modal should close, and the selected asset info should be in the upload zone
-    expect(screen.queryByText('Select an image from your library as the source for Studio effects')).not.toBeInTheDocument();
+    expect(screen.queryByText('Select an album to browse its photos')).not.toBeInTheDocument();
     expect(await screen.findByText('sunset.jpg')).toBeInTheDocument();
     expect(screen.getByText('Immich Photo (Click or drag to change to local upload)')).toBeInTheDocument();
 

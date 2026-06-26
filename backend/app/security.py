@@ -34,13 +34,29 @@ def require_review_auth(credentials: HTTPAuthorizationCredentials | None = Secur
     require_auth(credentials)
 
 
-def _b64url_encode(raw: bytes) -> str:
-    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 
-def _b64url_decode(value: str) -> bytes:
-    padding = "=" * (-len(value) % 4)
-    return base64.urlsafe_b64decode((value + padding).encode("ascii"))
+def _encode_base62(num: int) -> str:
+    if num == 0:
+        return BASE62_ALPHABET[0]
+    arr = []
+    base = len(BASE62_ALPHABET)
+    while num:
+        num, rem = divmod(num, base)
+        arr.append(BASE62_ALPHABET[rem])
+    arr.reverse()
+    return "".join(arr)
+
+
+def _decode_base62(string: str) -> int:
+    base = len(BASE62_ALPHABET)
+    num = 0
+    for char in string:
+        if char not in BASE62_ALPHABET:
+            raise ValueError(f"Invalid character {char} in base62 string")
+        num = num * base + BASE62_ALPHABET.index(char)
+    return num
 
 
 def create_review_token(
@@ -55,60 +71,42 @@ def create_review_token(
     ttl = ttl_seconds if ttl_seconds is not None else get_settings().review_token_ttl_seconds
     exp = int(current.timestamp()) + ttl
 
-    # Binary packing
-    try:
-        task_uuid = uuid.UUID(task_id)
-        is_uuid = True
-        task_bytes = task_uuid.bytes
-    except ValueError:
-        is_uuid = False
-        task_bytes = task_id.encode("utf-8")
-
-    marker = b"\x01" if is_uuid else b"\x00"
     packed_exp = struct.pack("!I", exp)
-    payload_bytes = marker + packed_exp + task_bytes
-
-    payload_part = _b64url_encode(payload_bytes)
+    msg = task_id.encode("utf-8") + packed_exp
     signature = hmac.new(
         get_settings().secret_key_material.encode("utf-8"),
-        payload_part.encode("ascii"),
+        msg,
         hashlib.sha256,
     ).digest()
-    signature_part = _b64url_encode(signature[:8])
-    return f"{payload_part}.{signature_part}"
+    sig_bytes = signature[:10]
+
+    token_bytes = packed_exp + sig_bytes
+    num = int.from_bytes(token_bytes, "big")
+    token_str = _encode_base62(num)
+    return token_str.zfill(20)
 
 
 def verify_review_token(token: str | None, task_id: str, *, now: datetime | None = None) -> bool:
-    if not token or "." not in token:
+    if not token or len(token) != 20 or not token.isalnum():
         return False
     try:
-        payload_part, signature_part = token.split(".", 1)
+        num = _decode_base62(token)
+        token_bytes = num.to_bytes(14, "big")
+        packed_exp = token_bytes[:4]
+        sig_bytes = token_bytes[4:]
+
+        msg = task_id.encode("utf-8") + packed_exp
         expected_signature = hmac.new(
             get_settings().secret_key_material.encode("utf-8"),
-            payload_part.encode("ascii"),
+            msg,
             hashlib.sha256,
         ).digest()
-        expected_sig_compare = expected_signature[:8]
-        supplied_signature = _b64url_decode(signature_part)
-        if not hmac.compare_digest(supplied_signature, expected_sig_compare):
+        expected_sig_bytes = expected_signature[:10]
+
+        if not hmac.compare_digest(sig_bytes, expected_sig_bytes):
             return False
 
-        payload_bytes = _b64url_decode(payload_part)
-        if len(payload_bytes) < 5:
-            return False
-
-        is_uuid = payload_bytes[0] == 1
-        exp = struct.unpack("!I", payload_bytes[1:5])[0]
-
-        if is_uuid:
-            if len(payload_bytes) != 21:
-                return False
-            decoded_task_id = str(uuid.UUID(bytes=payload_bytes[5:]))
-        else:
-            decoded_task_id = payload_bytes[5:].decode("utf-8")
-
-        if decoded_task_id != task_id:
-            return False
+        exp = struct.unpack("!I", packed_exp)[0]
     except Exception as exc:
         logger.warning("Failed to decode review token: %s", exc)
         return False
