@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -18,6 +19,8 @@ from app.services.immich import get_asset_thumbnail as _get_asset_thumbnail
 from app.services.immich import get_or_create_settings as _get_or_create_settings
 from app.services.immich import list_filter_options as _list_filter_options
 from app.utils.query_params import query_date
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/immich", tags=["immich"])
 
@@ -41,6 +44,7 @@ async def list_assets(
     _: None = Depends(require_auth),
 ) -> ImmichAssetPageResponse:
     params = request.query_params
+    logger.info("list_assets endpoint called. Query params: %s", dict(params))
     media_type = _query_media_type(params.get("media_type"))
     album_ids = params.getlist("album_ids")
     person_ids = params.getlist("person_ids")

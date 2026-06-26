@@ -476,7 +476,13 @@ class ImmichClient:
             if pids:
                 body["personIds"] = list(dict.fromkeys(pids))
 
-        payload = await self._post_json("/search/metadata", client, body)
+        logger.info("get_assets: sending request to Immich POST /search/metadata with body=%s", body)
+        try:
+            payload = await self._post_json("/search/metadata", client, body)
+            logger.info("get_assets: Immich returned 200 OK")
+        except Exception as e:
+            logger.error("get_assets: error during POST /search/metadata: %s", str(e))
+            raise e
         if not isinstance(payload, dict):
             raise ImmichUnexpectedResponseError("Immich returned unexpected search metadata response")
 
