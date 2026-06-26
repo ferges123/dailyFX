@@ -2,10 +2,12 @@ import base64
 import hashlib
 import hmac
 import logging
+import secrets
+import struct
+import uuid
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
-import secrets
-from datetime import datetime, timezone
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException, Security
@@ -52,15 +54,27 @@ def create_review_token(
         current = current.replace(tzinfo=timezone.utc)
     ttl = ttl_seconds if ttl_seconds is not None else get_settings().review_token_ttl_seconds
     exp = int(current.timestamp()) + ttl
-    payload_str = f"{exp}:{task_id}"
-    payload_bytes = payload_str.encode("utf-8")
+
+    # Binary packing
+    try:
+        task_uuid = uuid.UUID(task_id)
+        is_uuid = True
+        task_bytes = task_uuid.bytes
+    except ValueError:
+        is_uuid = False
+        task_bytes = task_id.encode("utf-8")
+
+    marker = b"\x01" if is_uuid else b"\x00"
+    packed_exp = struct.pack("!I", exp)
+    payload_bytes = marker + packed_exp + task_bytes
+
     payload_part = _b64url_encode(payload_bytes)
     signature = hmac.new(
         get_settings().secret_key_material.encode("utf-8"),
         payload_part.encode("ascii"),
         hashlib.sha256,
     ).digest()
-    signature_part = _b64url_encode(signature[:12])
+    signature_part = _b64url_encode(signature[:8])
     return f"{payload_part}.{signature_part}"
 
 
@@ -74,17 +88,27 @@ def verify_review_token(token: str | None, task_id: str, *, now: datetime | None
             payload_part.encode("ascii"),
             hashlib.sha256,
         ).digest()
-        expected_sig_compare = expected_signature[:12]
+        expected_sig_compare = expected_signature[:8]
         supplied_signature = _b64url_decode(signature_part)
         if not hmac.compare_digest(supplied_signature, expected_sig_compare):
             return False
-        decoded_payload = _b64url_decode(payload_part).decode("utf-8")
-        if ":" not in decoded_payload:
+
+        payload_bytes = _b64url_decode(payload_part)
+        if len(payload_bytes) < 5:
             return False
-        exp_str, payload_task_id = decoded_payload.split(":", 1)
-        if payload_task_id != task_id:
+
+        is_uuid = payload_bytes[0] == 1
+        exp = struct.unpack("!I", payload_bytes[1:5])[0]
+
+        if is_uuid:
+            if len(payload_bytes) != 21:
+                return False
+            decoded_task_id = str(uuid.UUID(bytes=payload_bytes[5:]))
+        else:
+            decoded_task_id = payload_bytes[5:].decode("utf-8")
+
+        if decoded_task_id != task_id:
             return False
-        exp = int(exp_str)
     except Exception as exc:
         logger.warning("Failed to decode review token: %s", exc)
         return False

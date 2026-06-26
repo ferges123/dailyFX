@@ -165,9 +165,15 @@ def test_review_token_round_trip_for_task(monkeypatch):
     token = app.security.create_review_token("task-review-1", now=now, ttl_seconds=300)
 
     assert token
-    assert len(token) < 80
-    assert "{" not in app.security._b64url_decode(token.split(".")[0]).decode("utf-8")
+    assert len(token) < 50
     assert app.security.verify_review_token(token, "task-review-1", now=now + timedelta(seconds=299)) is True
+
+    # Test with valid UUID
+    uuid_task_id = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+    uuid_token = app.security.create_review_token(uuid_task_id, now=now, ttl_seconds=300)
+    assert uuid_token
+    assert len(uuid_token) < 45
+    assert app.security.verify_review_token(uuid_token, uuid_task_id, now=now) is True
 
 
 def test_review_token_rejects_wrong_task(monkeypatch):
