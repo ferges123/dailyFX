@@ -232,6 +232,16 @@ export type EffectStats = {
   total_runs: number;
   likes: number;
   dislikes: number;
+  rating_count: number;
+  unrated_count: number;
+  like_rate: number | null;
+  quality_score: number;
+  quality_label: 'insufficient_data' | 'excellent' | 'good' | 'mixed' | 'poor';
+  pending_review_runs: number;
+  uploaded_runs: number;
+  rejected_runs: number;
+  failed_runs: number;
+  last_run_at: string | null;
 };
 
 

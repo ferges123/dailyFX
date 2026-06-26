@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -40,6 +41,32 @@ def db_session():
         yield db
     finally:
         db.close()
+
+def add_history_with_stats(
+    db: Session,
+    *,
+    task_id: str,
+    effect_id: str,
+    status: str = "PENDING_REVIEW",
+    liked: bool | None = None,
+    created_at: datetime | None = None,
+):
+    from app.models.generation_history import GenerationHistoryModel
+
+    row = GenerationHistoryModel(
+        task_id=task_id,
+        generation_type=effect_id,
+        status=status,
+        title=f"{effect_id} title",
+        summary="Summary",
+        source_asset_ids="[]",
+        config_json="{}",
+    )
+    if created_at is not None:
+        row.created_at = created_at
+        row.updated_at = created_at
+    db.add(row)
+    db.add(EffectStatisticsLogModel(effect_id=effect_id, task_id=task_id, liked=liked))
 
 
 def test_persist_generation_result_logs_effect(db_session: Session):
@@ -112,15 +139,96 @@ def test_like_dislike_api(authenticated_client: TestClient, db_session: Session)
 
 
 def test_stats_api(authenticated_client: TestClient, db_session: Session):
-    db_session.add(EffectStatisticsLogModel(effect_id="cyanotype", task_id="t1", liked=True))
-    db_session.add(EffectStatisticsLogModel(effect_id="cyanotype", task_id="t2", liked=False))
-    db_session.add(EffectStatisticsLogModel(effect_id="cyanotype", task_id="t3", liked=None))
+    older = datetime(2026, 1, 2, 8, 30, tzinfo=timezone.utc)
+    newer = datetime(2026, 1, 3, 9, 45, tzinfo=timezone.utc)
+
+    add_history_with_stats(
+        db_session,
+        task_id="t1",
+        effect_id="cyanotype",
+        status="UPLOADED",
+        liked=True,
+        created_at=older,
+    )
+    add_history_with_stats(
+        db_session,
+        task_id="t2",
+        effect_id="cyanotype",
+        status="REJECTED",
+        liked=False,
+        created_at=newer,
+    )
+    add_history_with_stats(
+        db_session,
+        task_id="t3",
+        effect_id="cyanotype",
+        status="PENDING_REVIEW",
+        liked=None,
+        created_at=older,
+    )
     db_session.commit()
 
     response = authenticated_client.get("/api/generation/stats/effects")
     assert response.status_code == 200
     stats = response.json()
     c_stat = next(s for s in stats if s["effect_id"] == "cyanotype")
+
     assert c_stat["total_runs"] == 3
     assert c_stat["likes"] == 1
     assert c_stat["dislikes"] == 1
+    assert c_stat["rating_count"] == 2
+    assert c_stat["unrated_count"] == 1
+    assert c_stat["like_rate"] == 50
+    assert c_stat["quality_score"] == 0
+    assert c_stat["quality_label"] == "insufficient_data"
+    assert c_stat["uploaded_runs"] == 1
+    assert c_stat["rejected_runs"] == 1
+    assert c_stat["pending_review_runs"] == 1
+    assert c_stat["failed_runs"] == 0
+    assert c_stat["last_run_at"].startswith("2026-01-03T09:45:00")
+
+
+@pytest.mark.parametrize(
+    ("effect_id", "likes", "dislikes", "expected_label", "expected_score"),
+    [
+        ("excellent_effect", 4, 1, "excellent", 80),
+        ("good_effect", 3, 2, "good", 60),
+        ("mixed_effect", 2, 3, "mixed", 40),
+        ("poor_effect", 1, 4, "poor", 20),
+    ],
+)
+def test_stats_api_quality_labels(
+    authenticated_client: TestClient,
+    db_session: Session,
+    effect_id: str,
+    likes: int,
+    dislikes: int,
+    expected_label: str,
+    expected_score: int,
+):
+    for index in range(likes):
+        add_history_with_stats(
+            db_session,
+            task_id=f"{effect_id}_like_{index}",
+            effect_id=effect_id,
+            status="UPLOADED",
+            liked=True,
+        )
+    for index in range(dislikes):
+        add_history_with_stats(
+            db_session,
+            task_id=f"{effect_id}_dislike_{index}",
+            effect_id=effect_id,
+            status="REJECTED",
+            liked=False,
+        )
+    db_session.commit()
+
+    response = authenticated_client.get("/api/generation/stats/effects")
+    assert response.status_code == 200
+    stat = next(s for s in response.json() if s["effect_id"] == effect_id)
+
+    assert stat["rating_count"] == likes + dislikes
+    assert stat["like_rate"] == expected_score
+    assert stat["quality_score"] == expected_score
+    assert stat["quality_label"] == expected_label

@@ -146,3 +146,13 @@ class EffectStatsResponse(BaseModel):
     total_runs: int
     likes: int
     dislikes: int
+    rating_count: int
+    unrated_count: int
+    like_rate: int | None = None
+    quality_score: int
+    quality_label: Literal["insufficient_data", "excellent", "good", "mixed", "poor"]
+    pending_review_runs: int
+    uploaded_runs: int
+    rejected_runs: int
+    failed_runs: int
+    last_run_at: datetime | None = None

@@ -1,8 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getEffectStats } from '../api/client';
-import { BarChart3, ThumbsUp, ThumbsDown, Play } from 'lucide-react';
+import type * as client from '../api/client';
+import {
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+  Clock3,
+  Play,
+  Star,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react';
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
+
+function formatLastRun(value: string | null) {
+  if (!value) return 'Never';
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function qualityLabel(label: client.EffectStats['quality_label']) {
+  if (label === 'insufficient_data') return 'Not enough ratings';
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function qualityClass(label: client.EffectStats['quality_label']) {
+  if (label === 'excellent') return 'bg-emerald-100 text-emerald-800';
+  if (label === 'good') return 'bg-lime-100 text-lime-800';
+  if (label === 'mixed') return 'bg-amber-100 text-amber-800';
+  if (label === 'poor') return 'bg-rose-100 text-rose-800';
+  return 'bg-stone-100 text-stone-600';
+}
+
+function sortStatsForQuality(a: client.EffectStats, b: client.EffectStats) {
+  const aHasData = a.quality_label !== 'insufficient_data';
+  const bHasData = b.quality_label !== 'insufficient_data';
+  if (aHasData !== bHasData) return aHasData ? -1 : 1;
+  if (b.quality_score !== a.quality_score) return b.quality_score - a.quality_score;
+  return b.total_runs - a.total_runs;
+}
 
 export function StatisticsPage() {
   const navigate = useNavigate();
@@ -30,14 +71,20 @@ export function StatisticsPage() {
     );
   }
 
-  // Sort stats by runs descending
-  const sortedStats = [...(stats || [])].sort((a, b) => b.total_runs - a.total_runs);
+  const sortedStats = [...(stats || [])].sort(sortStatsForQuality);
 
   // Group stats
   const standardStats = sortedStats.filter((stat) => !stat.effect_id.startsWith('ai_'));
   const aiStats = sortedStats.filter((stat) => stat.effect_id.startsWith('ai_'));
 
   const currentStats = activeTab === 'standard' ? standardStats : aiStats;
+
+  const totalRuns = sortedStats.reduce((sum, stat) => sum + stat.total_runs, 0);
+  const ratedRuns = sortedStats.reduce((sum, stat) => sum + stat.rating_count, 0);
+  const bestRated = sortedStats.find((stat) => stat.quality_label !== 'insufficient_data');
+  const needsAttention = sortedStats.filter((stat) =>
+    ['mixed', 'poor'].includes(stat.quality_label),
+  ).length;
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4 md:space-y-6">
@@ -52,6 +99,47 @@ export function StatisticsPage() {
           <p className="text-xs text-stone-500 md:text-sm">
             Track which photo effects were triggered and your ratings.
           </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <div className="app-surface p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
+            <Play size={15} />
+            Total runs
+          </div>
+          <div className="mt-2 text-xl font-bold text-stone-950">{totalRuns}</div>
+          <div className="text-xs text-stone-500">{ratedRuns} rated</div>
+        </div>
+        <div className="app-surface p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
+            <ThumbsUp size={15} />
+            Rated runs
+          </div>
+          <div className="mt-2 text-xl font-bold text-stone-950">{ratedRuns}</div>
+          <div className="text-xs text-stone-500">
+            {totalRuns > 0 ? Math.round((ratedRuns / totalRuns) * 100) : 0}% coverage
+          </div>
+        </div>
+        <div className="app-surface p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
+            <Star size={15} />
+            Best rated
+          </div>
+          <div className="mt-2 truncate text-xl font-bold text-stone-950">
+            {bestRated ? bestRated.title : 'None'}
+          </div>
+          <div className="text-xs text-stone-500">
+            {bestRated?.like_rate != null ? `${bestRated.like_rate}% liked` : 'No rated effects'}
+          </div>
+        </div>
+        <div className="app-surface p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
+            <AlertTriangle size={15} />
+            Needs attention
+          </div>
+          <div className="mt-2 text-xl font-bold text-stone-950">{needsAttention}</div>
+          <div className="text-xs text-stone-500">Mixed or poor quality</div>
         </div>
       </div>
 
@@ -104,12 +192,14 @@ export function StatisticsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-stone-200 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                  <th className="pb-3 px-4">Effect</th>
-                  <th className="pb-3 px-4">Total Runs</th>
-                  <th className="pb-3 px-4">Likes</th>
-                  <th className="pb-3 px-4">Dislikes</th>
-                  <th className="pb-3 px-4">Popularity</th>
+                <tr className="border-b border-stone-200 text-[10px] font-bold uppercase text-stone-500">
+                  <th className="px-4 pb-3">Effect</th>
+                  <th className="px-4 pb-3">Runs</th>
+                  <th className="px-4 pb-3">Rating</th>
+                  <th className="px-4 pb-3">Unrated</th>
+                  <th className="px-4 pb-3">Status mix</th>
+                  <th className="px-4 pb-3">Last run</th>
+                  <th className="px-4 pb-3">Quality</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-sm">
@@ -121,55 +211,70 @@ export function StatisticsPage() {
                     
                   return (
                     <tr key={stat.effect_id} className="hover:bg-stone-50/50 transition">
-                      <td className="py-3 px-4 font-semibold text-stone-950">
+                      <td className="px-4 py-3 font-semibold text-stone-950">
                         <Link
                           to={`/history?search=${encodeURIComponent(stat.effect_id)}`}
-                          className="hover:text-emerald-800 hover:underline transition-colors duration-150"
+                          className="hover:text-emerald-800 hover:underline"
                         >
                           {stat.title}
                         </Link>
                       </td>
-                      <td className="py-3 px-4 text-stone-600">
+                      <td className="px-4 py-3 text-stone-600">
                         <span className="inline-flex items-center gap-1.5 font-medium">
                           <Play size={13} className="text-stone-400" />
                           {stat.total_runs}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-emerald-800">
-                        <span className="inline-flex items-center gap-1.5 font-semibold">
-                          <ThumbsUp size={13} />
-                          {stat.likes}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-rose-800">
-                        <span className="inline-flex items-center gap-1.5 font-semibold">
-                          <ThumbsDown size={13} />
-                          {stat.dislikes}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        {totalRatings > 0 ? (
+                      <td className="px-4 py-3">
+                        {stat.like_rate != null ? (
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-24 bg-stone-200 rounded-full overflow-hidden shrink-0">
-                              <div 
-                                className="h-full bg-emerald-700 transition-all duration-500" 
+                            <div className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                              <div
+                                className="h-full bg-emerald-700"
                                 style={{ width: `${likedPercent}%` }}
                               />
                             </div>
-                            <span className="text-xs text-stone-500 font-semibold whitespace-nowrap">
-                              {likedPercent}% liked
+                            <span className="whitespace-nowrap text-xs font-semibold text-stone-600">
+                              {stat.like_rate}% liked
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-stone-400">—</span>
+                          <span className="text-xs text-stone-400">No ratings</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-stone-500">
+                        {stat.unrated_count} unrated
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-emerald-800">
+                            <CheckCircle2 size={12} />
+                            {stat.uploaded_runs}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-1 text-stone-700">
+                            <Clock3 size={12} />
+                            {stat.pending_review_runs}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-rose-800">
+                            <ThumbsDown size={12} />
+                            {stat.rejected_runs + stat.failed_runs}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-stone-500">
+                        {formatLastRun(stat.last_run_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${qualityClass(stat.quality_label)}`}>
+                          {qualityLabel(stat.quality_label)}
+                        </span>
                       </td>
                     </tr>
                   );
                 })}
                 {currentStats.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-sm text-stone-400">
+                    <td colSpan={7} className="py-8 text-center text-sm text-stone-400">
                       No statistics logged yet.
                     </td>
                   </tr>
