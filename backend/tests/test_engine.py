@@ -879,7 +879,7 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
         assert result is not None
         assert (
             ai_calls[0]["context_hint"]
-            == "Immich identified these people in the source photo: person 1. Face positions: person 1 is in the upper left."
+            == "Immich identified these people in the source photo: person 1 (female). Face positions: person 1 (female) is in the upper left."
         )
         entry = db.query(GenerationHistoryModel).filter_by(task_id="task-people-context").first()
         assert entry is not None
