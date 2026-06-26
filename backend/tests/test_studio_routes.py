@@ -289,6 +289,7 @@ def test_studio_preview_ai_vision_resolves_provider_from_schedule(
 
 def test_studio_preview_immich_requires_auth_when_auth_enabled(monkeypatch) -> None:
     from app.config import get_settings
+
     monkeypatch.setenv("APP_ACCESS_TOKEN", "test-access-token")
     get_settings.cache_clear()
 

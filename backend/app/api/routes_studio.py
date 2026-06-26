@@ -291,17 +291,18 @@ async def create_studio_preview_from_immich(
     request: Request = None,
 ):
     settings = get_or_create_settings(db)
-    
+
     with handle_immich_errors():
         client = build_immich_client(settings)
         asset_info = await client.get_asset_info(payload.asset_id)
-        
+
         # Confirm asset is an image
         asset_type = asset_info.get("type") or asset_info.get("assetType") or asset_info.get("asset_type")
         if asset_type != "IMAGE":
             raise HTTPException(status_code=400, detail="The selected Immich asset must be an image.")
-            
+
         from app.immich.client import ImmichClient
+
         asset_summary = ImmichClient._coerce_asset_summary(asset_info)
         if not asset_summary:
             raise HTTPException(status_code=400, detail="Could not retrieve valid asset summary from Immich.")
