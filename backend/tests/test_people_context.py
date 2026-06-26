@@ -32,16 +32,44 @@ def test_anonymized_prompt_hint_basic():
     assert "Konrad" not in anonymized
     assert "Sylwek" not in anonymized
     assert "Sokół" not in anonymized
-    assert "person 1" in anonymized
-    assert "person 2" in anonymized
-    assert "person 1 is in the upper left" in anonymized
-    assert "person 2 is in the lower right" in anonymized
+    assert "person 1 (male)" in anonymized
+    assert "person 2 (male)" in anonymized
+    assert "person 1 (male) is in the upper left" in anonymized
+    assert "person 2 (male) is in the lower right" in anonymized
 
     # Ensure original fields are untouched
     assert (
         context.prompt_hint
         == "Immich identified these people in the source photo: Konrad, Sylwek Sokół. Face positions: Konrad is in the upper left; Sylwek Sokół is in the lower right."
     )
+
+
+def test_build_people_context_adds_gender():
+    from app.services.generation.people_context import build_people_context
+    source = {
+        "people": [
+            {
+                "id": "p1",
+                "name": "Kasia",
+                "faces": [
+                    {
+                        "id": "f1",
+                        "imageWidth": 100,
+                        "imageHeight": 100,
+                        "boundingBoxX1": 10,
+                        "boundingBoxY1": 10,
+                        "boundingBoxX2": 20,
+                        "boundingBoxY2": 20,
+                    }
+                ]
+            }
+        ]
+    }
+    context = build_people_context(source)
+    assert context is not None
+    assert "Kasia (female)" in context.prompt_hint
+    assert "Kasia (female) is in the upper left" in context.prompt_hint
+
 
 
 def test_infer_gender_library():

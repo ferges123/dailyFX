@@ -106,10 +106,12 @@ class PeopleContext:
 
         name_map = {}
         for i, name in enumerate(self.names):
-            name_map[name] = f"person {i + 1}"
+            gender = infer_gender(name)
+            name_map[name] = f"person {i + 1} ({gender})"
         for face in self.faces:
             if face.person_name and face.person_name not in name_map:
-                name_map[face.person_name] = f"person {len(name_map) + 1}"
+                gender = infer_gender(face.person_name)
+                name_map[face.person_name] = f"person {len(name_map) + 1} ({gender})"
 
         name_hint = ""
         if self.names:
@@ -256,7 +258,8 @@ def build_people_context(source: ImmichAssetSummary | Any) -> PeopleContext | No
 
     name_hint = ""
     if names:
-        head = names[:5]
+        names_with_gender = [f"{name} ({infer_gender(name)})" for name in names]
+        head = names_with_gender[:5]
         suffix = f", and {len(names) - len(head)} more" if len(names) > len(head) else ""
         name_hint = f"Immich identified these people in the source photo: {', '.join(head)}{suffix}."
 
@@ -264,13 +267,16 @@ def build_people_context(source: ImmichAssetSummary | Any) -> PeopleContext | No
     for face in faces[:5]:
         label = face.position_label()
         if face.person_name and label:
-            face_bits.append(f"{face.person_name} is in the {label}")
+            gendered_name = f"{face.person_name} ({infer_gender(face.person_name)})"
+            face_bits.append(f"{gendered_name} is in the {label}")
         elif face.person_name:
-            face_bits.append(face.person_name)
+            gendered_name = f"{face.person_name} ({infer_gender(face.person_name)})"
+            face_bits.append(gendered_name)
     face_hint = f" Face positions: {'; '.join(face_bits)}." if face_bits else ""
 
     prompt_hint = f"{name_hint}{face_hint}".strip()
     return PeopleContext(names=names, faces=faces, prompt_hint=prompt_hint)
+
 
 
 async def load_people_context(client: Any, asset: ImmichAssetSummary | Any) -> PeopleContext | None:
