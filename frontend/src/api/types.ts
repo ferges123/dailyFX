@@ -89,6 +89,14 @@ export type ImmichAlbum = {
   thumbnail_asset_id: string | null;
 };
 
+export type ImmichAlbumPage = {
+  items: ImmichAlbum[];
+  total: number;
+  count: number;
+  pages: number;
+  current_page: number;
+};
+
 export type ImmichPerson = {
   id: string;
   name: string;
