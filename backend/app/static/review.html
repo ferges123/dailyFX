@@ -565,8 +565,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
   <!-- actions -->
   <div class="actions" id="actions">
-    <button class="btn-accept" id="btn-accept" disabled>✓ Accept &amp; upload</button>
-    <button class="btn-reject" id="btn-reject" disabled>✕ Reject</button>
+    <button class="btn-accept" id="btn-accept" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Accept
+    </button>
+    <button class="btn-reject" id="btn-reject" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      Reject
+    </button>
   </div>
 
   <!-- notes / warnings -->
@@ -633,7 +639,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
           </button>
           <button id="lb-download" class="lb-download-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download Full-Res PNG
+            Download
           </button>
         </div>
       </div>
@@ -1037,9 +1043,9 @@ function setUploadSuccessState(uploadedAssetId) {
   link.target = '_blank';
   link.rel = 'noopener';
   const icon = document.createElement('span');
-  appendStaticSvg(icon, '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>');
+  appendStaticSvg(icon, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>');
   link.appendChild(icon.firstChild);
-  link.appendChild(document.createTextNode('View in Immich'));
+  link.appendChild(document.createTextNode('View in Immich Library'));
   actionsEl.appendChild(link);
 }
 
