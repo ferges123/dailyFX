@@ -327,6 +327,10 @@ Public review endpoints:
 - `GET /api/generation/review/{task_id}`
 - `GET /api/generation/review/{task_id}/thumbnail`
 
+### `GET /api/generation/stats/effects`
+
+Returns aggregate execution and quality statistics for all photo effects, grouped by effect type. Computes quality scores, ratings mix, and status distributions (uploaded, pending review, rejected/failed). Includes the date of the last run. Used to populate the frontend Statistics dashboard.
+
 `GET /api/generation/history` supports `status`, `search`, `offset`, and `limit`.
 
 The history record includes fields such as:
