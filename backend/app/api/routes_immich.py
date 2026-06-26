@@ -42,6 +42,8 @@ async def list_filter_options(
 async def list_albums(
     page: int = 1,
     size: int = 12,
+    sort_by: str = "name",
+    sort_order: str = "asc",
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
 ) -> ImmichAlbumPageResponse:
@@ -50,13 +52,26 @@ async def list_albums(
     if size < 1:
         size = 12
 
+    if sort_by not in {"name", "count", "created", "modified"}:
+        sort_by = "name"
+    if sort_order not in {"asc", "desc"}:
+        sort_order = "asc"
+
     row = _get_or_create_settings(db)
     with handle_immich_errors():
         client = _build_immich_client(row)
         all_albums = await client.list_albums()
 
-    # Sort albums alphabetically by name
-    all_albums.sort(key=lambda a: (a.album_name or "").lower())
+    reverse = (sort_order == "desc")
+
+    if sort_by == "count":
+        all_albums.sort(key=lambda a: a.asset_count, reverse=reverse)
+    elif sort_by == "created":
+        all_albums.sort(key=lambda a: a.created_at or "", reverse=reverse)
+    elif sort_by == "modified":
+        all_albums.sort(key=lambda a: a.last_modified_asset_timestamp or "", reverse=reverse)
+    else:  # name
+        all_albums.sort(key=lambda a: (a.album_name or "").lower(), reverse=reverse)
 
     total = len(all_albums)
     pages = (total + size - 1) // size if total > 0 else 1

@@ -110,6 +110,9 @@ export function ImmichAssetBrowserModal({
   const [albumsPage, setAlbumsPage] = useState(1);
   const [assetsPage, setAssetsPage] = useState(1);
 
+  const [sortBy, setSortBy] = useState<'name' | 'count' | 'created' | 'modified'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   const ALBUMS_PAGE_SIZE = 12;
   const ASSETS_PAGE_SIZE = 24;
 
@@ -120,8 +123,14 @@ export function ImmichAssetBrowserModal({
     isError: isErrorAlbums,
     error: errorAlbums,
   } = useQuery({
-    queryKey: ['immich-albums-studio', albumsPage],
-    queryFn: () => getImmichAlbums({ page: albumsPage, size: ALBUMS_PAGE_SIZE }),
+    queryKey: ['immich-albums-studio', albumsPage, sortBy, sortOrder],
+    queryFn: () =>
+      getImmichAlbums({
+        page: albumsPage,
+        size: ALBUMS_PAGE_SIZE,
+        sortBy,
+        sortOrder,
+      }),
     enabled: isOpen && view === 'albums',
   });
 
@@ -159,6 +168,8 @@ export function ImmichAssetBrowserModal({
     setSelectedAlbum(null);
     setAlbumsPage(1);
     setAssetsPage(1);
+    setSortBy('name');
+    setSortOrder('asc');
     onClose();
   };
 
@@ -189,7 +200,7 @@ export function ImmichAssetBrowserModal({
               <button
                 type="button"
                 onClick={handleBackToAlbums}
-                className="flex items-center gap-1 rounded-xl border border-stone-250 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-55 active:scale-95 transition"
+                className="flex items-center gap-1 rounded-xl border border-stone-250 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-50 active:scale-95 transition"
               >
                 <ChevronLeft size={14} />
                 Back to Albums
@@ -253,39 +264,71 @@ export function ImmichAssetBrowserModal({
                 )}
 
                 {!isLoadingAlbums && !isErrorAlbums && albumsData && albumsData.items.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {albumsData.items.map((album) => (
-                      <button
-                        key={album.id}
-                        type="button"
-                        onClick={() => handleSelectAlbum(album)}
-                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white hover:border-emerald-700 hover:shadow-lg transition-all duration-300 cursor-pointer text-left hover:-translate-y-0.5 active:translate-y-0 active:scale-98"
-                      >
-                        <div className="aspect-video w-full overflow-hidden bg-stone-100 relative">
-                          {album.thumbnail_asset_id ? (
-                            <SecureImage
-                              src={getImmichAssetThumbnailUrl(album.thumbnail_asset_id, 'preview')}
-                              alt={album.album_name}
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center bg-stone-50 text-stone-400">
-                              <Folder size={28} />
+                  <>
+                    {/* Filter and sorting actions bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 pb-3 border-b border-stone-150">
+                      <div className="text-xs font-semibold text-stone-500">
+                        Showing {albumsData.count} of {albumsData.total} albums
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="album-sort" className="text-xs font-bold text-stone-600">Sort by:</label>
+                        <select
+                          id="album-sort"
+                          value={`${sortBy}-${sortOrder}`}
+                          onChange={(e) => {
+                            const [by, order] = e.target.value.split('-');
+                            setSortBy(by as any);
+                            setSortOrder(order as any);
+                            setAlbumsPage(1);
+                          }}
+                          className="rounded-xl border border-stone-250 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:border-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-700 transition cursor-pointer"
+                        >
+                          <option value="name-asc">Name (A-Z)</option>
+                          <option value="name-desc">Name (Z-A)</option>
+                          <option value="count-desc">Photos Count (High to Low)</option>
+                          <option value="count-asc">Photos Count (Low to High)</option>
+                          <option value="created-desc">Date Created (Newest First)</option>
+                          <option value="created-asc">Date Created (Oldest First)</option>
+                          <option value="modified-desc">Last Photo Added (Newest First)</option>
+                          <option value="modified-asc">Last Photo Added (Oldest First)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {albumsData.items.map((album) => (
+                        <button
+                          key={album.id}
+                          type="button"
+                          onClick={() => handleSelectAlbum(album)}
+                          className="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white hover:border-emerald-700 hover:shadow-lg transition-all duration-300 cursor-pointer text-left hover:-translate-y-0.5 active:translate-y-0 active:scale-98"
+                        >
+                          <div className="aspect-video w-full overflow-hidden bg-stone-100 relative">
+                            {album.thumbnail_asset_id ? (
+                              <SecureImage
+                                src={getImmichAssetThumbnailUrl(album.thumbnail_asset_id, 'preview')}
+                                alt={album.album_name}
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center bg-stone-50 text-stone-400">
+                                <Folder size={28} />
+                              </div>
+                            )}
+                            <div className="absolute top-2 right-2 bg-stone-900/70 backdrop-blur-md text-[10px] font-bold text-white px-2 py-0.5 rounded-full">
+                              {album.asset_count}
                             </div>
-                          )}
-                          <div className="absolute top-2 right-2 bg-stone-900/70 backdrop-blur-md text-[10px] font-bold text-white px-2 py-0.5 rounded-full">
-                            {album.asset_count}
                           </div>
-                        </div>
-                        <div className="p-3.5">
-                          <h3 className="text-xs font-bold text-stone-850 truncate leading-tight group-hover:text-emerald-800 transition-colors">
-                            {album.album_name}
-                          </h3>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                          <div className="p-3.5">
+                            <h3 className="text-xs font-bold text-stone-850 truncate leading-tight group-hover:text-emerald-800 transition-colors">
+                              {album.album_name}
+                            </h3>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -365,7 +408,7 @@ export function ImmichAssetBrowserModal({
               {!isLoadingAssets && !isErrorAssets && assetsData && (
                 <Pagination
                   currentPage={assetsPage}
-                  totalPages={assetsData.total ? Math.ceil(assetsData.total / ASSETS_PAGE_SIZE) : 1}
+                  totalPages={selectedAlbum ? Math.ceil(selectedAlbum.asset_count / ASSETS_PAGE_SIZE) : 1}
                   onPageChange={setAssetsPage}
                 />
               )}

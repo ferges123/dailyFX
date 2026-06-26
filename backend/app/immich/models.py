@@ -75,6 +75,8 @@ class ImmichAlbumSummary:
     album_name: str
     asset_count: int
     thumbnail_asset_id: str | None = None
+    created_at: str | None = None
+    last_modified_asset_timestamp: str | None = None
 
 
 @dataclass(frozen=True)

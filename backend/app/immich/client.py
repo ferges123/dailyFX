@@ -269,11 +269,15 @@ class ImmichClient:
             return None
         asset_count = payload.get("assetCount")
         thumbnail_asset_id = payload.get("albumThumbnailAssetId")
+        created_at = payload.get("createdAt")
+        last_modified = payload.get("lastModifiedAssetTimestamp")
         return ImmichAlbumSummary(
             id=album_id,
             album_name=album_name,
             asset_count=asset_count if isinstance(asset_count, int) else 0,
             thumbnail_asset_id=thumbnail_asset_id if isinstance(thumbnail_asset_id, str) else None,
+            created_at=created_at if isinstance(created_at, str) else None,
+            last_modified_asset_timestamp=last_modified if isinstance(last_modified, str) else None,
         )
 
     @staticmethod

@@ -32,6 +32,8 @@ def test_immich_options_contract(monkeypatch):
                 "album_name": "Trips",
                 "asset_count": 8,
                 "thumbnail_asset_id": "asset-1",
+                "created_at": None,
+                "last_modified_asset_timestamp": None,
             }
         ],
         "people": [
@@ -117,37 +119,53 @@ def test_immich_albums_endpoint(monkeypatch):
     monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
 
     class TestAlbum:
-        def __init__(self, id: str, name: str):
+        def __init__(self, id: str, name: str, count: int, created_at: str, modified: str):
             self.id = id
             self.album_name = name
-            self.asset_count = 8
+            self.asset_count = count
             self.thumbnail_asset_id = "asset-1"
+            self.created_at = created_at
+            self.last_modified_asset_timestamp = modified
 
     class MockClient:
         async def list_albums(self):
             return [
-                TestAlbum(id="album-1", name="Trips"),
-                TestAlbum(id="album-2", name="Animals"),
-                TestAlbum(id="album-3", name="Family"),
+                TestAlbum(id="album-1", name="Trips", count=10, created_at="2026-06-01T12:00:00Z", modified="2026-06-25T12:00:00Z"),
+                TestAlbum(id="album-2", name="Animals", count=5, created_at="2026-06-10T12:00:00Z", modified="2026-06-20T12:00:00Z"),
+                TestAlbum(id="album-3", name="Family", count=20, created_at="2026-05-20T12:00:00Z", modified="2026-06-26T12:00:00Z"),
             ]
 
     monkeypatch.setattr("app.api.routes_immich._build_immich_client", lambda row: MockClient())
 
-    # We call list_albums with db=None, page=1, size=2
-    response = asyncio.run(list_albums(page=1, size=2, db=None))
+    # We call list_albums with db=None, page=1, size=2, sort_by="name"
+    response = asyncio.run(list_albums(page=1, size=2, sort_by="name", sort_order="asc", db=None))
 
     assert isinstance(response, ImmichAlbumPageResponse)
-    # Total albums is 3, but count is 2 (page size is 2), sorted alphabetically: Animals, Family, Trips
-    # So page 1 should contain Animals and Family.
     assert response.total == 3
     assert response.count == 2
     assert response.pages == 2
     assert response.current_page == 1
+    # Sorted: Animals, Family, Trips
     assert response.items[0].album_name == "Animals"
     assert response.items[1].album_name == "Family"
 
-    # Test page 2
-    response_p2 = asyncio.run(list_albums(page=2, size=2, db=None))
-    assert response_p2.total == 3
-    assert response_p2.count == 1
-    assert response_p2.items[0].album_name == "Trips"
+    # Test count desc
+    response_count = asyncio.run(list_albums(page=1, size=3, sort_by="count", sort_order="desc", db=None))
+    # Sorted by count desc: Family (20), Trips (10), Animals (5)
+    assert response_count.items[0].album_name == "Family"
+    assert response_count.items[1].album_name == "Trips"
+    assert response_count.items[2].album_name == "Animals"
+
+    # Test created desc
+    response_created = asyncio.run(list_albums(page=1, size=3, sort_by="created", sort_order="desc", db=None))
+    # Sorted by created desc: Animals (06-10), Trips (06-01), Family (05-20)
+    assert response_created.items[0].album_name == "Animals"
+    assert response_created.items[1].album_name == "Trips"
+    assert response_created.items[2].album_name == "Family"
+
+    # Test modified desc
+    response_modified = asyncio.run(list_albums(page=1, size=3, sort_by="modified", sort_order="desc", db=None))
+    # Sorted by modified desc: Family (06-26), Trips (06-25), Animals (06-20)
+    assert response_modified.items[0].album_name == "Family"
+    assert response_modified.items[1].album_name == "Trips"
+    assert response_modified.items[2].album_name == "Animals"

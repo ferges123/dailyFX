@@ -10,11 +10,23 @@ export function getImmichFilterOptions() {
   return request<ImmichFilterOptions>('/api/immich/options');
 }
 
-export function getImmichAlbums(params: { page: number; size: number }) {
-  const qs = new URLSearchParams({
+export function getImmichAlbums(params: {
+  page: number;
+  size: number;
+  sortBy?: string;
+  sortOrder?: string;
+}) {
+  const query: Record<string, string> = {
     page: params.page.toString(),
     size: params.size.toString(),
-  }).toString();
+  };
+  if (params.sortBy) {
+    query.sort_by = params.sortBy;
+  }
+  if (params.sortOrder) {
+    query.sort_order = params.sortOrder;
+  }
+  const qs = new URLSearchParams(query).toString();
   return request<ImmichAlbumPage>(`/api/immich/albums?${qs}`);
 }
 
