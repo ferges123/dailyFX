@@ -4,7 +4,6 @@ import hmac
 import logging
 import secrets
 import struct
-import uuid
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)

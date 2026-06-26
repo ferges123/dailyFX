@@ -99,4 +99,3 @@ class ImmichAlbumPageResponse(_ImmichResponseModel):
     count: int
     pages: int
     current_page: int
-

@@ -87,8 +87,8 @@ def test_immich_assets_contract(monkeypatch):
 
 
 def test_album_page_response_schema():
-    from app.schemas.immich import ImmichAlbumPageResponse
     from app.immich.models import ImmichAlbumSummary
+    from app.schemas.immich import ImmichAlbumPageResponse
 
     data = {
         "items": [
@@ -151,6 +151,3 @@ def test_immich_albums_endpoint(monkeypatch):
     assert response_p2.total == 3
     assert response_p2.count == 1
     assert response_p2.items[0].album_name == "Trips"
-
-
-

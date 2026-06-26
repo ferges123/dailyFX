@@ -74,7 +74,6 @@ async def list_albums(
     )
 
 
-
 @router.get("/assets", response_model=ImmichAssetPageResponse)
 async def list_assets(
     request: Request,
