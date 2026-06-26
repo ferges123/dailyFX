@@ -508,7 +508,7 @@ class ImmichClient:
             items=coerced_items,
             total=total if isinstance(total, int) else len(coerced_items),
             count=count if isinstance(count, int) else len(coerced_items),
-            next_page=page + 1 if len(coerced_items) >= size else None,
+            next_page=str(page + 1) if len(coerced_items) >= size else None,
         )
 
     async def list_albums(self) -> list[ImmichAlbumSummary]:
