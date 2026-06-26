@@ -5,6 +5,13 @@ from typing import Any
 
 from app.immich.models import ImmichAssetSummary
 
+try:
+    from global_gender_predictor import GlobalGenderPredictor
+    _predictor = GlobalGenderPredictor()
+except ImportError:
+    _predictor = None
+
+
 
 @dataclass(frozen=True)
 class PeopleFaceContext:
@@ -294,3 +301,45 @@ async def load_people_context(client: Any, asset: ImmichAssetSummary | Any) -> P
         return detailed_context
 
     return context
+
+
+def infer_gender(name: str) -> str:
+    """Infer gender ('male' or 'female') from a person's name/label using global-gender-predictor with a fallback."""
+    if not name:
+        return "male"
+
+    tokens = name.strip().split()
+    if not tokens:
+        return "male"
+    first_name = tokens[0]
+    first_name_lower = first_name.lower()
+
+    # Pre-heuristics: check highly specific familial/explicit terms first,
+    # because external predictor may incorrectly classify them based on other languages.
+    male_exceptions = {
+        "kuba", "tata", "dziadek", "wujek", "luca", "andrea", "barnaba",
+        "kosma", "bonawentura", "mustafa"
+    }
+    female_terms = {"mama", "babcia", "ciocia", "córka", "zona", "żona", "siostra"}
+
+    if first_name_lower in female_terms:
+        return "female"
+    if first_name_lower in male_exceptions:
+        return "male"
+
+    # Try using global-gender-predictor
+    if _predictor is not None:
+        try:
+            res = _predictor.predict_gender(first_name)
+            if res and res.lower() in ("male", "female"):
+                return res.lower()
+        except Exception:
+            pass
+
+    # Post-heuristics fallback (Polish general name rules)
+    if first_name_lower.endswith("a"):
+        return "female"
+
+    return "male"
+
+
