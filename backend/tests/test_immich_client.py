@@ -7,7 +7,7 @@ import httpx
 import pytest
 from PIL import Image
 
-from app.immich.client import ImmichAssetPage, ImmichClient, ImmichPersonFilter, ImmichSearchFilters
+from app.immich.client import ImmichClient, ImmichPersonFilter, ImmichSearchFilters
 from app.immich.errors import ImmichAuthenticationError
 from app.immich.models import ImmichAssetSummary, ImmichPersonSummary, ImmichUploadMetadata
 

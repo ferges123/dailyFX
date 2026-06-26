@@ -17,7 +17,6 @@ from app.services.immich import build_immich_client as _build_immich_client
 from app.services.immich import get_asset_thumbnail as _get_asset_thumbnail
 from app.services.immich import get_or_create_settings as _get_or_create_settings
 from app.services.immich import list_filter_options as _list_filter_options
-from app.services.immich import search_assets as _search_assets
 from app.utils.query_params import query_date
 
 router = APIRouter(prefix="/api/immich", tags=["immich"])
