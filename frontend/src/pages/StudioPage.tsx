@@ -224,7 +224,7 @@ export function StudioPage() {
             />
             {source?.type === 'immich' ? (
               <div className="grid justify-items-center gap-2">
-                <img
+                <SecureImage
                   src={getImmichAssetThumbnailUrl(source.asset.id, 'preview')}
                   alt="Source preview"
                   className="max-h-32 rounded-lg object-contain shadow-sm border border-stone-200"

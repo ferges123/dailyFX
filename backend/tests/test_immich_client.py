@@ -79,21 +79,54 @@ def test_connection_accepts_album_probe_when_user_probe_is_rejected(monkeypatch)
     assert any(path.endswith("/albums") for path in requests)
 
 
-def test_get_assets_uses_default_search_filters(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen_filters: dict[str, object] = {}
+def test_get_assets_calls_search_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[dict[str, object]] = []
 
-    async def fake_search_assets(self, filters: ImmichSearchFilters):
-        seen_filters["album_ids"] = filters.album_ids
-        seen_filters["person_filters"] = filters.person_filters
-        return ImmichAssetPage(items=[], total=0, count=0, next_page=None)
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/search/metadata"
+        requests.append(json.loads(request.content.decode()))
+        return httpx.Response(
+            200,
+            json={
+                "albums": {"total": 0, "count": 0, "items": []},
+                "assets": {
+                    "total": 1,
+                    "count": 1,
+                    "items": [
+                        {
+                            "id": "asset-1",
+                            "originalFileName": "a.jpg",
+                            "type": "IMAGE",
+                            "people": [],
+                        }
+                    ],
+                },
+            },
+        )
 
-    monkeypatch.setattr(ImmichClient, "search_assets", fake_search_assets)
-    asyncio.run(ImmichClient("https://photos.example.com", "secret-key").get_assets(page=3, size=12))
+    original_async_client = httpx.AsyncClient
 
-    assert seen_filters == {
-        "album_ids": None,
-        "person_filters": [],
-    }
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    result = asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").get_assets(
+            page=3,
+            size=12,
+            filters=ImmichSearchFilters(album_ids=["album-x"], media_type="photo"),
+        )
+    )
+
+    assert len(requests) == 1
+    assert requests[0]["page"] == 3
+    assert requests[0]["size"] == 12
+    assert requests[0]["type"] == "IMAGE"
+    assert requests[0]["albumIds"] == ["album-x"]
+    assert result.count == 1
+    assert result.total == 1
+    assert result.items[0].id == "asset-1"
 
 
 def test_search_assets_applies_filters_and_sampling(monkeypatch: pytest.MonkeyPatch) -> None:

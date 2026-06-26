@@ -48,7 +48,7 @@ def test_immich_options_contract(monkeypatch):
 def test_immich_assets_contract(monkeypatch):
     fake_client = FakeImmichClient()
     monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
-    monkeypatch.setattr("app.api.routes_immich._search_assets", lambda row, filters: fake_client.search_assets(filters))
+    monkeypatch.setattr("app.api.routes_immich._build_immich_client", lambda row: fake_client)
 
     response = asyncio.run(
         list_assets(

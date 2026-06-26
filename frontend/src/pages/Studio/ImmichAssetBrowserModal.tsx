@@ -1,6 +1,7 @@
 import { X, Image as ImageIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getImmichAssets, getImmichAssetThumbnailUrl, type ImmichAsset } from '../../api/client';
+import { SecureImage } from '../../components/SecureImage';
 import { InlineSpinner } from '../../components/ErrorUI';
 import { InlineError } from '../../components/FormUI';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -108,7 +109,7 @@ export function ImmichAssetBrowserModal({
                   onClick={() => onSelectAsset(asset)}
                   className="group relative aspect-square w-full overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 hover:border-emerald-700 hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
                 >
-                  <img
+                  <SecureImage
                     src={getImmichAssetThumbnailUrl(asset.id, 'preview')}
                     alt={asset.original_file_name || 'Immich photo'}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"

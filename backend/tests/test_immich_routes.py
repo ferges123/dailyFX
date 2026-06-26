@@ -36,12 +36,12 @@ class ExtendedFakeImmichClient(FakeImmichClient):
 def test_list_assets_forwards_filters(monkeypatch):
     fake_client = ExtendedFakeImmichClient()
     monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
-    monkeypatch.setattr("app.api.routes_immich._search_assets", lambda row, filters: fake_client.search_assets(filters))
+    monkeypatch.setattr("app.api.routes_immich._build_immich_client", lambda row: fake_client)
 
     response = asyncio.run(
         list_assets(
             request=FakeRequest(
-                "media_type=video&album_ids=album-1&person_ids=person-1&person_modes=obligatory&"
+                "page=2&size=15&media_type=video&album_ids=album-1&person_ids=person-1&person_modes=obligatory&"
                 "person_ids=person-2&person_modes=exclude&start_date=2026-05-01&end_date=2026-05-31"
             ),
             db=None,
@@ -51,6 +51,8 @@ def test_list_assets_forwards_filters(monkeypatch):
     payload = response.model_dump(mode="json")
     assert payload["count"] == 1
     assert payload["items"][0]["id"] == "asset-1"
+    assert fake_client.page == 2
+    assert fake_client.size == 15
     assert fake_client.filters.media_type == "video"
     assert fake_client.filters.album_ids == ["album-1"]
     assert [item.person_id for item in fake_client.filters.person_filters] == ["person-1", "person-2"]

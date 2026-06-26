@@ -65,6 +65,12 @@ class FakeImmichClient:
         self.filters = filters
         return FakeAssetPage()
 
+    async def get_assets(self, page=1, size=24, filters=None):
+        self.filters = filters
+        self.page = page
+        self.size = size
+        return FakeAssetPage()
+
     async def list_albums(self):
         return [FakeAlbum()]
 

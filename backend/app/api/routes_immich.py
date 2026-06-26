@@ -51,11 +51,23 @@ async def list_assets(
     end_date = query_date(params.get("end_date"))
     person_filters = _query_person_filters(person_ids, person_modes, person_mode)
 
+    try:
+        page = int(params.get("page", "1"))
+    except ValueError:
+        page = 1
+
+    try:
+        size = int(params.get("size", "24"))
+    except ValueError:
+        size = 24
+
     row = _get_or_create_settings(db)
     with handle_immich_errors():
-        result = await _search_assets(
-            row,
-            ImmichSearchFilters(
+        client = _build_immich_client(row)
+        result = await client.get_assets(
+            page=page,
+            size=size,
+            filters=ImmichSearchFilters(
                 album_ids=album_ids,
                 person_filters=person_filters,
                 taken_after=start_date,

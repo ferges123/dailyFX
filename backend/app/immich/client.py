@@ -440,10 +440,70 @@ class ImmichClient:
             return None
         return f"{major}.{minor}.{patch}"
 
-    async def get_assets(self, page: int = 1, size: int = 24) -> ImmichAssetPage:
-        _ = size
-        _ = page
-        return await self.search_assets(ImmichSearchFilters())
+    async def get_assets(
+        self,
+        page: int = 1,
+        size: int = 24,
+        filters: ImmichSearchFilters | None = None,
+    ) -> ImmichAssetPage:
+        client = self._get_client()
+        body: dict[str, Any] = {
+            "page": page,
+            "size": size,
+            "type": "IMAGE",
+        }
+        if filters is not None:
+            if filters.media_type == "photo":
+                body["type"] = "IMAGE"
+            elif filters.media_type == "video":
+                body["type"] = "VIDEO"
+            elif filters.media_type == "all":
+                body.pop("type", None)
+
+            if filters.album_ids:
+                body["albumIds"] = filters.album_ids
+
+            if filters.taken_after is not None:
+                body["takenAfter"] = self._to_iso_utc_start(filters.taken_after)
+            if filters.taken_before is not None:
+                body["takenBefore"] = self._to_iso_utc_end(filters.taken_before)
+
+            pids = []
+            if filters.person_ids:
+                pids.extend(filters.person_ids)
+            if filters.person_filters:
+                pids.extend([pf.person_id for pf in filters.person_filters if pf.mode != "exclude"])
+            if pids:
+                body["personIds"] = list(dict.fromkeys(pids))
+
+        payload = await self._post_json("/search/metadata", client, body)
+        if not isinstance(payload, dict):
+            raise ImmichUnexpectedResponseError("Immich returned unexpected search metadata response")
+
+        assets_payload = payload.get("assets", {})
+        if not isinstance(assets_payload, dict):
+            raise ImmichUnexpectedResponseError("Immich returned unexpected assets field in search metadata")
+
+        items_list = assets_payload.get("items", [])
+        if not isinstance(items_list, list):
+            items_list = []
+
+        coerced_items = []
+        for item in items_list:
+            if isinstance(item, dict):
+                coerced = self._coerce_asset_summary(item)
+                if coerced is not None:
+                    coerced_items.append(coerced)
+
+        total = assets_payload.get("total", len(coerced_items))
+        count = assets_payload.get("count", len(coerced_items))
+
+        return ImmichAssetPage(
+            items=coerced_items,
+            total=total if isinstance(total, int) else len(coerced_items),
+            count=count if isinstance(count, int) else len(coerced_items),
+            next_page=page + 1 if len(coerced_items) >= size else None,
+        )
 
     async def list_albums(self) -> list[ImmichAlbumSummary]:
         client = self._get_client()
