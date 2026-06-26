@@ -109,3 +109,48 @@ def test_album_page_response_schema():
     assert response.pages == 1
     assert response.current_page == 1
 
+
+def test_immich_albums_endpoint(monkeypatch):
+    from app.api.routes_immich import list_albums
+    from app.schemas.immich import ImmichAlbumPageResponse
+
+    monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
+
+    class TestAlbum:
+        def __init__(self, id: str, name: str):
+            self.id = id
+            self.album_name = name
+            self.asset_count = 8
+            self.thumbnail_asset_id = "asset-1"
+
+    class MockClient:
+        async def list_albums(self):
+            return [
+                TestAlbum(id="album-1", name="Trips"),
+                TestAlbum(id="album-2", name="Animals"),
+                TestAlbum(id="album-3", name="Family"),
+            ]
+
+    monkeypatch.setattr("app.api.routes_immich._build_immich_client", lambda row: MockClient())
+
+    # We call list_albums with db=None, page=1, size=2
+    response = asyncio.run(list_albums(page=1, size=2, db=None))
+
+    assert isinstance(response, ImmichAlbumPageResponse)
+    # Total albums is 3, but count is 2 (page size is 2), sorted alphabetically: Animals, Family, Trips
+    # So page 1 should contain Animals and Family.
+    assert response.total == 3
+    assert response.count == 2
+    assert response.pages == 2
+    assert response.current_page == 1
+    assert response.items[0].album_name == "Animals"
+    assert response.items[1].album_name == "Family"
+
+    # Test page 2
+    response_p2 = asyncio.run(list_albums(page=2, size=2, db=None))
+    assert response_p2.total == 3
+    assert response_p2.count == 1
+    assert response_p2.items[0].album_name == "Trips"
+
+
+

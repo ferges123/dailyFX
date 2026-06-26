@@ -9,6 +9,7 @@ from app.database import get_db
 from app.immich.errors import handle_immich_errors
 from app.immich.models import ImmichPersonFilter, ImmichSearchFilters
 from app.schemas.immich import (
+    ImmichAlbumPageResponse,
     ImmichAssetPageResponse,
     ImmichExifResponse,
     ImmichFilterOptionsResponse,
@@ -35,6 +36,43 @@ async def list_filter_options(
         albums, people = await _list_filter_options(row)
 
     return ImmichFilterOptionsResponse.from_domain(albums=albums, people=people)
+
+
+@router.get("/albums", response_model=ImmichAlbumPageResponse)
+async def list_albums(
+    page: int = 1,
+    size: int = 12,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+) -> ImmichAlbumPageResponse:
+    if page < 1:
+        page = 1
+    if size < 1:
+        size = 12
+
+    row = _get_or_create_settings(db)
+    with handle_immich_errors():
+        client = _build_immich_client(row)
+        all_albums = await client.list_albums()
+
+    # Sort albums alphabetically by name
+    all_albums.sort(key=lambda a: (a.album_name or "").lower())
+
+    total = len(all_albums)
+    pages = (total + size - 1) // size if total > 0 else 1
+
+    start = (page - 1) * size
+    end = start + size
+    sliced_albums = all_albums[start:end]
+
+    return ImmichAlbumPageResponse(
+        items=sliced_albums,
+        total=total,
+        count=len(sliced_albums),
+        pages=pages,
+        current_page=page,
+    )
+
 
 
 @router.get("/assets", response_model=ImmichAssetPageResponse)
