@@ -5,7 +5,7 @@ from app.models.settings import SettingsModel
 from app.services.generation.ai_image import AIImageError, generate_ai_image
 from app.services.generation.modules.ai_common import get_image_bytes
 from app.services.generation.modules.base import GenerationResult
-from app.services.generation.people_context import load_people_context
+from app.services.generation.people_context import load_people_context, infer_gender
 from app.utils.debug_logger import debug_log
 
 
@@ -115,15 +115,20 @@ class AIStyleBaseModule:
             parts.append(f"Album: {album_name}")
         if people_context:
             if getattr(people_context, "names", None):
+                people_names = [name for name in people_context.names if isinstance(name, str) and name.strip()]
                 if anonymize:
-                    people_names = [
-                        f"person {i + 1}"
+                    formatted_names = [
+                        f"person {i + 1} ({infer_gender(name)})"
                         for i, name in enumerate(people_context.names)
                         if isinstance(name, str) and name.strip()
                     ]
                 else:
-                    people_names = [name for name in people_context.names if isinstance(name, str) and name.strip()]
-                names = ", ".join(people_names)
+                    formatted_names = [
+                        f"{name} ({infer_gender(name)})"
+                        for name in people_context.names
+                        if isinstance(name, str) and name.strip()
+                    ]
+                names = ", ".join(formatted_names)
                 if names:
                     parts.append(f"Detected people: {names}")
 
