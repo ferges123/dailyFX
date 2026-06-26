@@ -149,6 +149,16 @@ Returns data used by the filter UI:
 - albums
 - people
 
+### `GET /api/immich/albums`
+
+Returns a paginated list of Immich albums.
+
+Query parameters:
+- `page` (integer, default: 1)
+- `size` (integer, default: 12)
+- `sort_by` (string, one of: `name`, `count`, `created`, `modified`, default: `name`)
+- `sort_order` (string, one of: `asc`, `desc`, default: `asc`)
+
 ### `GET /api/immich/assets`
 
 Returns a search result page from Immich.
@@ -160,6 +170,8 @@ Query parameters:
 - `person_modes`
 - `start_date`
 - `end_date`
+- `page` (integer, default: 1)
+- `size` (integer, default: 24)
 
 ### `GET /api/immich/assets/{asset_id}/thumbnail`
 

@@ -19,7 +19,7 @@ The frontend has been upgraded to the following modern technologies:
 - `Schedules`: create and edit automated jobs by combining filter presets, effect presets, notification presets, and AI vision/image provider settings.
 - `Presets`: manage filter presets, effect presets, notification presets, and web push subscriptions.
 - `AI Effects`: manage built-in and custom AI effects — view, create, edit, duplicate, reset, import, and export prompt-based creative styles. Built-in effects come from seed data and can be hidden or reset to defaults.
-- `Studio`: upload a local photo, select a compatible single-source effect, configure parameters, view a live generation preview, and persist it to history. Features drag-and-drop file ingestion and a memory-safe source image thumbnail preview.
+- `Studio`: upload a local photo, select a compatible single-source effect, configure parameters, view a live generation preview, and persist it to history. Features drag-and-drop file ingestion, a memory-safe source image thumbnail preview, and an integrated **Immich Asset Browser** supporting double-level navigation (browsing/sorting albums by name/count/created/modified date, and server-side pagination for both albums and photos).
 - `Statistics`: tracks effect performance and popularity. Displays high-level KPIs (total runs, rating coverage, best-rated effect, and effects needing attention) alongside a sortable quality dashboard. Categorizes effects into Standard and AI tabs.
 - `Settings`: configure Immich access, API keys, AI budgets, and the default AI prompt.
 - `Login`: shown only when `APP_ACCESS_TOKEN` is enabled on the backend.
