@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { StudioPage } from '../pages/StudioPage';
+import * as client from '../api/client';
 
 vi.mock('../api/client', async () => {
   return {
@@ -27,6 +28,24 @@ vi.mock('../api/client', async () => {
       },
     ]),
     createStudioPreview: vi.fn(),
+    createStudioPreviewFromImmich: vi.fn(),
+    getImmichAssets: vi.fn(async () => ({
+      items: [
+        {
+          id: 'immich-asset-123',
+          original_file_name: 'sunset.jpg',
+          created_at: '2026-06-26T12:00:00Z',
+          updated_at: null,
+          mime_type: 'image/jpeg',
+          asset_type: 'IMAGE',
+          people: [],
+        },
+      ],
+      total: 1,
+      count: 1,
+      next_page: null,
+    })),
+    getImmichAssetThumbnailUrl: vi.fn((id: string) => `/api/immich/assets/${id}/thumbnail`),
     getApiUrl: (path: string) => path,
   };
 });
@@ -102,5 +121,75 @@ describe('StudioPage', () => {
     expect(
       dropdown.querySelector('optgroup[label="Illustration"]'),
     ).toBeInTheDocument();
+  });
+
+  it('submits preview for local file upload', async () => {
+    renderStudio();
+    const dropzone = await screen.findByText('Choose image');
+
+    const file = new File(['dummy content'], 'test-image.jpg', {
+      type: 'image/jpeg',
+    });
+    fireEvent.drop(dropzone, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    const createBtn = screen.getByRole('button', { name: /create preview/i });
+    expect(createBtn).not.toBeDisabled();
+
+    fireEvent.click(createBtn);
+
+    await waitFor(() => {
+      expect(client.createStudioPreview).toHaveBeenCalledWith(
+        file,
+        'ai_anime',
+        {},
+        { aiVisionEnabled: false, promptEnrichmentEnabled: false }
+      );
+    });
+  });
+
+  it('opens Immich browser modal and selects an asset', async () => {
+    renderStudio();
+
+    const browseBtn = await screen.findByRole('button', { name: /browse immich/i });
+    expect(browseBtn).toBeInTheDocument();
+
+    // Click browse button to open modal
+    fireEvent.click(browseBtn);
+
+    // Modal header should be visible
+    expect(await screen.findByText('Select an image from your library as the source for Studio effects')).toBeInTheDocument();
+
+    // Mocked asset thumbnail should render
+    const assetThumb = await screen.findByAltText('sunset.jpg');
+    expect(assetThumb).toBeInTheDocument();
+    expect(assetThumb).toHaveAttribute('src', '/api/immich/assets/immich-asset-123/thumbnail');
+
+    // Click the asset thumbnail to select it
+    fireEvent.click(assetThumb);
+
+    // Modal should close, and the selected asset info should be in the upload zone
+    expect(screen.queryByText('Select an image from your library as the source for Studio effects')).not.toBeInTheDocument();
+    expect(await screen.findByText('sunset.jpg')).toBeInTheDocument();
+    expect(screen.getByText('Immich Photo (Click or drag to change to local upload)')).toBeInTheDocument();
+
+    // Create preview button should be enabled
+    const createBtn = screen.getByRole('button', { name: /create preview/i });
+    expect(createBtn).not.toBeDisabled();
+
+    // Click Create preview
+    fireEvent.click(createBtn);
+
+    await waitFor(() => {
+      expect(client.createStudioPreviewFromImmich).toHaveBeenCalledWith(
+        'immich-asset-123',
+        'ai_anime',
+        {},
+        { aiVisionEnabled: false, promptEnrichmentEnabled: false }
+      );
+    });
   });
 });

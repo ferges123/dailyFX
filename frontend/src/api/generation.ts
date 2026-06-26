@@ -78,6 +78,47 @@ export async function createStudioPreview(
   }
 }
 
+export async function createStudioPreviewFromImmich(
+  assetId: string,
+  effectId: string,
+  config: Record<string, unknown>,
+  options: {
+    aiVisionEnabled?: boolean;
+    promptEnrichmentEnabled?: boolean;
+  } = {},
+): Promise<StudioPreviewResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for preview
+  try {
+    const response = await fetch(`${apiBase}/api/studio/preview/immich`, {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({
+        asset_id: assetId,
+        effect_id: effectId,
+        config,
+        ai_vision_enabled: options.aiVisionEnabled ?? false,
+        prompt_enrichment_enabled: options.promptEnrichmentEnabled ?? false,
+      }),
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      await handleResponseError(response);
+    }
+    return response.json() as Promise<StudioPreviewResponse>;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(408, 'Studio preview request timed out (60s limit)');
+    }
+    throw error;
+  }
+}
+
 export function getGenerationExamples() {
   return request<GenerationExampleInfo[]>('/api/generation/examples');
 }

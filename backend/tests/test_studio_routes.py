@@ -285,3 +285,109 @@ def test_studio_preview_ai_vision_resolves_provider_from_schedule(
     passed_settings = analyze_mock.call_args[0][0]
     assert passed_settings.default_ai_provider == "xiaomi"
     assert passed_settings.default_ai_model == "mimo-v2.5"
+
+
+def test_studio_preview_immich_requires_auth_when_auth_enabled(monkeypatch) -> None:
+    from app.config import get_settings
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "test-access-token")
+    get_settings.cache_clear()
+
+    try:
+        client = TestClient(app)
+        response = client.post("/api/studio/preview/immich", json={"asset_id": "asset-1", "effect_id": "pencil_sketch"})
+        assert response.status_code == 401
+    finally:
+        get_settings.cache_clear()
+
+
+def test_studio_preview_immich_succeeds(authenticated_client: TestClient, db_session) -> None:
+    class MockImmichClient:
+        async def get_asset_info(self, asset_id: str):
+            assert asset_id == "immich-asset-1"
+            return {
+                "id": "immich-asset-1",
+                "originalFileName": "test-photo.jpg",
+                "fileCreatedAt": "2026-06-26T00:00:00Z",
+                "fileModifiedAt": "2026-06-26T00:00:00Z",
+                "mimeType": "image/jpeg",
+                "type": "IMAGE",
+            }
+
+        async def get_asset_data(self, asset_id: str):
+            assert asset_id == "immich-asset-1"
+            return jpeg_upload_bytes()
+
+    with patch("app.api.routes_studio.build_immich_client", return_value=MockImmichClient()):
+        response = authenticated_client.post(
+            "/api/studio/preview/immich",
+            json={
+                "asset_id": "immich-asset-1",
+                "effect_id": "pencil_sketch",
+                "config": {},
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["task_id"]
+    assert payload["image_url"] == f"/api/generation/history/{payload['task_id']}/image"
+    assert payload["history_url"] == f"/history/{payload['task_id']}"
+
+    row = db_session.query(GenerationHistoryModel).filter_by(task_id=payload["task_id"]).one()
+    assert row.status == "PENDING_REVIEW"
+    assert row.generation_type == "pencil_sketch"
+    assert row.output_path
+    assert Path(row.output_path).exists()
+    assert json.loads(row.source_asset_ids) == ["immich-asset-1"]
+
+
+def test_studio_preview_immich_rejects_non_image(authenticated_client: TestClient) -> None:
+    class MockImmichClient:
+        async def get_asset_info(self, asset_id: str):
+            return {
+                "id": "immich-asset-1",
+                "originalFileName": "test-video.mp4",
+                "fileCreatedAt": "2026-06-26T00:00:00Z",
+                "fileModifiedAt": "2026-06-26T00:00:00Z",
+                "mimeType": "video/mp4",
+                "type": "VIDEO",
+            }
+
+    with patch("app.api.routes_studio.build_immich_client", return_value=MockImmichClient()):
+        response = authenticated_client.post(
+            "/api/studio/preview/immich",
+            json={
+                "asset_id": "immich-asset-1",
+                "effect_id": "pencil_sketch",
+                "config": {},
+            },
+        )
+
+    assert response.status_code == 400
+    assert "image" in response.json()["detail"].lower()
+
+
+def test_studio_preview_immich_rejects_unsupported_effect(authenticated_client: TestClient) -> None:
+    class MockImmichClient:
+        async def get_asset_info(self, asset_id: str):
+            return {
+                "id": "immich-asset-1",
+                "originalFileName": "test-photo.jpg",
+                "fileCreatedAt": "2026-06-26T00:00:00Z",
+                "fileModifiedAt": "2026-06-26T00:00:00Z",
+                "mimeType": "image/jpeg",
+                "type": "IMAGE",
+            }
+
+    with patch("app.api.routes_studio.build_immich_client", return_value=MockImmichClient()):
+        response = authenticated_client.post(
+            "/api/studio/preview/immich",
+            json={
+                "asset_id": "immich-asset-1",
+                "effect_id": "collage",
+                "config": {},
+            },
+        )
+
+    assert response.status_code == 400
+    assert "not supported" in response.json()["detail"].lower()

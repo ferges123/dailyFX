@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ImagePlus, WandSparkles, History } from 'lucide-react';
+import { ImagePlus, WandSparkles, History, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import {
   createStudioPreview,
+  createStudioPreviewFromImmich,
   getStudioModules,
+  getImmichAssetThumbnailUrl,
   type GenerationModuleInfo,
   type StudioPreviewResponse,
   type GenerationHistoryEntry,
+  type ImmichAsset,
 } from '../api/client';
 import { InlineError, SectionCard } from '../components/FormUI';
 import { InlineSpinner } from '../components/ErrorUI';
@@ -16,9 +19,16 @@ import { ModuleConfigEditor } from '../components/EffectsComponents';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
 import { getAIEffectGroupOrder } from './AIEffects/AIEffectCard';
+import { ImmichAssetBrowserModal } from './Studio/ImmichAssetBrowserModal';
+
+type StudioSource =
+  | { type: 'local'; file: File }
+  | { type: 'immich'; asset: ImmichAsset }
+  | null;
 
 export function StudioPage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [source, setSource] = useState<StudioSource>(null);
+  const [isImmichBrowserOpen, setIsImmichBrowserOpen] = useState(false);
   const [selectedEffect, setSelectedEffect] = useState('');
   const [configByEffect, setConfigByEffect] = useState<
     Record<string, Record<string, unknown>>
@@ -37,7 +47,7 @@ export function StudioPage() {
       status: 'PENDING_REVIEW',
       title: preview.title,
       summary: preview.summary,
-      source_asset_ids: '[]',
+      source_asset_ids: source?.type === 'immich' ? JSON.stringify([source.asset.id]) : '[]',
       output_path: null,
       image_url: preview.image_url,
       provider: null,
@@ -57,7 +67,7 @@ export function StudioPage() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-  }, [preview]);
+  }, [preview, source]);
 
   useEffect(() => {
     if (!preview) {
@@ -69,10 +79,11 @@ export function StudioPage() {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!file) {
+    if (!source || source.type !== 'local') {
       setFilePreviewUrl(null);
       return;
     }
+    const { file } = source;
     const nameLower = file.name.toLowerCase();
     const isHeic =
       nameLower.endsWith('.heic') ||
@@ -88,7 +99,7 @@ export function StudioPage() {
     return () => {
       URL.revokeObjectURL(url);
     };
-  }, [file]);
+  }, [source]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -105,7 +116,7 @@ export function StudioPage() {
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
+      setSource({ type: 'local', file: e.dataTransfer.files[0] });
       setPreview(null);
     }
   };
@@ -152,13 +163,20 @@ export function StudioPage() {
 
   const previewMutation = useMutation({
     mutationFn: () => {
-      if (!file || !activeEffectId) {
+      if (!source || !activeEffectId) {
         throw new Error('Choose an image and effect first');
       }
-      return createStudioPreview(file, activeEffectId, activeConfig, {
-        aiVisionEnabled,
-        promptEnrichmentEnabled,
-      });
+      if (source.type === 'local') {
+        return createStudioPreview(source.file, activeEffectId, activeConfig, {
+          aiVisionEnabled,
+          promptEnrichmentEnabled,
+        });
+      } else {
+        return createStudioPreviewFromImmich(source.asset.id, activeEffectId, activeConfig, {
+          aiVisionEnabled,
+          promptEnrichmentEnabled,
+        });
+      }
     },
     onSuccess: (result) => setPreview(result),
   });
@@ -197,11 +215,28 @@ export function StudioPage() {
               accept="image/png,image/jpeg,image/jpg,image/gif,image/heic,image/heif"
               className="sr-only"
               onChange={(event) => {
-                setFile(event.target.files?.[0] ?? null);
-                setPreview(null);
+                const selectedFile = event.target.files?.[0];
+                if (selectedFile) {
+                  setSource({ type: 'local', file: selectedFile });
+                  setPreview(null);
+                }
               }}
             />
-            {filePreviewUrl ? (
+            {source?.type === 'immich' ? (
+              <div className="grid justify-items-center gap-2">
+                <img
+                  src={getImmichAssetThumbnailUrl(source.asset.id, 'preview')}
+                  alt="Source preview"
+                  className="max-h-32 rounded-lg object-contain shadow-sm border border-stone-200"
+                />
+                <span className="font-semibold text-stone-900 text-sm">
+                  {source.asset.original_file_name || 'Immich Photo'}
+                </span>
+                <span className="text-xs text-stone-500">
+                  Immich Photo (Click or drag to change to local upload)
+                </span>
+              </div>
+            ) : filePreviewUrl && source?.type === 'local' ? (
               <div className="grid justify-items-center gap-2">
                 <img
                   src={filePreviewUrl}
@@ -209,23 +244,23 @@ export function StudioPage() {
                   className="max-h-32 rounded-lg object-contain shadow-sm border border-stone-200"
                 />
                 <span className="font-semibold text-stone-900 text-sm">
-                  {file?.name}
+                  {source.file.name}
                 </span>
                 <span className="text-xs text-stone-500">
-                  {file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB (Click
+                  {(source.file.size / (1024 * 1024)).toFixed(2)} MB (Click
                   or drag to change)
                 </span>
               </div>
-            ) : file ? (
+            ) : source?.type === 'local' ? (
               <span className="grid justify-items-center gap-2 text-sm text-stone-600">
                 <ImagePlus size={24} className="text-emerald-600" />
                 <span className="font-semibold text-stone-900">
-                  {file.name}
+                  {source.file.name}
                 </span>
                 <span className="text-xs text-stone-500">
-                  {(file.size / (1024 * 1024)).toFixed(2)} MB{' '}
-                  {file.name.toLowerCase().endsWith('.heic') ||
-                  file.name.toLowerCase().endsWith('.heif')
+                  {(source.file.size / (1024 * 1024)).toFixed(2)} MB{' '}
+                  {source.file.name.toLowerCase().endsWith('.heic') ||
+                  source.file.name.toLowerCase().endsWith('.heif')
                     ? '(HEIC format - preview not available)'
                     : ''}
                 </span>
@@ -243,6 +278,15 @@ export function StudioPage() {
               </span>
             )}
           </label>
+
+          <button
+            type="button"
+            onClick={() => setIsImmichBrowserOpen(true)}
+            className="app-button-secondary w-full justify-center"
+          >
+            <ImageIcon size={16} />
+            Browse Immich Library
+          </button>
 
           <label className="grid gap-1.5 text-sm font-semibold text-stone-700">
             Effect
@@ -318,7 +362,7 @@ export function StudioPage() {
           <button
             type="button"
             className="app-button-primary w-full justify-center"
-            disabled={!file || !activeEffectId || previewMutation.isPending}
+            disabled={!source || !activeEffectId || previewMutation.isPending}
             onClick={() => previewMutation.mutate()}
           >
             {previewMutation.isPending ? (
@@ -368,6 +412,16 @@ export function StudioPage() {
           exif={null}
         />
       )}
+
+      <ImmichAssetBrowserModal
+        isOpen={isImmichBrowserOpen}
+        onClose={() => setIsImmichBrowserOpen(false)}
+        onSelectAsset={(asset) => {
+          setSource({ type: 'immich', asset });
+          setPreview(null);
+          setIsImmichBrowserOpen(false);
+        }}
+      />
     </section>
   );
 }
