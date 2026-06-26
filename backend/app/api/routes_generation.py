@@ -562,7 +562,13 @@ async def clear_generation_cache(db: Session = Depends(get_db), _: None = Depend
 
 
 @router.post("/history/{task_id}/like", response_model=GenerationHistoryResponse)
-async def like_generation(task_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+async def like_generation(
+    task_id: str,
+    review_token: str | None = None,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
+):
+    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Entry not found")
@@ -582,7 +588,13 @@ async def like_generation(task_id: str, db: Session = Depends(get_db), _: None =
 
 
 @router.post("/history/{task_id}/dislike", response_model=GenerationHistoryResponse)
-async def dislike_generation(task_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+async def dislike_generation(
+    task_id: str,
+    review_token: str | None = None,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
+):
+    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Entry not found")

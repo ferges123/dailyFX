@@ -263,6 +263,45 @@ button:disabled{opacity:.45;cursor:not-allowed}
   align-items: center;
   gap: 8px;
 }
+.lb-like-btn, .lb-dislike-btn {
+  position: relative;
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #292524;
+  color: #d6d3d1;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, color 0.15s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+.lb-like-btn:hover:not(:disabled), .lb-dislike-btn:hover:not(:disabled) {
+  background: #44403c;
+  color: #fff;
+}
+.lb-like-btn:active:not(:disabled), .lb-dislike-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.lb-like-btn.liked {
+  background: #064e3b;
+  color: #34d399;
+}
+.lb-like-btn.liked:hover {
+  background: #047857;
+  color: #fff;
+}
+.lb-dislike-btn.disliked {
+  background: #4c0519;
+  color: #fb7185;
+}
+.lb-dislike-btn.disliked:hover {
+  background: #be123c;
+  color: #fff;
+}
 .lb-share-btn {
   position: relative;
   display: inline-flex;
@@ -582,6 +621,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <!-- Footer Download & Share Actions -->
       <div class="lb-footer">
         <div class="lb-footer-actions">
+          <button id="lb-like" class="lb-like-btn" title="Like image">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+          </button>
+          <button id="lb-dislike" class="lb-dislike-btn" title="Dislike image">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm12-5h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+          </button>
           <button id="lb-share" class="lb-share-btn" title="Share image">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             <span class="lb-share-tooltip" id="lb-share-tooltip">Copied!</span>
@@ -620,11 +665,15 @@ const timelineEl = document.getElementById('timeline');
 const tokenRow = document.getElementById('token-row');
 const tokenInput = document.getElementById('token');
 
+const lbLikeBtn = document.getElementById('lb-like');
+const lbDislikeBtn = document.getElementById('lb-dislike');
+
 let authRequired = false;
 let immichUrl = '';
 let currentEntry = null;
 let selectedExifData = null;
 let eTitle = 'image';
+let liked = null;
 
 let showOriginalMain = false;
 let showOriginalLightbox = false;
@@ -1032,6 +1081,8 @@ async function load() {
     if (!rEntry.ok) { titleEl.textContent = 'Generation not found'; return; }
     const e = await rEntry.json();
     currentEntry = e;
+    liked = e.liked ?? null;
+    updateLikeDislikeUI();
     eTitle = e.title || 'image';
 
     // Parse EXIF from config_json if available
@@ -1371,6 +1422,56 @@ document.getElementById('lb-download').addEventListener('click', async (e) => {
     btn.innerHTML = originalText;
   }
 });
+
+function updateLikeDislikeUI() {
+  if (!lbLikeBtn || !lbDislikeBtn) return;
+  lbLikeBtn.classList.remove('liked');
+  lbDislikeBtn.classList.remove('disliked');
+  if (liked === true) {
+    lbLikeBtn.classList.add('liked');
+  } else if (liked === false) {
+    lbDislikeBtn.classList.add('disliked');
+  }
+}
+
+async function handleLike(e) {
+  if (e) e.stopPropagation();
+  if (!currentEntry) return;
+  try {
+    const res = await fetch(apiUrl(`/api/generation/history/${taskId}/like`), {
+      method: 'POST',
+      headers: headers()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      liked = data.liked ?? null;
+      updateLikeDislikeUI();
+    }
+  } catch (err) {
+    console.error('Failed to like:', err);
+  }
+}
+
+async function handleDislike(e) {
+  if (e) e.stopPropagation();
+  if (!currentEntry) return;
+  try {
+    const res = await fetch(apiUrl(`/api/generation/history/${taskId}/dislike`), {
+      method: 'POST',
+      headers: headers()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      liked = data.liked ?? null;
+      updateLikeDislikeUI();
+    }
+  } catch (err) {
+    console.error('Failed to dislike:', err);
+  }
+}
+
+if (lbLikeBtn) lbLikeBtn.addEventListener('click', handleLike);
+if (lbDislikeBtn) lbDislikeBtn.addEventListener('click', handleDislike);
 </script>
 </body>
 </html>
