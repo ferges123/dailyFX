@@ -91,3 +91,12 @@ class ImmichFilterOptionsResponse(_ImmichResponseModel):
         people: list[ImmichPersonSummaryModel],
     ) -> Self:
         return cls.model_validate({"albums": albums, "people": people})
+
+
+class ImmichAlbumPageResponse(_ImmichResponseModel):
+    items: list[ImmichAlbumSummary]
+    total: int
+    count: int
+    pages: int
+    current_page: int
+

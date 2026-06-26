@@ -84,3 +84,28 @@ def test_immich_assets_contract(monkeypatch):
         "count": 1,
         "next_page": None,
     }
+
+
+def test_album_page_response_schema():
+    from app.schemas.immich import ImmichAlbumPageResponse
+    from app.immich.models import ImmichAlbumSummary
+
+    data = {
+        "items": [
+            ImmichAlbumSummary(
+                id="album-1",
+                album_name="Trips",
+                asset_count=8,
+                thumbnail_asset_id="asset-1",
+            )
+        ],
+        "total": 1,
+        "count": 1,
+        "pages": 1,
+        "current_page": 1,
+    }
+    response = ImmichAlbumPageResponse.model_validate(data)
+    assert response.total == 1
+    assert response.pages == 1
+    assert response.current_page == 1
+
