@@ -4,7 +4,6 @@ import hmac
 import logging
 
 logger = logging.getLogger(__name__)
-import json
 import secrets
 from datetime import datetime, timezone
 
