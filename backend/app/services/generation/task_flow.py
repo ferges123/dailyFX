@@ -81,6 +81,20 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
         schedule_id=schedule_id,
         album_name=row.album_name,
     )
+
+    from app.workers.scheduler import _compute_next_run
+    from datetime import datetime, timezone
+
+    now_utc = datetime.now(timezone.utc)
+    row.last_run_at = now_utc
+    row.last_task_id = task_id
+    row.last_tick_status = "queued"
+    row.last_tick_reason = "generation triggered manually"
+    if row.enabled:
+        row.next_run_at = _compute_next_run(row.schedule_expr, now_utc, now_utc)
+    db.add(row)
+    db.commit()
+
     return ScheduleRunNowResponse(message="Generation triggered", task_id=task_id)
 
 

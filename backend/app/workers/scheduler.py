@@ -222,7 +222,7 @@ async def _run_queued_task_in_background(task_id: str) -> None:
         if result["status"] == "failed":
             logger.warning("Background task %s failed: %s", task_id, result.get("error"))
 
-        if task_id.startswith("auto-s"):
+        if task_id.startswith("auto-s") or task_id.startswith("man-"):
             payload = parse_run_now_task_payload(queued_task.payload_json)
             if payload.schedule_id:
                 from app.models.schedule import ScheduleModel
