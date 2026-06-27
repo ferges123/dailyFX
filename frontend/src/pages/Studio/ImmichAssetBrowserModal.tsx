@@ -275,12 +275,12 @@ export function ImmichAssetBrowserModal({
                         <select
                           id="album-sort"
                           value={`${sortBy}-${sortOrder}`}
-                          onChange={(e) => {
-                            const [by, order] = e.target.value.split('-');
-                            setSortBy(by as any);
-                            setSortOrder(order as any);
-                            setAlbumsPage(1);
-                          }}
+                           onChange={(e) => {
+                             const [by, order] = e.target.value.split('-');
+                             setSortBy(by as 'name' | 'count' | 'created' | 'modified');
+                             setSortOrder(order as 'asc' | 'desc');
+                             setAlbumsPage(1);
+                           }}
                           className="rounded-xl border border-stone-250 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:border-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-700 transition cursor-pointer"
                         >
                           <option value="name-asc">Name (A-Z)</option>
