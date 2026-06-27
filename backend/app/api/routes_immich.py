@@ -62,7 +62,7 @@ async def list_albums(
         client = _build_immich_client(row)
         all_albums = await client.list_albums()
 
-    reverse = (sort_order == "desc")
+    reverse = sort_order == "desc"
 
     if sort_by == "count":
         all_albums.sort(key=lambda a: a.asset_count, reverse=reverse)

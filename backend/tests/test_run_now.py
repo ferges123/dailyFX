@@ -22,6 +22,7 @@ def _setup_run_now_db():
     db.query(GenerationHistoryModel).delete()
     db.query(GenerationTaskModel).delete()
     from app.models.effect_preset import EffectPresetModel
+
     db.query(EffectPresetModel).delete()
     db.commit()
 

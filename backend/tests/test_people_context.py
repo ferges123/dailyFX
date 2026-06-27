@@ -46,6 +46,7 @@ def test_anonymized_prompt_hint_basic():
 
 def test_build_people_context_adds_gender():
     from app.services.generation.people_context import build_people_context
+
     source = {
         "people": [
             {
@@ -61,7 +62,7 @@ def test_build_people_context_adds_gender():
                         "boundingBoxX2": 20,
                         "boundingBoxY2": 20,
                     }
-                ]
+                ],
             }
         ]
     }
@@ -71,9 +72,9 @@ def test_build_people_context_adds_gender():
     assert "Kasia (female) is in the upper left" in context.prompt_hint
 
 
-
 def test_infer_gender_library():
     from app.services.generation.people_context import infer_gender
+
     # Test names that should be easily recognized by global-gender-predictor
     assert infer_gender("John") == "male"
     assert infer_gender("Sarah") == "female"
@@ -81,6 +82,7 @@ def test_infer_gender_library():
 
 def test_infer_gender_heuristics_polish():
     from app.services.generation.people_context import infer_gender
+
     # Test Polish names and endings
     assert infer_gender("Kasia") == "female"
     assert infer_gender("Katarzyna Kowalska") == "female"
@@ -90,6 +92,7 @@ def test_infer_gender_heuristics_polish():
 
 def test_infer_gender_exceptions():
     from app.services.generation.people_context import infer_gender
+
     # Test Polish exceptions ending in 'a'
     assert infer_gender("Kuba") == "male"
     assert infer_gender("Tata") == "male"
@@ -97,4 +100,3 @@ def test_infer_gender_exceptions():
     assert infer_gender("Mama") == "female"
     assert infer_gender("Babcia") == "female"
     assert infer_gender("Luca") == "male"
-

@@ -130,9 +130,27 @@ def test_immich_albums_endpoint(monkeypatch):
     class MockClient:
         async def list_albums(self):
             return [
-                TestAlbum(id="album-1", name="Trips", count=10, created_at="2026-06-01T12:00:00Z", modified="2026-06-25T12:00:00Z"),
-                TestAlbum(id="album-2", name="Animals", count=5, created_at="2026-06-10T12:00:00Z", modified="2026-06-20T12:00:00Z"),
-                TestAlbum(id="album-3", name="Family", count=20, created_at="2026-05-20T12:00:00Z", modified="2026-06-26T12:00:00Z"),
+                TestAlbum(
+                    id="album-1",
+                    name="Trips",
+                    count=10,
+                    created_at="2026-06-01T12:00:00Z",
+                    modified="2026-06-25T12:00:00Z",
+                ),
+                TestAlbum(
+                    id="album-2",
+                    name="Animals",
+                    count=5,
+                    created_at="2026-06-10T12:00:00Z",
+                    modified="2026-06-20T12:00:00Z",
+                ),
+                TestAlbum(
+                    id="album-3",
+                    name="Family",
+                    count=20,
+                    created_at="2026-05-20T12:00:00Z",
+                    modified="2026-06-26T12:00:00Z",
+                ),
             ]
 
     monkeypatch.setattr("app.api.routes_immich._build_immich_client", lambda row: MockClient())

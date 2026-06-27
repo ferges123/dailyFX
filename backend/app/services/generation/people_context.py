@@ -7,10 +7,10 @@ from app.immich.models import ImmichAssetSummary
 
 try:
     from global_gender_predictor import GlobalGenderPredictor
+
     _predictor = GlobalGenderPredictor()
 except ImportError:
     _predictor = None
-
 
 
 @dataclass(frozen=True)
@@ -278,7 +278,6 @@ def build_people_context(source: ImmichAssetSummary | Any) -> PeopleContext | No
     return PeopleContext(names=names, faces=faces, prompt_hint=prompt_hint)
 
 
-
 async def load_people_context(client: Any, asset: ImmichAssetSummary | Any) -> PeopleContext | None:
     context = build_people_context(asset)
     needs_faces = bool(context and context.names and not context.faces)
@@ -323,8 +322,16 @@ def infer_gender(name: str) -> str:
     # Pre-heuristics: check highly specific familial/explicit terms first,
     # because external predictor may incorrectly classify them based on other languages.
     male_exceptions = {
-        "kuba", "tata", "dziadek", "wujek", "luca", "andrea", "barnaba",
-        "kosma", "bonawentura", "mustafa"
+        "kuba",
+        "tata",
+        "dziadek",
+        "wujek",
+        "luca",
+        "andrea",
+        "barnaba",
+        "kosma",
+        "bonawentura",
+        "mustafa",
     }
     female_terms = {"mama", "babcia", "ciocia", "córka", "zona", "żona", "siostra"}
 
@@ -347,5 +354,3 @@ def infer_gender(name: str) -> str:
         return "female"
 
     return "male"
-
-

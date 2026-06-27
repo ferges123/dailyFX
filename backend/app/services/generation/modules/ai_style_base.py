@@ -5,7 +5,7 @@ from app.models.settings import SettingsModel
 from app.services.generation.ai_image import AIImageError, generate_ai_image
 from app.services.generation.modules.ai_common import get_image_bytes
 from app.services.generation.modules.base import GenerationResult
-from app.services.generation.people_context import load_people_context, infer_gender
+from app.services.generation.people_context import infer_gender, load_people_context
 from app.utils.debug_logger import debug_log
 
 

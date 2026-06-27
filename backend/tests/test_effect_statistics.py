@@ -42,6 +42,7 @@ def db_session():
     finally:
         db.close()
 
+
 def add_history_with_stats(
     db: Session,
     *,

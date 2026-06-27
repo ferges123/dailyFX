@@ -82,8 +82,9 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
         album_name=row.album_name,
     )
 
-    from app.workers.scheduler import _compute_next_run
     from datetime import datetime, timezone
+
+    from app.workers.scheduler import _compute_next_run
 
     now_utc = datetime.now(timezone.utc)
     row.last_run_at = now_utc
