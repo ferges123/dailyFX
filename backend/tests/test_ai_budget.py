@@ -497,3 +497,24 @@ def test_generate_ai_image_openai_crops_image(monkeypatch):
     sent_file = fake_client.requests[0]["files"][0][1][1]
     sent_img = Image.open(BytesIO(sent_file))
     assert sent_img.size == (200, 200)
+
+
+def test_encode_image_for_provider_byteplus_resolution_limit():
+    from PIL import Image
+    from io import BytesIO
+    # Create a 3000x3000px test image
+    img = Image.new("RGB", (3000, 3000), color="red")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    large_image_bytes = buf.getvalue()
+
+    # Encode for BytePlus (max 2048)
+    bp_bytes, _ = encode_image_for_provider(large_image_bytes, "byteplus")
+    with Image.open(BytesIO(bp_bytes)) as bp_img:
+        assert bp_img.size == (2048, 2048)
+
+    # Encode for OpenAI (max 1024)
+    oa_bytes, _ = encode_image_for_provider(large_image_bytes, "openai")
+    with Image.open(BytesIO(oa_bytes)) as oa_img:
+        assert oa_img.size == (1024, 1024)
+

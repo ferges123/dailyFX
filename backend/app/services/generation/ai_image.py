@@ -48,10 +48,9 @@ def _shorten(value: str, limit: int = 500) -> str:
     return value[:limit].rstrip() + "..."
 
 
-def _load_input_image(image_bytes: bytes) -> Image.Image:
+def _load_input_image(image_bytes: bytes, max_size: int = 1024) -> Image.Image:
     image = Image.open(BytesIO(image_bytes))
     w, h = image.size
-    max_size = 1024
     if w > max_size or h > max_size:
         if w > h:
             new_w = max_size
@@ -114,15 +113,15 @@ def _extract_byteplus_error(response: httpx.Response) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def _normalize_input_image(image_bytes: bytes) -> tuple[bytes, str]:
-    image = _load_input_image(image_bytes)
+def _normalize_input_image(image_bytes: bytes, max_size: int = 1024) -> tuple[bytes, str]:
+    image = _load_input_image(image_bytes, max_size=max_size)
     out = BytesIO()
     image.save(out, format="PNG", optimize=True)
     return out.getvalue(), "image/png"
 
 
-def _normalize_input_image_as_jpeg(image_bytes: bytes, quality: int = 92) -> tuple[bytes, str]:
-    image = _load_input_image(image_bytes)
+def _normalize_input_image_as_jpeg(image_bytes: bytes, quality: int = 92, max_size: int = 1024) -> tuple[bytes, str]:
+    image = _load_input_image(image_bytes, max_size=max_size)
     out = BytesIO()
     image.save(out, format="JPEG", quality=quality, optimize=True)
     return out.getvalue(), "image/jpeg"
@@ -131,10 +130,11 @@ def _normalize_input_image_as_jpeg(image_bytes: bytes, quality: int = 92) -> tup
 def encode_image_for_provider(image_bytes: bytes, provider: str) -> tuple[bytes, str]:
     normalized_provider = (provider or "").strip().lower()
     image_format = PROVIDER_IMAGE_FORMATS.get(normalized_provider)
+    max_size = 2048 if normalized_provider == "byteplus" else 1024
     if image_format == "png":
-        return _normalize_input_image(image_bytes)
+        return _normalize_input_image(image_bytes, max_size=max_size)
     if image_format == "jpeg":
-        return _normalize_input_image_as_jpeg(image_bytes)
+        return _normalize_input_image_as_jpeg(image_bytes, max_size=max_size)
     raise AIImageError(f"Unsupported AI provider: {provider}")
 
 
