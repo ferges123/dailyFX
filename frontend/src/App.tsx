@@ -76,7 +76,6 @@ const StatisticsPage = lazy(() =>
   })),
 );
 
-
 function PageLoadingFallback() {
   return (
     <div className="rounded-lg border border-stone-200 bg-white/70 px-4 py-4 text-sm font-medium text-stone-600">
@@ -126,7 +125,6 @@ function AppShell() {
   const isPresetsRoute = location.pathname.startsWith('/presets');
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isStatisticsRoute = location.pathname.startsWith('/statistics');
-
 
   function handleLogout() {
     setToken(null);
@@ -221,7 +219,6 @@ function AppShell() {
           >
             Settings
           </SidebarNavLink>
-
         </nav>
 
         <div className="mt-auto pt-6">
@@ -349,7 +346,7 @@ function AppShell() {
             </Route>
             <Route
               path="/statistics"
-              element={<Navigate to="/statistics/standard" replace />}
+              element={<Navigate to="/statistics/ai" replace />}
             />
             <Route
               path="/statistics/:tab"
@@ -393,7 +390,11 @@ function AppShell() {
         <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
           <Camera size={18} />
         </BottomNavLink>
-        <BottomNavLink to="/statistics" active={isStatisticsRoute} label="Stats">
+        <BottomNavLink
+          to="/statistics"
+          active={isStatisticsRoute}
+          label="Stats"
+        >
           <BarChart3 size={18} />
         </BottomNavLink>
         <BottomNavLink
@@ -403,7 +404,6 @@ function AppShell() {
         >
           <Settings size={18} />
         </BottomNavLink>
-
       </nav>
     </div>
   );

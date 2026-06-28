@@ -24,6 +24,8 @@ from app.schemas.generation import (
     GenerationHistoryResponse,
     GenerationModuleResponse,
     GenerationTaskStatusResponse,
+    TrendDataPoint,
+    TrendsResponse,
 )
 from app.security import authorize_review_access, require_auth
 from app.services.generation.ai_effects import get_seed_hidden_map
@@ -751,3 +753,73 @@ def get_effect_stats(db: Session = Depends(get_db), _: None = Depends(require_au
             )
 
     return results
+
+
+@router.get("/stats/trends", response_model=TrendsResponse)
+def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    from app.models.effect_statistics_log import EffectStatisticsLogModel
+    from app.models.generation_history import GenerationHistoryModel
+
+    # Get daily trends for last 30 days
+    daily_query = (
+        db.query(
+            sa.func.date(GenerationHistoryModel.created_at).label("date"),
+            sa.func.count(GenerationHistoryModel.id).label("total"),
+            sa.func.sum(sa.case((GenerationHistoryModel.status == "UPLOADED", 1), else_=0)).label("accepted"),
+            sa.func.sum(sa.case((GenerationHistoryModel.status == "REJECTED", 1), else_=0)).label("rejected"),
+            sa.func.sum(sa.case((GenerationHistoryModel.status == "FAILED", 1), else_=0)).label("failed"),
+            sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(True), 1), else_=0)).label("likes"),
+            sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
+        )
+        .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
+        .filter(GenerationHistoryModel.created_at >= sa.func.date("now", "-30 days"))
+        .group_by(sa.func.date(GenerationHistoryModel.created_at))
+        .order_by(sa.func.date(GenerationHistoryModel.created_at))
+        .all()
+    )
+
+    daily = [
+        TrendDataPoint(
+            date=str(row.date),
+            total=row.total or 0,
+            accepted=row.accepted or 0,
+            rejected=row.rejected or 0,
+            failed=row.failed or 0,
+            likes=row.likes or 0,
+            dislikes=row.dislikes or 0,
+        )
+        for row in daily_query
+    ]
+
+    # Get weekly trends for last 12 weeks
+    weekly_query = (
+        db.query(
+            sa.func.strftime("%Y-W%W", GenerationHistoryModel.created_at).label("week"),
+            sa.func.count(GenerationHistoryModel.id).label("total"),
+            sa.func.sum(sa.case((GenerationHistoryModel.status == "UPLOADED", 1), else_=0)).label("accepted"),
+            sa.func.sum(sa.case((GenerationHistoryModel.status == "REJECTED", 1), else_=0)).label("rejected"),
+            sa.func.sum(sa.case((GenerationHistoryModel.status == "FAILED", 1), else_=0)).label("failed"),
+            sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(True), 1), else_=0)).label("likes"),
+            sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
+        )
+        .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
+        .filter(GenerationHistoryModel.created_at >= sa.func.date("now", "-84 days"))
+        .group_by(sa.func.strftime("%Y-W%W", GenerationHistoryModel.created_at))
+        .order_by(sa.func.strftime("%Y-W%W", GenerationHistoryModel.created_at))
+        .all()
+    )
+
+    weekly = [
+        TrendDataPoint(
+            date=row.week,
+            total=row.total or 0,
+            accepted=row.accepted or 0,
+            rejected=row.rejected or 0,
+            failed=row.failed or 0,
+            likes=row.likes or 0,
+            dislikes=row.dislikes or 0,
+        )
+        for row in weekly_query
+    ]
+
+    return TrendsResponse(daily=daily, weekly=weekly)

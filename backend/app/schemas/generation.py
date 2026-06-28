@@ -156,3 +156,18 @@ class EffectStatsResponse(BaseModel):
     rejected_runs: int
     failed_runs: int
     last_run_at: datetime | None = None
+
+
+class TrendDataPoint(BaseModel):
+    date: str
+    total: int
+    accepted: int
+    rejected: int
+    failed: int
+    likes: int
+    dislikes: int
+
+
+class TrendsResponse(BaseModel):
+    daily: list[TrendDataPoint]
+    weekly: list[TrendDataPoint]

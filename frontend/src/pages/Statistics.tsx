@@ -13,6 +13,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
+import { TrendsCharts } from './Statistics/TrendsCharts';
 
 function formatLastRun(value: string | null) {
   if (!value) return 'Never';
@@ -143,29 +144,11 @@ export function StatisticsPage() {
         </div>
       </div>
 
+      <TrendsCharts />
+
       <div className="grid gap-4">
-        {/* Tabs for Standard and AI Effects */}
+        {/* Tabs for AI and Standard Effects */}
         <div className="flex gap-1.5 border-b border-stone-200/70 pb-2">
-          <button
-            type="button"
-            onClick={() => navigate('/statistics/standard')}
-            className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
-              activeTab === 'standard'
-                ? 'border-emerald-600 bg-transparent text-emerald-700'
-                : 'border-transparent bg-transparent text-stone-500 hover:text-stone-800'
-            }`}
-          >
-            <span>Standard</span>
-            <span
-              className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
-                activeTab === 'standard'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-stone-100 text-stone-500'
-              }`}
-            >
-              {standardStats.length}
-            </span>
-          </button>
           <button
             type="button"
             onClick={() => navigate('/statistics/ai')}
@@ -184,6 +167,26 @@ export function StatisticsPage() {
               }`}
             >
               {aiStats.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/statistics/standard')}
+            className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
+              activeTab === 'standard'
+                ? 'border-emerald-600 bg-transparent text-emerald-700'
+                : 'border-transparent bg-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>Standard</span>
+            <span
+              className={`inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-colors ${
+                activeTab === 'standard'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-stone-100 text-stone-500'
+              }`}
+            >
+              {standardStats.length}
             </span>
           </button>
         </div>

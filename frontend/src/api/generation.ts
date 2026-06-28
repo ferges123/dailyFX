@@ -21,6 +21,7 @@ import {
   type AIEffectExport,
   type Schedule,
   type EffectStats,
+  type TrendsResponse,
 } from './types';
 
 export function getGenerationModules() {
@@ -211,6 +212,9 @@ export function getEffectStats() {
   return request<EffectStats[]>('/api/generation/stats/effects');
 }
 
+export function getStatsTrends() {
+  return request<TrendsResponse>('/api/generation/stats/trends');
+}
 
 // Filter presets
 export const getFilterPresets = () =>

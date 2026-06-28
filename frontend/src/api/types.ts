@@ -244,6 +244,20 @@ export type EffectStats = {
   last_run_at: string | null;
 };
 
+export type TrendDataPoint = {
+  date: string;
+  total: number;
+  accepted: number;
+  rejected: number;
+  failed: number;
+  likes: number;
+  dislikes: number;
+};
+
+export type TrendsResponse = {
+  daily: TrendDataPoint[];
+  weekly: TrendDataPoint[];
+};
 
 export type GenerationAcceptRequest = {
   create_album: boolean;

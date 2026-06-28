@@ -7,6 +7,7 @@ import * as client from '../api/client';
 
 vi.mock('../api/client', () => ({
   getEffectStats: vi.fn(),
+  getStatsTrends: vi.fn(),
 }));
 
 const mockStats: client.EffectStats[] = [
@@ -74,7 +75,7 @@ function renderPage(initialRoute = '/statistics/standard') {
           <Route path="/statistics/:tab" element={<StatisticsPage />} />
         </Routes>
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -82,11 +83,15 @@ describe('StatisticsPage Tabs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(client.getEffectStats).mockResolvedValue(mockStats);
+    vi.mocked(client.getStatsTrends).mockResolvedValue({
+      daily: [],
+      weekly: [],
+    });
   });
 
   it('renders standard and AI tabs and filters correctly', async () => {
     renderPage();
-    
+
     // Check page title
     expect(await screen.findByText('Effect Statistics')).toBeInTheDocument();
 
@@ -95,7 +100,7 @@ describe('StatisticsPage Tabs', () => {
     expect(screen.getByText('Best rated')).toBeInTheDocument();
     expect(screen.getAllByText('Duotone')[0]).toBeInTheDocument();
     expect(screen.getByText('Needs attention')).toBeInTheDocument();
-    
+
     // Check tabs and their badges
     const standardTab = screen.getByRole('button', { name: /Standard/i });
     expect(standardTab).toHaveTextContent('Standard2'); // 2 standard effects: duotone, vignette
@@ -106,7 +111,9 @@ describe('StatisticsPage Tabs', () => {
     // Initially in Standard tab, should show standard effects, not AI ones
     expect(screen.getByRole('link', { name: 'Duotone' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Vignette' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Anime AI' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Anime AI' }),
+    ).not.toBeInTheDocument();
 
     expect(screen.getByText('Excellent')).toBeInTheDocument();
     expect(screen.getAllByText('80% liked')[0]).toBeInTheDocument();
@@ -118,8 +125,12 @@ describe('StatisticsPage Tabs', () => {
 
     // Should now show AI effects, not standard ones
     expect(screen.getByRole('link', { name: 'Anime AI' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Duotone' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Vignette' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Duotone' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Vignette' }),
+    ).not.toBeInTheDocument();
 
     expect(screen.getByText('Mixed')).toBeInTheDocument();
     expect(screen.getByText('40% liked')).toBeInTheDocument();

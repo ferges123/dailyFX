@@ -12,6 +12,8 @@ from .generation import (
     GenerationAcceptRequest,
     GenerationHistoryCreate,
     GenerationHistoryResponse,
+    TrendDataPoint,
+    TrendsResponse,
 )
 from .presets import (
     EffectPresetCreate,
@@ -58,4 +60,6 @@ __all__ = [
     "ScheduleCreate",
     "ScheduleUpdate",
     "ScheduleResponse",
+    "TrendDataPoint",
+    "TrendsResponse",
 ]
