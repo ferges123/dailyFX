@@ -109,22 +109,22 @@ describe('StatisticsPage Tabs', () => {
     expect(aiTab).toHaveTextContent('AI1'); // 1 AI effect: ai_anime
 
     // Initially in Standard tab, should show standard effects, not AI ones
-    expect(screen.getByRole('link', { name: 'Duotone' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Vignette' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Duotone' })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Vignette' })[0]).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Anime AI' }),
     ).not.toBeInTheDocument();
 
-    expect(screen.getByText('Excellent')).toBeInTheDocument();
+    expect(screen.getAllByText('Excellent')[0]).toBeInTheDocument();
     expect(screen.getAllByText('80% liked')[0]).toBeInTheDocument();
-    expect(screen.getByText('3 unrated')).toBeInTheDocument();
-    expect(screen.getByText('Not enough ratings')).toBeInTheDocument();
+    expect(screen.getAllByText('3 unrated')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Not enough ratings')[0]).toBeInTheDocument();
 
     // Click on AI tab
     fireEvent.click(screen.getByText('AI'));
 
     // Should now show AI effects, not standard ones
-    expect(screen.getByRole('link', { name: 'Anime AI' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Anime AI' })[0]).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Duotone' }),
     ).not.toBeInTheDocument();
@@ -132,8 +132,26 @@ describe('StatisticsPage Tabs', () => {
       screen.queryByRole('link', { name: 'Vignette' }),
     ).not.toBeInTheDocument();
 
-    expect(screen.getByText('Mixed')).toBeInTheDocument();
-    expect(screen.getByText('40% liked')).toBeInTheDocument();
-    expect(screen.getByText('5 unrated')).toBeInTheDocument();
+    expect(screen.getAllByText('Mixed')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('40% liked')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('5 unrated')[0]).toBeInTheDocument();
+  });
+
+  it('renders a compact mobile statistics list alongside the desktop table', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Effect Statistics')).toBeInTheDocument();
+
+    const mobileList = screen.getByRole('list', {
+      name: 'Effect statistics mobile list',
+    });
+    expect(mobileList).toHaveClass('md:hidden');
+    expect(mobileList).toHaveTextContent('Duotone');
+    expect(mobileList).toHaveTextContent('8 runs');
+    expect(mobileList).toHaveTextContent('80% liked');
+    expect(mobileList).toHaveTextContent('5 uploaded');
+    expect(mobileList).toHaveTextContent('Last run');
+
+    expect(screen.getByRole('table')).toHaveClass('hidden', 'md:table');
   });
 });

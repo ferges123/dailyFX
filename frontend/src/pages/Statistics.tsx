@@ -191,9 +191,87 @@ export function StatisticsPage() {
           </button>
         </div>
 
-        <div className="app-surface p-4 md:p-6">
+        <div
+          aria-label="Effect statistics mobile list"
+          className="grid gap-2.5 md:hidden"
+          role="list"
+        >
+          {currentStats.map((stat) => {
+            const totalRatings = stat.likes + stat.dislikes;
+            const likedPercent =
+              totalRatings > 0 ? Math.round((stat.likes / totalRatings) * 100) : 0;
+
+            return (
+              <article
+                key={stat.effect_id}
+                className="app-surface grid gap-3 p-3"
+                role="listitem"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link
+                      to={`/history?search=${encodeURIComponent(stat.effect_id)}`}
+                      className="block truncate text-sm font-bold text-stone-950 hover:text-emerald-800 hover:underline"
+                    >
+                      {stat.title}
+                    </Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-stone-500">
+                      <span className="inline-flex items-center gap-1">
+                        <Play size={12} className="text-stone-400" />
+                        {stat.total_runs} runs
+                      </span>
+                      <span>{stat.unrated_count} unrated</span>
+                    </div>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${qualityClass(stat.quality_label)}`}
+                  >
+                    {qualityLabel(stat.quality_label)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-xl border border-stone-200/80 bg-white/70 p-2">
+                    <div className="font-semibold text-stone-500">Rating</div>
+                    <div className="mt-1 font-bold text-stone-900">
+                      {stat.like_rate != null ? `${stat.like_rate}% liked` : 'No ratings'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-stone-200/80 bg-white/70 p-2">
+                    <div className="font-semibold text-stone-500">Status</div>
+                    <div className="mt-1 font-bold text-stone-900">
+                      {stat.uploaded_runs} uploaded
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-stone-200/80 bg-white/70 p-2">
+                    <div className="font-semibold text-stone-500">Last run</div>
+                    <div className="mt-1 truncate font-bold text-stone-900">
+                      {formatLastRun(stat.last_run_at)}
+                    </div>
+                  </div>
+                </div>
+
+                {stat.like_rate != null && (
+                  <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+                    <div
+                      className="h-full bg-emerald-700"
+                      style={{ width: `${likedPercent}%` }}
+                    />
+                  </div>
+                )}
+              </article>
+            );
+          })}
+          {currentStats.length === 0 && (
+            <div className="app-surface py-8 text-center text-sm text-stone-400">
+              No statistics logged yet.
+            </div>
+          )}
+        </div>
+
+        <div className="app-surface hidden p-4 md:block md:p-6">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="hidden w-full border-collapse text-left md:table">
               <thead>
                 <tr className="border-b border-stone-200 text-[10px] font-bold uppercase text-stone-500">
                   <th className="px-4 pb-3">Effect</th>

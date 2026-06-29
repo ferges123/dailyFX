@@ -30,8 +30,8 @@ export function TrendsCharts() {
 
   if (isLoading) {
     return (
-      <div className="app-surface p-6">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="app-surface p-4 md:p-6">
+        <div className="mb-4 flex items-center gap-2">
           <TrendingUp size={20} className="text-emerald-700" />
           <h2 className="text-lg font-bold text-stone-900">Trends</h2>
         </div>
@@ -44,8 +44,8 @@ export function TrendsCharts() {
 
   if (error || !trends) {
     return (
-      <div className="app-surface p-6">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="app-surface p-4 md:p-6">
+        <div className="mb-4 flex items-center gap-2">
           <TrendingUp size={20} className="text-emerald-700" />
           <h2 className="text-lg font-bold text-stone-900">Trends</h2>
         </div>
@@ -66,18 +66,18 @@ export function TrendsCharts() {
   }));
 
   return (
-    <div className="app-surface p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="app-surface p-4 md:p-6">
+      <div className="mb-4 grid gap-3 sm:flex sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp size={20} className="text-emerald-700" />
           <h2 className="text-lg font-bold text-stone-900">Trends</h2>
         </div>
-        <div className="flex gap-2">
-          <div className="flex rounded-lg bg-stone-100 p-0.5">
+        <div className="grid min-w-0 gap-2 sm:flex">
+          <div className="grid grid-cols-2 rounded-lg bg-stone-100 p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('daily')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
                 viewMode === 'daily'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -88,7 +88,7 @@ export function TrendsCharts() {
             <button
               type="button"
               onClick={() => setViewMode('weekly')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
                 viewMode === 'weekly'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -97,11 +97,11 @@ export function TrendsCharts() {
               Weekly
             </button>
           </div>
-          <div className="flex rounded-lg bg-stone-100 p-0.5">
+          <div className="grid grid-cols-2 rounded-lg bg-stone-100 p-0.5">
             <button
               type="button"
               onClick={() => setChartType('generations')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
                 chartType === 'generations'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -112,7 +112,7 @@ export function TrendsCharts() {
             <button
               type="button"
               onClick={() => setChartType('ratings')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
                 chartType === 'ratings'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -130,10 +130,10 @@ export function TrendsCharts() {
           <p className="text-sm">No data available yet</p>
         </div>
       ) : (
-        <div className="h-64">
+        <div className="h-56 min-w-0 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'generations' ? (
-              <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+              <BarChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                 <XAxis
                   dataKey="label"
@@ -160,7 +160,7 @@ export function TrendsCharts() {
                 <Bar dataKey="failed" name="Failed" fill="#78716c" radius={[2, 2, 0, 0]} />
               </BarChart>
             ) : (
-              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                 <XAxis
                   dataKey="label"
