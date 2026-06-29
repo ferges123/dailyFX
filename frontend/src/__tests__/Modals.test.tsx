@@ -7,7 +7,6 @@ import { UploadModal } from '../pages/History/UploadModal';
 import { type GenerationHistoryEntry } from '../api/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-
 describe('ConfirmModal', () => {
   it('renders title, description, and triggers callbacks', () => {
     const onConfirm = vi.fn();
@@ -19,7 +18,7 @@ describe('ConfirmModal', () => {
         description="Are you sure?"
         onConfirm={onConfirm}
         onClose={onClose}
-      />
+      />,
     );
 
     expect(screen.getByText('Confirm action')).toBeInTheDocument();
@@ -45,11 +44,11 @@ describe('ConfirmDeleteModal', () => {
         onConfirm={onConfirm}
         variant="rejected"
         isPending={false}
-      />
+      />,
     );
 
     expect(screen.getByText('Delete rejected items?')).toBeInTheDocument();
-    
+
     const deleteBtn = screen.getByRole('button', { name: 'Delete Rejected' });
     fireEvent.click(deleteBtn);
     expect(onConfirm).toHaveBeenCalled();
@@ -88,9 +87,8 @@ describe('LightboxModal', () => {
           exif={mockExif}
           onClose={onClose}
         />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
-
 
     expect(screen.getByAltText('Preview')).toBeInTheDocument();
     expect(screen.getByText('Test Lightbox Title')).toBeInTheDocument();
@@ -124,11 +122,11 @@ describe('UploadModal', () => {
         albums={mockAlbums}
         onConfirm={onConfirm}
         isPending={false}
-      />
+      />,
     );
 
     expect(screen.getByText('Upload Destination Album')).toBeInTheDocument();
-    
+
     const confirmBtn = screen.getByRole('button', { name: 'Confirm Upload' });
     fireEvent.click(confirmBtn);
     expect(onConfirm).toHaveBeenCalledWith({

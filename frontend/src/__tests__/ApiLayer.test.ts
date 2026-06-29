@@ -17,33 +17,46 @@ describe('API Layer - Base', () => {
   it('handles successful requests and returns JSON', async () => {
     const mockData = { success: true };
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify(mockData), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      new Response(JSON.stringify(mockData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
 
     const result = await request('/test-endpoint');
     expect(result).toEqual(mockData);
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/test-endpoint'), expect.objectContaining({
-      headers: expect.objectContaining({
-        'Content-Type': 'application/json',
-      })
-    }));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/test-endpoint'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
+      }),
+    );
   });
 
   it('includes Authorization header if token exists in localStorage', async () => {
     localStorage.setItem('dailyfx_token', 'my-auth-token');
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
 
     await request('/auth-test');
-    expect(fetch).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      headers: expect.objectContaining({
-        Authorization: 'Bearer my-auth-token',
-      })
-    }));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer my-auth-token',
+        }),
+      }),
+    );
   });
 
   it('throws ApiError with payload detail on response error', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: 'Invalid parameters' }), { status: 400 })
+      new Response(JSON.stringify({ detail: 'Invalid parameters' }), {
+        status: 400,
+      }),
     );
 
     try {
@@ -61,7 +74,7 @@ describe('API Layer - Base', () => {
     const cb = vi.fn();
     registerOnUnauthorized(cb);
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: 'Unauthorized' }), { status: 401 })
+      new Response(JSON.stringify({ detail: 'Unauthorized' }), { status: 401 }),
     );
 
     try {
@@ -99,13 +112,20 @@ describe('API Layer - Settings', () => {
   });
 
   it('getSettings makes a GET request', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ immich_url: '' }), { status: 200 }));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ immich_url: '' }), { status: 200 }),
+    );
     await getSettings();
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/settings'), expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/settings'),
+      expect.any(Object),
+    );
   });
 
   it('updateSettings makes a PUT request with body', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
     const fullPayload = {
       immich_url: 'http://test',
       local_ai_base_url: 'http://local-ai:11434/v1',
@@ -116,10 +136,13 @@ describe('API Layer - Settings', () => {
       ai_custom_prompt: null,
     };
     await updateSettings(fullPayload);
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/settings'), expect.objectContaining({
-      method: 'PUT',
-      body: JSON.stringify(fullPayload),
-    }));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/settings'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(fullPayload),
+      }),
+    );
   });
 });
 
@@ -133,11 +156,15 @@ describe('API Layer - Generation', () => {
   });
 
   it('getGenerationHistory appends status and search query parameters', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: [] }), { status: 200 }),
+    );
     await getGenerationHistory('UPLOADED', 10, 'my-search');
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/generation/history?status=UPLOADED&offset=10&search=my-search&limit=10'),
-      expect.anything()
+      expect.stringContaining(
+        '/api/generation/history?status=UPLOADED&offset=10&search=my-search&limit=10',
+      ),
+      expect.anything(),
     );
   });
 });

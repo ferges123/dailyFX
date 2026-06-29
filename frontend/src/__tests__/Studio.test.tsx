@@ -59,7 +59,9 @@ vi.mock('../api/client', async () => {
       count: 1,
       next_page: null,
     })),
-    getImmichAssetThumbnailUrl: vi.fn((id: string) => `/api/immich/assets/${id}/thumbnail`),
+    getImmichAssetThumbnailUrl: vi.fn(
+      (id: string) => `/api/immich/assets/${id}/thumbnail`,
+    ),
     getApiUrl: (path: string) => path,
   };
 });
@@ -160,7 +162,7 @@ describe('StudioPage', () => {
         file,
         'ai_anime',
         {},
-        { aiVisionEnabled: false, promptEnrichmentEnabled: false }
+        { aiVisionEnabled: false, promptEnrichmentEnabled: false },
       );
     });
   });
@@ -168,14 +170,18 @@ describe('StudioPage', () => {
   it('opens Immich browser modal and selects an asset', async () => {
     renderStudio();
 
-    const browseBtn = await screen.findByRole('button', { name: /browse immich/i });
+    const browseBtn = await screen.findByRole('button', {
+      name: /browse immich/i,
+    });
     expect(browseBtn).toBeInTheDocument();
 
     // Click browse button to open modal
     fireEvent.click(browseBtn);
 
     // Modal header should be visible with Album view instructions
-    expect(await screen.findByText('Select an album to browse its photos')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Select an album to browse its photos'),
+    ).toBeInTheDocument();
 
     // Find the album Summer 2026 and click it
     const albumCard = await screen.findByText('Summer 2026');
@@ -185,15 +191,24 @@ describe('StudioPage', () => {
     // After entering the album, the asset thumbnail should render
     const assetThumb = await screen.findByAltText('sunset.jpg');
     expect(assetThumb).toBeInTheDocument();
-    expect(assetThumb).toHaveAttribute('src', '/api/immich/assets/immich-asset-123/thumbnail');
+    expect(assetThumb).toHaveAttribute(
+      'src',
+      '/api/immich/assets/immich-asset-123/thumbnail',
+    );
 
     // Click the asset thumbnail to select it
     fireEvent.click(assetThumb);
 
     // Modal should close, and the selected asset info should be in the upload zone
-    expect(screen.queryByText('Select an album to browse its photos')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Select an album to browse its photos'),
+    ).not.toBeInTheDocument();
     expect(await screen.findByText('sunset.jpg')).toBeInTheDocument();
-    expect(screen.getByText('Immich Photo (Click or drag to change to local upload)')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Immich Photo (Click or drag to change to local upload)',
+      ),
+    ).toBeInTheDocument();
 
     // Create preview button should be enabled
     const createBtn = screen.getByRole('button', { name: /create preview/i });
@@ -207,7 +222,7 @@ describe('StudioPage', () => {
         'immich-asset-123',
         'ai_anime',
         {},
-        { aiVisionEnabled: false, promptEnrichmentEnabled: false }
+        { aiVisionEnabled: false, promptEnrichmentEnabled: false },
       );
     });
   });

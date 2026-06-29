@@ -15,7 +15,7 @@ describe('StatusTile', () => {
         value="10%"
         detail="Remaining space details"
         tone="success"
-      />
+      />,
     );
 
     expect(screen.getByTestId('status-icon')).toBeInTheDocument();
@@ -34,12 +34,14 @@ describe('Field and SelectField', () => {
         value="john_doe"
         onChange={onChange}
         error="Name contains forbidden characters"
-      />
+      />,
     );
 
     expect(screen.getByText('Username')).toBeInTheDocument();
-    expect(screen.getByText('Name contains forbidden characters')).toBeInTheDocument();
-    
+    expect(
+      screen.getByText('Name contains forbidden characters'),
+    ).toBeInTheDocument();
+
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'jane' } });
     expect(onChange).toHaveBeenCalled();
@@ -50,7 +52,7 @@ describe('Field and SelectField', () => {
       <SelectField label="Model Choice" defaultValue="gpt-4">
         <option value="gpt-4">GPT 4</option>
         <option value="gpt-3.5">GPT 3.5</option>
-      </SelectField>
+      </SelectField>,
     );
 
     expect(screen.getByText('Model Choice')).toBeInTheDocument();
@@ -76,7 +78,7 @@ describe('FilterRow', () => {
             onWeightChange={onWeightChange}
           />
         </tbody>
-      </table>
+      </table>,
     );
 
     expect(screen.getByText('Saturation Filter')).toBeInTheDocument();
@@ -129,7 +131,7 @@ describe('ModuleConfigEditor', () => {
         module={mockModule}
         config={{ steps: 20, prompt_style: 'vivid' }}
         onChange={onChange}
-      />
+      />,
     );
 
     expect(screen.getByText('Steps Count')).toBeInTheDocument();
@@ -164,7 +166,7 @@ describe('ModuleConfigEditor', () => {
         module={mockModule}
         config={{ enable_feature: true }}
         onChange={onChange}
-      />
+      />,
     );
 
     const checkbox = screen.getByRole('checkbox');

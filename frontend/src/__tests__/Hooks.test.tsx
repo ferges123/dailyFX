@@ -27,9 +27,7 @@ const createWrapper = () => {
 describe('useHistoryFilters', () => {
   it('initializes and updates search filters correctly', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <MemoryRouter>
-        {children}
-      </MemoryRouter>
+      <MemoryRouter>{children}</MemoryRouter>
     );
     const { result } = renderHook(() => useHistoryFilters(), { wrapper });
 
@@ -58,13 +56,14 @@ describe('useHistorySelection', () => {
     const setSelectedHistoryTaskId = vi.fn();
 
     renderHook(
-      ({ items, taskId }) => useHistorySelection(items, taskId, setSelectedHistoryTaskId),
+      ({ items, taskId }) =>
+        useHistorySelection(items, taskId, setSelectedHistoryTaskId),
       {
         initialProps: {
           items: mockItems,
           taskId: null as string | null,
         },
-      }
+      },
     );
 
     // Because allowFallbackSelection is true (default), the hook should auto-select the first item
@@ -74,15 +73,19 @@ describe('useHistorySelection', () => {
 
 describe('useHistoryStreamSync', () => {
   it('opens generation stream and configures query invalidation', () => {
-    renderHook(() => useHistoryStreamSync({
-      enabled: true,
-      historyQueryKey: ['history'],
-      streamCursor: 1,
-      statusParam: 'UPLOADED',
-      debouncedSearch: '',
-    }), {
-      wrapper: createWrapper(),
-    });
+    renderHook(
+      () =>
+        useHistoryStreamSync({
+          enabled: true,
+          historyQueryKey: ['history'],
+          streamCursor: 1,
+          statusParam: 'UPLOADED',
+          debouncedSearch: '',
+        }),
+      {
+        wrapper: createWrapper(),
+      },
+    );
 
     expect(openGenerationStream).toHaveBeenCalled();
   });

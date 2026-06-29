@@ -17,8 +17,18 @@ vi.mock('../api/client', () => {
     retryGenerationAcceptance: vi.fn(),
     clearRejectedCache: vi.fn(),
     clearGenerationCache: vi.fn(),
-    getImmichAlbums: vi.fn().mockResolvedValue({ items: [], total: 0, count: 0, pages: 0, current_page: 1 }),
-    getImmichAssets: vi.fn().mockResolvedValue({ items: [], total: 0, count: 0, next_page: null }),
+    getImmichAlbums: vi
+      .fn()
+      .mockResolvedValue({
+        items: [],
+        total: 0,
+        count: 0,
+        pages: 0,
+        current_page: 1,
+      }),
+    getImmichAssets: vi
+      .fn()
+      .mockResolvedValue({ items: [], total: 0, count: 0, next_page: null }),
     getImmichAssetDetailUrl: vi.fn((base, id) =>
       id ? `${base}/photos/${id}` : null,
     ),
