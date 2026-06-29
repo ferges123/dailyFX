@@ -200,6 +200,8 @@ const mockFilterOptions = {
 describe('HistoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
+    localStorage.clear();
     vi.mocked(client.acceptGeneration).mockResolvedValue(mockHistoryItem1);
     vi.mocked(client.rejectGeneration).mockResolvedValue(mockHistoryItem1);
     vi.mocked(client.getImmichAssetExif).mockResolvedValue({});

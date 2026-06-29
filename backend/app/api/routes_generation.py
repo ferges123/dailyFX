@@ -364,7 +364,10 @@ async def accept_generation(
     if not row.output_path:
         raise HTTPException(status_code=404, detail="Output path not available in history")
 
-    image_path = Path(row.output_path)
+    image_path = Path(row.output_path).resolve()
+    data_dir = get_settings().data_dir.resolve()
+    if not image_path.is_relative_to(data_dir):
+        raise HTTPException(status_code=400, detail="Invalid path")
     if not image_path.exists():
         raise HTTPException(status_code=404, detail="Generated image not found on disk")
 
@@ -433,7 +436,10 @@ async def retry_acceptance(
         if not row.uploaded_asset_id:
             if not row.output_path:
                 raise HTTPException(status_code=400, detail="No output image file path in history")
-            image_path = Path(row.output_path)
+            image_path = Path(row.output_path).resolve()
+            data_dir = get_settings().data_dir.resolve()
+            if not image_path.is_relative_to(data_dir):
+                raise HTTPException(status_code=400, detail="Invalid path")
             if not image_path.exists():
                 raise HTTPException(status_code=400, detail="Generated image file not found on disk")
 
@@ -513,9 +519,13 @@ def _delete_history_records_and_files(db: Session, status: str | None = None) ->
     rows = query.all()
     task_ids = [row.task_id for row in rows]
 
+    data_dir = get_settings().data_dir.resolve()
     for row in rows:
         if row.output_path:
-            path = Path(row.output_path)
+            path = Path(row.output_path).resolve()
+            if not path.is_relative_to(data_dir):
+                logger.warning("Attempted to delete file outside data_dir: %s", path)
+                continue
             if path.exists():
                 path.unlink(missing_ok=True)
             thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")

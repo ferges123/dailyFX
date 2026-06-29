@@ -28,6 +28,7 @@ import { useHistorySelection } from './useHistorySelection';
 import { useHistoryStreamSync } from './useHistoryStreamSync';
 
 function shouldRetrySettingsQuery(failureCount: number, error: unknown) {
+  if (import.meta.env.MODE === 'test') return false;
   if (failureCount >= 2) return false;
   if (typeof error === 'object' && error !== null && 'status' in error) {
     const status = (error as { status?: unknown }).status;
@@ -179,6 +180,7 @@ export function HistoryPage() {
   });
   const queryClient = useQueryClient();
   const historyListRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedHistoryTaskId, setSelectedHistoryTaskId] = useState<
@@ -249,6 +251,10 @@ export function HistoryPage() {
     );
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      if (!taskId) return;
+    }
     setSelectedHistoryTaskId(taskId ?? null);
     if (taskId) {
       setMobileShowDetail(true);

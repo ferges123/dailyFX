@@ -55,14 +55,15 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
+    const { headers: initHeaders, ...restInit } = init || {};
     const response = await fetch(`${apiBase}${path}`, {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeader(),
-        ...init?.headers,
+        ...initHeaders,
       },
-      ...init,
+      ...restInit,
     });
     clearTimeout(timeoutId);
     if (!response.ok) {
@@ -72,6 +73,33 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       return {} as T;
     }
     return response.json() as Promise<T>;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(408, 'API request timed out (15s limit)');
+    }
+    throw error;
+  }
+}
+
+export async function requestText(path: string, init?: RequestInit): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  try {
+    const { headers: initHeaders, ...restInit } = init || {};
+    const response = await fetch(`${apiBase}${path}`, {
+      signal: controller.signal,
+      headers: {
+        ...getAuthHeader(),
+        ...initHeaders,
+      },
+      ...restInit,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      await handleResponseError(response);
+    }
+    return response.text();
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {

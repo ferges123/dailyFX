@@ -38,7 +38,7 @@ _HTTP_PROVIDER_TESTS = {
     "gemini": {
         "encrypted_field": "encrypted_gemini_api_key",
         "url": "https://generativelanguage.googleapis.com/v1beta/models",
-        "header_name": "x-api-key",
+        "header_name": "x-goog-api-key",
         "provider_name": "Gemini",
         "use_bearer": False,
     },

@@ -313,13 +313,16 @@ def test_get_generation_image_accepts_review_token_when_review_auth_enabled(monk
         db.close()
 
 
-def test_accept_generation(tmp_path):
+def test_accept_generation(tmp_path, monkeypatch):
+    import app.config
     from io import BytesIO
 
     from PIL import Image
 
     from app.schemas.generation import GenerationAcceptRequest
 
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
     db = _setup_generation_routes_db()
     try:
         # Create a real PNG file
@@ -362,10 +365,13 @@ def test_accept_generation(tmp_path):
         assert result.uploaded_asset_id == "immich-asset-id-1"
         assert result.accepted_at is not None
     finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
         db.close()
 
 
-def test_accept_generation_records_partial_warnings(tmp_path):
+def test_accept_generation_records_partial_warnings(tmp_path, monkeypatch):
+    import app.config
     from io import BytesIO
 
     from PIL import Image
@@ -373,6 +379,8 @@ def test_accept_generation_records_partial_warnings(tmp_path):
     from app.immich.errors import ImmichError
     from app.schemas.generation import GenerationAcceptRequest
 
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
     db = _setup_generation_routes_db()
     try:
         img_path = tmp_path / "task-accept-warn.png"
@@ -403,6 +411,8 @@ def test_accept_generation_records_partial_warnings(tmp_path):
         assert "Album update failed" in result.accept_notes
         assert "Tagging failed" in result.accept_notes
     finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
         db.close()
 
 
@@ -478,9 +488,12 @@ def test_review_page_avoids_innerhtml_for_dynamic_api_values():
     assert "message.textContent" in render_timeline
 
 
-def test_delete_history_by_status(tmp_path):
+def test_delete_history_by_status(tmp_path, monkeypatch):
+    import app.config
     from app.api.routes_generation import delete_history_by_status
 
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
     db = _setup_generation_routes_db()
     try:
         # Add some mock rows with different statuses
@@ -515,6 +528,8 @@ def test_delete_history_by_status(tmp_path):
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "UPLOADED").count() == 0
 
     finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
         db.close()
 
 

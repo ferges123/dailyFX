@@ -100,6 +100,28 @@ describe('API Layer - Base', () => {
       expect(apiErr.message).toContain('API request timed out');
     }
   });
+
+  it('does not lose default headers (Content-Type, Authorization) when custom headers are passed in init', async () => {
+    localStorage.setItem('dailyfx_token', 'my-auth-token');
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+
+    await request('/custom-headers', {
+      headers: { 'X-Custom-Header': 'custom-value' },
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer my-auth-token',
+          'X-Custom-Header': 'custom-value',
+        }),
+      }),
+    );
+  });
 });
 
 describe('API Layer - Settings', () => {

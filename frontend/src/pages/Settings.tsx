@@ -7,6 +7,7 @@ import {
   updateSettings,
   clearHistoryByStatus,
   clearGenerationCache,
+  getDebugLog,
   type SettingsUpdate,
 } from '../api/client';
 import { APP_VERSION } from '../version';
@@ -94,6 +95,7 @@ export function SettingsPage() {
   const [validationErrors, setValidationErrors] = useState<SettingsFieldErrors>(
     {},
   );
+  const [logLoading, setLogLoading] = useState(false);
 
   useEffect(() => {
     if (!settings.data) return;
@@ -158,6 +160,23 @@ export function SettingsPage() {
     });
   }
 
+  const handleViewLog = async () => {
+    if (logLoading) return;
+    setLogLoading(true);
+    try {
+      const text = await getDebugLog();
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      console.error('Failed to load debug log:', err);
+      alert('Failed to load debug log. Check if debug mode is active and logs exist.');
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
   return (
     <form onSubmit={submit} className="grid gap-2.5 md:gap-3">
       {showInlineLoadError && (
@@ -216,14 +235,14 @@ export function SettingsPage() {
               {form.debug_mode && (
                 <>
                   {' · '}
-                  <a
-                    href="/api/debug/log"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-emerald-700 hover:underline"
+                  <button
+                    type="button"
+                    onClick={handleViewLog}
+                    disabled={logLoading}
+                    className="text-emerald-700 hover:underline cursor-pointer bg-transparent border-0 p-0 font-inherit disabled:opacity-50"
                   >
-                    View log
-                  </a>
+                    {logLoading ? 'Loading log...' : 'View log'}
+                  </button>
                 </>
               )}
             </span>

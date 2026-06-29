@@ -1,4 +1,4 @@
-import { request } from './base';
+import { request, requestText } from './base';
 import {
   type Settings,
   type SettingsUpdate,
@@ -63,4 +63,8 @@ export function getProviderModels(provider: string) {
     vision_models: Array<{ label: string; value: string }>;
     image_models: Array<{ label: string; value: string }>;
   }>(`/api/settings/models/${provider}`);
+}
+
+export function getDebugLog() {
+  return requestText('/api/debug/log');
 }
