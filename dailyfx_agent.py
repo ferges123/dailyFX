@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import queue
 import re
 import select
 import shlex
@@ -92,7 +93,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _container_to_host_image_path(image_path: str) -> str:
     if image_path.startswith("/data/"):
-        return f"./data/{image_path.removeprefix('/data/')}"
+        suffix = image_path.removeprefix("/data/")
+        base_dir = Path("data").resolve()
+        try:
+            resolved_path = (base_dir / suffix).resolve()
+            resolved_path.relative_to(base_dir)
+        except (ValueError, RuntimeError) as exc:
+            raise ValueError(f"Path traversal detected in container path: {image_path}") from exc
+        return f"./data/{suffix}"
     if image_path == "/data":
         return "./data"
     return image_path
@@ -253,12 +261,21 @@ def _rotate_target_logs(log_dir: Path, keep: int = 5) -> None:
     if keep <= 0 or not log_dir.exists():
         return
 
-    logs = sorted(
-        (path for path in log_dir.glob("dailyfx-agent-*.log") if path.is_file()),
-        key=lambda path: path.stat().st_mtime,
-    )
-    for old_log in logs[:-keep]:
-        old_log.unlink(missing_ok=True)
+    def get_mtime(path: Path) -> float:
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    try:
+        logs = sorted(
+            (path for path in log_dir.glob("dailyfx-agent-*.log") if path.is_file()),
+            key=get_mtime,
+        )
+        for old_log in logs[:-keep]:
+            old_log.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _write_target_log(
@@ -416,6 +433,27 @@ def _list_agy_models(timeout: int = 30) -> int:
 
 
 def _read_jsonrpc_message(stream, timeout_seconds: float = 10.0) -> dict[str, object]:
+    q = getattr(stream, "response_queue", None)
+    if q is not None:
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            try:
+                line = q.get(timeout=remaining)
+            except queue.Empty:
+                continue
+            if not line:
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                return parsed
+        raise TimeoutError("Timed out waiting for Codex MCP response")
+
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
         remaining = max(0.0, deadline - time.time())
@@ -472,6 +510,19 @@ def _list_codex_models(timeout: int = 60) -> int:
         stderr=subprocess.PIPE,
         text=True,
     )
+
+    q: queue.Queue[str] = queue.Queue()
+    if proc.stdout is not None:
+        setattr(proc.stdout, "response_queue", q)
+
+    def _reader() -> None:
+        if proc.stdout is not None:
+            for line in proc.stdout:
+                q.put(line)
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+
     try:
         _mcp_request(
             proc,
@@ -480,7 +531,7 @@ def _list_codex_models(timeout: int = 60) -> int:
             {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "dailyfx-agent", "version": "0.3.51"},
+                "clientInfo": {"name": "dailyfx-agent", "version": "0.3.54"},
             },
             deadline=deadline,
         )
@@ -551,8 +602,12 @@ def _list_codex_models(timeout: int = 60) -> int:
     finally:
         try:
             proc.terminate()
+            proc.wait(timeout=2.0)
         except Exception:
-            pass
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
 
 def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
@@ -582,14 +637,35 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
         return None
 
     candidates: list[Path] = []
-    for path in generated_root.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in {".png", ".webp", ".jpg", ".jpeg"}:
-            continue
-        try:
-            if path.stat().st_mtime >= start_time:
-                candidates.append(path)
-        except OSError:
-            continue
+    buffer_time = start_time - 300.0  # 5-minute safety window
+
+    try:
+        # Check files directly in generated_root and shallowly in recent subdirectories
+        for path in generated_root.iterdir():
+            try:
+                if path.is_file():
+                    if path.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                        if path.stat().st_mtime >= start_time:
+                            candidates.append(path)
+                elif path.is_dir():
+                    # Only search inside directories that have been modified recently
+                    if path.stat().st_mtime >= buffer_time:
+                        for subpath in path.iterdir():
+                            if subpath.is_file():
+                                if subpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                                    if subpath.stat().st_mtime >= start_time:
+                                        candidates.append(subpath)
+                            elif subpath.is_dir():
+                                if subpath.stat().st_mtime >= buffer_time:
+                                    for subsubpath in subpath.iterdir():
+                                        if subsubpath.is_file():
+                                            if subsubpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                                                if subsubpath.stat().st_mtime >= start_time:
+                                                    candidates.append(subsubpath)
+            except OSError:
+                continue
+    except OSError:
+        return None
 
     if not candidates:
         return None
@@ -736,11 +812,17 @@ def main(argv: list[str] | None = None) -> int:
         trace_labels = _task_trace_labels(task_trace)
         print(f"image provider: {args.target}")
 
-        image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
-        if not image_path:
-            image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
-        elif image_path.startswith("/data/"):
-            image_path = _container_to_host_image_path(image_path)
+        try:
+            image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
+            if not image_path:
+                image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
+            elif image_path.startswith("/data/"):
+                image_path = _container_to_host_image_path(image_path)
+        except ValueError as exc:
+            sys.stderr.write(f"{exc}\n")
+            last_exit = 1
+            continue
+
         if not image_path:
             sys.stderr.write("Backend manifest did not include source_image_path\n")
             last_exit = 1
@@ -748,7 +830,13 @@ def main(argv: list[str] | None = None) -> int:
 
         output_path = str(manifest.get("output_path") or manifest.get("image_path") or "").strip()
         if output_path.startswith("/data/"):
-            output_path = _container_to_host_image_path(output_path)
+            try:
+                output_path = _container_to_host_image_path(output_path)
+            except ValueError as exc:
+                sys.stderr.write(f"{exc}\n")
+                last_exit = 1
+                continue
+
         if not output_path:
             sys.stderr.write("Backend manifest did not include output_path\n")
             last_exit = 1
@@ -831,7 +919,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"done: {output_path}")
         if args.verbose:
             print(f"log: {target_log_path}")
-        last_exit = 0
 
     if not args.keep_manifest:
         if not args.manifest_path:
