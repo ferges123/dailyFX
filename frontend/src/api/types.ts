@@ -252,6 +252,9 @@ export type TrendDataPoint = {
   failed: number;
   likes: number;
   dislikes: number;
+  auto: number;
+  manual: number;
+  cli: number;
 };
 
 export type TrendsResponse = {

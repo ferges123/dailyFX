@@ -17,7 +17,7 @@ import { InlineSpinner } from '../../components/ErrorUI';
 import { BarChart3, TrendingUp } from 'lucide-react';
 
 type ViewMode = 'daily' | 'weekly';
-type ChartType = 'generations' | 'ratings';
+type ChartType = 'generations' | 'ratings' | 'triggers';
 
 export function TrendsCharts() {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -97,11 +97,11 @@ export function TrendsCharts() {
               Weekly
             </button>
           </div>
-          <div className="grid grid-cols-2 rounded-lg bg-stone-100 p-0.5">
+          <div className="grid grid-cols-3 rounded-lg bg-stone-100 p-0.5">
             <button
               type="button"
               onClick={() => setChartType('generations')}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
                 chartType === 'generations'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -111,8 +111,19 @@ export function TrendsCharts() {
             </button>
             <button
               type="button"
+              onClick={() => setChartType('triggers')}
+              className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
+                chartType === 'triggers'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Triggers
+            </button>
+            <button
+              type="button"
               onClick={() => setChartType('ratings')}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
                 chartType === 'ratings'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -158,6 +169,33 @@ export function TrendsCharts() {
                 <Bar dataKey="accepted" name="Accepted" fill="#059669" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="rejected" name="Rejected" fill="#dc2626" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="failed" name="Failed" fill="#78716c" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            ) : chartType === 'triggers' ? (
+              <BarChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: '#78716c' }}
+                  tickLine={false}
+                  axisLine={{ stroke: '#d6d3d1' }}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#78716c' }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fafaf9',
+                    border: '1px solid #e7e5e4',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px' }} />
+                <Bar dataKey="auto" name="Auto" fill="#2563eb" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="manual" name="Manual" fill="#059669" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="cli" name="CLI" fill="#78716c" radius={[2, 2, 0, 0]} />
               </BarChart>
             ) : (
               <LineChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
