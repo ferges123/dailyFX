@@ -165,6 +165,7 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Delete Rejected')).toBeInTheDocument();
     expect(screen.getByText('Delete Failed')).toBeInTheDocument();
     expect(screen.getByText('Delete Pending')).toBeInTheDocument();
+    expect(screen.getByText('Delete Running')).toBeInTheDocument();
     expect(screen.getByText('Delete Accepted')).toBeInTheDocument();
     expect(screen.getByText('Clear All History')).toBeInTheDocument();
 
@@ -181,6 +182,21 @@ describe('SettingsPage', () => {
 
     await waitFor(() => {
       expect(client.clearHistoryByStatus).toHaveBeenCalledWith('failed');
+    });
+
+    // Click "Delete Running"
+    fireEvent.click(screen.getByText('Delete Running'));
+
+    // Verify confirmation modal opens
+    expect(screen.getByText('Delete running items?')).toBeInTheDocument();
+
+    // Confirm deletion
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Delete Running' })[1],
+    );
+
+    await waitFor(() => {
+      expect(client.clearHistoryByStatus).toHaveBeenCalledWith('running');
     });
   });
 });

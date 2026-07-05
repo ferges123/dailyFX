@@ -509,23 +509,35 @@ def test_delete_history_by_status(tmp_path, monkeypatch):
         img_path_uploaded.write_bytes(b"uploaded")
         _add_history_row(db, "task-uploaded", status="UPLOADED", output_path=str(img_path_uploaded))
 
+        img_path_running = tmp_path / "running.png"
+        img_path_running.write_bytes(b"running")
+        _add_history_row(db, "task-running", status="RUNNING", output_path=str(img_path_running))
+
         # 1. Delete failed items
         asyncio.run(delete_history_by_status("failed", db))
         assert not img_path_failed.exists()
         assert img_path_pending.exists()
         assert img_path_uploaded.exists()
+        assert img_path_running.exists()
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "FAILED").count() == 0
 
         # 2. Delete pending items
         asyncio.run(delete_history_by_status("pending", db))
         assert not img_path_pending.exists()
         assert img_path_uploaded.exists()
+        assert img_path_running.exists()
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "PENDING_REVIEW").count() == 0
 
         # 3. Delete accepted (uploaded) items
         asyncio.run(delete_history_by_status("accepted", db))
         assert not img_path_uploaded.exists()
+        assert img_path_running.exists()
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "UPLOADED").count() == 0
+
+        # 4. Delete running items
+        asyncio.run(delete_history_by_status("running", db))
+        assert not img_path_running.exists()
+        assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").count() == 0
 
     finally:
         monkeypatch.delenv("DATA_DIR", raising=False)

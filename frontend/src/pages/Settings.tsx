@@ -57,11 +57,11 @@ type TestState = {
 export function SettingsPage() {
   const queryClient = useQueryClient();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<
-    'rejected' | 'failed' | 'pending' | 'accepted' | 'all' | null
+    'rejected' | 'failed' | 'pending' | 'accepted' | 'running' | 'all' | null
   >(null);
 
   const clearHistoryMutation = useMutation({
-    mutationFn: (status: 'rejected' | 'failed' | 'pending' | 'accepted') =>
+    mutationFn: (status: 'rejected' | 'failed' | 'pending' | 'accepted' | 'running') =>
       clearHistoryByStatus(status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
@@ -283,6 +283,14 @@ export function SettingsPage() {
           >
             <Trash2 size={12} className="mr-1.5" />
             Delete Pending
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen('running')}
+            className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition active:scale-98 cursor-pointer"
+          >
+            <Trash2 size={12} className="mr-1.5" />
+            Delete Running
           </button>
           <button
             type="button"

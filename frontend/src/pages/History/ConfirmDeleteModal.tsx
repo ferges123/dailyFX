@@ -5,7 +5,7 @@ interface ConfirmDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  variant: 'rejected' | 'failed' | 'pending' | 'accepted' | 'all';
+  variant: 'rejected' | 'failed' | 'pending' | 'accepted' | 'running' | 'all';
   isPending: boolean;
 }
 
@@ -56,6 +56,13 @@ export function ConfirmDeleteModal({
           desc: 'This will permanently delete all accepted items. This action cannot be undone.',
           btnText: 'Delete Accepted',
           isDanger: true,
+        };
+      case 'running':
+        return {
+          title: 'Delete running items?',
+          desc: 'This will permanently delete all running items and interrupt their execution. This action cannot be undone.',
+          btnText: 'Delete Running',
+          isDanger: false,
         };
       default:
         return {

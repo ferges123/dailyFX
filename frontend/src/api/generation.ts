@@ -179,7 +179,7 @@ export function clearRejectedCache() {
 }
 
 export function clearHistoryByStatus(
-  status: 'rejected' | 'failed' | 'pending' | 'accepted',
+  status: 'rejected' | 'failed' | 'pending' | 'accepted' | 'running',
 ) {
   return request<void>(`/api/generation/history/status/${status}`, {
     method: 'DELETE',

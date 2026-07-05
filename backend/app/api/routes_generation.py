@@ -557,6 +557,7 @@ async def delete_history_by_status(status: str, db: Session = Depends(get_db), _
         "failed": "FAILED",
         "pending": "PENDING_REVIEW",
         "accepted": "UPLOADED",
+        "running": "RUNNING",
     }
     db_status = status_map.get(status.lower())
     if not db_status:
