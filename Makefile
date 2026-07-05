@@ -1,4 +1,4 @@
-.PHONY: backend-install backend-test backend-lint backend-format
+.PHONY: backend-install backend-test backend-lint backend-format agent
 
 backend-install:
 	cd backend && if [ -d ".venv" ]; then .venv/bin/pip install -e ".[test,lint]"; else python3 -m pip install -e ".[test,lint]"; fi
@@ -11,3 +11,6 @@ backend-lint:
 
 backend-format:
 	cd backend && if [ -d ".venv" ]; then .venv/bin/ruff format .; else python3 -m ruff format .; fi
+
+agent:
+	./dailyfx-agent --schedule-id $(SCHEDULE_ID) --target $(TARGET)

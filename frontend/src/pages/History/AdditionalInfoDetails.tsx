@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Layers } from 'lucide-react';
+import { Layers, Loader2 } from 'lucide-react';
 
 export interface VisionState {
   attempted?: boolean;
@@ -252,12 +252,25 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
               {taskTrace.map((item: TaskTraceItem, index: number) => (
                 <div
                   key={`${item.stage || 'stage'}-${index}`}
-                  className="rounded-md border border-stone-100/70 bg-stone-50/60 p-2"
+                  className={`rounded-md border p-2 ${
+                    index === taskTrace.length - 1 &&
+                    String(item.status || '').toLowerCase() === 'running'
+                      ? 'border-blue-200/80 bg-blue-50/70'
+                      : 'border-stone-100/70 bg-stone-50/60'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-[7.5px] font-bold uppercase tracking-[0.12em] text-stone-400">
-                        {(item.stage || 'step').replace(/_/g, ' ')}
+                        {index === taskTrace.length - 1 &&
+                        String(item.status || '').toLowerCase() === 'running' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Loader2 size={10} className="animate-spin" />
+                            {(item.stage || 'step').replace(/_/g, ' ')}
+                          </span>
+                        ) : (
+                          (item.stage || 'step').replace(/_/g, ' ')
+                        )}
                       </div>
                       <div className="text-[8.5px] font-medium text-stone-800 leading-snug">
                         {item.message || '—'}

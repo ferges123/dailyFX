@@ -114,6 +114,59 @@ However, during local development or self-hosting, when using a bind mount for t
 - For API details, see [docs/api.md](api.md).
 - For frontend behavior, see [docs/frontend.md](frontend.md).
 
+## CLI Handoff
+You can run one scheduled generation and hand the result to an AI agent from the repo root:
+
+```bash
+./dailyfx-agent --schedule-id 1 --target agy
+```
+
+If you do not know the schedule ID yet, list available schedules first:
+
+```bash
+./dailyfx-agent --list-schedules
+```
+
+If you prefer `make`, the same flow is available as:
+
+```bash
+make agent SCHEDULE_ID=1 TARGET=agy
+```
+
+That command prepares the run inside Docker, writes a manifest to `data/dailyfx-run.json` by default, renders the image on the host into `data/results/`, and then finalizes the result in the backend.
+
+If you want to use `codex`, you can customize the command template:
+
+```bash
+./dailyfx-agent \
+  --schedule-id 1 \
+  --target codex \
+  --model gpt-5.5 \
+  --codex-command-template 'exec --image {image_path} -'
+```
+
+The wrapper quotes the substituted values for you, so keep the placeholders unquoted in the template. The prompt is sent on stdin, so the template only needs the image and any optional wrapper flags.
+
+You can also customize `agy` the same way:
+
+```bash
+./dailyfx-agent \
+  --schedule-id 1 \
+  --target agy \
+  --model gpt-5.5 \
+  --agy-command-template '--print --image {image_path}'
+```
+
+To inspect available host-side models first:
+
+```bash
+./dailyfx-agent --list-models --target agy
+./dailyfx-agent --list-models --target codex
+```
+
+Use `--dry-run` to print the prepare, render, and finalize commands without executing anything.
+Use `--verbose` to print the loaded manifest to stderr before the target tool is called.
+
 ## FAQ
 
 ### Can I run this only on my LAN?

@@ -1,4 +1,5 @@
 import random
+from dataclasses import dataclass
 
 from app.immich.models import ImmichExifInfo
 from app.models.settings import SettingsModel
@@ -7,6 +8,19 @@ from app.services.generation.modules.ai_common import get_image_bytes
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.people_context import infer_gender, load_people_context
 from app.utils.debug_logger import debug_log
+
+
+@dataclass(frozen=True)
+class HostRenderRequest:
+    title: str
+    summary: str
+    generation_type: str
+    source_asset_id: str
+    source_asset_original_file_name: str | None
+    source_image_bytes: bytes
+    prompt: str
+    negative_prompt: str | None
+    config: dict
 
 
 class AIStyleBaseModule:
@@ -154,6 +168,100 @@ class AIStyleBaseModule:
             "exif_summary": exif_hint or "",
             "context_hint": context_hint,
         }
+
+    async def build_host_render_request(
+        self,
+        page_items: list,
+        config: dict,
+        client,
+        settings: SettingsModel,
+    ) -> HostRenderRequest:
+        candidates = list(page_items)
+        random.shuffle(candidates)
+        last_exc: Exception | None = None
+        for asset in candidates:
+            try:
+                image_bytes = await get_image_bytes(client, asset)
+            except Exception as exc:
+                last_exc = exc
+                continue
+
+            prompt = self._prompt_for_config(config, settings)
+            people_context = await load_people_context(client, asset)
+            album_name = self._album_name_for_settings(settings)
+            enrichment_context_hint = None
+            enrichment_context = None
+            if getattr(settings, "ai_prompt_enrichment", False) is True:
+                try:
+                    exif_info = await client.get_asset_exif(asset.id)
+                except Exception:
+                    exif_info = None
+                enrichment_context = self._build_prompt_context_hint(
+                    album_name=album_name,
+                    people_context=people_context,
+                    exif_info=exif_info,
+                    anonymize=False,
+                )
+                anonymized_enrichment = self._build_prompt_context_hint(
+                    album_name=album_name,
+                    people_context=people_context,
+                    exif_info=exif_info,
+                    anonymize=True,
+                )
+                if anonymized_enrichment:
+                    enrichment_context_hint = anonymized_enrichment["context_hint"]
+                    debug_log(
+                        "AI prompt enrichment context assembled (anonymized)",
+                        album_name=anonymized_enrichment["album_name"],
+                        people_names=anonymized_enrichment["people_names"],
+                        exif_summary=anonymized_enrichment["exif_summary"],
+                        context_hint=enrichment_context_hint,
+                    )
+                    if enrichment_context:
+                        enrichment_context["context_hint"] = anonymized_enrichment["context_hint"]
+                        enrichment_context["people_prompt_hint"] = anonymized_enrichment["people_prompt_hint"]
+
+            if (
+                getattr(settings, "ai_prompt_enrichment", False) is True
+                and getattr(settings, "default_ai_provider", "none") != "none"
+            ):
+                try:
+                    from app.services.generation.ai_vision import describe_image, fuse_prompts
+
+                    debug_log("AI prompt enrichment started", original_prompt=prompt)
+                    enrichment_context_value = enrichment_context_hint
+                    desc = await describe_image(settings, image_bytes, context_hint=enrichment_context_value)
+                    if desc:
+                        debug_log("AI vision image description generated", description=desc)
+                        fused = await fuse_prompts(settings, desc, prompt, context_hint=enrichment_context_value)
+                        if fused:
+                            debug_log("AI prompt enrichment complete", original_prompt=prompt, fused_prompt=fused)
+                            prompt = fused
+                except Exception as exc:
+                    debug_log("AI prompt enrichment failed, falling back to original prompt", error=str(exc))
+
+            if self.default_negative_prompt:
+                prompt = f"{prompt}\nNegative prompt: {self.default_negative_prompt}"
+
+            result_config = {}
+            if people_context:
+                result_config["people_context"] = people_context.to_dict()
+            if enrichment_context:
+                result_config["prompt_enrichment_context"] = enrichment_context
+
+            return HostRenderRequest(
+                title=f"{self.label}: {asset.original_file_name or asset.id}",
+                summary=self._summary_for_result("host"),
+                generation_type=self.name,
+                source_asset_id=asset.id,
+                source_asset_original_file_name=getattr(asset, "original_file_name", None),
+                source_image_bytes=image_bytes,
+                prompt=prompt,
+                negative_prompt=None,
+                config=result_config,
+            )
+
+        raise RuntimeError(f"No accessible asset found for {self.label}: {last_exc}")
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
         candidates = list(page_items)

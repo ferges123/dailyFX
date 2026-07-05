@@ -12,6 +12,7 @@ import {
   HelpCircle,
   ZoomIn,
   Download,
+  Loader2,
 } from 'lucide-react';
 import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
@@ -86,6 +87,19 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
       return null;
     }
   }, [entry?.config_json]);
+
+  const latestTaskTrace = useMemo(() => {
+    if (!taskTrace || taskTrace.length === 0) return null;
+    return taskTrace[taskTrace.length - 1];
+  }, [taskTrace]);
+
+  const latestTaskTraceStatus = (latestTaskTrace?.status || '')
+    .toString()
+    .toLowerCase();
+  const isTraceRunning =
+    latestTaskTraceStatus === 'running' ||
+    latestTaskTraceStatus === 'in_progress' ||
+    latestTaskTraceStatus === 'queued';
 
   const tags = useMemo(() => {
     if (!entry?.tags_json) return [];
@@ -216,11 +230,11 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
           </div>
           <div>
             <span className="text-[7.5px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
-              AI Model / Provider
+              Image provider
             </span>
             <span className="font-semibold text-stone-700 truncate block">
               {entry.provider
-                ? `${entry.provider} (${entry.model || 'unknown'})`
+                ? entry.provider.replace(/_/g, ' ')
                 : entry.status === 'RUNNING'
                   ? '-'
                   : entry.status === 'QUEUED'
@@ -237,6 +251,53 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
             </span>
           </div>
         </div>
+
+        {latestTaskTrace && (
+          <div
+            className={`rounded-xl border px-3 py-2 text-[10px] font-medium ${
+              isTraceRunning
+                ? 'border-blue-200 bg-blue-50/70 text-blue-800'
+                : latestTaskTraceStatus === 'failed'
+                  ? 'border-red-200 bg-red-50/70 text-red-800'
+                  : 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex shrink-0 items-center justify-center">
+                {isTraceRunning ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : latestTaskTraceStatus === 'failed' ? (
+                  <XCircle size={12} />
+                ) : (
+                  <Check size={12} />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold">
+                    {isTraceRunning
+                      ? 'Task is still running'
+                      : latestTaskTraceStatus === 'failed'
+                        ? 'Task trace failed'
+                        : 'Task trace completed'}
+                  </span>
+                  <span className="rounded-full border border-current/15 bg-white/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide">
+                    {(latestTaskTrace.stage || 'step').replace(/_/g, ' ')}
+                  </span>
+                  {latestTaskTrace.progress !== null &&
+                    latestTaskTrace.progress !== undefined && (
+                      <span className="text-[9px] font-semibold opacity-80">
+                        {Math.round(Number(latestTaskTrace.progress) * 100)}%
+                      </span>
+                    )}
+                </div>
+                <div className="mt-0.5 text-[9px] leading-snug">
+                  {latestTaskTrace.message || 'No status message available.'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Image Section */}
         {entry.status === 'RUNNING' && (

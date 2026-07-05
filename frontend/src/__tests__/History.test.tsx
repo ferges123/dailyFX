@@ -247,6 +247,9 @@ describe('HistoryPage', () => {
     expect(screen.getByText('Metadata provenance')).toBeInTheDocument();
     expect(screen.getByText('Title:')).toBeInTheDocument();
     expect(screen.getByText('Task timeline')).toBeInTheDocument();
+    expect(screen.getByText('Image provider')).toBeInTheDocument();
+    expect(screen.getByText('local')).toBeInTheDocument();
+    expect(screen.getByText('Task is still running')).toBeInTheDocument();
     expect(screen.getByText('Generation started')).toBeInTheDocument();
     expect(screen.getByText('+12s')).toBeInTheDocument();
   });

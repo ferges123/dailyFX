@@ -81,6 +81,12 @@ Once an effect is generated, you are notified through your preferred channel, wh
 3. **Accept** → uploads to Immich with original EXIF (date, camera, GPS, etc.) and adds to album
 4. **Reject** → logged in history, not uploaded
 
+**CLI handoff:**
+- `./dailyfx-agent --schedule-id 1 --target agy` prepares a scheduled run in Docker, renders the image with `agy` on the host, and then finalizes the result in DailyFX.
+- `./dailyfx-agent --list-models --target agy` or `--target codex` prints the available host-side models.
+- `./dailyfx-agent --list-schedules` prints available schedule IDs and names.
+- The backend CLI prepares the host render inside the `api` container and then finalizes the generated image from `data/results/` into `generation_history`.
+
 **Other features:**
 - Push notifications (Web Push, ntfy, Gotify, Telegram Bot, Home Assistant, Slack, Discord, Apprise) with image preview
 - Mobile-friendly review page linked from notification
