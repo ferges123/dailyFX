@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import threading
+import uuid
 from pathlib import Path
 
 
@@ -89,6 +90,25 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return _build_parser().parse_args(argv)
+
+
+def _validate_command_templates(args: argparse.Namespace) -> None:
+    placeholders = ["image_path", "output_path", "manifest_path"]
+    templates = [
+        ("agy-command-template", args.agy_command_template),
+        ("codex-command-template", args.codex_command_template),
+    ]
+    for name, template in templates:
+        if not template:
+            continue
+        for ph in placeholders:
+            pattern = rf"([\"'])\s*{{{ph}}}\s*\1"
+            if re.search(pattern, template):
+                sys.stderr.write(
+                    f"warning: Custom template {name!r} contains quoted placeholder '{{{ph}}}'. "
+                    f"The wrapper quotes values automatically, so quotes around placeholders may cause failures.\n"
+                )
+
 
 
 def _container_to_host_image_path(image_path: str) -> str:
@@ -689,8 +709,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     args = _parse_args(effective_argv)
+    _validate_command_templates(args)
     project_dir = Path(args.project_dir)
-    manifest_path = Path(args.manifest_path) if args.manifest_path else Path(tempfile.gettempdir()) / "dailyfx-run.json"
+    if args.manifest_path:
+        manifest_path = Path(args.manifest_path)
+    else:
+        random_suffix = uuid.uuid4().hex[:8]
+        manifest_path = Path(tempfile.gettempdir()) / f"dailyfx-run-{random_suffix}.json"
     shared_manifest_path = Path("data") / manifest_path.name
     backend_command = _build_backend_command(args)
 

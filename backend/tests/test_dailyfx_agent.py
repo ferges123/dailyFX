@@ -192,7 +192,8 @@ def test_dailyfx_agent_dry_run_shows_backend_and_target_commands(monkeypatch, ca
     assert calls == []
     assert "backend: docker compose -f docker-compose.yml exec -T api dailyfx prepare-host --schedule-id 7 --target codex" in captured.out
     assert "target: codex exec --image '{image_path}' -" in captured.out
-    assert "finalize: docker compose -f docker-compose.yml exec -T api dailyfx finalize-host --manifest-path /data/dailyfx-run.json" in captured.out
+    assert "finalize: docker compose -f docker-compose.yml exec -T api dailyfx finalize-host --manifest-path /data/dailyfx-run-" in captured.out
+    assert ".json" in captured.out
     assert "Dry-run does not execute docker compose or the host tool." in captured.out
 
 
@@ -675,3 +676,29 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
     assert inputs[1] == "Use the image."
     output_path = tmp_path / "data" / "results" / "cli-s1-abc123.png"
     assert output_path.read_bytes() == b"agy image bytes"
+
+
+def test_dailyfx_agent_warns_on_quoted_placeholders_in_templates(monkeypatch, capsys):
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        raise AssertionError("dry-run should not execute subprocesses")
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "7",
+            "--target",
+            "codex",
+            "--dry-run",
+            "--codex-command-template",
+            "exec --image '{image_path}' -",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "warning: Custom template 'codex-command-template' contains quoted placeholder '{image_path}'." in captured.err
