@@ -904,11 +904,12 @@ def main(argv: list[str] | None = None) -> int:
             f"\n\nCRITICAL: As the AI agent running on the host, you MUST perform both:\n"
             f"1. Source Vision: Analyze the input image (source photo) at '{abs_image_path}' for context, theme, and people.\n"
             f"2. Final Vision: Analyze the final generated image (after generating/saving it) for what actually appears in it.\n"
-            f"Use these vision steps to generate a high-quality title (a short, creative 3-5 word title) and summary "
-            f"(one concise sentence describing the final image).\n"
+            f"Use these vision steps to generate:\n"
+            f"- A high-quality title (a short, creative 3-5 word title)\n"
+            f"- A summary (one concise sentence describing the final image)\n"
+            f"- A list of 3-6 descriptive tags (keywords) summarizing the image content\n"
             f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
-            f"the 'title' and 'summary' keys before exiting. You can also generate a list of 3-6 tags and save "
-            f"them under the 'tags' key in the manifest.\n"
+            f"the 'title', 'summary', and 'tags' keys before exiting.\n"
             f"The final output image path is '{abs_output_path}'."
         )
 

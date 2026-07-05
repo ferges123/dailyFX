@@ -46,5 +46,5 @@
 
 ## Host-Side Agent Execution (dailyfx-agent)
 - When invoked on the host via `dailyfx-agent` (using targets like `agy` or `codex`), the agent must perform both **Source Vision** (analyzing the input image for context/people) and **Final Vision** (analyzing the final generated image for what actually appears in it).
-- The agent must use these vision steps to generate a high-quality title and summary, and then write/update these values in the local JSON manifest file (e.g. `data/dailyfx-run.json` or as specified by the command-line arguments) under the `title` and `summary` keys before exiting. This ensures the backend receives the enriched metadata during the finalization step.
+- The agent must use these vision steps to generate a high-quality title, summary, and a list of 3-6 tags, and then write/update these values in the local JSON manifest file (e.g. `data/dailyfx-run.json` or as specified by the command-line arguments) under the `title`, `summary`, and `tags` keys before exiting. This ensures the backend receives the enriched metadata during the finalization step.
 
