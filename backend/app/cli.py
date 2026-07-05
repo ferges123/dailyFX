@@ -520,7 +520,9 @@ async def _finalize_host_render(manifest_path: Path) -> int:
             _task_update=ctx.task_update,
             _progress=ctx.progress_msg,
             photo_selection_trace=(
-                config_json.get("photo_selection_trace") if isinstance(config_json.get("photo_selection_trace"), dict) else None
+                config_json.get("photo_selection_trace")
+                if isinstance(config_json.get("photo_selection_trace"), dict)
+                else None
             ),
         )
 

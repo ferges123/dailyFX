@@ -100,8 +100,8 @@ export function StatisticsPage() {
   const currentStats = activeTab === 'standard' ? standardStats : aiStats;
 
   const desktopSortedStats = [...currentStats].sort((a, b) => {
-    let valA = a[sortKey];
-    let valB = b[sortKey];
+    const valA = a[sortKey];
+    const valB = b[sortKey];
 
     if (sortKey === 'title') {
       const titleA = a.title || '';

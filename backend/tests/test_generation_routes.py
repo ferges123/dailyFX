@@ -314,11 +314,11 @@ def test_get_generation_image_accepts_review_token_when_review_auth_enabled(monk
 
 
 def test_accept_generation(tmp_path, monkeypatch):
-    import app.config
     from io import BytesIO
 
     from PIL import Image
 
+    import app.config
     from app.schemas.generation import GenerationAcceptRequest
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
@@ -371,11 +371,11 @@ def test_accept_generation(tmp_path, monkeypatch):
 
 
 def test_accept_generation_records_partial_warnings(tmp_path, monkeypatch):
-    import app.config
     from io import BytesIO
 
     from PIL import Image
 
+    import app.config
     from app.immich.errors import ImmichError
     from app.schemas.generation import GenerationAcceptRequest
 

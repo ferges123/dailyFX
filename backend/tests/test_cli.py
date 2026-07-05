@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from _contract_helpers import configure_contract_test_db, make_effect_preset_row
 
-from app.cli import main, _to_iso_timestamp
+from app.cli import _to_iso_timestamp, main
 from app.database import SessionLocal, init_db
 from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
@@ -198,6 +198,9 @@ def test_dailyfx_cli_lists_schedules(capsys):
 
 def test_to_iso_timestamp_handles_strings_and_datetimes():
     assert _to_iso_timestamp("2026-07-05T12:34:56Z") == "2026-07-05T12:34:56+00:00"
-    assert _to_iso_timestamp(
-        datetime(2026, 7, 5, 12, 34, 56, tzinfo=timezone.utc),
-    ) == "2026-07-05T12:34:56+00:00"
+    assert (
+        _to_iso_timestamp(
+            datetime(2026, 7, 5, 12, 34, 56, tzinfo=timezone.utc),
+        )
+        == "2026-07-05T12:34:56+00:00"
+    )

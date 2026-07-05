@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-import sys
 import os
+import sys
 import time
+from io import StringIO
 from pathlib import Path
 from subprocess import CompletedProcess
-from io import StringIO
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -190,9 +190,15 @@ def test_dailyfx_agent_dry_run_shows_backend_and_target_commands(monkeypatch, ca
 
     assert exit_code == 0
     assert calls == []
-    assert "backend: docker compose -f docker-compose.yml exec -T api dailyfx prepare-host --schedule-id 7 --target codex" in captured.out
+    assert (
+        "backend: docker compose -f docker-compose.yml exec -T api dailyfx prepare-host --schedule-id 7 --target codex"
+        in captured.out
+    )
     assert "target: codex exec --image '{image_path}' -" in captured.out
-    assert "finalize: docker compose -f docker-compose.yml exec -T api dailyfx finalize-host --manifest-path /data/dailyfx-run-" in captured.out
+    assert (
+        "finalize: docker compose -f docker-compose.yml exec -T api dailyfx finalize-host --manifest-path /data/dailyfx-run-"
+        in captured.out
+    )
     assert ".json" in captured.out
     assert "Dry-run does not execute docker compose or the host tool." in captured.out
 
@@ -202,7 +208,9 @@ def test_dailyfx_agent_lists_schedules(monkeypatch, capsys):
 
     def fake_run(command, **kwargs):
         calls.append(command)
-        return CompletedProcess(command, 0, stdout="ID\tNAME\tENABLED\n1\tMorning Run\tyes\n2\tNight Run\tno\n", stderr="")
+        return CompletedProcess(
+            command, 0, stdout="ID\tNAME\tENABLED\n1\tMorning Run\tyes\n2\tNight Run\tno\n", stderr=""
+        )
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
 
@@ -701,4 +709,6 @@ def test_dailyfx_agent_warns_on_quoted_placeholders_in_templates(monkeypatch, ca
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "warning: Custom template 'codex-command-template' contains quoted placeholder '{image_path}'." in captured.err
+    assert (
+        "warning: Custom template 'codex-command-template' contains quoted placeholder '{image_path}'." in captured.err
+    )
