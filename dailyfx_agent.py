@@ -70,6 +70,19 @@ def _build_parser() -> argparse.ArgumentParser:
             "{output_path}, and {manifest_path}. Prompt is sent on stdin."
         ),
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=600,
+        help="Timeout in seconds for the host tool execution (default: 600)",
+    )
+    parser.add_argument(
+        "-x",
+        "--repeat",
+        type=int,
+        default=1,
+        help="Number of times to run the task (default: 1)",
+    )
     return parser
 
 
@@ -287,6 +300,7 @@ def _run_target_with_spinner(
     prompt: str,
     task_id: str,
     labels: list[str],
+    timeout: int | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     log_dir = Path(tempfile.gettempdir()) / "dailyfx-agent-logs"
     spinner_labels = (labels[:5] if labels else []) or ["waiting for image provider"]
@@ -309,7 +323,16 @@ def _run_target_with_spinner(
     thread = threading.Thread(target=_spinner, daemon=True)
     thread.start()
     try:
-        result = subprocess.run(command, input=prompt, text=True, capture_output=True, check=False)
+        result = subprocess.run(
+            command,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        result = subprocess.CompletedProcess(command, 124, stdout="", stderr=f"Timed out after {timeout}s")
     finally:
         stop_event.set()
         thread.join(timeout=1.0)
@@ -366,9 +389,13 @@ def _parse_agy_model_line(line: str) -> dict[str, str] | None:
     }
 
 
-def _list_agy_models() -> int:
+def _list_agy_models(timeout: int = 30) -> int:
     command = ["agy", "models"]
-    run = subprocess.run(command, text=True, capture_output=True, check=False)
+    try:
+        run = subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        sys.stderr.write(f"agy models timed out after {timeout}s\n")
+        return 124
     if run.returncode != 0:
         if run.stderr:
             sys.stderr.write(run.stderr)
@@ -407,7 +434,14 @@ def _read_jsonrpc_message(stream, timeout_seconds: float = 10.0) -> dict[str, ob
     raise TimeoutError("Timed out waiting for Codex MCP response")
 
 
-def _mcp_request(proc: subprocess.Popen[str], request_id: int, method: str, params: dict[str, object] | None = None) -> dict[str, object]:
+def _mcp_request(
+    proc: subprocess.Popen[str],
+    request_id: int,
+    method: str,
+    params: dict[str, object] | None = None,
+    *,
+    deadline: float | None = None,
+) -> dict[str, object]:
     if proc.stdin is None or proc.stdout is None:
         raise RuntimeError("Codex MCP server pipes are unavailable")
     payload = {"jsonrpc": "2.0", "id": request_id, "method": method}
@@ -416,6 +450,8 @@ def _mcp_request(proc: subprocess.Popen[str], request_id: int, method: str, para
     proc.stdin.write(json.dumps(payload) + "\n")
     proc.stdin.flush()
     while True:
+        if deadline is not None and time.time() >= deadline:
+            raise TimeoutError(f"MCP request {method!r} timed out")
         message = _read_jsonrpc_message(proc.stdout)
         if message.get("id") == request_id:
             if "error" in message:
@@ -426,8 +462,9 @@ def _mcp_request(proc: subprocess.Popen[str], request_id: int, method: str, para
             raise RuntimeError("Codex MCP response missing result object")
 
 
-def _list_codex_models() -> int:
+def _list_codex_models(timeout: int = 60) -> int:
     command = ["codex", "mcp-server"]
+    deadline = time.time() + timeout
     proc = subprocess.Popen(
         command,
         stdin=subprocess.PIPE,
@@ -445,6 +482,7 @@ def _list_codex_models() -> int:
                 "capabilities": {},
                 "clientInfo": {"name": "dailyfx-agent", "version": "0.3.51"},
             },
+            deadline=deadline,
         )
         if proc.stdin is None:
             raise RuntimeError("Codex MCP server stdin is unavailable")
@@ -458,7 +496,7 @@ def _list_codex_models() -> int:
             params: dict[str, object] = {"limit": 100}
             if cursor:
                 params["cursor"] = cursor
-            result = _mcp_request(proc, request_id, "model/list", params)
+            result = _mcp_request(proc, request_id, "model/list", params, deadline=deadline)
             request_id += 1
             batch = result.get("data")
             if isinstance(batch, list):
@@ -517,8 +555,13 @@ def _list_codex_models() -> int:
             pass
 
 
-def _list_codex_current_model() -> dict[str, str] | None:
-    run = subprocess.run(["codex", "doctor"], text=True, capture_output=True, check=False)
+def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
+    try:
+        run = subprocess.run(
+            ["codex", "doctor"], text=True, capture_output=True, check=False, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return None
     if run.returncode != 0:
         return None
     match = re.search(r"^\s*model\s+([^\s·]+)\s+·\s+([^\s]+)\s*$", run.stdout, re.MULTILINE)
@@ -641,133 +684,154 @@ def main(argv: list[str] | None = None) -> int:
         _print_note("Dry-run does not execute docker compose or the host tool.")
         return 0
 
-    backend_run = subprocess.run(
-        backend_command,
-        cwd=project_dir,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if backend_run.returncode != 0:
-        if backend_run.stderr:
-            sys.stderr.write(backend_run.stderr)
-        elif backend_run.stdout:
-            sys.stderr.write(backend_run.stdout)
-        return backend_run.returncode or 1
+    repeat = max(1, args.repeat)
+    last_exit = 0
 
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(backend_run.stdout, encoding="utf-8")
-    if shared_manifest_path != manifest_path:
-        shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
-    try:
-        manifest = _load_manifest(manifest_path)
-    except json.JSONDecodeError as exc:
-        sys.stderr.write(f"Invalid JSON from backend CLI: {exc}\n")
-        return 1
+    for run_index in range(1, repeat + 1):
+        if repeat > 1:
+            print(f"--- run {run_index}/{repeat} ---")
 
-    if args.verbose:
-        _print_manifest(manifest)
+        backend_run = subprocess.run(
+            backend_command,
+            cwd=project_dir,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if backend_run.returncode != 0:
+            if backend_run.stderr:
+                sys.stderr.write(backend_run.stderr)
+            elif backend_run.stdout:
+                sys.stderr.write(backend_run.stdout)
+            last_exit = backend_run.returncode or 1
+            continue
 
-    task_id = str(manifest.get("task_id") or "").strip() or "target"
-    prompt = str(manifest.get("prompt") or manifest.get("handoff_prompt") or "").strip()
-    if not prompt:
-        sys.stderr.write("Backend manifest did not include prompt\n")
-        return 1
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(backend_run.stdout, encoding="utf-8")
+        if shared_manifest_path != manifest_path:
+            shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
+        try:
+            manifest = _load_manifest(manifest_path)
+        except json.JSONDecodeError as exc:
+            sys.stderr.write(f"Invalid JSON from backend CLI: {exc}\n")
+            last_exit = 1
+            continue
 
-    task_trace = manifest.get("task_trace")
-    if not isinstance(task_trace, list):
-        config_json = manifest.get("config_json")
-        if isinstance(config_json, dict):
-            task_trace = config_json.get("task_trace")
-    trace_labels = _task_trace_labels(task_trace)
-    print(f"image provider: {args.target}")
+        if args.verbose:
+            _print_manifest(manifest)
 
-    image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
-    if not image_path:
-        image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
-    elif image_path.startswith("/data/"):
-        image_path = _container_to_host_image_path(image_path)
-    if not image_path:
-        sys.stderr.write("Backend manifest did not include source_image_path\n")
-        return 1
+        task_id = str(manifest.get("task_id") or "").strip() or "target"
+        prompt = str(manifest.get("prompt") or manifest.get("handoff_prompt") or "").strip()
+        if not prompt:
+            sys.stderr.write("Backend manifest did not include prompt\n")
+            last_exit = 1
+            continue
 
-    output_path = str(manifest.get("output_path") or manifest.get("image_path") or "").strip()
-    if output_path.startswith("/data/"):
-        output_path = _container_to_host_image_path(output_path)
-    if not output_path:
-        sys.stderr.write("Backend manifest did not include output_path\n")
-        return 1
+        task_trace = manifest.get("task_trace")
+        if not isinstance(task_trace, list):
+            config_json = manifest.get("config_json")
+            if isinstance(config_json, dict):
+                task_trace = config_json.get("task_trace")
+        trace_labels = _task_trace_labels(task_trace)
+        print(f"image provider: {args.target}")
 
-    target_command = _build_target_command(
-        args.target,
-        image_path,
-        str(manifest_path),
-        output_path,
-        args.model,
-        agy_template=args.agy_command_template,
-        codex_template=args.codex_command_template,
-    )
+        image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
+        if not image_path:
+            image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
+        elif image_path.startswith("/data/"):
+            image_path = _container_to_host_image_path(image_path)
+        if not image_path:
+            sys.stderr.write("Backend manifest did not include source_image_path\n")
+            last_exit = 1
+            continue
 
-    target_start_time = time.time()
-    target_run, target_log_path = _run_target_with_spinner(
-        target_command,
-        prompt=prompt,
-        task_id=task_id,
-        labels=trace_labels,
-    )
-    if target_run.returncode != 0:
-        if target_run.stderr:
-            sys.stderr.write(target_run.stderr)
-        elif target_run.stdout:
-            sys.stderr.write(target_run.stdout)
-        sys.stderr.write(f"\nlog saved to {target_log_path}\n")
-        return target_run.returncode or 1
+        output_path = str(manifest.get("output_path") or manifest.get("image_path") or "").strip()
+        if output_path.startswith("/data/"):
+            output_path = _container_to_host_image_path(output_path)
+        if not output_path:
+            sys.stderr.write("Backend manifest did not include output_path\n")
+            last_exit = 1
+            continue
 
-    output_file = Path(output_path)
-    if not output_file.is_absolute():
-        output_file = project_dir / output_file
-    if not output_file.exists():
-        generated_image = None
-        missing_message = None
-        if args.target == "codex":
-            generated_image = _find_latest_codex_image(target_start_time)
-            missing_message = (
-                f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
-            )
-        elif args.target == "agy":
-            generated_image = _find_latest_agy_image(target_start_time)
-            missing_message = (
-                f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
-            )
+        target_command = _build_target_command(
+            args.target,
+            image_path,
+            str(manifest_path),
+            output_path,
+            args.model,
+            agy_template=args.agy_command_template,
+            codex_template=args.codex_command_template,
+        )
 
-        if generated_image is not None:
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            output_file.write_bytes(generated_image.read_bytes())
-        else:
-            sys.stderr.write(f"{missing_message}\n")
-            return 1
+        target_start_time = time.time()
+        target_run, target_log_path = _run_target_with_spinner(
+            target_command,
+            prompt=prompt,
+            task_id=task_id,
+            labels=trace_labels,
+            timeout=args.timeout,
+        )
+        if target_run.returncode != 0:
+            if target_run.stderr:
+                sys.stderr.write(target_run.stderr)
+            elif target_run.stdout:
+                sys.stderr.write(target_run.stdout)
+            sys.stderr.write(f"\nlog saved to {target_log_path}\n")
+            last_exit = target_run.returncode or 1
+            continue
 
-    finalize_command = [
-        "docker",
-        "compose",
-        "-f",
-        args.compose_file,
-        "exec",
-        "-T",
-        args.service,
-        "dailyfx",
-        "finalize-host",
-        "--manifest-path",
-        f"/data/{shared_manifest_path.name}",
-    ]
-    finalize_run = subprocess.run(finalize_command, cwd=project_dir, check=False, text=True, capture_output=True)
-    if finalize_run.returncode != 0:
-        if finalize_run.stderr:
-            sys.stderr.write(finalize_run.stderr)
-        elif finalize_run.stdout:
-            sys.stderr.write(finalize_run.stdout)
-        return finalize_run.returncode or 1
+        output_file = Path(output_path)
+        if not output_file.is_absolute():
+            output_file = project_dir / output_file
+        if not output_file.exists():
+            generated_image = None
+            missing_message = None
+            if args.target == "codex":
+                generated_image = _find_latest_codex_image(target_start_time)
+                missing_message = (
+                    f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
+                )
+            elif args.target == "agy":
+                generated_image = _find_latest_agy_image(target_start_time)
+                missing_message = (
+                    f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
+                )
+
+            if generated_image is not None:
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+                output_file.write_bytes(generated_image.read_bytes())
+            else:
+                sys.stderr.write(f"{missing_message}\n")
+                last_exit = 1
+                continue
+
+        finalize_command = [
+            "docker",
+            "compose",
+            "-f",
+            args.compose_file,
+            "exec",
+            "-T",
+            args.service,
+            "dailyfx",
+            "finalize-host",
+            "--manifest-path",
+            f"/data/{shared_manifest_path.name}",
+        ]
+        finalize_run = subprocess.run(finalize_command, cwd=project_dir, check=False, text=True, capture_output=True)
+        if finalize_run.returncode != 0:
+            if finalize_run.stderr:
+                sys.stderr.write(finalize_run.stderr)
+            elif finalize_run.stdout:
+                sys.stderr.write(finalize_run.stdout)
+            last_exit = finalize_run.returncode or 1
+            continue
+
+        print(f"done: {output_path}")
+        if args.verbose:
+            print(f"log: {target_log_path}")
+        last_exit = 0
 
     if not args.keep_manifest:
         if not args.manifest_path:
@@ -775,11 +839,7 @@ def main(argv: list[str] | None = None) -> int:
         if shared_manifest_path != manifest_path:
             shared_manifest_path.unlink(missing_ok=True)
 
-    print(f"done: {output_path}")
-    if args.verbose:
-        print(f"log: {target_log_path}")
-
-    return 0
+    return last_exit
 
 
 if __name__ == "__main__":

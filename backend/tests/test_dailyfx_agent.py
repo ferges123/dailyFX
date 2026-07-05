@@ -52,9 +52,9 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
     inputs: list[str | None] = []
     _seed_agy_generated_image(tmp_path)
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
-        inputs.append(input)
+        inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
@@ -112,7 +112,7 @@ def test_dailyfx_agent_hides_target_thinking_output(monkeypatch, tmp_path, capsy
     calls: list[list[str]] = []
     _seed_agy_generated_image(tmp_path)
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
@@ -169,7 +169,7 @@ def test_task_trace_labels_use_short_stage_markers():
 def test_dailyfx_agent_dry_run_shows_backend_and_target_commands(monkeypatch, capsys):
     calls: list[list[str]] = []
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
         raise AssertionError("dry-run should not execute subprocesses")
 
@@ -199,7 +199,7 @@ def test_dailyfx_agent_dry_run_shows_backend_and_target_commands(monkeypatch, ca
 def test_dailyfx_agent_lists_schedules(monkeypatch, capsys):
     calls: list[list[str]] = []
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
         return CompletedProcess(command, 0, stdout="ID\tNAME\tENABLED\n1\tMorning Run\tyes\n2\tNight Run\tno\n", stderr="")
 
@@ -233,9 +233,9 @@ def test_dailyfx_agent_supports_short_aliases(monkeypatch, tmp_path):
     inputs: list[str | None] = []
     _seed_agy_generated_image(tmp_path)
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
-        inputs.append(input)
+        inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
@@ -286,7 +286,7 @@ def test_dailyfx_agent_passes_model_to_agy(monkeypatch, tmp_path):
     calls: list[list[str]] = []
     _seed_agy_generated_image(tmp_path)
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
@@ -338,9 +338,9 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
     calls: list[list[str]] = []
     inputs: list[str | None] = []
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
-        inputs.append(input)
+        inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
@@ -392,7 +392,7 @@ def test_dailyfx_agent_lists_models_for_target(monkeypatch, capsys):
 
 
 def test_list_agy_models_renders_table(monkeypatch, capsys):
-    def fake_run(command, text=None, capture_output=None, check=None):
+    def fake_run(command, **kwargs):
         return CompletedProcess(command, 0, stdout="Gemini 3.5 Flash (Medium)\nGemini 3.1 Pro (High)\n", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -441,7 +441,7 @@ def test_list_codex_models_renders_table(monkeypatch, capsys):
         },
     ]
 
-    def fake_mcp_request(proc, request_id, method, params=None):
+    def fake_mcp_request(proc, request_id, method, params=None, **kwargs):
         return responses.pop(0)["result"]
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "Popen", FakePopen)
@@ -468,10 +468,10 @@ def test_list_codex_models_falls_back_to_doctor_when_catalog_unavailable(monkeyp
         def terminate(self):
             return None
 
-    def fake_mcp_request(proc, request_id, method, params=None):
+    def fake_mcp_request(proc, request_id, method, params=None, **kwargs):
         raise RuntimeError("{'code': -32601, 'message': 'method not found: model/list'}")
 
-    def fake_run(command, text=None, capture_output=None, check=None):
+    def fake_run(command, **kwargs):
         if command == ["codex", "doctor"]:
             return CompletedProcess(
                 command,
@@ -526,9 +526,9 @@ def test_dailyfx_agent_renders_agy_template(monkeypatch, tmp_path, capsys):
     inputs: list[str | None] = []
     _seed_agy_generated_image(tmp_path)
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
-        inputs.append(input)
+        inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
@@ -591,9 +591,9 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
     calls: list[list[str]] = []
     inputs: list[str | None] = []
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
-        inputs.append(input)
+        inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
@@ -647,9 +647,9 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
     calls: list[list[str]] = []
     inputs: list[str | None] = []
 
-    def fake_run(command, cwd=None, text=None, capture_output=None, check=None, input=None):
+    def fake_run(command, **kwargs):
         calls.append(command)
-        inputs.append(input)
+        inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")

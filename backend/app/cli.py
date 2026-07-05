@@ -420,6 +420,7 @@ async def _finalize_host_render(manifest_path: Path) -> int:
     from app.services.generation.pipeline.metadata import _build_generation_artifacts
     from app.services.generation.pipeline.notifications import _pipeline_dispatch_notifications
     from app.services.generation.pipeline.persistence import _pipeline_persist_result
+    from app.services.generation.pipeline.planning import _resolve_schedule_ai_settings
     from app.services.generation.pipeline.shared import GenerationPipelineContext, _trace_stage
 
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -451,6 +452,7 @@ async def _finalize_host_render(manifest_path: Path) -> int:
     try:
         settings = get_or_create_settings(db)
         schedule, _, notification_presets = _load_schedule_context(db, schedule_id)
+        _resolve_schedule_ai_settings(db, settings, schedule_id)
         client = build_immich_client(settings)
         module_name = str(payload.get("generation_type") or "").strip()
         module = MODULES.get(module_name)
