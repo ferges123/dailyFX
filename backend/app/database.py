@@ -108,7 +108,18 @@ def init_db() -> None:
     from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 
     backend_root = Path(__file__).resolve().parents[1]
-    alembic_cfg = Config(str(backend_root / "alembic.ini"))
+    alembic_ini_path = backend_root / "alembic.ini"
+    if not alembic_ini_path.exists():
+        # Fallback to alternative paths inside Docker container or cwd
+        for fallback in [
+            Path("/app/alembic.ini"),
+            Path.cwd() / "alembic.ini",
+            Path.cwd() / "backend" / "alembic.ini",
+        ]:
+            if fallback.exists():
+                alembic_ini_path = fallback
+                break
+    alembic_cfg = Config(str(alembic_ini_path))
     alembic_cfg.set_main_option("script_location", str(backend_root / "app" / "migrations"))
 
     command.upgrade(alembic_cfg, "head")

@@ -42,3 +42,30 @@ def test_get_db_no_exception_closes_session():
         # Verify that rollback was NOT called, but close was
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
+
+
+def test_init_db_fallback_path_resolution(monkeypatch):
+    from pathlib import Path
+    upgrade_called = []
+
+    monkeypatch.setattr("alembic.command.upgrade", lambda cfg, revision: upgrade_called.append(cfg))
+    monkeypatch.setattr("app.database._ensure_engine", lambda: None)
+    monkeypatch.setattr("app.services.generation.bootstrap.bootstrap_builtin_ai_effects", lambda: None)
+    monkeypatch.setattr("app.database._initialized_databases", set())
+
+    real_exists = Path.exists
+    def mock_exists(self):
+        if "alembic.ini" in str(self):
+            if str(self) == "/app/alembic.ini":
+                return True
+            return False
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "exists", mock_exists)
+
+    from app.database import init_db
+    init_db()
+
+    assert len(upgrade_called) == 1
+    assert upgrade_called[0].config_file_name == "/app/alembic.ini"
+
