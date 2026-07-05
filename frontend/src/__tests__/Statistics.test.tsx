@@ -154,4 +154,48 @@ describe('StatisticsPage Tabs', () => {
 
     expect(screen.getByRole('table')).toHaveClass('hidden', 'md:table');
   });
+
+  it('allows sorting table columns in desktop view', async () => {
+    renderPage();
+
+    // Verify initial load has default desktop sorting (by Effect name / Title ascending)
+    // Vignette (total_runs: 2), Duotone (total_runs: 8). Standard tab is active.
+    // 'Duotone' (D) should come before 'Vignette' (V).
+    const rows = await screen.findAllByRole('row');
+    // rows[0] is header. rows[1] should be Duotone, rows[2] should be Vignette.
+    expect(rows[1]).toHaveTextContent('Duotone');
+    expect(rows[2]).toHaveTextContent('Vignette');
+
+    // Click on 'Runs' header to sort by runs ascending
+    const runsHeader = screen.getByRole('button', { name: /Runs/i });
+    fireEvent.click(runsHeader);
+
+    // After clicking 'Runs' once, it sorts ascending: Vignette (2 runs) then Duotone (8 runs)
+    let reorderedRows = screen.getAllByRole('row');
+    expect(reorderedRows[1]).toHaveTextContent('Vignette');
+    expect(reorderedRows[2]).toHaveTextContent('Duotone');
+
+    // Click 'Runs' header again to sort descending
+    fireEvent.click(runsHeader);
+
+    // Now it sorts descending: Duotone (8 runs) then Vignette (2 runs)
+    reorderedRows = screen.getAllByRole('row');
+    expect(reorderedRows[1]).toHaveTextContent('Duotone');
+    expect(reorderedRows[2]).toHaveTextContent('Vignette');
+
+    // Click on 'Effect' header to sort. Since we switched from Runs, it defaults to title asc (Duotone then Vignette)
+    const effectHeader = screen.getByRole('button', { name: /Effect/i });
+    fireEvent.click(effectHeader);
+
+    reorderedRows = screen.getAllByRole('row');
+    expect(reorderedRows[1]).toHaveTextContent('Duotone');
+    expect(reorderedRows[2]).toHaveTextContent('Vignette');
+
+    // Click on 'Effect' again to toggle to title desc (Vignette then Duotone)
+    fireEvent.click(effectHeader);
+    reorderedRows = screen.getAllByRole('row');
+    expect(reorderedRows[1]).toHaveTextContent('Vignette');
+    expect(reorderedRows[2]).toHaveTextContent('Duotone');
+  });
 });
+

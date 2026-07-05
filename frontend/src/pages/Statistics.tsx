@@ -2,10 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getEffectStats } from '../api/client';
 import type * as client from '../api/client';
+import { useState } from 'react';
 import {
   AlertTriangle,
+  ArrowUpDown,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Play,
   Star,
@@ -46,10 +50,25 @@ function sortStatsForQuality(a: client.EffectStats, b: client.EffectStats) {
   return b.total_runs - a.total_runs;
 }
 
+type SortKey = 'title' | 'total_runs' | 'like_rate' | 'unrated_count' | 'last_run_at' | 'quality_score';
+type SortOrder = 'asc' | 'desc';
+
 export function StatisticsPage() {
   const navigate = useNavigate();
   const { tab } = useParams<{ tab?: string }>();
   const activeTab = tab === 'ai' ? 'ai' : 'standard';
+
+  const [sortKey, setSortKey] = useState<SortKey>('title');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
 
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['effect-stats'],
@@ -79,6 +98,69 @@ export function StatisticsPage() {
   const aiStats = sortedStats.filter((stat) => stat.effect_id.startsWith('ai_'));
 
   const currentStats = activeTab === 'standard' ? standardStats : aiStats;
+
+  const desktopSortedStats = [...currentStats].sort((a, b) => {
+    let valA = a[sortKey];
+    let valB = b[sortKey];
+
+    if (sortKey === 'title') {
+      const titleA = a.title || '';
+      const titleB = b.title || '';
+      return sortOrder === 'asc'
+        ? titleA.localeCompare(titleB)
+        : titleB.localeCompare(titleA);
+    }
+
+    if (sortKey === 'last_run_at') {
+      if (valA === null && valB === null) return 0;
+      if (valA === null) return 1;
+      if (valB === null) return -1;
+      const timeA = new Date(valA).getTime();
+      const timeB = new Date(valB).getTime();
+      return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    }
+
+    if (sortKey === 'like_rate') {
+      if (valA === null && valB === null) return 0;
+      if (valA === null) return 1;
+      if (valB === null) return -1;
+    }
+
+    const numA = (valA ?? 0) as number;
+    const numB = (valB ?? 0) as number;
+
+    if (numA !== numB) {
+      return sortOrder === 'asc' ? numA - numB : numB - numA;
+    }
+
+    return a.title.localeCompare(b.title);
+  });
+
+  const renderHeader = (label: string, key: SortKey) => {
+    const isActive = sortKey === key;
+    return (
+      <th className="px-4 pb-3">
+        <button
+          type="button"
+          onClick={() => handleSort(key)}
+          className="flex items-center gap-1 text-[10px] font-bold uppercase text-stone-500 hover:text-stone-800 transition-colors focus:outline-none group"
+        >
+          <span>{label}</span>
+          <span className="text-stone-400">
+            {isActive ? (
+              sortOrder === 'asc' ? (
+                <ChevronUp size={13} className="text-emerald-700" />
+              ) : (
+                <ChevronDown size={13} className="text-emerald-700" />
+              )
+            ) : (
+              <ArrowUpDown size={11} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+            )}
+          </span>
+        </button>
+      </th>
+    );
+  };
 
   const totalRuns = sortedStats.reduce((sum, stat) => sum + stat.total_runs, 0);
   const ratedRuns = sortedStats.reduce((sum, stat) => sum + stat.rating_count, 0);
@@ -274,17 +356,17 @@ export function StatisticsPage() {
             <table className="hidden w-full border-collapse text-left md:table">
               <thead>
                 <tr className="border-b border-stone-200 text-[10px] font-bold uppercase text-stone-500">
-                  <th className="px-4 pb-3">Effect</th>
-                  <th className="px-4 pb-3">Runs</th>
-                  <th className="px-4 pb-3">Rating</th>
-                  <th className="px-4 pb-3">Unrated</th>
-                  <th className="px-4 pb-3">Status mix</th>
-                  <th className="px-4 pb-3">Last run</th>
-                  <th className="px-4 pb-3">Quality</th>
+                  {renderHeader('Effect', 'title')}
+                  {renderHeader('Runs', 'total_runs')}
+                  {renderHeader('Rating', 'like_rate')}
+                  {renderHeader('Unrated', 'unrated_count')}
+                  <th className="px-4 pb-3 text-[10px] font-bold uppercase text-stone-500">Status mix</th>
+                  {renderHeader('Last run', 'last_run_at')}
+                  {renderHeader('Quality', 'quality_score')}
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-sm">
-                {currentStats.map((stat) => {
+                {desktopSortedStats.map((stat) => {
                   const totalRatings = stat.likes + stat.dislikes;
                   const likedPercent = totalRatings > 0 
                     ? Math.round((stat.likes / totalRatings) * 100) 
