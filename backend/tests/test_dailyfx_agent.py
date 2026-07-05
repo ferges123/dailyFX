@@ -712,3 +712,17 @@ def test_dailyfx_agent_warns_on_quoted_placeholders_in_templates(monkeypatch, ca
     assert (
         "warning: Custom template 'codex-command-template' contains quoted placeholder '{image_path}'." in captured.err
     )
+
+
+def test_run_target_with_spinner_clears_terminal_line(monkeypatch):
+    stderr_mock = StringIO()
+    monkeypatch.setattr(sys, "stderr", stderr_mock)
+
+    result, log_path = dailyfx_agent._run_target_with_spinner(
+        ["true"], prompt="", task_id="test", labels=["label1"]
+    )
+
+    captured = stderr_mock.getvalue()
+    assert "\033[K" in captured
+    assert "\r\033[K" in captured
+

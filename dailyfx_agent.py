@@ -350,11 +350,11 @@ def _run_target_with_spinner(
             frame = next(spinner_frames)
             label_index = spinner_state["index"] if spinner_state["index"] < len(spinner_labels) else len(spinner_labels) - 1
             label = spinner_labels[label_index]
-            sys.stderr.write(f"\r{frame} {label}   ")
+            sys.stderr.write(f"\r{frame} {label}\033[K")
             sys.stderr.flush()
             spinner_state["index"] += 1
             stop_event.wait(0.7)
-        sys.stderr.write("\r")
+        sys.stderr.write("\r\033[K")
         sys.stderr.flush()
 
     thread = threading.Thread(target=_spinner, daemon=True)
