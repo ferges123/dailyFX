@@ -447,6 +447,10 @@ async def _finalize_host_render(manifest_path: Path) -> int:
     if not isinstance(config_json, dict):
         config_json = {}
 
+    tags = payload.get("tags")
+    if isinstance(tags, list):
+        config_json = {**config_json, "host_agent_tags": tags}
+
     init_db()
     db = SessionLocal()
     try:

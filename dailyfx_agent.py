@@ -656,36 +656,65 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
     if not generated_root.exists():
         return None
 
+    # Find recent subdirectories that might represent the current session/task
+    subdirs = []
+    try:
+        for path in generated_root.iterdir():
+            if path.is_dir():
+                try:
+                    mtime = path.stat().st_mtime
+                    if mtime >= start_time - 10.0:  # 10s safety buffer
+                        subdirs.append((path, mtime))
+                except OSError:
+                    continue
+    except OSError:
+        return None
+
+    # Sort by mtime, newest first
+    subdirs.sort(key=lambda x: x[1], reverse=True)
+
     candidates: list[Path] = []
     buffer_time = start_time - 300.0  # 5-minute safety window
 
-    try:
-        # Check files directly in generated_root and shallowly in recent subdirectories
-        for path in generated_root.iterdir():
-            try:
-                if path.is_file():
-                    if path.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
-                        if path.stat().st_mtime >= start_time:
-                            candidates.append(path)
-                elif path.is_dir():
-                    # Only search inside directories that have been modified recently
-                    if path.stat().st_mtime >= buffer_time:
-                        for subpath in path.iterdir():
-                            if subpath.is_file():
-                                if subpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
-                                    if subpath.stat().st_mtime >= start_time:
-                                        candidates.append(subpath)
-                            elif subpath.is_dir():
-                                if subpath.stat().st_mtime >= buffer_time:
-                                    for subsubpath in subpath.iterdir():
-                                        if subsubpath.is_file():
-                                            if subsubpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
-                                                if subsubpath.stat().st_mtime >= start_time:
-                                                    candidates.append(subsubpath)
-            except OSError:
-                continue
-    except OSError:
-        return None
+    # If we found a recent subdirectory, restrict search to it. Otherwise, search the root.
+    search_dirs = [subdirs[0][0]] if subdirs else [generated_root]
+
+    for search_dir in search_dirs:
+        try:
+            for path in search_dir.iterdir():
+                try:
+                    if path.is_file():
+                        name_lower = path.name.lower()
+                        if "input" in name_lower or "original" in name_lower:
+                            continue
+                        if path.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                            if path.stat().st_mtime >= start_time - 10.0:
+                                candidates.append(path)
+                    elif path.is_dir():
+                        # Only search inside directories that have been modified recently
+                        if path.stat().st_mtime >= buffer_time:
+                            for subpath in path.iterdir():
+                                if subpath.is_file():
+                                    subname_lower = subpath.name.lower()
+                                    if "input" in subname_lower or "original" in subname_lower:
+                                        continue
+                                    if subpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                                        if subpath.stat().st_mtime >= start_time - 10.0:
+                                            candidates.append(subpath)
+                                elif subpath.is_dir():
+                                    if subpath.stat().st_mtime >= buffer_time:
+                                        for subsubpath in subpath.iterdir():
+                                            if subsubpath.is_file():
+                                                subsubname_lower = subsubpath.name.lower()
+                                                if "input" in subsubname_lower or "original" in subsubname_lower:
+                                                    continue
+                                                if subsubpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                                                    if subsubpath.stat().st_mtime >= start_time - 10.0:
+                                                        candidates.append(subsubpath)
+                except OSError:
+                    continue
+        except OSError:
+            continue
 
     if not candidates:
         return None
@@ -867,6 +896,22 @@ def main(argv: list[str] | None = None) -> int:
             last_exit = 1
             continue
 
+        # Augment prompt with Source Vision and Final Vision instructions for host agent.
+        abs_image_path = str(Path(image_path).resolve())
+        abs_output_path = str(Path(output_path).resolve())
+        abs_manifest_path = str(manifest_path.resolve())
+        prompt += (
+            f"\n\nCRITICAL: As the AI agent running on the host, you MUST perform both:\n"
+            f"1. Source Vision: Analyze the input image (source photo) at '{abs_image_path}' for context, theme, and people.\n"
+            f"2. Final Vision: Analyze the final generated image (after generating/saving it) for what actually appears in it.\n"
+            f"Use these vision steps to generate a high-quality title (a short, creative 3-5 word title) and summary "
+            f"(one concise sentence describing the final image).\n"
+            f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
+            f"the 'title' and 'summary' keys before exiting. You can also generate a list of 3-6 tags and save "
+            f"them under the 'tags' key in the manifest.\n"
+            f"The final output image path is '{abs_output_path}'."
+        )
+
         target_command = _build_target_command(
             args.target,
             image_path,
@@ -918,6 +963,14 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(f"{missing_message}\n")
                 last_exit = 1
                 continue
+
+        # Sync updated manifest to shared manifest if they are different files
+        if shared_manifest_path != manifest_path:
+            try:
+                if manifest_path.exists():
+                    shared_manifest_path.write_text(manifest_path.read_text(encoding="utf-8"), encoding="utf-8")
+            except Exception as exc:
+                sys.stderr.write(f"warning: failed to sync manifest changes to shared manifest: {exc}\n")
 
         finalize_command = [
             "docker",

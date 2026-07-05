@@ -86,7 +86,7 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
         "--image",
         "./data/results/cli-s1-abc123.input.png",
     ]
-    assert inputs[1] == "Use the image."
+    assert inputs[1] and inputs[1].startswith("Use the image.")
     assert calls[2][8:10] == ["finalize-host", "--manifest-path"]
     assert (tmp_path / "run.json").read_text(encoding="utf-8") == backend_stdout
     assert "image provider: agy" in captured.out
@@ -274,7 +274,7 @@ def test_dailyfx_agent_supports_short_aliases(monkeypatch, tmp_path):
         "--image",
         "./data/results/cli-s1-abc123.input.png",
     ]
-    assert inputs[1] == "Use the image."
+    assert inputs[1] and inputs[1].startswith("Use the image.")
 
 
 def test_dailyfx_agent_passes_model_to_agy(monkeypatch, tmp_path):
@@ -375,7 +375,7 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
 
     assert exit_code == 0
     assert calls[1][:4] == ["codex", "-m", "gpt-5.5", "exec"]
-    assert inputs[1] == "Use the image."
+    assert inputs[1] and inputs[1].startswith("Use the image.")
 
 
 def test_dailyfx_agent_lists_models_for_target(monkeypatch, capsys):
@@ -569,7 +569,7 @@ def test_dailyfx_agent_renders_agy_template(monkeypatch, tmp_path, capsys):
         "--image",
         "./data/results/cli-s1-abc123.input.png",
     ]
-    assert inputs[1] == "Use the image."
+    assert inputs[1] and inputs[1].startswith("Use the image.")
     # Verbose mode prints the manifest to stderr.
     assert '"task_id": "cli-s1-abc123"' in capsys.readouterr().err
 
@@ -625,7 +625,7 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
     )
 
     assert exit_code == 0
-    assert inputs[1] == "Use the image."
+    assert inputs[1] and inputs[1].startswith("Use the image.")
     output_path = tmp_path / "data" / "results" / "cli-s1-abc123.png"
     assert output_path.read_bytes() == b"codex image bytes"
 
@@ -681,7 +681,7 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
     )
 
     assert exit_code == 0
-    assert inputs[1] == "Use the image."
+    assert inputs[1] and inputs[1].startswith("Use the image.")
     output_path = tmp_path / "data" / "results" / "cli-s1-abc123.png"
     assert output_path.read_bytes() == b"agy image bytes"
 

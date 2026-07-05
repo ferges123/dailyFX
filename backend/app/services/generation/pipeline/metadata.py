@@ -276,63 +276,84 @@ async def _build_generation_artifacts(
                 exif_summary=prompt_enrichment_context.get("exif_summary"),
             )
 
-        if settings.default_ai_provider != "none":
-            try:
-                await _apply_source_vision(
-                    db=db,
-                    client=client,
-                    source_asset=source_asset,
-                    source_asset_id=source_asset_id,
-                    people_context=people_context,
-                    settings=settings,
-                    task_id=task_id,
-                    state=state,
-                    metadata_provenance=metadata_provenance,
-                    _task_update=_task_update,
-                    _progress=_progress,
-                )
-            except Exception as ai_exc:
-                metadata_provenance["source_vision"].update(succeeded=False, error=str(ai_exc))
-                _trace_stage(
-                    db,
-                    task_id,
-                    stage="source_vision_failed",
-                    message=str(ai_exc),
-                    step="analyzing_image",
-                    status="running",
-                    progress=0.55,
-                    details={"provider": settings.default_ai_provider, "model": settings.default_ai_model},
-                )
-                debug_log("AI vision failed, using module defaults", task_id=task_id, error=str(ai_exc))
-                logger.warning("AI analysis failed, falling back to module defaults: %s", ai_exc)
+        if result.provider in {"agy", "codex"}:
+            metadata_provenance["source_vision"].update(
+                attempted=True,
+                succeeded=True,
+                provider=result.provider,
+                model=result.model,
+            )
+            metadata_provenance["final_vision"].update(
+                attempted=True,
+                succeeded=True,
+                provider=result.provider,
+                model=result.model,
+            )
+            metadata_provenance["title_source"] = "final_vision"
+            metadata_provenance["summary_source"] = "final_vision"
+            metadata_provenance["tags_source"] = "final_vision"
 
-        if _is_ai_module(result.generation_type, group_name) and settings.default_ai_provider != "none":
-            try:
-                await _apply_final_vision(
-                    db=db,
-                    result=result,
-                    group_name=group_name,
-                    settings=settings,
-                    task_id=task_id,
-                    state=state,
-                    metadata_provenance=metadata_provenance,
-                    _task_update=_task_update,
-                    _progress=_progress,
-                )
-            except Exception as ai_exc:
-                metadata_provenance["final_vision"].update(succeeded=False, error=str(ai_exc))
-                _trace_stage(
-                    db,
-                    task_id,
-                    stage="final_vision_failed",
-                    message=str(ai_exc),
-                    step="analyzing_final_image",
-                    status="running",
-                    progress=0.7,
-                    details={"provider": settings.default_ai_provider, "model": settings.default_ai_model},
-                )
-                debug_log("Final AI vision failed, keeping earlier metadata", task_id=task_id, error=str(ai_exc))
-                logger.warning("Final AI vision failed, keeping earlier metadata: %s", ai_exc)
+            host_tags = result.config.get("host_agent_tags")
+            if isinstance(host_tags, list):
+                state["ai_tags"] = [str(t) for t in host_tags]
+        else:
+            if settings.default_ai_provider != "none":
+                try:
+                    await _apply_source_vision(
+                        db=db,
+                        client=client,
+                        source_asset=source_asset,
+                        source_asset_id=source_asset_id,
+                        people_context=people_context,
+                        settings=settings,
+                        task_id=task_id,
+                        state=state,
+                        metadata_provenance=metadata_provenance,
+                        _task_update=_task_update,
+                        _progress=_progress,
+                    )
+                except Exception as ai_exc:
+                    metadata_provenance["source_vision"].update(succeeded=False, error=str(ai_exc))
+                    _trace_stage(
+                        db,
+                        task_id,
+                        stage="source_vision_failed",
+                        message=str(ai_exc),
+                        step="analyzing_image",
+                        status="running",
+                        progress=0.55,
+                        details={"provider": settings.default_ai_provider, "model": settings.default_ai_model},
+                    )
+                    debug_log("AI vision failed, using module defaults", task_id=task_id, error=str(ai_exc))
+                    logger.warning("AI analysis failed, falling back to module defaults: %s", ai_exc)
+
+            if _is_ai_module(result.generation_type, group_name) and settings.default_ai_provider != "none":
+                try:
+                    await _apply_final_vision(
+                        db=db,
+                        result=result,
+                        group_name=group_name,
+                        settings=settings,
+                        task_id=task_id,
+                        state=state,
+                        metadata_provenance=metadata_provenance,
+                        _task_update=_task_update,
+                        _progress=_progress,
+                    )
+                except Exception as ai_exc:
+                    metadata_provenance["final_vision"].update(succeeded=False, error=str(ai_exc))
+                    _trace_stage(
+                        db,
+                        task_id,
+                        stage="final_vision_failed",
+                        message=str(ai_exc),
+                        step="analyzing_final_image",
+                        status="running",
+                        progress=0.7,
+                        details={"provider": settings.default_ai_provider, "model": settings.default_ai_model},
+                    )
+                    debug_log("Final AI vision failed, keeping earlier metadata", task_id=task_id, error=str(ai_exc))
+                    logger.warning("Final AI vision failed, keeping earlier metadata: %s", ai_exc)
 
         if _is_ai_module(result.generation_type, group_name):
             state["ai_tags"] = _inject_ai_tags(state["ai_tags"], module, group_name)
