@@ -107,8 +107,9 @@ def init_db() -> None:
     import app.models  # noqa: F401
     from app.services.generation.bootstrap import bootstrap_builtin_ai_effects
 
-    alembic_cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    alembic_cfg.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "app" / "migrations"))
+    backend_root = Path(__file__).resolve().parents[1]
+    alembic_cfg = Config(str(backend_root / "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", str(backend_root / "app" / "migrations"))
 
     command.upgrade(alembic_cfg, "head")
     bootstrap_builtin_ai_effects()
