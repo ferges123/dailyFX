@@ -166,6 +166,9 @@ class TrendDataPoint(BaseModel):
     failed: int
     likes: int
     dislikes: int
+    auto: int
+    manual: int
+    cli: int
 
 
 class TrendsResponse(BaseModel):

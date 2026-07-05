@@ -233,3 +233,54 @@ def test_stats_api_quality_labels(
     assert stat["like_rate"] == expected_score
     assert stat["quality_score"] == expected_score
     assert stat["quality_label"] == expected_label
+
+
+def test_stats_trends_api(authenticated_client: TestClient, db_session: Session):
+    # Add one auto task
+    add_history_with_stats(
+        db_session,
+        task_id="auto-s1-12345",
+        effect_id="cyanotype",
+        status="UPLOADED",
+        liked=True,
+    )
+    # Add one cli task
+    add_history_with_stats(
+        db_session,
+        task_id="cli-s1-12345",
+        effect_id="cyanotype",
+        status="UPLOADED",
+        liked=True,
+    )
+    # Add one manual task (studio)
+    add_history_with_stats(
+        db_session,
+        task_id="studio-12345",
+        effect_id="cyanotype",
+        status="UPLOADED",
+        liked=True,
+    )
+    # Add another manual task (man- trigger)
+    add_history_with_stats(
+        db_session,
+        task_id="man-12345",
+        effect_id="cyanotype",
+        status="REJECTED",
+        liked=False,
+    )
+    db_session.commit()
+
+    response = authenticated_client.get("/api/generation/stats/trends")
+    assert response.status_code == 200
+    data = response.json()
+    assert "daily" in data
+    assert "weekly" in data
+
+    # Find the data points and verify auto, manual, cli counts
+    daily = data["daily"]
+    assert len(daily) > 0
+    today_point = daily[-1]
+    assert today_point["auto"] == 1
+    assert today_point["cli"] == 1
+    assert today_point["manual"] == 2
+
