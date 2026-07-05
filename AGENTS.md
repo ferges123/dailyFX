@@ -43,3 +43,8 @@
 - Always use standard Semantic Versioning (SemVer) with three segments: `MAJOR.MINOR.PATCH` (e.g. `0.1.0` is standard and preferred over non-standard `0.01` or `0.0.1` when introducing new features).
 - The version must be bumped (following SemVer) whenever code changes are made and a new Docker image is built.
 - Maintain the version string in `frontend/package.json`, `frontend/src/App.tsx` (desktop sidebar), and `frontend/src/pages/Settings.tsx` (mobile footer).
+
+## Host-Side Agent Execution (dailyfx-agent)
+- When invoked on the host via `dailyfx-agent` (using targets like `agy` or `codex`), the agent must perform both **Source Vision** (analyzing the input image for context/people) and **Final Vision** (analyzing the final generated image for what actually appears in it).
+- The agent must use these vision steps to generate a high-quality title and summary, and then write/update these values in the local JSON manifest file (e.g. `data/dailyfx-run.json` or as specified by the command-line arguments) under the `title` and `summary` keys before exiting. This ensures the backend receives the enriched metadata during the finalization step.
+
