@@ -12,6 +12,7 @@ export function formatDate(value: string | null | undefined): string {
   if (Number.isNaN(parsed.getTime()))
     return typeof value === 'string' ? value : '';
   return parsed.toLocaleDateString(undefined, {
+    year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
@@ -23,6 +24,7 @@ export function formatDateTime(value: string | null | undefined): string {
   if (Number.isNaN(parsed.getTime()))
     return typeof value === 'string' ? value : '';
   return parsed.toLocaleString(undefined, {
+    year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
