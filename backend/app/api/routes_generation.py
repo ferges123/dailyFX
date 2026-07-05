@@ -781,6 +781,12 @@ def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_au
             sa.func.sum(sa.case((GenerationHistoryModel.status == "FAILED", 1), else_=0)).label("failed"),
             sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(True), 1), else_=0)).label("likes"),
             sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
+            sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("auto-%"), 1), else_=0)).label("auto"),
+            sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("cli-%"), 1), else_=0)).label("cli"),
+            sa.func.sum(sa.case((sa.and_(
+                sa.not_(GenerationHistoryModel.task_id.like("auto-%")),
+                sa.not_(GenerationHistoryModel.task_id.like("cli-%"))
+            ), 1), else_=0)).label("manual"),
         )
         .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
         .filter(GenerationHistoryModel.created_at >= sa.func.date("now", "-30 days"))
@@ -798,6 +804,9 @@ def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_au
             failed=row.failed or 0,
             likes=row.likes or 0,
             dislikes=row.dislikes or 0,
+            auto=row.auto or 0,
+            manual=row.manual or 0,
+            cli=row.cli or 0,
         )
         for row in daily_query
     ]
@@ -812,6 +821,12 @@ def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_au
             sa.func.sum(sa.case((GenerationHistoryModel.status == "FAILED", 1), else_=0)).label("failed"),
             sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(True), 1), else_=0)).label("likes"),
             sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
+            sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("auto-%"), 1), else_=0)).label("auto"),
+            sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("cli-%"), 1), else_=0)).label("cli"),
+            sa.func.sum(sa.case((sa.and_(
+                sa.not_(GenerationHistoryModel.task_id.like("auto-%")),
+                sa.not_(GenerationHistoryModel.task_id.like("cli-%"))
+            ), 1), else_=0)).label("manual"),
         )
         .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
         .filter(GenerationHistoryModel.created_at >= sa.func.date("now", "-84 days"))
@@ -829,6 +844,9 @@ def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_au
             failed=row.failed or 0,
             likes=row.likes or 0,
             dislikes=row.dislikes or 0,
+            auto=row.auto or 0,
+            manual=row.manual or 0,
+            cli=row.cli or 0,
         )
         for row in weekly_query
     ]
