@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import os
 import queue
 import re
 import select
@@ -86,6 +87,17 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=1,
         help="Number of times to run the task (default: 1)",
+    )
+    parser.add_argument(
+        "-d",
+        "--daemon",
+        action="store_true",
+        help="Run in background (detached) mode. Prints the PID and exits immediately.",
+    )
+    parser.add_argument(
+        "--pid-file",
+        default=None,
+        help="Path to write the daemon PID file (default: data/dailyfx-agent.pid)",
     )
     return parser
 
@@ -873,6 +885,19 @@ def main(argv: list[str] | None = None) -> int:
     repeat = max(1, args.repeat)
     last_exit = 0
 
+    if args.daemon:
+        pid_file = Path(args.pid_file) if args.pid_file else Path("data") / "dailyfx-agent.pid"
+        pid_file.parent.mkdir(parents=True, exist_ok=True)
+        pid = os.fork()
+        if pid > 0:
+            pid_file.write_text(str(pid), encoding="utf-8")
+            print(f"daemon started: pid={pid} pidfile={pid_file}")
+            return 0
+        os.setsid()
+        sys.stdin = open(os.devnull, "r")
+        sys.stdout = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")
+
     for run_index in range(1, repeat + 1):
         if repeat > 1:
             print(f"--- run {run_index}/{repeat} ---")
@@ -1069,6 +1094,10 @@ def main(argv: list[str] | None = None) -> int:
             manifest_path.unlink(missing_ok=True)
         if shared_manifest_path != manifest_path:
             shared_manifest_path.unlink(missing_ok=True)
+
+    if args.daemon:
+        pid_file = Path(args.pid_file) if args.pid_file else Path("data") / "dailyfx-agent.pid"
+        pid_file.unlink(missing_ok=True)
 
     return last_exit
 
