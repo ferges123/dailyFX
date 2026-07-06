@@ -828,3 +828,135 @@ def test_run_target_with_spinner_clears_terminal_line(monkeypatch):
     captured = stderr_mock.getvalue()
     assert "\033[K" in captured
     assert "\r\033[K" in captured
+
+
+def test_list_codex_models_redirects_stderr_to_devnull(monkeypatch):
+    import subprocess
+    popen_args = []
+    
+    class FakePopen:
+        def __init__(self, command, **kwargs):
+            popen_args.append((command, kwargs))
+            self.stdin = type('obj', (object,), {
+                'write': lambda s, data: None,
+                'flush': lambda s: None
+            })()
+            class CustomList(list):
+                pass
+            self.stdout = CustomList()
+            self.stderr = []
+            self.returncode = 0
+            
+        def terminate(self):
+            pass
+        def wait(self, timeout=None):
+            return 0
+            
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(dailyfx_agent, "_mcp_request", lambda *args, **kwargs: {"data": []})
+
+    dailyfx_agent._list_codex_models()
+    assert popen_args[0][1].get("stderr") == subprocess.DEVNULL
+
+
+def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
+    dup2_calls = []
+    setsid_called = []
+
+    monkeypatch.setattr(dailyfx_agent.os, "fork", lambda: 0)  # Symulacja dziecka
+    monkeypatch.setattr(dailyfx_agent.os, "setsid", lambda: setsid_called.append(True))
+    monkeypatch.setattr(dailyfx_agent.os, "dup2", lambda fd1, fd2: dup2_calls.append((fd1, fd2)))
+    monkeypatch.setattr(dailyfx_agent, "_parse_args", lambda argv: dailyfx_agent._build_parser().parse_args(["--daemon", "--schedule-id", "1", "--target", "agy"]))
+    
+    # Zamakowanie reszty maina, by nie wywoływał komend Dockera
+    monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: [])
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", lambda *args, **kwargs: type('obj', (object,), {'returncode': 0, 'stdout': '{}', 'stderr': ''}))
+    monkeypatch.setattr(dailyfx_agent, "_load_manifest", lambda path: {})
+
+    try:
+        dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "agy"])
+    except SystemExit:
+        pass
+
+    # Sprawdzenie czy dup2 przekierował FD 0, 1, 2
+    fds = [fd_target for _, fd_target in dup2_calls]
+    assert 0 in fds
+    assert 1 in fds
+    assert 2 in fds
+
+
+def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
+    monkeypatch.setattr(dailyfx_agent.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
+    
+    import subprocess
+    from subprocess import CompletedProcess
+    
+    def fake_run(command, **kwargs):
+        if command == ["true"]:
+            return CompletedProcess(command, 0, stdout="{}", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+        
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    
+    def fake_load_manifest(path):
+        raise ValueError("Force crash inside loop")
+        
+    monkeypatch.setattr(dailyfx_agent, "_load_manifest", fake_load_manifest)
+
+    try:
+        dailyfx_agent.main([
+            "--schedule-id", "1",
+            "--target", "agy",
+            "--project-dir", str(tmp_path)
+        ])
+    except ValueError as exc:
+        assert str(exc) == "Force crash inside loop"
+
+    temp_files = list(tmp_path.glob("dailyfx-run-*.json"))
+    assert len(temp_files) == 0
+
+    shared_temp_files = list(Path("data").glob("dailyfx-run-*.json"))
+    assert len(shared_temp_files) == 0
+
+
+def test_read_jsonrpc_message_without_queue_raises_runtime_error():
+    import pytest
+    class FakeStream:
+        pass
+    
+    with pytest.raises(RuntimeError, match="Stream does not have a response queue attached"):
+        dailyfx_agent._read_jsonrpc_message(FakeStream())
+
+
+def test_run_target_with_spinner_skips_spinner_in_daemon_mode(monkeypatch):
+    spinner_thread_started = False
+    
+    import threading
+    original_thread = threading.Thread
+    
+    def fake_thread_start(self):
+        nonlocal spinner_thread_started
+        if "spinner" in str(self._target):
+            spinner_thread_started = True
+        return original_thread.start(self)
+        
+    monkeypatch.setattr(threading.Thread, "start", fake_thread_start)
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", lambda *args, **kwargs: type('obj', (object,), {'returncode': 0, 'stdout': '', 'stderr': ''}))
+
+    dailyfx_agent._run_target_with_spinner(
+        ["echo"], prompt="", task_id="test", labels=[], daemon_mode=True
+    )
+    assert not spinner_thread_started
+
+
+
+
+
+
+

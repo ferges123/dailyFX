@@ -406,8 +406,32 @@ def _run_target_with_spinner(
     task_id: str,
     labels: list[str],
     timeout: int | None = None,
+    daemon_mode: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     log_dir = Path(tempfile.gettempdir()) / "dailyfx-agent-logs"
+    if daemon_mode:
+        try:
+            result = subprocess.run(
+                command,
+                input=prompt,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            result = subprocess.CompletedProcess(command, 124, stdout="", stderr=f"Timed out after {timeout}s")
+            
+        log_path = _write_target_log(
+            log_dir=log_dir,
+            task_id=task_id or "target",
+            target=command[0] if command else "target",
+            stdout=result.stdout or "",
+            stderr=result.stderr or "",
+            returncode=result.returncode,
+        )
+        return result, log_path
+
     spinner_labels = (labels[:5] if labels else []) or ["waiting for image provider"]
     spinner_frames = itertools.cycle("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
     stop_event = threading.Event()
@@ -522,33 +546,18 @@ def _list_agy_models(timeout: int = 30) -> int:
 
 def _read_jsonrpc_message(stream, timeout_seconds: float = 10.0) -> dict[str, object]:
     q = getattr(stream, "response_queue", None)
-    if q is not None:
-        deadline = time.time() + timeout_seconds
-        while time.time() < deadline:
-            remaining = deadline - time.time()
-            if remaining <= 0:
-                break
-            try:
-                line = q.get(timeout=remaining)
-            except queue.Empty:
-                continue
-            if not line:
-                continue
-            try:
-                parsed = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(parsed, dict):
-                return parsed
-        raise TimeoutError("Timed out waiting for Codex MCP response")
+    if q is None:
+        raise RuntimeError("Stream does not have a response queue attached")
 
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
-        remaining = max(0.0, deadline - time.time())
-        readable, _, _ = select.select([stream], [], [], remaining)
-        if not readable:
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            break
+        try:
+            line = q.get(timeout=remaining)
+        except queue.Empty:
             continue
-        line = stream.readline()
         if not line:
             continue
         try:
@@ -595,7 +604,7 @@ def _list_codex_models(timeout: int = 60) -> int:
         command,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         text=True,
     )
 
@@ -884,6 +893,7 @@ def main(argv: list[str] | None = None) -> int:
 
     repeat = max(1, args.repeat)
     last_exit = 0
+    pid_file = None
 
     if args.daemon:
         pid_file = Path(args.pid_file) if args.pid_file else Path("data") / "dailyfx-agent.pid"
@@ -894,210 +904,220 @@ def main(argv: list[str] | None = None) -> int:
             print(f"daemon started: pid={pid} pidfile={pid_file}")
             return 0
         os.setsid()
+        try:
+            devnull = os.open(os.devnull, os.O_RDWR)
+            os.dup2(devnull, 0)
+            os.dup2(devnull, 1)
+            os.dup2(devnull, 2)
+            os.close(devnull)
+        except OSError:
+            pass
         sys.stdin = open(os.devnull, "r")
         sys.stdout = open(os.devnull, "w")
         sys.stderr = open(os.devnull, "w")
 
-    for run_index in range(1, repeat + 1):
-        if repeat > 1:
-            print(f"--- run {run_index}/{repeat} ---")
+    try:
+        for run_index in range(1, repeat + 1):
+            if repeat > 1:
+                print(f"--- run {run_index}/{repeat} ---")
 
-        backend_run = subprocess.run(
-            backend_command,
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if backend_run.returncode != 0:
-            if backend_run.stderr:
-                sys.stderr.write(backend_run.stderr)
-            elif backend_run.stdout:
-                sys.stderr.write(backend_run.stdout)
-            last_exit = backend_run.returncode or 1
-            continue
+            backend_run = subprocess.run(
+                backend_command,
+                cwd=project_dir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if backend_run.returncode != 0:
+                if backend_run.stderr:
+                    sys.stderr.write(backend_run.stderr)
+                elif backend_run.stdout:
+                    sys.stderr.write(backend_run.stdout)
+                last_exit = backend_run.returncode or 1
+                continue
 
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        manifest_path.write_text(backend_run.stdout, encoding="utf-8")
-        if shared_manifest_path != manifest_path:
-            shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
-            shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
-        try:
-            manifest = _load_manifest(manifest_path)
-        except json.JSONDecodeError as exc:
-            sys.stderr.write(f"Invalid JSON from backend CLI: {exc}\n")
-            last_exit = 1
-            continue
-
-        if args.verbose:
-            _print_manifest(manifest)
-
-        task_id = str(manifest.get("task_id") or "").strip() or "target"
-        prompt = str(manifest.get("prompt") or manifest.get("handoff_prompt") or "").strip()
-        if not prompt:
-            sys.stderr.write("Backend manifest did not include prompt\n")
-            last_exit = 1
-            continue
-
-        task_trace = manifest.get("task_trace")
-        if not isinstance(task_trace, list):
-            config_json = manifest.get("config_json")
-            if isinstance(config_json, dict):
-                task_trace = config_json.get("task_trace")
-        trace_labels = _task_trace_labels(task_trace)
-        print(f"image provider: {args.target}")
-
-        try:
-            image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
-            if not image_path:
-                image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
-            elif image_path.startswith("/data/"):
-                image_path = _container_to_host_image_path(image_path)
-        except ValueError as exc:
-            sys.stderr.write(f"{exc}\n")
-            last_exit = 1
-            continue
-
-        if not image_path:
-            sys.stderr.write("Backend manifest did not include source_image_path\n")
-            last_exit = 1
-            continue
-
-        output_path = str(manifest.get("output_path") or manifest.get("image_path") or "").strip()
-        if output_path.startswith("/data/"):
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(backend_run.stdout, encoding="utf-8")
+            if shared_manifest_path != manifest_path:
+                shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
             try:
-                output_path = _container_to_host_image_path(output_path)
+                manifest = _load_manifest(manifest_path)
+            except json.JSONDecodeError as exc:
+                sys.stderr.write(f"Invalid JSON from backend CLI: {exc}\n")
+                last_exit = 1
+                continue
+
+            if args.verbose:
+                _print_manifest(manifest)
+
+            task_id = str(manifest.get("task_id") or "").strip() or "target"
+            prompt = str(manifest.get("prompt") or manifest.get("handoff_prompt") or "").strip()
+            if not prompt:
+                sys.stderr.write("Backend manifest did not include prompt\n")
+                last_exit = 1
+                continue
+
+            task_trace = manifest.get("task_trace")
+            if not isinstance(task_trace, list):
+                config_json = manifest.get("config_json")
+                if isinstance(config_json, dict):
+                    task_trace = config_json.get("task_trace")
+            trace_labels = _task_trace_labels(task_trace)
+            print(f"image provider: {args.target}")
+
+            try:
+                image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
+                if not image_path:
+                    image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
+                elif image_path.startswith("/data/"):
+                    image_path = _container_to_host_image_path(image_path)
             except ValueError as exc:
                 sys.stderr.write(f"{exc}\n")
                 last_exit = 1
                 continue
 
-        if not output_path:
-            sys.stderr.write("Backend manifest did not include output_path\n")
-            last_exit = 1
-            continue
-
-        # Augment prompt with Source Vision and Final Vision instructions for host agent.
-        abs_image_path = str(Path(image_path).resolve())
-        abs_output_path = str(Path(output_path).resolve())
-        abs_manifest_path = str(manifest_path.resolve())
-        prompt += (
-            f"\n\nCRITICAL: As the AI agent running on the host, you MUST perform both:\n"
-            f"1. Source Vision: Analyze the input image (source photo) at '{abs_image_path}' for context, theme, and people.\n"
-            f"2. Final Vision: Analyze the final generated image (after generating/saving it) for what actually appears in it.\n"
-            f"Use these vision steps to generate:\n"
-            f"- A high-quality title (a short, creative 3-5 word title)\n"
-            f"- A summary (one concise sentence describing the final image)\n"
-            f"- A list of 3-6 descriptive tags (keywords) summarizing the image content\n"
-            f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
-            f"the 'title', 'summary', 'tags', and 'metadata_source' keys before exiting.\n"
-            f"Set 'metadata_source' to '{HOST_METADATA_SOURCE}'.\n"
-            f"The final output image path is '{abs_output_path}'."
-        )
-
-        target_command = _build_target_command(
-            args.target,
-            image_path,
-            str(manifest_path),
-            output_path,
-            args.model,
-            agy_template=args.agy_command_template,
-            codex_template=args.codex_command_template,
-        )
-
-        target_start_time = time.time()
-        target_run, target_log_path = _run_target_with_spinner(
-            target_command,
-            prompt=prompt,
-            task_id=task_id,
-            labels=trace_labels,
-            timeout=args.timeout,
-        )
-        if target_run.returncode != 0:
-            if target_run.stderr:
-                sys.stderr.write(target_run.stderr)
-            elif target_run.stdout:
-                sys.stderr.write(target_run.stdout)
-            sys.stderr.write(f"\nlog saved to {target_log_path}\n")
-            last_exit = target_run.returncode or 1
-            continue
-
-        try:
-            updated_manifest = _normalize_host_manifest(_load_manifest(manifest_path), manifest)
-            manifest_path.write_text(json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        except (json.JSONDecodeError, ValueError) as exc:
-            sys.stderr.write(f"{exc}\n")
-            last_exit = 1
-            continue
-
-        output_file = Path(output_path)
-        if not output_file.is_absolute():
-            output_file = project_dir / output_file
-        if not output_file.exists():
-            generated_image = None
-            missing_message = None
-            if args.target == "codex":
-                generated_image = _find_latest_codex_image(target_start_time)
-                missing_message = (
-                    f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
-                )
-            elif args.target == "agy":
-                generated_image = _find_latest_agy_image(target_start_time)
-                missing_message = (
-                    f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
-                )
-
-            if generated_image is not None:
-                output_file.parent.mkdir(parents=True, exist_ok=True)
-                output_file.write_bytes(generated_image.read_bytes())
-            else:
-                sys.stderr.write(f"{missing_message}\n")
+            if not image_path:
+                sys.stderr.write("Backend manifest did not include source_image_path\n")
                 last_exit = 1
                 continue
 
-        # Sync updated manifest to shared manifest if they are different files
-        if shared_manifest_path != manifest_path:
+            output_path = str(manifest.get("output_path") or manifest.get("image_path") or "").strip()
+            if output_path.startswith("/data/"):
+                try:
+                    output_path = _container_to_host_image_path(output_path)
+                except ValueError as exc:
+                    sys.stderr.write(f"{exc}\n")
+                    last_exit = 1
+                    continue
+
+            if not output_path:
+                sys.stderr.write("Backend manifest did not include output_path\n")
+                last_exit = 1
+                continue
+
+            # Augment prompt with Source Vision and Final Vision instructions for host agent.
+            abs_image_path = str(Path(image_path).resolve())
+            abs_output_path = str(Path(output_path).resolve())
+            abs_manifest_path = str(manifest_path.resolve())
+            prompt += (
+                f"\n\nCRITICAL: As the AI agent running on the host, you MUST perform both:\n"
+                f"1. Source Vision: Analyze the input image (source photo) at '{abs_image_path}' for context, theme, and people.\n"
+                f"2. Final Vision: Analyze the final generated image (after generating/saving it) for what actually appears in it.\n"
+                f"Use these vision steps to generate:\n"
+                f"- A high-quality title (a short, creative 3-5 word title)\n"
+                f"- A summary (one concise sentence describing the final image)\n"
+                f"- A list of 3-6 descriptive tags (keywords) summarizing the image content\n"
+                f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
+                f"the 'title', 'summary', 'tags', and 'metadata_source' keys before exiting.\n"
+                f"Set 'metadata_source' to '{HOST_METADATA_SOURCE}'.\n"
+                f"The final output image path is '{abs_output_path}'."
+            )
+
+            target_command = _build_target_command(
+                args.target,
+                image_path,
+                str(manifest_path),
+                output_path,
+                args.model,
+                agy_template=args.agy_command_template,
+                codex_template=args.codex_command_template,
+            )
+
+            target_start_time = time.time()
+            target_run, target_log_path = _run_target_with_spinner(
+                target_command,
+                prompt=prompt,
+                task_id=task_id,
+                labels=trace_labels,
+                timeout=args.timeout,
+                daemon_mode=args.daemon,
+            )
+            if target_run.returncode != 0:
+                if target_run.stderr:
+                    sys.stderr.write(target_run.stderr)
+                elif target_run.stdout:
+                    sys.stderr.write(target_run.stdout)
+                sys.stderr.write(f"\nlog saved to {target_log_path}\n")
+                last_exit = target_run.returncode or 1
+                continue
+
             try:
-                if manifest_path.exists():
-                    shared_manifest_path.write_text(manifest_path.read_text(encoding="utf-8"), encoding="utf-8")
-            except Exception as exc:
-                sys.stderr.write(f"warning: failed to sync manifest changes to shared manifest: {exc}\n")
+                updated_manifest = _normalize_host_manifest(_load_manifest(manifest_path), manifest)
+                manifest_path.write_text(json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            except (json.JSONDecodeError, ValueError) as exc:
+                sys.stderr.write(f"{exc}\n")
+                last_exit = 1
+                continue
 
-        finalize_command = [
-            "docker",
-            "compose",
-            "-f",
-            args.compose_file,
-            "exec",
-            "-T",
-            args.service,
-            "dailyfx",
-            "finalize-host",
-            "--manifest-path",
-            f"/data/{shared_manifest_path.name}",
-        ]
-        finalize_run = subprocess.run(finalize_command, cwd=project_dir, check=False, text=True, capture_output=True)
-        if finalize_run.returncode != 0:
-            if finalize_run.stderr:
-                sys.stderr.write(finalize_run.stderr)
-            elif finalize_run.stdout:
-                sys.stderr.write(finalize_run.stdout)
-            last_exit = finalize_run.returncode or 1
-            continue
+            output_file = Path(output_path)
+            if not output_file.is_absolute():
+                output_file = project_dir / output_file
+            if not output_file.exists():
+                generated_image = None
+                missing_message = None
+                if args.target == "codex":
+                    generated_image = _find_latest_codex_image(target_start_time)
+                    missing_message = (
+                        f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
+                    )
+                elif args.target == "agy":
+                    generated_image = _find_latest_agy_image(target_start_time)
+                    missing_message = (
+                        f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
+                    )
 
-        print(f"done: {output_path}")
-        if args.verbose:
-            print(f"log: {target_log_path}")
+                if generated_image is not None:
+                    output_file.parent.mkdir(parents=True, exist_ok=True)
+                    output_file.write_bytes(generated_image.read_bytes())
+                else:
+                    sys.stderr.write(f"{missing_message}\n")
+                    last_exit = 1
+                    continue
 
-    if not args.keep_manifest:
-        if not args.manifest_path:
-            manifest_path.unlink(missing_ok=True)
-        if shared_manifest_path != manifest_path:
-            shared_manifest_path.unlink(missing_ok=True)
+            # Sync updated manifest to shared manifest if they are different files
+            if shared_manifest_path != manifest_path:
+                try:
+                    if manifest_path.exists():
+                        shared_manifest_path.write_text(manifest_path.read_text(encoding="utf-8"), encoding="utf-8")
+                except Exception as exc:
+                    sys.stderr.write(f"warning: failed to sync manifest changes to shared manifest: {exc}\n")
 
-    if args.daemon:
-        pid_file = Path(args.pid_file) if args.pid_file else Path("data") / "dailyfx-agent.pid"
-        pid_file.unlink(missing_ok=True)
+            finalize_command = [
+                "docker",
+                "compose",
+                "-f",
+                args.compose_file,
+                "exec",
+                "-T",
+                args.service,
+                "dailyfx",
+                "finalize-host",
+                "--manifest-path",
+                f"/data/{shared_manifest_path.name}",
+            ]
+            finalize_run = subprocess.run(finalize_command, cwd=project_dir, check=False, text=True, capture_output=True)
+            if finalize_run.returncode != 0:
+                if finalize_run.stderr:
+                    sys.stderr.write(finalize_run.stderr)
+                elif finalize_run.stdout:
+                    sys.stderr.write(finalize_run.stdout)
+                last_exit = finalize_run.returncode or 1
+                continue
+
+            print(f"done: {output_path}")
+            if args.verbose:
+                print(f"log: {target_log_path}")
+
+    finally:
+        if not args.keep_manifest:
+            if not args.manifest_path:
+                if 'manifest_path' in locals() and manifest_path:
+                    manifest_path.unlink(missing_ok=True)
+            if 'shared_manifest_path' in locals() and shared_manifest_path != manifest_path:
+                shared_manifest_path.unlink(missing_ok=True)
+        if args.daemon and pid_file:
+            pid_file.unlink(missing_ok=True)
 
     return last_exit
 
