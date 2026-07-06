@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LabelList, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Flame } from 'lucide-react';
 import type * as client from '../../api/client';
 
@@ -65,7 +65,14 @@ export const EffectPopularityChart = memo(function EffectPopularityChart({
               }}
               cursor={{ fill: '#f5f5f4', opacity: 0.5 }}
             />
-            <Bar dataKey="total_runs" name="Runs" fill={barColor} radius={[0, 4, 4, 0]} barSize={12} />
+            <Bar dataKey="total_runs" name="Runs" fill={barColor} radius={[0, 4, 4, 0]} barSize={12}>
+              <LabelList
+                dataKey="total_runs"
+                position="right"
+                offset={8}
+                style={{ fill: '#78716c', fontSize: 10, fontWeight: 'bold' }}
+              />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>

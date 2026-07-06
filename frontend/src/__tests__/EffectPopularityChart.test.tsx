@@ -17,7 +17,8 @@ vi.mock('recharts', () => {
         {children}
       </div>
     ),
-    Bar: () => <div data-testid="bar" />,
+    Bar: ({ children }: any) => <div data-testid="bar">{children}</div>,
+    LabelList: () => <div data-testid="labellist" />,
     XAxis: () => <div data-testid="xaxis" />,
     YAxis: () => <div data-testid="yaxis" />,
     CartesianGrid: () => <div data-testid="cartesiangrid" />,
