@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Camera,
   History,
+  Image,
   LogOut,
   Settings,
   Sparkles,
@@ -75,6 +76,11 @@ const StatisticsPage = lazy(() =>
     default: module.StatisticsPage,
   })),
 );
+const GalleryPage = lazy(() =>
+  import('./pages/Gallery').then((module) => ({
+    default: module.GalleryPage,
+  })),
+);
 
 function PageLoadingFallback() {
   return (
@@ -125,6 +131,7 @@ function AppShell() {
   const isPresetsRoute = location.pathname.startsWith('/presets');
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isStatisticsRoute = location.pathname.startsWith('/statistics');
+  const isGalleryRoute = location.pathname.startsWith('/gallery');
 
   function handleLogout() {
     setToken(null);
@@ -211,6 +218,13 @@ function AppShell() {
             icon={<BarChart3 size={17} />}
           >
             Statistics
+          </SidebarNavLink>
+          <SidebarNavLink
+            to="/gallery"
+            active={isGalleryRoute}
+            icon={<Image size={17} />}
+          >
+            Gallery
           </SidebarNavLink>
           <SidebarNavLink
             to="/settings"
@@ -357,6 +371,14 @@ function AppShell() {
               }
             />
             <Route
+              path="/gallery"
+              element={
+                <RouteView>
+                  <GalleryPage />
+                </RouteView>
+              }
+            />
+            <Route
               path="/settings"
               element={
                 <RouteView>
@@ -396,6 +418,13 @@ function AppShell() {
           label="Stats"
         >
           <BarChart3 size={18} />
+        </BottomNavLink>
+        <BottomNavLink
+          to="/gallery"
+          active={isGalleryRoute}
+          label="Gallery"
+        >
+          <Image size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/settings"
