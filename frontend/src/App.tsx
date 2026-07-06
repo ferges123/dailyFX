@@ -139,7 +139,7 @@ function AppShell() {
   }
 
   if (location.pathname === '/') {
-    return <Navigate to="/history" replace />;
+    return <Navigate to="/gallery" replace />;
   }
 
   return (
@@ -185,6 +185,13 @@ function AppShell() {
 
         <nav aria-label="Desktop navigation" className="mt-8 grid gap-1.5">
           <SidebarNavLink
+            to="/gallery"
+            active={isGalleryRoute}
+            icon={<Image size={17} />}
+          >
+            Gallery
+          </SidebarNavLink>
+          <SidebarNavLink
             to="/history"
             active={isHistoryRoute}
             icon={<History size={17} />}
@@ -218,13 +225,6 @@ function AppShell() {
             icon={<BarChart3 size={17} />}
           >
             Statistics
-          </SidebarNavLink>
-          <SidebarNavLink
-            to="/gallery"
-            active={isGalleryRoute}
-            icon={<Image size={17} />}
-          >
-            Gallery
           </SidebarNavLink>
           <SidebarNavLink
             to="/settings"
@@ -396,6 +396,13 @@ function AppShell() {
         aria-label="Mobile navigation"
         className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-white/70 bg-[rgba(248,246,239,0.88)] px-2 py-1.5 shadow-[0_-8px_30px_rgba(36,29,16,0.08)] backdrop-blur-xl md:hidden"
       >
+        <BottomNavLink
+          to="/gallery"
+          active={isGalleryRoute}
+          label="Gallery"
+        >
+          <Image size={18} />
+        </BottomNavLink>
         <BottomNavLink to="/history" active={isHistoryRoute} label="History">
           <History size={18} />
         </BottomNavLink>
@@ -418,13 +425,6 @@ function AppShell() {
           label="Stats"
         >
           <BarChart3 size={18} />
-        </BottomNavLink>
-        <BottomNavLink
-          to="/gallery"
-          active={isGalleryRoute}
-          label="Gallery"
-        >
-          <Image size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/settings"

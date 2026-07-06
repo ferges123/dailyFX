@@ -309,11 +309,23 @@ async def get_generation_history(
     _: None = Depends(require_auth),
     status: str | None = None,
     search: str | None = None,
+    effect: str | None = None,
+    liked: bool | None = None,
+    sort: str = "newest",
     offset: int = 0,
     limit: int = 10,
 ):
-    """Get history of all generations. Optional ?status=, ?search=, ?offset=, and ?limit= for pagination."""
-    return build_generation_history_page(db, status=status, search=search, offset=offset, limit=limit)
+    """Get history of all generations with optional filters and pagination."""
+    return build_generation_history_page(
+        db,
+        status=status,
+        search=search,
+        effect=effect,
+        liked=liked,
+        sort=sort,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.get("/history/{task_id}/image")

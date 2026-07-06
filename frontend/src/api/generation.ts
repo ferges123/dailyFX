@@ -129,11 +129,21 @@ export function getGenerationHistory(
   offset?: number,
   search?: string,
   limit = 10,
+  options: {
+    effect?: string | null;
+    liked?: boolean | null;
+    sort?: 'newest' | 'oldest';
+  } = {},
 ) {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (offset !== undefined) params.set('offset', String(offset));
   if (search) params.set('search', search);
+  if (options.effect) params.set('effect', options.effect);
+  if (options.liked !== undefined && options.liked !== null) {
+    params.set('liked', String(options.liked));
+  }
+  if (options.sort) params.set('sort', options.sort);
   params.set('limit', String(limit));
   const qs = params.toString();
   return request<GenerationHistoryPage>(

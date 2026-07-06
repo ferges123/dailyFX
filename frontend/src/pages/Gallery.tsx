@@ -1,6 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Grid3X3, Search, SlidersHorizontal, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Grid3X3,
+  Heart,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import { getGenerationHistory } from '../api/client';
 import { type GenerationHistoryEntry } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
@@ -56,7 +64,7 @@ function GalleryCard({
       className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200/60 bg-stone-100 shadow-xs transition-all hover:shadow-lg hover:shadow-stone-200/50 hover:scale-[1.02]"
     >
       <SecureImage
-        src={entry.image_url || ''}
+        src={entry.image_url ? `${entry.image_url}?thumbnail=true` : ''}
         alt={entry.title}
         className="h-full w-full object-cover"
         loading="lazy"
@@ -73,6 +81,11 @@ function GalleryCard({
           {label}
         </span>
       </div>
+      {entry.liked === true && (
+        <div className="absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md">
+          <Heart size={13} fill="currentColor" />
+        </div>
+      )}
     </button>
   );
 }
@@ -80,43 +93,86 @@ function GalleryCard({
 export function GalleryPage() {
   const [search, setSearch] = useState('');
   const [effectFilter, setEffectFilter] = useState<string | null>(null);
+  const [likedFilter, setLikedFilter] = useState<boolean | null>(null);
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
   const [showFilters, setShowFilters] = useState(false);
   const [lightboxEntry, setLightboxEntry] =
     useState<GenerationHistoryEntry | null>(null);
   const [offset, setOffset] = useState(0);
+  const [loadedEntries, setLoadedEntries] = useState<GenerationHistoryEntry[]>(
+    [],
+  );
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['generation-history', 'UPLOADED', offset, search],
-    queryFn: () => getGenerationHistory('UPLOADED', offset, search, PAGE_SIZE),
-    placeholderData: (prev) => prev,
+  const filters = useMemo(
+    () => ({
+      effect: effectFilter,
+      liked: likedFilter,
+      sort,
+    }),
+    [effectFilter, likedFilter, sort],
+  );
+
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
+    queryKey: [
+      'generation-history',
+      'gallery',
+      'UPLOADED',
+      offset,
+      search,
+      filters,
+    ],
+    queryFn: () =>
+      getGenerationHistory('UPLOADED', offset, search, PAGE_SIZE, filters),
   });
 
-  const entries = useMemo(() => {
-    if (!data?.items) return [];
-    if (!effectFilter) return data.items;
-    return data.items.filter((e) => e.generation_type === effectFilter);
-  }, [data?.items, effectFilter]);
+  useEffect(() => {
+    setOffset(0);
+    setLoadedEntries([]);
+  }, [search, effectFilter, likedFilter, sort]);
+
+  useEffect(() => {
+    if (!data?.items) return;
+    setLoadedEntries((prev) => {
+      if (offset === 0) return data.items;
+      const seen = new Set(prev.map((entry) => entry.task_id));
+      return [
+        ...prev,
+        ...data.items.filter((entry) => !seen.has(entry.task_id)),
+      ];
+    });
+  }, [data?.items, offset]);
+
+  const entries = loadedEntries;
 
   const uniqueEffects = useMemo(() => {
-    if (!data?.items) return [];
+    const known = Object.entries(EFFECT_LABELS).map(([value, label]) => ({
+      value,
+      label,
+    }));
     const seen = new Set<string>();
-    return data.items
-      .filter((e) => {
-        if (seen.has(e.generation_type)) return false;
-        seen.add(e.generation_type);
+    return [
+      ...known,
+      ...entries.map((entry) => ({
+        value: entry.generation_type,
+        label:
+          EFFECT_LABELS[entry.generation_type] ||
+          entry.generation_type.replace(/^ai_/, '').replace(/_/g, ' '),
+      })),
+    ]
+      .filter((effect) => {
+        if (seen.has(effect.value)) return false;
+        seen.add(effect.value);
         return true;
       })
-      .map((e) => ({
-        value: e.generation_type,
-        label:
-          EFFECT_LABELS[e.generation_type] ||
-          e.generation_type.replace(/^ai_/, '').replace(/_/g, ' '),
-      }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [data?.items]);
+  }, [entries]);
 
   const total = data?.total ?? 0;
   const hasMore = offset + PAGE_SIZE < total;
+  const activeFilterCount = Number(Boolean(effectFilter)) + Number(likedFilter === true);
+  const activeEffectLabel = effectFilter
+    ? uniqueEffects.find((effect) => effect.value === effectFilter)?.label
+    : null;
 
   return (
     <div className="grid gap-4">
@@ -124,8 +180,24 @@ export function GalleryPage() {
         <div className="flex items-center gap-2 text-stone-950">
           <Grid3X3 size={20} />
           <h2 className="text-lg font-semibold">Gallery</h2>
+          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500">
+            {total} images
+          </span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <label className="sr-only" htmlFor="gallery-sort">
+            Sort gallery
+          </label>
+          <select
+            id="gallery-sort"
+            aria-label="Sort gallery"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')}
+            className="h-9 rounded-xl border border-stone-200 bg-white/80 px-3 text-xs font-medium text-stone-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
           <div className="relative">
             <Search
               size={14}
@@ -137,7 +209,6 @@ export function GalleryPage() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setOffset(0);
               }}
               className="h-9 w-40 rounded-xl border border-stone-200 bg-white/80 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
             />
@@ -155,16 +226,16 @@ export function GalleryPage() {
             type="button"
             onClick={() => setShowFilters(!showFilters)}
             className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition ${
-              showFilters || effectFilter
+              showFilters || activeFilterCount > 0
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                 : 'border-stone-200 bg-white/80 text-stone-600 hover:border-stone-300'
             }`}
           >
             <SlidersHorizontal size={14} />
             Filter
-            {effectFilter && (
+            {activeFilterCount > 0 && (
               <span className="ml-1 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">
-                1
+                {activeFilterCount}
               </span>
             )}
           </button>
@@ -172,13 +243,12 @@ export function GalleryPage() {
       </div>
 
       {showFilters && (
-        <div className="app-surface p-3">
-          <div className="flex flex-wrap gap-2">
+        <div className="app-surface grid gap-3 p-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 setEffectFilter(null);
-                setOffset(0);
               }}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 !effectFilter
@@ -188,13 +258,41 @@ export function GalleryPage() {
             >
               All effects
             </button>
+            <button
+              type="button"
+              onClick={() =>
+                setLikedFilter((current) => (current === true ? null : true))
+              }
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                likedFilter === true
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              <Heart size={12} fill={likedFilter === true ? 'currentColor' : 'none'} />
+              Favorites
+            </button>
+            {(effectFilter || likedFilter === true || search) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEffectFilter(null);
+                  setLikedFilter(null);
+                  setSearch('');
+                }}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
             {uniqueEffects.map((ef) => (
               <button
                 key={ef.value}
                 type="button"
                 onClick={() => {
                   setEffectFilter(ef.value);
-                  setOffset(0);
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   effectFilter === ef.value
@@ -206,10 +304,16 @@ export function GalleryPage() {
               </button>
             ))}
           </div>
+          {(activeEffectLabel || likedFilter === true) && (
+            <div className="flex flex-wrap gap-2 text-xs text-stone-500">
+              {activeEffectLabel && <span>Effect: {activeEffectLabel}</span>}
+              {likedFilter === true && <span>Favorites only</span>}
+            </div>
+          )}
         </div>
       )}
 
-      {isLoading ? (
+      {isLoading && entries.length === 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -218,6 +322,26 @@ export function GalleryPage() {
             />
           ))}
         </div>
+      ) : isError ? (
+        <div className="grid min-h-[40vh] place-items-center">
+          <div className="text-center">
+            <AlertCircle className="mx-auto text-red-500" size={24} />
+            <p className="mt-2 text-sm font-medium text-stone-700">
+              Could not load gallery
+            </p>
+            <p className="mt-1 max-w-sm text-xs text-stone-400">
+              {error instanceof Error ? error.message : 'The gallery request failed.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 transition hover:border-stone-300"
+            >
+              <RefreshCw size={13} />
+              Retry
+            </button>
+          </div>
+        </div>
       ) : entries.length === 0 ? (
         <div className="grid min-h-[40vh] place-items-center">
           <div className="text-center">
@@ -225,7 +349,7 @@ export function GalleryPage() {
               No images found
             </p>
             <p className="mt-1 text-xs text-stone-400">
-              {search
+              {search || effectFilter || likedFilter === true
                 ? 'Try a different search term'
                 : 'Generate some images in Studio or Schedules'}
             </p>
@@ -245,30 +369,18 @@ export function GalleryPage() {
 
       {(hasMore || offset > 0) && entries.length > 0 && (
         <div className="flex justify-center gap-2 pt-2">
-          {offset > 0 && (
-            <button
-              type="button"
-              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-              className="rounded-xl border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-300"
-            >
-              Previous
-            </button>
-          )}
           {hasMore && (
             <button
               type="button"
+              disabled={isFetching}
               onClick={() => setOffset(offset + PAGE_SIZE)}
-              className="rounded-xl border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-300"
+              className="rounded-xl border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Next
+              {isFetching ? 'Loading...' : 'Load more'}
             </button>
           )}
         </div>
       )}
-
-      <div className="text-center text-xs text-stone-400">
-        {total} images
-      </div>
 
       {lightboxEntry && (
         <LightboxModal

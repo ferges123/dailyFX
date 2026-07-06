@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from _contract_helpers import configure_contract_test_db, make_generation_history_row, make_generation_task_row
@@ -15,6 +16,7 @@ from app.api.routes_generation import (
 )
 from app.database import SessionLocal
 from app.database import init_db as _init_db
+from app.models.effect_statistics_log import EffectStatisticsLogModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.generation_stream_event import GenerationStreamEventModel
 from app.models.generation_task import GenerationTaskModel
@@ -588,6 +590,51 @@ def test_generation_history_search_wildcard_escaping():
         res = asyncio.run(get_generation_history(db, search="\\"))
         assert len(res.items) == 1
         assert res.items[0].task_id == "task-3"
+
+    finally:
+        db.close()
+
+
+def test_generation_history_filters_effect_liked_and_sort_order():
+    db = _setup_generation_routes_db()
+    try:
+        db.query(EffectStatisticsLogModel).delete()
+        db.query(GenerationHistoryModel).delete()
+        db.commit()
+
+        anime_old = _add_history_row(db, "task-anime-old", status="UPLOADED")
+        anime_old.generation_type = "ai_anime"
+        anime_old.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        anime_old.updated_at = anime_old.created_at
+        db.add(EffectStatisticsLogModel(effect_id="ai_anime", task_id=anime_old.task_id, liked=True))
+
+        anime_new = _add_history_row(db, "task-anime-new", status="UPLOADED")
+        anime_new.generation_type = "ai_anime"
+        anime_new.created_at = datetime(2026, 1, 3, tzinfo=timezone.utc)
+        anime_new.updated_at = anime_new.created_at
+        db.add(EffectStatisticsLogModel(effect_id="ai_anime", task_id=anime_new.task_id, liked=False))
+
+        comic = _add_history_row(db, "task-comic", status="UPLOADED")
+        comic.generation_type = "ai_comic_book"
+        comic.created_at = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        comic.updated_at = comic.created_at
+        db.add(EffectStatisticsLogModel(effect_id="ai_comic_book", task_id=comic.task_id, liked=True))
+        db.commit()
+
+        effect_res = asyncio.run(get_generation_history(db, status="UPLOADED", effect="ai_anime"))
+        assert effect_res.total == 2
+        assert [item.task_id for item in effect_res.items] == ["task-anime-new", "task-anime-old"]
+
+        liked_res = asyncio.run(get_generation_history(db, status="UPLOADED", liked=True))
+        assert liked_res.total == 2
+        assert {item.task_id for item in liked_res.items} == {"task-comic", "task-anime-old"}
+
+        oldest_res = asyncio.run(get_generation_history(db, status="UPLOADED", sort="oldest"))
+        assert [item.task_id for item in oldest_res.items] == [
+            "task-anime-old",
+            "task-comic",
+            "task-anime-new",
+        ]
 
     finally:
         db.close()

@@ -103,20 +103,30 @@ describe('App', () => {
     expect(await screen.findByText('Loading page...')).toBeInTheDocument();
   });
 
-  it('redirects from / to history', async () => {
-    renderApp('/');
+  it('redirects from / to gallery and makes gallery the first desktop nav item', async () => {
+    const { container } = renderApp('/');
 
-    expect(
-      await screen.findByText(
-        'There are no generations stored in the history database yet.',
-        {},
-        { timeout: 5000 },
-      ),
-    ).toBeInTheDocument();
-    expect(document.querySelector('a[href="/history"]')).toHaveAttribute(
+    expect(await screen.findByRole('heading', { name: 'Gallery' }, { timeout: 5000 })).toBeInTheDocument();
+    expect(document.querySelector('a[href="/gallery"]')).toHaveAttribute(
       'aria-current',
       'page',
     );
+    expect(
+      container.querySelector('nav[aria-label="Desktop navigation"] a'),
+    ).toHaveAttribute('href', '/gallery');
+    expect(window.location.pathname).toBe('/gallery');
+  });
+
+  it('keeps history available from navigation', async () => {
+    renderApp('/');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Gallery' }, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    fireEvent.click(document.querySelector('a[href="/history"]')!);
+    expect(
+      await screen.findByText('No items found', {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
     expect(window.location.pathname).toBe('/history');
   });
 
