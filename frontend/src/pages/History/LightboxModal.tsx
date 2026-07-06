@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, useMemo } from 'react';
 import {
   X,
   Cpu,
@@ -91,6 +91,16 @@ export const LightboxModal = memo(function LightboxModal({
   entry,
   exif,
 }: LightboxModalProps) {
+  const tags = useMemo(() => {
+    if (!entry?.tags_json) return [];
+    try {
+      const parsed = JSON.parse(entry.tags_json);
+      return Array.isArray(parsed) ? (parsed as string[]) : [];
+    } catch {
+      return [];
+    }
+  }, [entry?.tags_json]);
+
   const [isSharing, setIsSharing] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>(
     'idle',
@@ -282,9 +292,21 @@ export const LightboxModal = memo(function LightboxModal({
                 {entry.title || 'Untitled Image'}
               </h3>
               {entry.summary && (
-                <p className="text-[11px] text-stone-400 leading-normal mt-1 max-h-16 overflow-y-auto pr-1">
+                <p className="text-[11px] text-stone-400 leading-normal mt-1 max-h-32 overflow-y-auto pr-1">
                   {entry.summary}
                 </p>
+              )}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-400"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
 
