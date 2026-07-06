@@ -174,8 +174,26 @@ def _prepare_page_items_for_module(
     if not unique_items:
         return None
 
-    if not selected_asset_ids and recent_source_asset_ids:
-        # Separate unused and used items to prefer unused completely
+    # For explicit manual selection, return selected items as-is (history is still tracked upstream)
+    if selected_asset_ids:
+        if recent_source_asset_ids:
+            used_in_history = [
+                item for item in unique_items
+                if getattr(item, "id", None) in recent_source_asset_ids
+            ]
+            if used_in_history:
+                debug_log(
+                    "Manual selection includes previously used assets",
+                    task_id=task_id,
+                    asset_ids=[getattr(a, "id", None) for a in used_in_history],
+                )
+        source_asset_count = max(1, int(getattr(module, "source_asset_count", 1) or 1))
+        if source_asset_count > 1:
+            return unique_items[:source_asset_count]
+        return unique_items
+
+    # For automatic runs, prefer unused assets based on history
+    if recent_source_asset_ids:
         unused_items = [item for item in unique_items if getattr(item, "id", None) not in recent_source_asset_ids]
         used_items = [item for item in unique_items if getattr(item, "id", None) in recent_source_asset_ids]
 
@@ -342,7 +360,7 @@ async def _pipeline_retrieve_and_select_assets(
         bool(getattr(ctx.settings, "ai_photo_selection_enabled", False))
         and int(getattr(module_selection.module, "source_asset_count", 1) or 1) == 1
     )
-    recent_source_asset_ids = _recent_source_asset_id_recency(ctx.db, limit=25) if not ctx.selected_asset_ids else None
+    recent_source_asset_ids = _recent_source_asset_id_recency(ctx.db, limit=25)
     page_items = _prepare_page_items_for_module(
         page=page,
         module=module_selection.module,
