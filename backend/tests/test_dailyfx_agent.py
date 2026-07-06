@@ -29,6 +29,16 @@ def _write_updated_host_manifest(tmp_path, manifest, title="Updated Family Strol
     updated_manifest["title"] = title
     updated_manifest["summary"] = "A refreshed final vision summary."
     updated_manifest["tags"] = ["family", "portrait", "claymation"]
+    updated_manifest["metadata_source"] = "host_agent_final_vision"
+    (tmp_path / "run.json").write_text(json.dumps(updated_manifest), encoding="utf-8")
+
+
+def _write_host_manifest_without_metadata_source(tmp_path, manifest, title="Updated Family Stroll"):
+    updated_manifest = dict(manifest)
+    updated_manifest["title"] = title
+    updated_manifest["summary"] = "A refreshed final vision summary."
+    updated_manifest["tags"] = ["family", "portrait", "claymation"]
+    updated_manifest.pop("metadata_source", None)
     (tmp_path / "run.json").write_text(json.dumps(updated_manifest), encoding="utf-8")
 
 
@@ -104,6 +114,7 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
     assert saved_manifest["title"] == "Updated Family Stroll"
     assert saved_manifest["summary"] == "A refreshed final vision summary."
     assert saved_manifest["tags"] == ["family", "portrait", "claymation"]
+    assert saved_manifest["metadata_source"] == "host_agent_final_vision"
     assert "image provider: agy" in captured.out
     assert "done: ./data/results/cli-s1-abc123.png" in captured.out
 
@@ -132,6 +143,9 @@ def test_dailyfx_agent_requires_updated_metadata_before_finalize(monkeypatch, tm
         calls.append(command)
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_host_manifest_without_metadata_source(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -155,7 +169,7 @@ def test_dailyfx_agent_requires_updated_metadata_before_finalize(monkeypatch, tm
     assert exit_code == 1
     assert any(command and command[0] == "agy" for command in calls)
     assert not any("finalize-host" in command for command in calls)
-    assert "did not update title, summary, or tags" in captured.err
+    assert "metadata_source" in captured.err
 
 
 def test_dailyfx_agent_hides_target_thinking_output(monkeypatch, tmp_path, capsys):

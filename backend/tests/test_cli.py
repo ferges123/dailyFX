@@ -190,13 +190,14 @@ def test_dailyfx_cli_finalize_host_requires_updated_metadata(tmp_path, capsys):
                 "task_id": "cli-s1-abc123",
                 "schedule_id": 1,
                 "target": "agy",
-                "generation_type": "ai_claymation",
-                "title": "Miniature Family Stroll",
-                "summary": "Use the image.",
-                "output_path": str(output_path),
-                "source_asset_id": "asset-1",
-                "config_json": {},
-            }
+                    "generation_type": "ai_claymation",
+                    "title": "Miniature Family Stroll",
+                    "summary": "Use the image.",
+                    "tags": ["family", "portrait", "claymation"],
+                    "output_path": str(output_path),
+                    "source_asset_id": "asset-1",
+                    "config_json": {},
+                }
         ),
         encoding="utf-8",
     )
@@ -205,7 +206,7 @@ def test_dailyfx_cli_finalize_host_requires_updated_metadata(tmp_path, capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "valid tags" in captured.err
+    assert "metadata_source" in captured.err
 
 
 def test_dailyfx_cli_lists_schedules(capsys):

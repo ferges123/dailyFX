@@ -15,6 +15,8 @@ import threading
 import uuid
 from pathlib import Path
 
+HOST_METADATA_SOURCE = "host_agent_final_vision"
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -257,9 +259,14 @@ def _normalize_host_manifest(manifest: object, original_manifest: object | None 
     if not 3 <= len(normalized_tags) <= 6:
         raise ValueError("Host manifest did not include valid tags")
 
+    metadata_source = str(normalized.get("metadata_source") or "").strip()
+    if metadata_source != HOST_METADATA_SOURCE:
+        raise ValueError("Host manifest did not include the required metadata_source")
+
     normalized["title"] = title
     normalized["summary"] = summary
     normalized["tags"] = normalized_tags
+    normalized["metadata_source"] = metadata_source
 
     if isinstance(original_manifest, dict):
         original_title = str(original_manifest.get("title") or "").strip()
@@ -958,7 +965,8 @@ def main(argv: list[str] | None = None) -> int:
             f"- A summary (one concise sentence describing the final image)\n"
             f"- A list of 3-6 descriptive tags (keywords) summarizing the image content\n"
             f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
-            f"the 'title', 'summary', and 'tags' keys before exiting.\n"
+            f"the 'title', 'summary', 'tags', and 'metadata_source' keys before exiting.\n"
+            f"Set 'metadata_source' to '{HOST_METADATA_SOURCE}'.\n"
             f"The final output image path is '{abs_output_path}'."
         )
 

@@ -28,6 +28,7 @@ from app.services.generation.tasks import ensure_task, update_task
 from app.services.immich import build_immich_client, get_or_create_settings
 
 logger = logging.getLogger(__name__)
+HOST_METADATA_SOURCE = "host_agent_final_vision"
 
 
 @dataclass(frozen=True)
@@ -217,6 +218,10 @@ def _parse_host_metadata(payload: dict[str, object]) -> tuple[str, str, list[str
 
     if not 3 <= len(normalized_tags) <= 6:
         raise CLIError("Host manifest did not include valid tags")
+
+    metadata_source = str(payload.get("metadata_source") or "").strip()
+    if metadata_source != HOST_METADATA_SOURCE:
+        raise CLIError("Host manifest did not include the required metadata_source")
 
     return title, summary, normalized_tags
 
@@ -476,7 +481,7 @@ async def _finalize_host_render(manifest_path: Path) -> int:
         config_json = {}
 
     title, summary, tags = _parse_host_metadata(payload)
-    config_json = {**config_json, "host_agent_tags": tags}
+    config_json = {**config_json, "host_agent_tags": tags, "metadata_source": HOST_METADATA_SOURCE}
 
     init_db()
     db = SessionLocal()
