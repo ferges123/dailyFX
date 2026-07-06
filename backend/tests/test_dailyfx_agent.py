@@ -894,7 +894,6 @@ def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(dailyfx_agent.tempfile, "gettempdir", lambda: str(tmp_path))
     monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
     
-    import subprocess
     from subprocess import CompletedProcess
     
     def fake_run(command, **kwargs):
