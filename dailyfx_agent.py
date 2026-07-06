@@ -38,9 +38,19 @@ def _build_parser() -> argparse.ArgumentParser:
             "    --codex-command-template 'exec --image {image_path} -'"
         ),
     )
-    parser.add_argument("-s", "--schedule-id", type=int, default=None, help="Schedule ID to execute")
-    parser.add_argument("-t", "--target", choices=["agy", "codex"], default=None, help="Target tool to call")
-    parser.add_argument("-m", "--model", default=None, help="Model to use for the selected target")
+    parser.add_argument(
+        "-s", "--schedule-id", type=int, default=None, help="Schedule ID to execute"
+    )
+    parser.add_argument(
+        "-t",
+        "--target",
+        choices=["agy", "codex"],
+        default=None,
+        help="Target tool to call",
+    )
+    parser.add_argument(
+        "-m", "--model", default=None, help="Model to use for the selected target"
+    )
     parser.add_argument(
         "-l",
         "--list-schedules",
@@ -52,13 +62,32 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List available models for the selected target",
     )
-    parser.add_argument("--compose-file", default="docker-compose.yml", help="Path to docker compose file")
-    parser.add_argument("--project-dir", default=".", help="Directory containing the compose file")
+    parser.add_argument(
+        "--compose-file",
+        default="docker-compose.yml",
+        help="Path to docker compose file",
+    )
+    parser.add_argument(
+        "--project-dir", default=".", help="Directory containing the compose file"
+    )
     parser.add_argument("--service", default="api", help="Docker Compose service name")
-    parser.add_argument("--manifest-path", default=None, help="Optional path for the manifest JSON")
-    parser.add_argument("--keep-manifest", action="store_true", help="Keep the manifest file after execution")
-    parser.add_argument("--dry-run", action="store_true", help="Print commands without executing them")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Print the loaded manifest before calling the target")
+    parser.add_argument(
+        "--manifest-path", default=None, help="Optional path for the manifest JSON"
+    )
+    parser.add_argument(
+        "--keep-manifest",
+        action="store_true",
+        help="Keep the manifest file after execution",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print commands without executing them"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Print the loaded manifest before calling the target",
+    )
     parser.add_argument(
         "--agy-command-template",
         default="--print --image {image_path}",
@@ -124,7 +153,6 @@ def _validate_command_templates(args: argparse.Namespace) -> None:
                 )
 
 
-
 def _container_to_host_image_path(image_path: str) -> str:
     if image_path.startswith("/data/"):
         suffix = image_path.removeprefix("/data/")
@@ -133,7 +161,9 @@ def _container_to_host_image_path(image_path: str) -> str:
             resolved_path = (base_dir / suffix).resolve()
             resolved_path.relative_to(base_dir)
         except (ValueError, RuntimeError) as exc:
-            raise ValueError(f"Path traversal detected in container path: {image_path}") from exc
+            raise ValueError(
+                f"Path traversal detected in container path: {image_path}"
+            ) from exc
         return f"./data/{suffix}"
     if image_path == "/data":
         return "./data"
@@ -197,9 +227,7 @@ def _build_target_command(
     codex_template: str,
 ) -> list[str]:
     return _target_prefix(target, model) + shlex.split(
-        (
-            agy_template if target == "agy" else codex_template
-        ).format(
+        (agy_template if target == "agy" else codex_template).format(
             image_path=shlex.quote(image_path),
             manifest_path=shlex.quote(manifest_path),
             output_path=shlex.quote(output_path),
@@ -243,11 +271,18 @@ def _load_manifest(path: Path) -> dict[str, object]:
     return json.loads(payload)
 
 
-def _normalize_host_manifest(manifest: object, original_manifest: object | None = None) -> dict[str, object]:
+def _normalize_host_manifest(
+    manifest: object, original_manifest: object | None = None
+) -> dict[str, object]:
     if not isinstance(manifest, dict):
         raise ValueError("Host manifest is not a JSON object")
 
-    normalized = dict(manifest)
+    if isinstance(original_manifest, dict):
+        normalized = dict(original_manifest)
+        normalized.update(manifest)
+    else:
+        normalized = dict(manifest)
+
     title = str(normalized.get("title") or "").strip()
     summary = str(normalized.get("summary") or "").strip()
     tags = normalized.get("tags")
@@ -291,7 +326,11 @@ def _normalize_host_manifest(manifest: object, original_manifest: object | None 
                     tag_text = tag.strip()
                     if tag_text:
                         original_tags.append(tag_text)
-        if title == original_title and summary == original_summary and normalized_tags == original_tags:
+        if (
+            title == original_title
+            and summary == original_summary
+            and normalized_tags == original_tags
+        ):
             raise ValueError("Host agent did not update title, summary, or tags")
 
     return normalized
@@ -420,8 +459,10 @@ def _run_target_with_spinner(
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            result = subprocess.CompletedProcess(command, 124, stdout="", stderr=f"Timed out after {timeout}s")
-            
+            result = subprocess.CompletedProcess(
+                command, 124, stdout="", stderr=f"Timed out after {timeout}s"
+            )
+
         log_path = _write_target_log(
             log_dir=log_dir,
             task_id=task_id or "target",
@@ -440,7 +481,11 @@ def _run_target_with_spinner(
     def _spinner() -> None:
         while not stop_event.is_set():
             frame = next(spinner_frames)
-            label_index = spinner_state["index"] if spinner_state["index"] < len(spinner_labels) else len(spinner_labels) - 1
+            label_index = (
+                spinner_state["index"]
+                if spinner_state["index"] < len(spinner_labels)
+                else len(spinner_labels) - 1
+            )
             label = spinner_labels[label_index]
             sys.stderr.write(f"\r{frame} {label}\033[K")
             sys.stderr.flush()
@@ -461,7 +506,9 @@ def _run_target_with_spinner(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        result = subprocess.CompletedProcess(command, 124, stdout="", stderr=f"Timed out after {timeout}s")
+        result = subprocess.CompletedProcess(
+            command, 124, stdout="", stderr=f"Timed out after {timeout}s"
+        )
     finally:
         stop_event.set()
         thread.join(timeout=1.0)
@@ -486,11 +533,18 @@ def _print_table(rows: list[dict[str, str]], columns: list[tuple[str, str]]) -> 
     for key, header in columns:
         widths.append(max(len(header), max(len(row.get(key, "")) for row in rows)))
 
-    header_line = "  ".join(header.ljust(widths[index]) for index, (_, header) in enumerate(columns))
+    header_line = "  ".join(
+        header.ljust(widths[index]) for index, (_, header) in enumerate(columns)
+    )
     print(header_line)
     print("  ".join("-" * widths[index] for index in range(len(columns))))
     for row in rows:
-        print("  ".join(row.get(key, "").ljust(widths[index]) for index, (key, _) in enumerate(columns)))
+        print(
+            "  ".join(
+                row.get(key, "").ljust(widths[index])
+                for index, (key, _) in enumerate(columns)
+            )
+        )
 
 
 def _parse_agy_model_line(line: str) -> dict[str, str] | None:
@@ -521,7 +575,9 @@ def _parse_agy_model_line(line: str) -> dict[str, str] | None:
 def _list_agy_models(timeout: int = 30) -> int:
     command = ["agy", "models"]
     try:
-        run = subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout)
+        run = subprocess.run(
+            command, text=True, capture_output=True, check=False, timeout=timeout
+        )
     except subprocess.TimeoutExpired:
         sys.stderr.write(f"agy models timed out after {timeout}s\n")
         return 124
@@ -539,8 +595,18 @@ def _list_agy_models(timeout: int = 30) -> int:
     if not rows:
         print("No models found")
         return 0
-    print("Note: agy does not expose a separate model id/default flag in this build; ID shows the selectable label.")
-    _print_table(rows, [("id", "ID"), ("name", "NAME"), ("reasoning", "REASONING"), ("default", "DEFAULT")])
+    print(
+        "Note: agy does not expose a separate model id/default flag in this build; ID shows the selectable label."
+    )
+    _print_table(
+        rows,
+        [
+            ("id", "ID"),
+            ("name", "NAME"),
+            ("reasoning", "REASONING"),
+            ("default", "DEFAULT"),
+        ],
+    )
     return 0
 
 
@@ -634,7 +700,9 @@ def _list_codex_models(timeout: int = 60) -> int:
         )
         if proc.stdin is None:
             raise RuntimeError("Codex MCP server stdin is unavailable")
-        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
+        proc.stdin.write(
+            json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+        )
         proc.stdin.flush()
 
         models: list[dict[str, object]] = []
@@ -644,14 +712,20 @@ def _list_codex_models(timeout: int = 60) -> int:
             params: dict[str, object] = {"limit": 100}
             if cursor:
                 params["cursor"] = cursor
-            result = _mcp_request(proc, request_id, "model/list", params, deadline=deadline)
+            result = _mcp_request(
+                proc, request_id, "model/list", params, deadline=deadline
+            )
             request_id += 1
             batch = result.get("data")
             if isinstance(batch, list):
                 for item in batch:
                     if isinstance(item, dict):
                         models.append(item)
-            cursor = result.get("nextCursor") if isinstance(result.get("nextCursor"), str) else None
+            cursor = (
+                result.get("nextCursor")
+                if isinstance(result.get("nextCursor"), str)
+                else None
+            )
             if not cursor:
                 break
 
@@ -681,7 +755,15 @@ def _list_codex_models(timeout: int = 60) -> int:
                     "default": is_default,
                 }
             )
-        _print_table(rows, [("id", "ID"), ("name", "NAME"), ("reasoning", "REASONING"), ("default", "DEFAULT")])
+        _print_table(
+            rows,
+            [
+                ("id", "ID"),
+                ("name", "NAME"),
+                ("reasoning", "REASONING"),
+                ("default", "DEFAULT"),
+            ],
+        )
         return 0
     except Exception as exc:
         fallback = _list_codex_current_model()
@@ -691,7 +773,13 @@ def _list_codex_models(timeout: int = 60) -> int:
             )
             _print_table(
                 [fallback],
-                [("id", "ID"), ("name", "NAME"), ("provider", "PROVIDER"), ("reasoning", "REASONING"), ("default", "DEFAULT")],
+                [
+                    ("id", "ID"),
+                    ("name", "NAME"),
+                    ("provider", "PROVIDER"),
+                    ("reasoning", "REASONING"),
+                    ("default", "DEFAULT"),
+                ],
             )
             return 0
         sys.stderr.write(f"{exc}\n")
@@ -710,13 +798,19 @@ def _list_codex_models(timeout: int = 60) -> int:
 def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
     try:
         run = subprocess.run(
-            ["codex", "doctor"], text=True, capture_output=True, check=False, timeout=timeout,
+            ["codex", "doctor"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         return None
     if run.returncode != 0:
         return None
-    match = re.search(r"^\s*model\s+([^\s·]+)\s+·\s+([^\s]+)\s*$", run.stdout, re.MULTILINE)
+    match = re.search(
+        r"^\s*model\s+([^\s·]+)\s+·\s+([^\s]+)\s*$", run.stdout, re.MULTILINE
+    )
     if not match:
         return None
     model_id, provider = match.groups()
@@ -753,8 +847,8 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
     candidates: list[Path] = []
     buffer_time = start_time - 300.0  # 5-minute safety window
 
-    # If we found a recent subdirectory, restrict search to it. Otherwise, search the root.
-    search_dirs = [subdirs[0][0]] if subdirs else [generated_root]
+    # If we found recent subdirectories, search all of them. Otherwise, search the root.
+    search_dirs = [item[0] for item in subdirs] if subdirs else [generated_root]
 
     for search_dir in search_dirs:
         try:
@@ -773,20 +867,41 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
                             for subpath in path.iterdir():
                                 if subpath.is_file():
                                     subname_lower = subpath.name.lower()
-                                    if "input" in subname_lower or "original" in subname_lower:
+                                    if (
+                                        "input" in subname_lower
+                                        or "original" in subname_lower
+                                    ):
                                         continue
-                                    if subpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
+                                    if subpath.suffix.lower() in {
+                                        ".png",
+                                        ".webp",
+                                        ".jpg",
+                                        ".jpeg",
+                                    }:
                                         if subpath.stat().st_mtime >= start_time - 10.0:
                                             candidates.append(subpath)
                                 elif subpath.is_dir():
                                     if subpath.stat().st_mtime >= buffer_time:
                                         for subsubpath in subpath.iterdir():
                                             if subsubpath.is_file():
-                                                subsubname_lower = subsubpath.name.lower()
-                                                if "input" in subsubname_lower or "original" in subsubname_lower:
+                                                subsubname_lower = (
+                                                    subsubpath.name.lower()
+                                                )
+                                                if (
+                                                    "input" in subsubname_lower
+                                                    or "original" in subsubname_lower
+                                                ):
                                                     continue
-                                                if subsubpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
-                                                    if subsubpath.stat().st_mtime >= start_time - 10.0:
+                                                if subsubpath.suffix.lower() in {
+                                                    ".png",
+                                                    ".webp",
+                                                    ".jpg",
+                                                    ".jpeg",
+                                                }:
+                                                    if (
+                                                        subsubpath.stat().st_mtime
+                                                        >= start_time - 10.0
+                                                    ):
                                                         candidates.append(subsubpath)
                 except OSError:
                     continue
@@ -798,13 +913,19 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
-def _find_latest_codex_image(start_time: float, generated_root: Path | None = None) -> Path | None:
+def _find_latest_codex_image(
+    start_time: float, generated_root: Path | None = None
+) -> Path | None:
     generated_root = generated_root or (Path.home() / ".codex" / "generated_images")
     return _find_latest_image(start_time, generated_root)
 
 
-def _find_latest_agy_image(start_time: float, generated_root: Path | None = None) -> Path | None:
-    generated_root = generated_root or (Path.home() / ".gemini" / "antigravity-cli" / "brain")
+def _find_latest_agy_image(
+    start_time: float, generated_root: Path | None = None
+) -> Path | None:
+    generated_root = generated_root or (
+        Path.home() / ".gemini" / "antigravity-cli" / "brain"
+    )
     return _find_latest_image(start_time, generated_root)
 
 
@@ -821,7 +942,9 @@ def main(argv: list[str] | None = None) -> int:
         manifest_path = Path(args.manifest_path)
     else:
         random_suffix = uuid.uuid4().hex[:8]
-        manifest_path = Path(tempfile.gettempdir()) / f"dailyfx-run-{random_suffix}.json"
+        manifest_path = (
+            Path(tempfile.gettempdir()) / f"dailyfx-run-{random_suffix}.json"
+        )
     shared_manifest_path = Path("data") / manifest_path.name
     backend_command = _build_backend_command(args)
 
@@ -852,19 +975,25 @@ def main(argv: list[str] | None = None) -> int:
         return _list_codex_models()
 
     if args.schedule_id is None or args.target is None:
-        sys.stderr.write("schedule-id and target are required unless --list-schedules is used\n")
+        sys.stderr.write(
+            "schedule-id and target are required unless --list-schedules is used\n"
+        )
         return 1
 
     if args.dry_run:
         target_preview = _target_prefix(args.target, args.model)
         _print_command("backend", backend_command)
-        _print_command("manifest", ["write", str(manifest_path), "and", str(shared_manifest_path)])
+        _print_command(
+            "manifest", ["write", str(manifest_path), "and", str(shared_manifest_path)]
+        )
         _print_command(
             "target",
             target_preview
             + shlex.split(
                 (
-                    args.agy_command_template if args.target == "agy" else args.codex_command_template
+                    args.agy_command_template
+                    if args.target == "agy"
+                    else args.codex_command_template
                 ).format(
                     image_path="{image_path}",
                     manifest_path="{manifest_path}",
@@ -900,7 +1029,9 @@ def main(argv: list[str] | None = None) -> int:
             pid_file = Path(args.pid_file)
         else:
             target_str = args.target if args.target else "default"
-            sched_str = f"s{args.schedule_id}" if args.schedule_id is not None else "default"
+            sched_str = (
+                f"s{args.schedule_id}" if args.schedule_id is not None else "default"
+            )
             pid_file = Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
         pid_file.parent.mkdir(parents=True, exist_ok=True)
         pid = os.fork()
@@ -957,7 +1088,9 @@ def main(argv: list[str] | None = None) -> int:
                 _print_manifest(manifest)
 
             task_id = str(manifest.get("task_id") or "").strip() or "target"
-            prompt = str(manifest.get("prompt") or manifest.get("handoff_prompt") or "").strip()
+            prompt = str(
+                manifest.get("prompt") or manifest.get("handoff_prompt") or ""
+            ).strip()
             if not prompt:
                 sys.stderr.write("Backend manifest did not include prompt\n")
                 last_exit = 1
@@ -972,9 +1105,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"image provider: {args.target}")
 
             try:
-                image_path = str(manifest.get("source_image_path") or manifest.get("host_relative_image_path") or "").strip()
+                image_path = str(
+                    manifest.get("source_image_path")
+                    or manifest.get("host_relative_image_path")
+                    or ""
+                ).strip()
                 if not image_path:
-                    image_path = _container_to_host_image_path(str(manifest.get("image_path") or ""))
+                    image_path = _container_to_host_image_path(
+                        str(manifest.get("image_path") or "")
+                    )
                 elif image_path.startswith("/data/"):
                     image_path = _container_to_host_image_path(image_path)
             except ValueError as exc:
@@ -987,7 +1126,9 @@ def main(argv: list[str] | None = None) -> int:
                 last_exit = 1
                 continue
 
-            output_path = str(manifest.get("output_path") or manifest.get("image_path") or "").strip()
+            output_path = str(
+                manifest.get("output_path") or manifest.get("image_path") or ""
+            ).strip()
             if output_path.startswith("/data/"):
                 try:
                     output_path = _container_to_host_image_path(output_path)
@@ -1048,8 +1189,13 @@ def main(argv: list[str] | None = None) -> int:
                 continue
 
             try:
-                updated_manifest = _normalize_host_manifest(_load_manifest(manifest_path), manifest)
-                manifest_path.write_text(json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                updated_manifest = _normalize_host_manifest(
+                    _load_manifest(manifest_path), manifest
+                )
+                manifest_path.write_text(
+                    json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
             except (json.JSONDecodeError, ValueError) as exc:
                 sys.stderr.write(f"{exc}\n")
                 last_exit = 1
@@ -1063,14 +1209,10 @@ def main(argv: list[str] | None = None) -> int:
                 missing_message = None
                 if args.target == "codex":
                     generated_image = _find_latest_codex_image(target_start_time)
-                    missing_message = (
-                        f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
-                    )
+                    missing_message = f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
                 elif args.target == "agy":
                     generated_image = _find_latest_agy_image(target_start_time)
-                    missing_message = (
-                        f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
-                    )
+                    missing_message = f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
 
                 if generated_image is not None:
                     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1084,9 +1226,13 @@ def main(argv: list[str] | None = None) -> int:
             if shared_manifest_path != manifest_path:
                 try:
                     if manifest_path.exists():
-                        shared_manifest_path.write_text(manifest_path.read_text(encoding="utf-8"), encoding="utf-8")
+                        shared_manifest_path.write_text(
+                            manifest_path.read_text(encoding="utf-8"), encoding="utf-8"
+                        )
                 except Exception as exc:
-                    sys.stderr.write(f"warning: failed to sync manifest changes to shared manifest: {exc}\n")
+                    sys.stderr.write(
+                        f"warning: failed to sync manifest changes to shared manifest: {exc}\n"
+                    )
 
             finalize_command = [
                 "docker",
@@ -1101,7 +1247,13 @@ def main(argv: list[str] | None = None) -> int:
                 "--manifest-path",
                 f"/data/{shared_manifest_path.name}",
             ]
-            finalize_run = subprocess.run(finalize_command, cwd=project_dir, check=False, text=True, capture_output=True)
+            finalize_run = subprocess.run(
+                finalize_command,
+                cwd=project_dir,
+                check=False,
+                text=True,
+                capture_output=True,
+            )
             if finalize_run.returncode != 0:
                 if finalize_run.stderr:
                     sys.stderr.write(finalize_run.stderr)
@@ -1117,9 +1269,12 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if not args.keep_manifest:
             if not args.manifest_path:
-                if 'manifest_path' in locals() and manifest_path:
+                if "manifest_path" in locals() and manifest_path:
                     manifest_path.unlink(missing_ok=True)
-            if 'shared_manifest_path' in locals() and shared_manifest_path != manifest_path:
+            if (
+                "shared_manifest_path" in locals()
+                and shared_manifest_path != manifest_path
+            ):
                 shared_manifest_path.unlink(missing_ok=True)
         if args.daemon and pid_file:
             pid_file.unlink(missing_ok=True)

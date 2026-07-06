@@ -127,7 +127,7 @@ def test_dailyfx_cli_generate_writes_handoff_manifest(monkeypatch, capsys):
 
         assert exit_code == 0
         payload = json.loads(captured.out)
-        assert payload["task_id"].startswith(f"cli-s{schedule.id}-")
+        assert payload["task_id"].startswith("man-")
         assert payload["status"] == "PENDING_REVIEW"
         assert payload["image_path"].endswith(".png")
         assert payload["generation_type"] == "ai_anime"

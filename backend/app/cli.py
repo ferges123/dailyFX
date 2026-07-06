@@ -588,7 +588,7 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
         settings = get_or_create_settings(db)
         schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
         client = build_immich_client(settings)
-        resolved_task_id = task_id or f"cli-s{schedule_id}-{uuid.uuid4().hex[:8]}"
+        resolved_task_id = task_id or f"man-{uuid.uuid4().hex[:8]}"
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0)
 

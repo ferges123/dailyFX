@@ -821,9 +821,7 @@ def test_run_target_with_spinner_clears_terminal_line(monkeypatch):
     stderr_mock = StringIO()
     monkeypatch.setattr(sys, "stderr", stderr_mock)
 
-    result, log_path = dailyfx_agent._run_target_with_spinner(
-        ["true"], prompt="", task_id="test", labels=["label1"]
-    )
+    result, log_path = dailyfx_agent._run_target_with_spinner(["true"], prompt="", task_id="test", labels=["label1"])
 
     captured = stderr_mock.getvalue()
     assert "\033[K" in captured
@@ -832,28 +830,30 @@ def test_run_target_with_spinner_clears_terminal_line(monkeypatch):
 
 def test_list_codex_models_redirects_stderr_to_devnull(monkeypatch):
     import subprocess
+
     popen_args = []
-    
+
     class FakePopen:
         def __init__(self, command, **kwargs):
             popen_args.append((command, kwargs))
-            self.stdin = type('obj', (object,), {
-                'write': lambda s, data: None,
-                'flush': lambda s: None
-            })()
+            self.stdin = type("obj", (object,), {"write": lambda s, data: None, "flush": lambda s: None})()
+
             class CustomList(list):
                 pass
+
             self.stdout = CustomList()
             self.stderr = []
             self.returncode = 0
-            
+
         def terminate(self):
             pass
+
         def wait(self, timeout=None):
             return 0
-            
+
         def __enter__(self):
             return self
+
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
 
@@ -871,11 +871,19 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
     monkeypatch.setattr(dailyfx_agent.os, "fork", lambda: 0)  # Symulacja dziecka
     monkeypatch.setattr(dailyfx_agent.os, "setsid", lambda: setsid_called.append(True))
     monkeypatch.setattr(dailyfx_agent.os, "dup2", lambda fd1, fd2: dup2_calls.append((fd1, fd2)))
-    monkeypatch.setattr(dailyfx_agent, "_parse_args", lambda argv: dailyfx_agent._build_parser().parse_args(["--daemon", "--schedule-id", "1", "--target", "agy"]))
-    
+    monkeypatch.setattr(
+        dailyfx_agent,
+        "_parse_args",
+        lambda argv: dailyfx_agent._build_parser().parse_args(["--daemon", "--schedule-id", "1", "--target", "agy"]),
+    )
+
     # Zamakowanie reszty maina, by nie wywoływał komend Dockera
     monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: [])
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", lambda *args, **kwargs: type('obj', (object,), {'returncode': 0, 'stdout': '{}', 'stderr': ''}))
+    monkeypatch.setattr(
+        dailyfx_agent.subprocess,
+        "run",
+        lambda *args, **kwargs: type("obj", (object,), {"returncode": 0, "stdout": "{}", "stderr": ""}),
+    )
     monkeypatch.setattr(dailyfx_agent, "_load_manifest", lambda path: {})
 
     try:
@@ -893,27 +901,23 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
 def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(dailyfx_agent.tempfile, "gettempdir", lambda: str(tmp_path))
     monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
-    
+
     from subprocess import CompletedProcess
-    
+
     def fake_run(command, **kwargs):
         if command == ["true"]:
             return CompletedProcess(command, 0, stdout="{}", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
-        
+
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    
+
     def fake_load_manifest(path):
         raise ValueError("Force crash inside loop")
-        
+
     monkeypatch.setattr(dailyfx_agent, "_load_manifest", fake_load_manifest)
 
     try:
-        dailyfx_agent.main([
-            "--schedule-id", "1",
-            "--target", "agy",
-            "--project-dir", str(tmp_path)
-        ])
+        dailyfx_agent.main(["--schedule-id", "1", "--target", "agy", "--project-dir", str(tmp_path)])
     except ValueError as exc:
         assert str(exc) == "Force crash inside loop"
 
@@ -926,36 +930,108 @@ def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
 
 def test_read_jsonrpc_message_without_queue_raises_runtime_error():
     import pytest
+
     class FakeStream:
         pass
-    
+
     with pytest.raises(RuntimeError, match="Stream does not have a response queue attached"):
         dailyfx_agent._read_jsonrpc_message(FakeStream())
 
 
 def test_run_target_with_spinner_skips_spinner_in_daemon_mode(monkeypatch):
     spinner_thread_started = False
-    
+
     import threading
+
     original_thread = threading.Thread
-    
+
     def fake_thread_start(self):
         nonlocal spinner_thread_started
         if "spinner" in str(self._target):
             spinner_thread_started = True
         return original_thread.start(self)
-        
-    monkeypatch.setattr(threading.Thread, "start", fake_thread_start)
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", lambda *args, **kwargs: type('obj', (object,), {'returncode': 0, 'stdout': '', 'stderr': ''}))
 
-    dailyfx_agent._run_target_with_spinner(
-        ["echo"], prompt="", task_id="test", labels=[], daemon_mode=True
+    monkeypatch.setattr(threading.Thread, "start", fake_thread_start)
+    monkeypatch.setattr(
+        dailyfx_agent.subprocess,
+        "run",
+        lambda *args, **kwargs: type("obj", (object,), {"returncode": 0, "stdout": "", "stderr": ""}),
     )
+
+    dailyfx_agent._run_target_with_spinner(["echo"], prompt="", task_id="test", labels=[], daemon_mode=True)
     assert not spinner_thread_started
 
 
+def test_dailyfx_agent_repeat_runs_multiple_times(monkeypatch, tmp_path):
+    manifest = {
+        "task_id": "cli-s1-abc123",
+        "schedule_id": 1,
+        "status": "PENDING_REVIEW",
+        "generation_type": "ai_claymation",
+        "title": "Miniature Family Stroll",
+        "summary": "Use the image.",
+        "prompt": "Use the image.",
+        "source_image_path": "/data/results/cli-s1-abc123.input.png",
+        "output_path": "/data/results/cli-s1-abc123.png",
+        "source_asset_id": "asset-1",
+        "source_asset_original_file_name": "source.jpg",
+        "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
+        "target": "agy",
+    }
+    backend_stdout = json.dumps(manifest)
+    calls: list[list[str]] = []
 
+    _seed_agy_generated_image(tmp_path)
 
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if "dailyfx" in command:
+            if "finalize-host" in command:
+                manifest_file = Path(command[-1])
+                local_manifest_file = Path("data") / manifest_file.name
+                if not local_manifest_file.is_absolute():
+                    local_manifest_file = Path(kwargs.get("cwd", ".")) / local_manifest_file
+                if local_manifest_file.exists():
+                    payload = json.loads(local_manifest_file.read_text(encoding="utf-8"))
+                    assert payload.get("target") == "agy"
+                    assert payload.get("task_id") == "cli-s1-abc123"
+            return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            updated = {
+                "title": "Updated Family Stroll",
+                "summary": "A refreshed final vision summary.",
+                "tags": ["family", "portrait", "claymation"],
+                "metadata_source": "host_agent_final_vision",
+            }
+            (tmp_path / "run.json").write_text(json.dumps(updated), encoding="utf-8")
+            return CompletedProcess(command, 0, stdout="", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
 
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
 
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "1",
+            "--target",
+            "agy",
+            "--repeat",
+            "2",
+            "--project-dir",
+            str(tmp_path),
+            "--manifest-path",
+            str(tmp_path / "run.json"),
+        ]
+    )
 
+    assert exit_code == 0
+    assert len(calls) == 6
+    assert calls[0][8:10] == ["prepare-host", "--schedule-id"]
+    assert calls[1][0] == "agy"
+    assert calls[2][8:10] == ["finalize-host", "--manifest-path"]
+    assert calls[3][8:10] == ["prepare-host", "--schedule-id"]
+    assert calls[4][0] == "agy"
+    assert calls[5][8:10] == ["finalize-host", "--manifest-path"]
