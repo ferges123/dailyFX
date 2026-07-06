@@ -896,7 +896,12 @@ def main(argv: list[str] | None = None) -> int:
     pid_file = None
 
     if args.daemon:
-        pid_file = Path(args.pid_file) if args.pid_file else Path("data") / "dailyfx-agent.pid"
+        if args.pid_file:
+            pid_file = Path(args.pid_file)
+        else:
+            target_str = args.target if args.target else "default"
+            sched_str = f"s{args.schedule_id}" if args.schedule_id is not None else "default"
+            pid_file = Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
         pid_file.parent.mkdir(parents=True, exist_ok=True)
         pid = os.fork()
         if pid > 0:

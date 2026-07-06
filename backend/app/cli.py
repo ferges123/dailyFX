@@ -417,6 +417,12 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
             },
         )
 
+        upsert_history_entry(
+            db,
+            resolved_task_id,
+            source_asset_ids=json.dumps([host_request.source_asset_id]),
+        )
+
         host_manifest = _host_render_manifest_from_request(
             task_id=resolved_task_id,
             schedule_id=schedule_id,
