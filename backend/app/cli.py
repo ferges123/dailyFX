@@ -193,6 +193,34 @@ def _parse_json_object(payload: str | None) -> dict[str, object]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def _parse_host_metadata(payload: dict[str, object]) -> tuple[str, str, list[str]]:
+    title = str(payload.get("title") or "").strip()
+    if not title:
+        raise CLIError("Host manifest did not include an updated title")
+
+    summary = str(payload.get("summary") or "").strip()
+    if not summary:
+        raise CLIError("Host manifest did not include an updated summary")
+
+    tags = payload.get("tags")
+    if not isinstance(tags, list):
+        raise CLIError("Host manifest did not include valid tags")
+
+    normalized_tags: list[str] = []
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise CLIError("Host manifest did not include valid tags")
+        tag_text = tag.strip()
+        if not tag_text:
+            raise CLIError("Host manifest did not include valid tags")
+        normalized_tags.append(tag_text)
+
+    if not 3 <= len(normalized_tags) <= 6:
+        raise CLIError("Host manifest did not include valid tags")
+
+    return title, summary, normalized_tags
+
+
 def _build_handoff_prompt(
     *,
     task_id: str,
@@ -447,9 +475,8 @@ async def _finalize_host_render(manifest_path: Path) -> int:
     if not isinstance(config_json, dict):
         config_json = {}
 
-    tags = payload.get("tags")
-    if isinstance(tags, list):
-        config_json = {**config_json, "host_agent_tags": tags}
+    title, summary, tags = _parse_host_metadata(payload)
+    config_json = {**config_json, "host_agent_tags": tags}
 
     init_db()
     db = SessionLocal()
@@ -478,8 +505,8 @@ async def _finalize_host_render(manifest_path: Path) -> int:
         people_context = await load_people_context(client, source_asset)
 
         result = GenerationResult(
-            title=str(payload.get("title") or f"{module.label}: {source_asset.original_file_name or source_asset.id}"),
-            summary=str(payload.get("summary") or ""),
+            title=title,
+            summary=summary,
             image_bytes=output_path.read_bytes(),
             generation_type=module_name,
             provider=target,

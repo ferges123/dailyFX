@@ -229,6 +229,55 @@ def _load_manifest(path: Path) -> dict[str, object]:
     return json.loads(payload)
 
 
+def _normalize_host_manifest(manifest: object, original_manifest: object | None = None) -> dict[str, object]:
+    if not isinstance(manifest, dict):
+        raise ValueError("Host manifest is not a JSON object")
+
+    normalized = dict(manifest)
+    title = str(normalized.get("title") or "").strip()
+    summary = str(normalized.get("summary") or "").strip()
+    tags = normalized.get("tags")
+
+    if not title:
+        raise ValueError("Host manifest did not include an updated title")
+    if not summary:
+        raise ValueError("Host manifest did not include an updated summary")
+    if not isinstance(tags, list):
+        raise ValueError("Host manifest did not include valid tags")
+
+    normalized_tags: list[str] = []
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise ValueError("Host manifest did not include valid tags")
+        tag_text = tag.strip()
+        if not tag_text:
+            raise ValueError("Host manifest did not include valid tags")
+        normalized_tags.append(tag_text)
+
+    if not 3 <= len(normalized_tags) <= 6:
+        raise ValueError("Host manifest did not include valid tags")
+
+    normalized["title"] = title
+    normalized["summary"] = summary
+    normalized["tags"] = normalized_tags
+
+    if isinstance(original_manifest, dict):
+        original_title = str(original_manifest.get("title") or "").strip()
+        original_summary = str(original_manifest.get("summary") or "").strip()
+        original_tags_raw = original_manifest.get("tags")
+        original_tags: list[str] = []
+        if isinstance(original_tags_raw, list):
+            for tag in original_tags_raw:
+                if isinstance(tag, str):
+                    tag_text = tag.strip()
+                    if tag_text:
+                        original_tags.append(tag_text)
+        if title == original_title and summary == original_summary and normalized_tags == original_tags:
+            raise ValueError("Host agent did not update title, summary, or tags")
+
+    return normalized
+
+
 def _print_model_list_header(target: str) -> None:
     print(f"{target} models:")
 
@@ -938,6 +987,14 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stderr.write(target_run.stdout)
             sys.stderr.write(f"\nlog saved to {target_log_path}\n")
             last_exit = target_run.returncode or 1
+            continue
+
+        try:
+            updated_manifest = _normalize_host_manifest(_load_manifest(manifest_path), manifest)
+            manifest_path.write_text(json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        except (json.JSONDecodeError, ValueError) as exc:
+            sys.stderr.write(f"{exc}\n")
+            last_exit = 1
             continue
 
         output_file = Path(output_path)

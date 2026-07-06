@@ -24,6 +24,14 @@ def _seed_agy_generated_image(tmp_path, filename="desert_diorama_123.jpg"):
     return image_path
 
 
+def _write_updated_host_manifest(tmp_path, manifest, title="Updated Family Stroll"):
+    updated_manifest = dict(manifest)
+    updated_manifest["title"] = title
+    updated_manifest["summary"] = "A refreshed final vision summary."
+    updated_manifest["tags"] = ["family", "portrait", "claymation"]
+    (tmp_path / "run.json").write_text(json.dumps(updated_manifest), encoding="utf-8")
+
+
 def test_container_to_host_image_path_translates_data_prefix():
     assert dailyfx_agent._container_to_host_image_path("/data/results/run-1.png") == "./data/results/run-1.png"
     assert dailyfx_agent._container_to_host_image_path("/tmp/run-1.png") == "/tmp/run-1.png"
@@ -42,6 +50,7 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
         "source_asset_id": "asset-1",
         "source_asset_original_file_name": "source.jpg",
         "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
         "task_trace": [
             {"stage": "selecting_asset", "message": "Searching for photos…", "progress": 0.1},
             {"stage": "applying_effect", "message": "Applying effect…", "progress": 0.25},
@@ -57,6 +66,9 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
         inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -88,9 +100,62 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
     ]
     assert inputs[1] and inputs[1].startswith("Use the image.")
     assert calls[2][8:10] == ["finalize-host", "--manifest-path"]
-    assert (tmp_path / "run.json").read_text(encoding="utf-8") == backend_stdout
+    saved_manifest = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
+    assert saved_manifest["title"] == "Updated Family Stroll"
+    assert saved_manifest["summary"] == "A refreshed final vision summary."
+    assert saved_manifest["tags"] == ["family", "portrait", "claymation"]
     assert "image provider: agy" in captured.out
     assert "done: ./data/results/cli-s1-abc123.png" in captured.out
+
+
+def test_dailyfx_agent_requires_updated_metadata_before_finalize(monkeypatch, tmp_path, capsys):
+    manifest = {
+        "task_id": "cli-s1-abc123",
+        "status": "PENDING_REVIEW",
+        "generation_type": "ai_claymation",
+        "title": "Miniature Family Stroll",
+        "summary": "Use the image.",
+        "prompt": "Use the image.",
+        "source_image_path": "/data/results/cli-s1-abc123.input.png",
+        "output_path": "/data/results/cli-s1-abc123.png",
+        "source_asset_id": "asset-1",
+        "source_asset_original_file_name": "source.jpg",
+        "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
+        "task_trace": [{"stage": "queued", "message": "Queued for host run", "progress": 0.0}],
+    }
+    backend_stdout = json.dumps(manifest)
+    calls: list[list[str]] = []
+    _seed_agy_generated_image(tmp_path)
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if "dailyfx" in command:
+            return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "1",
+            "--target",
+            "agy",
+            "--project-dir",
+            str(tmp_path),
+            "--manifest-path",
+            str(tmp_path / "run.json"),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert any(command and command[0] == "agy" for command in calls)
+    assert not any("finalize-host" in command for command in calls)
+    assert "did not update title, summary, or tags" in captured.err
 
 
 def test_dailyfx_agent_hides_target_thinking_output(monkeypatch, tmp_path, capsys):
@@ -117,6 +182,7 @@ def test_dailyfx_agent_hides_target_thinking_output(monkeypatch, tmp_path, capsy
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
         if command and command[0] == "agy":
+            _write_updated_host_manifest(tmp_path, manifest)
             return CompletedProcess(
                 command,
                 0,
@@ -236,6 +302,7 @@ def test_dailyfx_agent_supports_short_aliases(monkeypatch, tmp_path):
         "source_asset_id": "asset-1",
         "source_asset_original_file_name": "source.jpg",
         "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
     }
     backend_stdout = json.dumps(manifest)
     calls: list[list[str]] = []
@@ -247,6 +314,9 @@ def test_dailyfx_agent_supports_short_aliases(monkeypatch, tmp_path):
         inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -290,6 +360,7 @@ def test_dailyfx_agent_passes_model_to_agy(monkeypatch, tmp_path):
         "source_asset_id": "asset-1",
         "source_asset_original_file_name": "source.jpg",
         "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
     }
     backend_stdout = json.dumps(manifest)
     calls: list[list[str]] = []
@@ -299,6 +370,9 @@ def test_dailyfx_agent_passes_model_to_agy(monkeypatch, tmp_path):
         calls.append(command)
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -337,6 +411,7 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
         "source_asset_id": "asset-1",
         "source_asset_original_file_name": "source.jpg",
         "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
     }
     backend_stdout = json.dumps(manifest)
     generated_root = tmp_path / ".codex" / "generated_images" / "session-1"
@@ -352,6 +427,9 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
         inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -529,6 +607,7 @@ def test_dailyfx_agent_renders_agy_template(monkeypatch, tmp_path, capsys):
         "source_asset_id": "asset-1",
         "source_asset_original_file_name": "source.jpg",
         "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
     }
     backend_stdout = json.dumps(manifest)
     calls: list[list[str]] = []
@@ -540,6 +619,9 @@ def test_dailyfx_agent_renders_agy_template(monkeypatch, tmp_path, capsys):
         inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -590,6 +672,7 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
         "source_asset_id": "asset-1",
         "source_asset_original_file_name": "source.jpg",
         "config_json": {},
+        "tags": ["family", "portrait", "claymation"],
     }
     backend_stdout = json.dumps(manifest)
     generated_root = tmp_path / ".codex" / "generated_images" / "session-1"
@@ -605,6 +688,9 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
         inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -661,6 +747,9 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
         inputs.append(kwargs.get("input"))
         if "dailyfx" in command:
             return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            _write_updated_host_manifest(tmp_path, manifest)
+            return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
@@ -725,4 +814,3 @@ def test_run_target_with_spinner_clears_terminal_line(monkeypatch):
     captured = stderr_mock.getvalue()
     assert "\033[K" in captured
     assert "\r\033[K" in captured
-

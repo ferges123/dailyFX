@@ -180,6 +180,34 @@ def test_dailyfx_cli_generate_missing_schedule_fails(monkeypatch, capsys):
         db.close()
 
 
+def test_dailyfx_cli_finalize_host_requires_updated_metadata(tmp_path, capsys):
+    output_path = tmp_path / "result.png"
+    output_path.write_bytes(b"image")
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "task_id": "cli-s1-abc123",
+                "schedule_id": 1,
+                "target": "agy",
+                "generation_type": "ai_claymation",
+                "title": "Miniature Family Stroll",
+                "summary": "Use the image.",
+                "output_path": str(output_path),
+                "source_asset_id": "asset-1",
+                "config_json": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["finalize-host", "--manifest-path", str(manifest_path)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "valid tags" in captured.err
+
+
 def test_dailyfx_cli_lists_schedules(capsys):
     db, schedule = _setup_cli_db()
     try:
