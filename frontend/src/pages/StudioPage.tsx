@@ -8,6 +8,7 @@ import {
   createStudioPreviewFromImmich,
   getStudioModules,
   getImmichAssetThumbnailUrl,
+  getImmichAssetExif,
   type GenerationModuleInfo,
   type StudioPreviewResponse,
   type GenerationHistoryEntry,
@@ -68,6 +69,43 @@ export function StudioPage() {
       updated_at: new Date().toISOString(),
     };
   }, [preview, source]);
+
+  const dbExif = useMemo(() => {
+    if (!entryForLightbox?.config_json) return null;
+    try {
+      const config = JSON.parse(entryForLightbox.config_json);
+      return config.exif || null;
+    } catch {
+      return null;
+    }
+  }, [entryForLightbox]);
+
+  const sourceAssetId = useMemo(() => {
+    if (!entryForLightbox?.source_asset_ids) return null;
+    try {
+      const ids = JSON.parse(entryForLightbox.source_asset_ids);
+      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
+    } catch {
+      return null;
+    }
+  }, [entryForLightbox]);
+
+  const fetchedExifQuery = useQuery({
+    queryKey: ['immich-asset-exif', sourceAssetId],
+    queryFn: () => getImmichAssetExif(sourceAssetId!),
+    enabled: !dbExif && !!sourceAssetId,
+  });
+
+  const selectedExif = useMemo(() => {
+    if (dbExif) return dbExif;
+    if (
+      fetchedExifQuery.data &&
+      Object.keys(fetchedExifQuery.data).length > 0
+    ) {
+      return fetchedExifQuery.data;
+    }
+    return null;
+  }, [dbExif, fetchedExifQuery.data]);
 
   useEffect(() => {
     if (!preview) {
@@ -409,7 +447,7 @@ export function StudioPage() {
           onClose={() => setIsLightboxOpen(false)}
           imageUrl={entryForLightbox.image_url || ''}
           entry={entryForLightbox}
-          exif={null}
+          exif={selectedExif}
         />
       )}
 

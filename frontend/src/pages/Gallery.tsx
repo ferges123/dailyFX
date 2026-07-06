@@ -9,7 +9,7 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-import { getGenerationHistory } from '../api/client';
+import { getGenerationHistory, getImmichAssetExif } from '../api/client';
 import { type GenerationHistoryEntry } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
@@ -98,6 +98,43 @@ export function GalleryPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [lightboxEntry, setLightboxEntry] =
     useState<GenerationHistoryEntry | null>(null);
+
+  const dbExif = useMemo(() => {
+    if (!lightboxEntry?.config_json) return null;
+    try {
+      const config = JSON.parse(lightboxEntry.config_json);
+      return config.exif || null;
+    } catch {
+      return null;
+    }
+  }, [lightboxEntry]);
+
+  const sourceAssetId = useMemo(() => {
+    if (!lightboxEntry?.source_asset_ids) return null;
+    try {
+      const ids = JSON.parse(lightboxEntry.source_asset_ids);
+      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
+    } catch {
+      return null;
+    }
+  }, [lightboxEntry]);
+
+  const fetchedExifQuery = useQuery({
+    queryKey: ['immich-asset-exif', sourceAssetId],
+    queryFn: () => getImmichAssetExif(sourceAssetId!),
+    enabled: !dbExif && !!sourceAssetId,
+  });
+
+  const selectedExif = useMemo(() => {
+    if (dbExif) return dbExif;
+    if (
+      fetchedExifQuery.data &&
+      Object.keys(fetchedExifQuery.data).length > 0
+    ) {
+      return fetchedExifQuery.data;
+    }
+    return null;
+  }, [dbExif, fetchedExifQuery.data]);
   const [offset, setOffset] = useState(0);
   const [loadedEntries, setLoadedEntries] = useState<GenerationHistoryEntry[]>(
     [],
@@ -387,7 +424,7 @@ export function GalleryPage() {
           isOpen={true}
           entry={lightboxEntry}
           imageUrl={lightboxEntry.image_url || ''}
-          exif={null}
+          exif={selectedExif}
           onClose={() => setLightboxEntry(null)}
         />
       )}
