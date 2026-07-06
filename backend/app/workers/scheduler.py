@@ -247,6 +247,50 @@ async def _run_queued_task_in_background(task_id: str) -> None:
         )
 
 
+def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
+    from app.models.generation_history import GenerationHistoryModel
+    from app.models.generation_task import GenerationTaskModel
+
+    # 15 minutes timeout
+    cutoff = current.astimezone(timezone.utc) - timedelta(minutes=15)
+
+    # 1. Reset stuck running history entries
+    try:
+        stuck_history = (
+            session.query(GenerationHistoryModel)
+            .filter(GenerationHistoryModel.status == "RUNNING")
+            .filter(GenerationHistoryModel.updated_at < cutoff)
+            .all()
+        )
+        if stuck_history:
+            for task in stuck_history:
+                task.status = "FAILED"
+                task.error = "Task timed out (stuck in RUNNING for more than 15 minutes)"
+                logger.warning("Reset stuck RUNNING task %s to FAILED (timed out)", task.task_id)
+            session.commit()
+    except Exception as exc:
+        logger.exception("Failed to reset stuck RUNNING history tasks: %s", exc)
+        session.rollback()
+
+    # 2. Reset stuck running tasks
+    try:
+        stuck_tasks = (
+            session.query(GenerationTaskModel)
+            .filter(GenerationTaskModel.status == "running")
+            .filter(GenerationTaskModel.updated_at < cutoff)
+            .all()
+        )
+        if stuck_tasks:
+            for task in stuck_tasks:
+                task.status = "failed"
+                task.error = "Task timed out (stuck in running for more than 15 minutes)"
+                logger.warning("Reset stuck running queued task %s to failed (timed out)", task.task_id)
+            session.commit()
+    except Exception as exc:
+        logger.exception("Failed to reset stuck running queued tasks: %s", exc)
+        session.rollback()
+
+
 async def _perform_tick(session: Session, now: datetime | None = None, async_mode: bool = True) -> dict[str, object]:
     """Core tick logic — iterates over all enabled schedules."""
     import uuid
@@ -259,6 +303,9 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
     current = now or _local_now()
     if current.tzinfo is None:
         current = current.replace(tzinfo=_local_now().tzinfo)
+
+    # Reset stuck tasks older than 15 minutes
+    _reset_stuck_tasks_at_runtime(session, current)
 
     settings = get_or_create_settings(session)
     MAX_CONCURRENT_TASKS = int(os.environ.get("CONCURRENCY_LIMIT", "2"))

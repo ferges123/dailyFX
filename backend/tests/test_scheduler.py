@@ -355,3 +355,70 @@ def test_schedule_create_rejects_invalid_provider_values():
             filter_preset_id=1,
             effect_preset_id=1,
         )
+
+
+def test_reset_stuck_tasks_at_runtime():
+    from datetime import timedelta
+
+    from app.models.generation_history import GenerationHistoryModel
+    from app.models.generation_task import GenerationTaskModel
+    from app.workers.scheduler import _reset_stuck_tasks_at_runtime
+
+    db = _setup_scheduler_db()
+    try:
+        now = datetime.now(timezone.utc)
+
+        # 1. Create a task that is "running" but updated recently (should NOT be reset)
+        recent_task = GenerationTaskModel(
+            task_id="recent-task-1", status="running", step="selecting_asset", updated_at=now - timedelta(minutes=5)
+        )
+        recent_history = GenerationHistoryModel(
+            task_id="recent-task-1",
+            generation_type="collage",
+            status="RUNNING",
+            title="Recent Task",
+            summary="Testing",
+            source_asset_ids="[]",
+            config_json="{}",
+            updated_at=now - timedelta(minutes=5),
+        )
+
+        # 2. Create a task that is "running" and updated long ago (should be reset)
+        stuck_task = GenerationTaskModel(
+            task_id="stuck-task-1", status="running", step="selecting_asset", updated_at=now - timedelta(minutes=20)
+        )
+        stuck_history = GenerationHistoryModel(
+            task_id="stuck-task-1",
+            generation_type="collage",
+            status="RUNNING",
+            title="Stuck Task",
+            summary="Testing",
+            source_asset_ids="[]",
+            config_json="{}",
+            updated_at=now - timedelta(minutes=20),
+        )
+
+        db.add(recent_task)
+        db.add(recent_history)
+        db.add(stuck_task)
+        db.add(stuck_history)
+        db.commit()
+
+        # Run cleanup
+        _reset_stuck_tasks_at_runtime(db, now)
+
+        # Verify results
+        db.refresh(recent_task)
+        db.refresh(recent_history)
+        db.refresh(stuck_task)
+        db.refresh(stuck_history)
+
+        assert recent_task.status == "running"
+        assert recent_history.status == "RUNNING"
+
+        assert stuck_task.status == "failed"
+        assert stuck_task.error == "Task timed out (stuck in running for more than 15 minutes)"
+        assert stuck_history.status == "FAILED"
+        assert stuck_history.error == "Task timed out (stuck in RUNNING for more than 15 minutes)"
+    finally:
+        db.close()
