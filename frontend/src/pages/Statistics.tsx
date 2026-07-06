@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
 import { TrendsCharts } from './Statistics/TrendsCharts';
+import { EffectPopularityChart } from './Statistics/EffectPopularityChart';
 
 function formatLastRun(value: string | null) {
   if (!value) return 'Never';
@@ -227,6 +228,8 @@ export function StatisticsPage() {
       </div>
 
       <TrendsCharts />
+
+      <EffectPopularityChart stats={stats || []} activeTab={activeTab} />
 
       <div className="grid gap-4">
         {/* Tabs for AI and Standard Effects */}
