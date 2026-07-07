@@ -15,9 +15,15 @@ vi.mock('../api/client', () => {
 
 vi.mock('../components/SecureImage', () => {
   return {
-    SecureImage: ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
-      <img src={src} alt={alt} className={className} />
-    ),
+    SecureImage: ({
+      src,
+      alt,
+      className,
+    }: {
+      src: string;
+      alt: string;
+      className?: string;
+    }) => <img src={src} alt={alt} className={className} />,
   };
 });
 
@@ -118,11 +124,17 @@ describe('GalleryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /load more/i }));
 
     expect(await screen.findByText('Polaroid Memory')).toBeInTheDocument();
-    expect(client.getGenerationHistory).toHaveBeenLastCalledWith('UPLOADED', 24, '', 24, {
-      effect: null,
-      liked: null,
-      sort: 'newest',
-    });
+    expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+      'UPLOADED',
+      24,
+      '',
+      24,
+      {
+        effect: null,
+        liked: null,
+        sort: 'newest',
+      },
+    );
   });
 
   it('sends gallery filters and sort to the history API', async () => {
@@ -140,21 +152,33 @@ describe('GalleryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anime' }));
 
     await waitFor(() => {
-      expect(client.getGenerationHistory).toHaveBeenLastCalledWith('UPLOADED', 0, '', 24, {
-        effect: 'ai_anime',
-        liked: null,
-        sort: 'newest',
-      });
+      expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+        'UPLOADED',
+        0,
+        '',
+        24,
+        {
+          effect: 'ai_anime',
+          liked: null,
+          sort: 'newest',
+        },
+      );
     });
 
     fireEvent.click(screen.getByRole('button', { name: /favorites/i }));
 
     await waitFor(() => {
-      expect(client.getGenerationHistory).toHaveBeenLastCalledWith('UPLOADED', 0, '', 24, {
-        effect: 'ai_anime',
-        liked: true,
-        sort: 'newest',
-      });
+      expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+        'UPLOADED',
+        0,
+        '',
+        24,
+        {
+          effect: 'ai_anime',
+          liked: true,
+          sort: 'newest',
+        },
+      );
     });
 
     fireEvent.change(screen.getByLabelText('Sort gallery'), {
@@ -162,11 +186,17 @@ describe('GalleryPage', () => {
     });
 
     await waitFor(() => {
-      expect(client.getGenerationHistory).toHaveBeenLastCalledWith('UPLOADED', 0, '', 24, {
-        effect: 'ai_anime',
-        liked: true,
-        sort: 'oldest',
-      });
+      expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+        'UPLOADED',
+        0,
+        '',
+        24,
+        {
+          effect: 'ai_anime',
+          liked: true,
+          sort: 'oldest',
+        },
+      );
     });
   });
 });

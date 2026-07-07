@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  CalendarDays,
-  HelpCircle,
-  Plus,
-  Search,
-} from 'lucide-react';
+import { CalendarDays, HelpCircle, Plus, Search } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   getSchedules,

@@ -47,11 +47,18 @@ function sortStatsForQuality(a: client.EffectStats, b: client.EffectStats) {
   const aHasData = a.quality_label !== 'insufficient_data';
   const bHasData = b.quality_label !== 'insufficient_data';
   if (aHasData !== bHasData) return aHasData ? -1 : 1;
-  if (b.quality_score !== a.quality_score) return b.quality_score - a.quality_score;
+  if (b.quality_score !== a.quality_score)
+    return b.quality_score - a.quality_score;
   return b.total_runs - a.total_runs;
 }
 
-type SortKey = 'title' | 'total_runs' | 'like_rate' | 'unrated_count' | 'last_run_at' | 'quality_score';
+type SortKey =
+  | 'title'
+  | 'total_runs'
+  | 'like_rate'
+  | 'unrated_count'
+  | 'last_run_at'
+  | 'quality_score';
 type SortOrder = 'asc' | 'desc';
 
 export function StatisticsPage() {
@@ -71,7 +78,11 @@ export function StatisticsPage() {
     }
   };
 
-  const { data: stats, isLoading, error } = useQuery({
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['effect-stats'],
     queryFn: getEffectStats,
   });
@@ -95,8 +106,12 @@ export function StatisticsPage() {
   const sortedStats = [...(stats || [])].sort(sortStatsForQuality);
 
   // Group stats
-  const standardStats = sortedStats.filter((stat) => !stat.effect_id.startsWith('ai_'));
-  const aiStats = sortedStats.filter((stat) => stat.effect_id.startsWith('ai_'));
+  const standardStats = sortedStats.filter(
+    (stat) => !stat.effect_id.startsWith('ai_'),
+  );
+  const aiStats = sortedStats.filter((stat) =>
+    stat.effect_id.startsWith('ai_'),
+  );
 
   const currentStats = activeTab === 'standard' ? standardStats : aiStats;
 
@@ -155,7 +170,10 @@ export function StatisticsPage() {
                 <ChevronDown size={13} className="text-emerald-700" />
               )
             ) : (
-              <ArrowUpDown size={11} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+              <ArrowUpDown
+                size={11}
+                className="opacity-40 group-hover:opacity-100 transition-opacity"
+              />
             )}
           </span>
         </button>
@@ -164,8 +182,13 @@ export function StatisticsPage() {
   };
 
   const totalRuns = sortedStats.reduce((sum, stat) => sum + stat.total_runs, 0);
-  const ratedRuns = sortedStats.reduce((sum, stat) => sum + stat.rating_count, 0);
-  const bestRated = sortedStats.find((stat) => stat.quality_label !== 'insufficient_data');
+  const ratedRuns = sortedStats.reduce(
+    (sum, stat) => sum + stat.rating_count,
+    0,
+  );
+  const bestRated = sortedStats.find(
+    (stat) => stat.quality_label !== 'insufficient_data',
+  );
   const needsAttention = sortedStats.filter((stat) =>
     ['mixed', 'poor'].includes(stat.quality_label),
   ).length;
@@ -192,7 +215,9 @@ export function StatisticsPage() {
             <Play size={15} />
             Total runs
           </div>
-          <div className="mt-2 text-xl font-bold text-stone-950">{totalRuns}</div>
+          <div className="mt-2 text-xl font-bold text-stone-950">
+            {totalRuns}
+          </div>
           <div className="text-xs text-stone-500">{ratedRuns} rated</div>
         </div>
         <div className="app-surface p-3">
@@ -200,9 +225,12 @@ export function StatisticsPage() {
             <ThumbsUp size={15} />
             Rated runs
           </div>
-          <div className="mt-2 text-xl font-bold text-stone-950">{ratedRuns}</div>
+          <div className="mt-2 text-xl font-bold text-stone-950">
+            {ratedRuns}
+          </div>
           <div className="text-xs text-stone-500">
-            {totalRuns > 0 ? Math.round((ratedRuns / totalRuns) * 100) : 0}% coverage
+            {totalRuns > 0 ? Math.round((ratedRuns / totalRuns) * 100) : 0}%
+            coverage
           </div>
         </div>
         <div className="app-surface p-3">
@@ -214,7 +242,9 @@ export function StatisticsPage() {
             {bestRated ? bestRated.title : 'None'}
           </div>
           <div className="text-xs text-stone-500">
-            {bestRated?.like_rate != null ? `${bestRated.like_rate}% liked` : 'No rated effects'}
+            {bestRated?.like_rate != null
+              ? `${bestRated.like_rate}% liked`
+              : 'No rated effects'}
           </div>
         </div>
         <div className="app-surface p-3">
@@ -222,7 +252,9 @@ export function StatisticsPage() {
             <AlertTriangle size={15} />
             Needs attention
           </div>
-          <div className="mt-2 text-xl font-bold text-stone-950">{needsAttention}</div>
+          <div className="mt-2 text-xl font-bold text-stone-950">
+            {needsAttention}
+          </div>
           <div className="text-xs text-stone-500">Mixed or poor quality</div>
         </div>
       </div>
@@ -284,7 +316,9 @@ export function StatisticsPage() {
           {currentStats.map((stat) => {
             const totalRatings = stat.likes + stat.dislikes;
             const likedPercent =
-              totalRatings > 0 ? Math.round((stat.likes / totalRatings) * 100) : 0;
+              totalRatings > 0
+                ? Math.round((stat.likes / totalRatings) * 100)
+                : 0;
 
             return (
               <article
@@ -319,7 +353,9 @@ export function StatisticsPage() {
                   <div className="rounded-xl border border-stone-200/80 bg-white/70 p-2">
                     <div className="font-semibold text-stone-500">Rating</div>
                     <div className="mt-1 font-bold text-stone-900">
-                      {stat.like_rate != null ? `${stat.like_rate}% liked` : 'No ratings'}
+                      {stat.like_rate != null
+                        ? `${stat.like_rate}% liked`
+                        : 'No ratings'}
                     </div>
                   </div>
                   <div className="rounded-xl border border-stone-200/80 bg-white/70 p-2">
@@ -363,7 +399,9 @@ export function StatisticsPage() {
                   {renderHeader('Runs', 'total_runs')}
                   {renderHeader('Rating', 'like_rate')}
                   {renderHeader('Unrated', 'unrated_count')}
-                  <th className="px-4 pb-3 text-[10px] font-bold uppercase text-stone-500">Status mix</th>
+                  <th className="px-4 pb-3 text-[10px] font-bold uppercase text-stone-500">
+                    Status mix
+                  </th>
                   {renderHeader('Last run', 'last_run_at')}
                   {renderHeader('Quality', 'quality_score')}
                 </tr>
@@ -371,12 +409,16 @@ export function StatisticsPage() {
               <tbody className="divide-y divide-stone-100 text-sm">
                 {desktopSortedStats.map((stat) => {
                   const totalRatings = stat.likes + stat.dislikes;
-                  const likedPercent = totalRatings > 0 
-                    ? Math.round((stat.likes / totalRatings) * 100) 
-                    : 0;
-                    
+                  const likedPercent =
+                    totalRatings > 0
+                      ? Math.round((stat.likes / totalRatings) * 100)
+                      : 0;
+
                   return (
-                    <tr key={stat.effect_id} className="hover:bg-stone-50/50 transition">
+                    <tr
+                      key={stat.effect_id}
+                      className="hover:bg-stone-50/50 transition"
+                    >
                       <td className="px-4 py-3 font-semibold text-stone-950">
                         <Link
                           to={`/history?search=${encodeURIComponent(stat.effect_id)}`}
@@ -405,7 +447,9 @@ export function StatisticsPage() {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-stone-400">No ratings</span>
+                          <span className="text-xs text-stone-400">
+                            No ratings
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs font-semibold text-stone-500">
@@ -431,7 +475,9 @@ export function StatisticsPage() {
                         {formatLastRun(stat.last_run_at)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${qualityClass(stat.quality_label)}`}>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${qualityClass(stat.quality_label)}`}
+                        >
                           {qualityLabel(stat.quality_label)}
                         </span>
                       </td>
@@ -440,7 +486,10 @@ export function StatisticsPage() {
                 })}
                 {currentStats.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-sm text-stone-400">
+                    <td
+                      colSpan={7}
+                      className="py-8 text-center text-sm text-stone-400"
+                    >
                       No statistics logged yet.
                     </td>
                   </tr>

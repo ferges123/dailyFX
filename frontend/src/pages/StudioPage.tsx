@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ImagePlus, WandSparkles, History, Image as ImageIcon } from 'lucide-react';
+import {
+  ImagePlus,
+  WandSparkles,
+  History,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -48,7 +53,8 @@ export function StudioPage() {
       status: 'PENDING_REVIEW',
       title: preview.title,
       summary: preview.summary,
-      source_asset_ids: source?.type === 'immich' ? JSON.stringify([source.asset.id]) : '[]',
+      source_asset_ids:
+        source?.type === 'immich' ? JSON.stringify([source.asset.id]) : '[]',
       output_path: null,
       image_url: preview.image_url,
       provider: null,
@@ -210,10 +216,15 @@ export function StudioPage() {
           promptEnrichmentEnabled,
         });
       } else {
-        return createStudioPreviewFromImmich(source.asset.id, activeEffectId, activeConfig, {
-          aiVisionEnabled,
-          promptEnrichmentEnabled,
-        });
+        return createStudioPreviewFromImmich(
+          source.asset.id,
+          activeEffectId,
+          activeConfig,
+          {
+            aiVisionEnabled,
+            promptEnrichmentEnabled,
+          },
+        );
       }
     },
     onSuccess: (result) => setPreview(result),
@@ -285,8 +296,8 @@ export function StudioPage() {
                   {source.file.name}
                 </span>
                 <span className="text-xs text-stone-500">
-                  {(source.file.size / (1024 * 1024)).toFixed(2)} MB (Click
-                  or drag to change)
+                  {(source.file.size / (1024 * 1024)).toFixed(2)} MB (Click or
+                  drag to change)
                 </span>
               </div>
             ) : source?.type === 'local' ? (

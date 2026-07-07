@@ -23,7 +23,11 @@ export function TrendsCharts() {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [chartType, setChartType] = useState<ChartType>('generations');
 
-  const { data: trends, isLoading, error } = useQuery({
+  const {
+    data: trends,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['stats-trends'],
     queryFn: getStatsTrends,
   });
@@ -60,9 +64,13 @@ export function TrendsCharts() {
 
   const chartData = data.map((point) => ({
     ...point,
-    label: viewMode === 'daily'
-      ? new Date(point.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-      : point.date,
+    label:
+      viewMode === 'daily'
+        ? new Date(point.date).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })
+        : point.date,
   }));
 
   return (
@@ -144,7 +152,10 @@ export function TrendsCharts() {
         <div className="h-56 min-w-0 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'generations' ? (
-              <BarChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 5, right: 4, left: -18, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                 <XAxis
                   dataKey="label"
@@ -166,12 +177,30 @@ export function TrendsCharts() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="accepted" name="Accepted" fill="#059669" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="rejected" name="Rejected" fill="#dc2626" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="failed" name="Failed" fill="#78716c" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="accepted"
+                  name="Accepted"
+                  fill="#059669"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="rejected"
+                  name="Rejected"
+                  fill="#dc2626"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="failed"
+                  name="Failed"
+                  fill="#78716c"
+                  radius={[2, 2, 0, 0]}
+                />
               </BarChart>
             ) : chartType === 'triggers' ? (
-              <BarChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 5, right: 4, left: -18, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                 <XAxis
                   dataKey="label"
@@ -193,12 +222,30 @@ export function TrendsCharts() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="auto" name="Auto" fill="#2563eb" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="manual" name="Manual" fill="#059669" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="cli" name="CLI" fill="#78716c" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="auto"
+                  name="Auto"
+                  fill="#2563eb"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="manual"
+                  name="Manual"
+                  fill="#059669"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="cli"
+                  name="CLI"
+                  fill="#78716c"
+                  radius={[2, 2, 0, 0]}
+                />
               </BarChart>
             ) : (
-              <LineChart data={chartData} margin={{ top: 5, right: 4, left: -18, bottom: 5 }}>
+              <LineChart
+                data={chartData}
+                margin={{ top: 5, right: 4, left: -18, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                 <XAxis
                   dataKey="label"
@@ -220,8 +267,22 @@ export function TrendsCharts() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Line type="monotone" dataKey="likes" name="Likes" stroke="#059669" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="dislikes" name="Dislikes" stroke="#dc2626" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="likes"
+                  name="Likes"
+                  stroke="#059669"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="dislikes"
+                  name="Dislikes"
+                  stroke="#dc2626"
+                  strokeWidth={2}
+                  dot={false}
+                />
               </LineChart>
             )}
           </ResponsiveContainer>

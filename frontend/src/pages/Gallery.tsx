@@ -206,7 +206,8 @@ export function GalleryPage() {
 
   const total = data?.total ?? 0;
   const hasMore = offset + PAGE_SIZE < total;
-  const activeFilterCount = Number(Boolean(effectFilter)) + Number(likedFilter === true);
+  const activeFilterCount =
+    Number(Boolean(effectFilter)) + Number(likedFilter === true);
   const activeEffectLabel = effectFilter
     ? uniqueEffects.find((effect) => effect.value === effectFilter)?.label
     : null;
@@ -306,7 +307,10 @@ export function GalleryPage() {
                   : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
               }`}
             >
-              <Heart size={12} fill={likedFilter === true ? 'currentColor' : 'none'} />
+              <Heart
+                size={12}
+                fill={likedFilter === true ? 'currentColor' : 'none'}
+              />
               Favorites
             </button>
             {(effectFilter || likedFilter === true || search) && (
@@ -367,7 +371,9 @@ export function GalleryPage() {
               Could not load gallery
             </p>
             <p className="mt-1 max-w-sm text-xs text-stone-400">
-              {error instanceof Error ? error.message : 'The gallery request failed.'}
+              {error instanceof Error
+                ? error.message
+                : 'The gallery request failed.'}
             </p>
             <button
               type="button"

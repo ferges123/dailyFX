@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EffectPopularityChart } from '../pages/Statistics/EffectPopularityChart';
@@ -6,10 +7,18 @@ import type * as client from '../api/client';
 // Mock Recharts to render a simple HTML representation of the chart data
 vi.mock('recharts', () => {
   return {
-    ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
-    BarChart: ({ data, children }: any) => (
+    ResponsiveContainer: ({ children }: { children: ReactNode }) => (
+      <div data-testid="responsive-container">{children}</div>
+    ),
+    BarChart: ({
+      data,
+      children,
+    }: {
+      data: client.EffectStats[];
+      children: ReactNode;
+    }) => (
       <div data-testid="bar-chart">
-        {data?.map((item: any) => (
+        {data?.map((item: client.EffectStats) => (
           <div key={item.effect_id} data-testid="chart-item">
             {item.title}: {item.total_runs}
           </div>
@@ -17,7 +26,9 @@ vi.mock('recharts', () => {
         {children}
       </div>
     ),
-    Bar: ({ children }: any) => <div data-testid="bar">{children}</div>,
+    Bar: ({ children }: { children: ReactNode }) => (
+      <div data-testid="bar">{children}</div>
+    ),
     LabelList: () => <div data-testid="labellist" />,
     XAxis: () => <div data-testid="xaxis" />,
     YAxis: () => <div data-testid="yaxis" />,
@@ -77,7 +88,7 @@ const mockStats: client.EffectStats[] = [
     rejected_runs: 0,
     failed_runs: 0,
     last_run_at: null,
-  }
+  },
 ];
 
 describe('EffectPopularityChart', () => {
@@ -96,7 +107,9 @@ describe('EffectPopularityChart', () => {
   });
 
   it('returns null if there are no effects with runs', () => {
-    const { container } = render(<EffectPopularityChart stats={[]} activeTab="standard" />);
+    const { container } = render(
+      <EffectPopularityChart stats={[]} activeTab="standard" />,
+    );
     expect(container.firstChild).toBeNull();
   });
 });

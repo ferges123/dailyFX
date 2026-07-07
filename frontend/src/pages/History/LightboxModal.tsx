@@ -136,7 +136,6 @@ export const LightboxModal = memo(function LightboxModal({
     }
   };
 
-
   useEffect(() => {
     setShowOriginal(false);
   }, [imageUrl, isOpen]);

@@ -106,7 +106,13 @@ describe('App', () => {
   it('redirects from / to gallery and makes gallery the first desktop nav item', async () => {
     const { container } = renderApp('/');
 
-    expect(await screen.findByRole('heading', { name: 'Gallery' }, { timeout: 5000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Gallery' },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
     expect(document.querySelector('a[href="/gallery"]')).toHaveAttribute(
       'aria-current',
       'page',
@@ -121,7 +127,11 @@ describe('App', () => {
     renderApp('/');
 
     expect(
-      await screen.findByRole('heading', { name: 'Gallery' }, { timeout: 5000 }),
+      await screen.findByRole(
+        'heading',
+        { name: 'Gallery' },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
     fireEvent.click(document.querySelector('a[href="/history"]')!);
     expect(

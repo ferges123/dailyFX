@@ -60,7 +60,6 @@ interface AdditionalInfoDetailsProps {
   taskTrace: TaskTraceItem[] | null;
 }
 
-
 const formatVisionState = (vision: VisionState | null | undefined) => {
   if (!vision) return 'unknown';
   if (!vision.attempted) return 'not used';
@@ -132,9 +131,10 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
                   Summary:
                 </span>
                 <span className="rounded-full border border-sky-200/60 bg-white px-2 py-0.5 font-medium text-sky-900">
-                  {(
-                    metadataProvenance.summary_source || 'unknown'
-                  ).replace(/_/g, ' ')}
+                  {(metadataProvenance.summary_source || 'unknown').replace(
+                    /_/g,
+                    ' ',
+                  )}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -168,16 +168,14 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
                     <span className="text-[7.5px] font-semibold text-sky-700">
                       Injected tags:
                     </span>
-                    {metadataProvenance.tag_injections.map(
-                      (tag: string) => (
-                        <span
-                          key={tag}
-                          className="rounded-full border border-sky-200/60 bg-sky-100/70 px-2 py-0.5 font-medium text-sky-900"
-                        >
-                          #{tag}
-                        </span>
-                      ),
-                    )}
+                    {metadataProvenance.tag_injections.map((tag: string) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-sky-200/60 bg-sky-100/70 px-2 py-0.5 font-medium text-sky-900"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
                   </div>
                 )}
               {metadataProvenance.prompt_enrichment_context && (
@@ -200,11 +198,10 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
                       </div>
                     )}
                     {Array.isArray(
-                      metadataProvenance.prompt_enrichment_context
-                        .people_names,
+                      metadataProvenance.prompt_enrichment_context.people_names,
                     ) &&
-                      metadataProvenance.prompt_enrichment_context
-                        .people_names.length > 0 && (
+                      metadataProvenance.prompt_enrichment_context.people_names
+                        .length > 0 && (
                         <div>
                           <span className="font-semibold text-emerald-800">
                             People:
@@ -263,7 +260,8 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
                     <div className="min-w-0">
                       <div className="text-[7.5px] font-bold uppercase tracking-[0.12em] text-stone-400">
                         {index === taskTrace.length - 1 &&
-                        String(item.status || '').toLowerCase() === 'running' ? (
+                        String(item.status || '').toLowerCase() ===
+                          'running' ? (
                           <span className="inline-flex items-center gap-1">
                             <Loader2 size={10} className="animate-spin" />
                             {(item.stage || 'step').replace(/_/g, ' ')}

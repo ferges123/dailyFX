@@ -109,8 +109,12 @@ describe('StatisticsPage Tabs', () => {
     expect(aiTab).toHaveTextContent('AI1'); // 1 AI effect: ai_anime
 
     // Initially in Standard tab, should show standard effects, not AI ones
-    expect(screen.getAllByRole('link', { name: 'Duotone' })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Vignette' })[0]).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'Duotone' })[0],
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'Vignette' })[0],
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Anime AI' }),
     ).not.toBeInTheDocument();
@@ -124,7 +128,9 @@ describe('StatisticsPage Tabs', () => {
     fireEvent.click(screen.getByText('AI'));
 
     // Should now show AI effects, not standard ones
-    expect(screen.getAllByRole('link', { name: 'Anime AI' })[0]).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'Anime AI' })[0],
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Duotone' }),
     ).not.toBeInTheDocument();
@@ -198,4 +204,3 @@ describe('StatisticsPage Tabs', () => {
     expect(reorderedRows[2]).toHaveTextContent('Duotone');
   });
 });
-

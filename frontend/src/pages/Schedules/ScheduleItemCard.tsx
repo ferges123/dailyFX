@@ -93,10 +93,7 @@ export const ScheduleItemCard = memo(function ScheduleItemCard({
               parseAutomationSchedule(schedule.schedule_expr),
             )}
             {' · '}
-            Album:{' '}
-            <span className="font-medium">
-              {schedule.album_name}
-            </span>
+            Album: <span className="font-medium">{schedule.album_name}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-1 sm:justify-end">
@@ -109,9 +106,7 @@ export const ScheduleItemCard = memo(function ScheduleItemCard({
             disabled={togglePending}
             title={schedule.enabled ? 'Disable' : 'Enable'}
             className={`app-button-secondary items-center gap-1 px-2 py-1 text-[11px] font-medium disabled:opacity-50 ${
-              schedule.enabled
-                ? 'text-emerald-700'
-                : 'text-stone-500'
+              schedule.enabled ? 'text-emerald-700' : 'text-stone-500'
             }`}
           >
             {schedule.enabled ? (
@@ -203,31 +198,24 @@ export const ScheduleItemCard = memo(function ScheduleItemCard({
         {schedule.notification_preset_names &&
           schedule.notification_preset_names.length > 0 && (
             <span className="app-chip px-2 py-0.5">
-              Notifications:{' '}
-              {schedule.notification_preset_names.join(', ')}
+              Notifications: {schedule.notification_preset_names.join(', ')}
             </span>
           )}
         {schedule.ai_vision_provider !== 'none' && (
           <span className="app-chip px-2 py-0.5">
-            Vision: {schedule.ai_vision_provider} (
-            {schedule.ai_vision_model})
+            Vision: {schedule.ai_vision_provider} ({schedule.ai_vision_model})
           </span>
         )}
         {schedule.ai_image_provider !== 'none' && (
           <span className="app-chip px-2 py-0.5">
-            Image: {schedule.ai_image_provider} (
-            {schedule.ai_image_model})
+            Image: {schedule.ai_image_provider} ({schedule.ai_image_model})
           </span>
         )}
         {schedule.ai_prompt_enrichment && (
-          <span className="app-chip px-2 py-0.5">
-            Prompt enrichment on
-          </span>
+          <span className="app-chip px-2 py-0.5">Prompt enrichment on</span>
         )}
         {schedule.ai_photo_selection_enabled && (
-          <span className="app-chip px-2 py-0.5">
-            AI photo selection on
-          </span>
+          <span className="app-chip px-2 py-0.5">AI photo selection on</span>
         )}
       </div>
     </article>

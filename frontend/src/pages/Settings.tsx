@@ -61,8 +61,9 @@ export function SettingsPage() {
   >(null);
 
   const clearHistoryMutation = useMutation({
-    mutationFn: (status: 'rejected' | 'failed' | 'pending' | 'accepted' | 'running') =>
-      clearHistoryByStatus(status),
+    mutationFn: (
+      status: 'rejected' | 'failed' | 'pending' | 'accepted' | 'running',
+    ) => clearHistoryByStatus(status),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
       setConfirmDeleteOpen(null);
@@ -171,7 +172,9 @@ export function SettingsPage() {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
       console.error('Failed to load debug log:', err);
-      alert('Failed to load debug log. Check if debug mode is active and logs exist.');
+      alert(
+        'Failed to load debug log. Check if debug mode is active and logs exist.',
+      );
     } finally {
       setLogLoading(false);
     }

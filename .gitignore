@@ -27,7 +27,7 @@ data/generation-examples/*
 data/logs/*
 data/backups/*
 data/scheduler.health
-data/dailyfx-agent.pid
+data/*.pid
 data/dailyfx-run*.json
 !data/results/.gitkeep
 cache/

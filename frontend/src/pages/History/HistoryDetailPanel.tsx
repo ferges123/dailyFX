@@ -17,7 +17,10 @@ import {
 import { type GenerationHistoryEntry } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { formatDateTime } from '../datetime.utils';
-import { AdditionalInfoDetails, type TaskTraceItem } from './AdditionalInfoDetails';
+import {
+  AdditionalInfoDetails,
+  type TaskTraceItem,
+} from './AdditionalInfoDetails';
 
 interface HistoryDetailPanelProps {
   entry: GenerationHistoryEntry | null;
@@ -449,7 +452,10 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
             </div>
           )}
 
-          <AdditionalInfoDetails metadataProvenance={metadataProvenance} taskTrace={taskTrace} />
+          <AdditionalInfoDetails
+            metadataProvenance={metadataProvenance}
+            taskTrace={taskTrace}
+          />
 
           {/* UPLOADED ACTIONS */}
           {entry.status === 'UPLOADED' && (
