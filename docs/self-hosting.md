@@ -31,11 +31,14 @@ flowchart LR
 ## Initial Setup
 1. Clone the repository.
 2. Copy `.env.example` to `.env`.
-3. Fill in the required system-level secret key:
+3. Generate a strong, unique system-level secret key:
 
 ```env
-APP_SECRET_KEY=generate-a-long-random-secret
+APP_SECRET_KEY=your-generated-secure-key
 ```
+
+> [!IMPORTANT]
+> You must change the default `APP_SECRET_KEY` placeholder (`change-me-generate-a-long-random-secret`) from `.env.example`. If the application runs in production mode (`APP_ENV=production`), the preflight checks will block the startup if the placeholder key is detected.
 
 Optional env values:
 - `TZ` sets the timezone used by the containers for timestamps and scheduled jobs.
@@ -53,7 +56,7 @@ The bundled `.env.example` is already tuned for Docker-based self-hosting: `APP_
 docker compose up --build -d
 ```
 
-On startup, the backend runs a preflight check that validates the loaded configuration and verifies that the data directory and SQLite path are writable before the API and scheduler begin.
+On startup, the backend runs a preflight check that validates the loaded configuration (including checking that `APP_SECRET_KEY` is not using the default placeholder in production) and verifies that the data directory and SQLite path are writable before the API and scheduler begin.
 
 The default ports are:
 - `8439` for the web UI

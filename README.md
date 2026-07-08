@@ -257,7 +257,7 @@ All connections (Immich, AI keys) and preferences are configured directly via th
 
 | Variable | Required | Description |
 |---|---|---|
-| `APP_SECRET_KEY` | **yes** | Random secret used to encrypt stored API keys. Generate with `openssl rand -hex 32`. |
+| `APP_SECRET_KEY` | **yes** | Random secret used to encrypt stored API keys. Generate with `openssl rand -hex 32`. Must not be the default placeholder value in production. |
 | `APP_ENV` | no | Application environment (`production` or `development`, default: `development`). |
 | `APP_HOST` | no | Host binding address (default: `0.0.0.0`). |
 | `APP_PORT` | no | Backend API port (default: `8438`). |

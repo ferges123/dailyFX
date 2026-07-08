@@ -14,11 +14,14 @@ For a short operator-friendly explanation of the workflow, see [How It Works](ho
 ## Quick Setup
 1. Clone the repository.
 2. Copy `.env.example` to `.env`.
-3. Fill in the required secret key in `.env`:
+3. Generate a strong, unique secret key and set it in `.env`:
 
 ```env
-APP_SECRET_KEY=generate-a-long-random-secret
+APP_SECRET_KEY=your-generated-secure-key
 ```
+
+> [!IMPORTANT]
+> The default placeholder value (`change-me-generate-a-long-random-secret`) from `.env.example` **must be replaced**. In production mode (`APP_ENV=production`), the application's preflight checks will fail and block the startup if this placeholder value is still used.
 
 The example `.env` is already set up for the Docker stack, so `APP_ENV=production`, `DATA_DIR=/data`, and `DATABASE_URL=sqlite:////data/app.db` can stay as-is for a normal local run.
 
