@@ -56,10 +56,17 @@ def run_preflight_checks() -> None:
     if not secret_key:
         raise RuntimeError("APP_SECRET_KEY must not be blank.")
     if secret_key == EXAMPLE_SECRET_KEY:
-        print(
-            "WARNING: APP_SECRET_KEY still uses the example placeholder value. Replace it before publishing this stack.",
-            file=sys.stderr,
-        )
+        if settings.app_env == "production":
+            raise RuntimeError(
+                "APP_SECRET_KEY must not use the example placeholder value in production. "
+                "Please generate a secure random key (e.g., using 'openssl rand -hex 32') "
+                "and set it in your environment."
+            )
+        else:
+            print(
+                "WARNING: APP_SECRET_KEY still uses the example placeholder value. Replace it before publishing this stack.",
+                file=sys.stderr,
+            )
 
     _ensure_writable_directory(settings.data_dir, "DATA_DIR")
     _check_sqlite_parent_directory(settings.database_url)
