@@ -46,6 +46,7 @@ def test_get_db_no_exception_closes_session():
 
 def test_init_db_fallback_path_resolution(monkeypatch):
     from pathlib import Path
+
     upgrade_called = []
 
     monkeypatch.setattr("alembic.command.upgrade", lambda cfg, revision: upgrade_called.append(cfg))
@@ -54,6 +55,7 @@ def test_init_db_fallback_path_resolution(monkeypatch):
     monkeypatch.setattr("app.database._initialized_databases", set())
 
     real_exists = Path.exists
+
     def mock_exists(self):
         if "alembic.ini" in str(self):
             if str(self) == "/app/alembic.ini":
@@ -64,8 +66,8 @@ def test_init_db_fallback_path_resolution(monkeypatch):
     monkeypatch.setattr(Path, "exists", mock_exists)
 
     from app.database import init_db
+
     init_db()
 
     assert len(upgrade_called) == 1
     assert upgrade_called[0].config_file_name == "/app/alembic.ini"
-

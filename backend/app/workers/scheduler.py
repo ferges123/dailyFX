@@ -597,30 +597,26 @@ def _cleanup_old_results(results_dir) -> None:
                 session.commit()
                 logger.info("Pruned %d old REJECTED entries (>7 days)", len(old_rejected))
 
-            # 2. Keep 50 most recent non-REJECTED entries
-            keep_ids = [
-                row.id
-                for row in session.query(GenerationHistoryModel.id)
-                .filter(GenerationHistoryModel.status != "REJECTED")
-                .order_by(GenerationHistoryModel.id.desc())
-                .limit(50)
-                .all()
-            ]
-            old_rows = (
-                session.query(GenerationHistoryModel.task_id)
+            # 2. Delete non-REJECTED entries older than 30 days (and their files)
+            cutoff_non_rejected = datetime.now(timezone.utc) - timedelta(days=30)
+            old_non_rejected = (
+                session.query(GenerationHistoryModel)
                 .filter(
                     GenerationHistoryModel.status != "REJECTED",
-                    GenerationHistoryModel.id.notin_(keep_ids) if keep_ids else True,
+                    GenerationHistoryModel.created_at < cutoff_non_rejected,
                 )
                 .all()
             )
-            old_task_ids = {row.task_id for row in old_rows}
-            if old_task_ids:
-                session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id.in_(old_task_ids)).delete(
-                    synchronize_session=False
-                )
+            if old_non_rejected:
+                old_task_ids = {row.task_id for row in old_non_rejected}
+                for row in old_non_rejected:
+                    if row.output_path:
+                        from pathlib import Path as _Path
+
+                        _Path(row.output_path).unlink(missing_ok=True)
+                    session.delete(row)
                 session.commit()
-                logger.info("Pruned %d old history entries", len(old_task_ids))
+                logger.info("Pruned %d old non-REJECTED entries (>30 days)", len(old_non_rejected))
                 for task_id in old_task_ids:
                     for f in results_dir.glob(f"{task_id}.*"):
                         f.unlink(missing_ok=True)

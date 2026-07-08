@@ -795,10 +795,18 @@ def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_au
             sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
             sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("auto-%"), 1), else_=0)).label("auto"),
             sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("cli-%"), 1), else_=0)).label("cli"),
-            sa.func.sum(sa.case((sa.and_(
-                sa.not_(GenerationHistoryModel.task_id.like("auto-%")),
-                sa.not_(GenerationHistoryModel.task_id.like("cli-%"))
-            ), 1), else_=0)).label("manual"),
+            sa.func.sum(
+                sa.case(
+                    (
+                        sa.and_(
+                            sa.not_(GenerationHistoryModel.task_id.like("auto-%")),
+                            sa.not_(GenerationHistoryModel.task_id.like("cli-%")),
+                        ),
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("manual"),
         )
         .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
         .filter(GenerationHistoryModel.created_at >= sa.func.date("now", "-30 days"))
@@ -835,10 +843,18 @@ def get_stats_trends(db: Session = Depends(get_db), _: None = Depends(require_au
             sa.func.sum(sa.case((EffectStatisticsLogModel.liked.is_(False), 1), else_=0)).label("dislikes"),
             sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("auto-%"), 1), else_=0)).label("auto"),
             sa.func.sum(sa.case((GenerationHistoryModel.task_id.like("cli-%"), 1), else_=0)).label("cli"),
-            sa.func.sum(sa.case((sa.and_(
-                sa.not_(GenerationHistoryModel.task_id.like("auto-%")),
-                sa.not_(GenerationHistoryModel.task_id.like("cli-%"))
-            ), 1), else_=0)).label("manual"),
+            sa.func.sum(
+                sa.case(
+                    (
+                        sa.and_(
+                            sa.not_(GenerationHistoryModel.task_id.like("auto-%")),
+                            sa.not_(GenerationHistoryModel.task_id.like("cli-%")),
+                        ),
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("manual"),
         )
         .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
         .filter(GenerationHistoryModel.created_at >= sa.func.date("now", "-84 days"))

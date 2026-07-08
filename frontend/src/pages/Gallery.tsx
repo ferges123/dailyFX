@@ -13,6 +13,7 @@ import { getGenerationHistory, getImmichAssetExif } from '../api/client';
 import { type GenerationHistoryEntry } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
+import { useDebounce } from './History/useDebounce';
 
 const PAGE_SIZE = 24;
 
@@ -92,6 +93,7 @@ function GalleryCard({
 
 export function GalleryPage() {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [effectFilter, setEffectFilter] = useState<string | null>(null);
   const [likedFilter, setLikedFilter] = useState<boolean | null>(null);
   const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
@@ -155,17 +157,17 @@ export function GalleryPage() {
       'gallery',
       'UPLOADED',
       offset,
-      search,
+      debouncedSearch,
       filters,
     ],
     queryFn: () =>
-      getGenerationHistory('UPLOADED', offset, search, PAGE_SIZE, filters),
+      getGenerationHistory('UPLOADED', offset, debouncedSearch, PAGE_SIZE, filters),
   });
 
   useEffect(() => {
     setOffset(0);
     setLoadedEntries([]);
-  }, [search, effectFilter, likedFilter, sort]);
+  }, [debouncedSearch, effectFilter, likedFilter, sort]);
 
   useEffect(() => {
     if (!data?.items) return;
@@ -253,6 +255,7 @@ export function GalleryPage() {
             {search && (
               <button
                 type="button"
+                aria-label="Clear search"
                 onClick={() => setSearch('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
               >

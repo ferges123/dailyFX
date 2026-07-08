@@ -199,4 +199,65 @@ describe('GalleryPage', () => {
       );
     });
   });
+
+  it('sends search queries to the history API with debounce and supports clearing search', async () => {
+    vi.mocked(client.getGenerationHistory).mockResolvedValue({
+      items: [animeEntry],
+      total: 1,
+      latest_event_id: 1,
+    });
+
+    renderGallery();
+
+    expect(await screen.findByText('Anime Portrait')).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText(/search/i);
+    fireEvent.change(searchInput, { target: { value: 'cool' } });
+
+    // Since search is debounced (300ms), it shouldn't trigger immediately
+    expect(client.getGenerationHistory).not.toHaveBeenLastCalledWith(
+      'UPLOADED',
+      0,
+      'cool',
+      24,
+      {
+        effect: null,
+        liked: null,
+        sort: 'newest',
+      },
+    );
+
+    // Wait for the debounce to complete
+    await waitFor(() => {
+      expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+        'UPLOADED',
+        0,
+        'cool',
+        24,
+        {
+          effect: null,
+          liked: null,
+          sort: 'newest',
+        },
+      );
+    });
+
+    // Verify clear button works
+    const clearButton = screen.getByRole('button', { name: /clear search/i });
+    fireEvent.click(clearButton);
+
+    await waitFor(() => {
+      expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+        'UPLOADED',
+        0,
+        '',
+        24,
+        {
+          effect: null,
+          liked: null,
+          sort: 'newest',
+        },
+      );
+    });
+  });
 });

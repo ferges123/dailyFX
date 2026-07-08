@@ -283,4 +283,3 @@ def test_stats_trends_api(authenticated_client: TestClient, db_session: Session)
     assert today_point["auto"] == 1
     assert today_point["cli"] == 1
     assert today_point["manual"] == 2
-

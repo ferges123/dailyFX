@@ -177,10 +177,7 @@ def _prepare_page_items_for_module(
     # For explicit manual selection, return selected items as-is (history is still tracked upstream)
     if selected_asset_ids:
         if recent_source_asset_ids:
-            used_in_history = [
-                item for item in unique_items
-                if getattr(item, "id", None) in recent_source_asset_ids
-            ]
+            used_in_history = [item for item in unique_items if getattr(item, "id", None) in recent_source_asset_ids]
             if used_in_history:
                 debug_log(
                     "Manual selection includes previously used assets",

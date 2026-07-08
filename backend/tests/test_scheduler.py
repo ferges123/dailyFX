@@ -422,3 +422,125 @@ def test_reset_stuck_tasks_at_runtime():
         assert stuck_history.error == "Task timed out (stuck in RUNNING for more than 15 minutes)"
     finally:
         db.close()
+
+
+def test_cleanup_old_results_retention(tmp_path):
+    from datetime import timedelta
+
+    from app.models.generation_history import GenerationHistoryModel
+    from app.workers.scheduler import _cleanup_old_results
+
+    db = _setup_scheduler_db()
+    try:
+        now = datetime.now(timezone.utc)
+
+        # 1. Create a recent non-REJECTED entry (5 days ago, should be kept)
+        recent_non_rejected = GenerationHistoryModel(
+            task_id="recent-non-rejected",
+            generation_type="collage",
+            status="UPLOADED",
+            title="Recent Non-Rejected",
+            summary="Testing",
+            source_asset_ids="[]",
+            config_json="{}",
+            created_at=now - timedelta(days=5),
+            output_path=str(tmp_path / "results" / "recent-non-rejected.png"),
+        )
+
+        # 2. Create an old non-REJECTED entry (31 days ago, should be pruned)
+        old_non_rejected = GenerationHistoryModel(
+            task_id="old-non-rejected",
+            generation_type="collage",
+            status="UPLOADED",
+            title="Old Non-Rejected",
+            summary="Testing",
+            source_asset_ids="[]",
+            config_json="{}",
+            created_at=now - timedelta(days=31),
+            output_path=str(tmp_path / "results" / "old-non-rejected.png"),
+        )
+
+        # 3. Create a recent REJECTED entry (3 days ago, should be kept)
+        recent_rejected = GenerationHistoryModel(
+            task_id="recent-rejected",
+            generation_type="collage",
+            status="REJECTED",
+            title="Recent Rejected",
+            summary="Testing",
+            source_asset_ids="[]",
+            config_json="{}",
+            created_at=now - timedelta(days=3),
+            output_path=str(tmp_path / "results" / "recent-rejected.png"),
+        )
+
+        # 4. Create an old REJECTED entry (8 days ago, should be pruned)
+        old_rejected = GenerationHistoryModel(
+            task_id="old-rejected",
+            generation_type="collage",
+            status="REJECTED",
+            title="Old Rejected",
+            summary="Testing",
+            source_asset_ids="[]",
+            config_json="{}",
+            created_at=now - timedelta(days=8),
+            output_path=str(tmp_path / "results" / "old-rejected.png"),
+        )
+
+        # 5. Create 60 recent non-REJECTED entries (to verify 50 entry limit is removed)
+        many_recent = []
+        for i in range(60):
+            many_recent.append(
+                GenerationHistoryModel(
+                    task_id=f"many-recent-{i}",
+                    generation_type="collage",
+                    status="UPLOADED",
+                    title=f"Many Recent {i}",
+                    summary="Testing",
+                    source_asset_ids="[]",
+                    config_json="{}",
+                    created_at=now - timedelta(days=1),
+                    output_path=str(tmp_path / "results" / f"many-recent-{i}.png"),
+                )
+            )
+
+        db.add(recent_non_rejected)
+        db.add(old_non_rejected)
+        db.add(recent_rejected)
+        db.add(old_rejected)
+        for row in many_recent:
+            db.add(row)
+        db.commit()
+
+        # Create dummy result files in tmp_path
+        results_dir = tmp_path / "results"
+        results_dir.mkdir()
+        for suffix in [".png", ".png.thumb_400.jpg"]:
+            (results_dir / f"recent-non-rejected{suffix}").touch()
+            (results_dir / f"old-non-rejected{suffix}").touch()
+            (results_dir / f"recent-rejected{suffix}").touch()
+            (results_dir / f"old-rejected{suffix}").touch()
+            for i in range(60):
+                (results_dir / f"many-recent-{i}{suffix}").touch()
+
+        # Run cleanup
+        _cleanup_old_results(results_dir)
+
+        # Check DB entries
+        kept_tasks = [row.task_id for row in db.query(GenerationHistoryModel.task_id).all()]
+        assert "recent-non-rejected" in kept_tasks
+        assert "recent-rejected" in kept_tasks
+        assert "old-non-rejected" not in kept_tasks
+        assert "old-rejected" not in kept_tasks
+
+        # Verify the 60 recent entries are all kept (no 50 entry limit)
+        for i in range(60):
+            assert f"many-recent-{i}" in kept_tasks
+
+        # Check files
+        assert (results_dir / "recent-non-rejected.png").exists()
+        assert (results_dir / "recent-rejected.png").exists()
+        assert not (results_dir / "old-non-rejected.png").exists()
+        # Old REJECTED deletes output_path:
+        assert not (results_dir / "old-rejected.png").exists()
+    finally:
+        db.close()
