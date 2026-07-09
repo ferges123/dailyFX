@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import time
 from io import StringIO
 from pathlib import Path
-import subprocess
 from subprocess import CompletedProcess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1041,6 +1041,7 @@ def test_dailyfx_agent_repeat_runs_multiple_times(monkeypatch, tmp_path):
 
 def test_target_log_stored_in_workspace(monkeypatch, tmp_path):
     log_dir_arg = None
+
     def fake_write_target_log(*, log_dir, **kwargs):
         nonlocal log_dir_arg
         log_dir_arg = log_dir
@@ -1050,7 +1051,7 @@ def test_target_log_stored_in_workspace(monkeypatch, tmp_path):
     monkeypatch.setattr(
         dailyfx_agent,
         "_run_subprocess_with_active_tracking",
-        lambda *a, **kw: CompletedProcess(["echo"], 0, stdout="test", stderr="")
+        lambda *a, **kw: CompletedProcess(["echo"], 0, stdout="test", stderr=""),
     )
 
     dailyfx_agent._run_target_with_spinner(["echo"], prompt="", task_id="test", labels=[], daemon_mode=True)
@@ -1059,6 +1060,7 @@ def test_target_log_stored_in_workspace(monkeypatch, tmp_path):
 
 def test_sigterm_kills_subprocess(monkeypatch):
     import signal
+
     kill_called = False
 
     class FakeProc:
@@ -1119,18 +1121,24 @@ def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
             manifest_file.write_text(json.dumps(updated), encoding="utf-8")
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
+
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
     (tmp_path / "out.png").write_bytes(b"image")
     (tmp_path / "out.input.png").write_bytes(b"image")
     _seed_agy_generated_image(tmp_path)
 
-
-    exit_code = dailyfx_agent.main([
-        "--schedule-id", "1",
-        "--target", "agy",
-        "--manifest-path", str(manifest_file),
-        "--project-dir", str(tmp_path),
-    ])
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "1",
+            "--target",
+            "agy",
+            "--manifest-path",
+            str(manifest_file),
+            "--project-dir",
+            str(tmp_path),
+        ]
+    )
 
     assert exit_code == 0
     assert not manifest_file.exists()
@@ -1138,19 +1146,20 @@ def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
 
 def test_manifest_schema_validation(tmp_path):
     manifest_file = tmp_path / "invalid-manifest.json"
-    manifest_file.write_text(json.dumps({
-        "task_id": "test",
-        "task_trace": "invalid_string_instead_of_list"
-    }), encoding="utf-8")
+    manifest_file.write_text(
+        json.dumps({"task_id": "test", "task_trace": "invalid_string_instead_of_list"}), encoding="utf-8"
+    )
 
     import pytest
+
     with pytest.raises(ValueError, match="field 'task_trace' must be a array"):
         dailyfx_agent._load_manifest(manifest_file)
 
 
 def test_dailyfx_agent_uses_shared_validation():
-    from app.services.generation.host_manifest import ManifestValidationError
     import pytest
+
+    from app.services.generation.host_manifest import ManifestValidationError
 
     # We expect _normalize_host_manifest to raise ManifestValidationError (a subclass of ValueError)
     # when validation fails (e.g. empty manifest).
@@ -1235,9 +1244,7 @@ def test_find_latest_image_prioritizes_task_id(tmp_path, capsys):
     os.utime(img_b, (now + 20, now + 20))
 
     # Expect Image A to be returned since it matches task_id 'task123'
-    recovered_a = dailyfx_agent._find_latest_image(
-        start_time=now, generated_root=generated_root, task_id="task123"
-    )
+    recovered_a = dailyfx_agent._find_latest_image(start_time=now, generated_root=generated_root, task_id="task123")
     assert recovered_a == img_a
 
     # Clean up captured warnings
@@ -1268,14 +1275,16 @@ def test_daemon_status_and_stop(tmp_path, capsys):
     # We write a PID that doesn't exist (e.g. 999999)
     pid_file.write_text("999999", encoding="utf-8")
     metadata_file.write_text(
-        json.dumps({
-            "pid": 999999,
-            "schedule_id": 42,
-            "target": "agy",
-            "started_at": "2026-07-09T13:00:00Z",
-            "log_path": "/tmp/test.log",
-            "manifest_path": "/tmp/manifest.json",
-        }),
+        json.dumps(
+            {
+                "pid": 999999,
+                "schedule_id": 42,
+                "target": "agy",
+                "started_at": "2026-07-09T13:00:00Z",
+                "log_path": "/tmp/test.log",
+                "manifest_path": "/tmp/manifest.json",
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -1294,14 +1303,16 @@ def test_daemon_status_and_stop(tmp_path, capsys):
 
     pid_file.write_text(str(pid), encoding="utf-8")
     metadata_file.write_text(
-        json.dumps({
-            "pid": pid,
-            "schedule_id": 42,
-            "target": "agy",
-            "started_at": "2026-07-09T13:00:00Z",
-            "log_path": "/tmp/test.log",
-            "manifest_path": "/tmp/manifest.json",
-        }),
+        json.dumps(
+            {
+                "pid": pid,
+                "schedule_id": 42,
+                "target": "agy",
+                "started_at": "2026-07-09T13:00:00Z",
+                "log_path": "/tmp/test.log",
+                "manifest_path": "/tmp/manifest.json",
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -1337,7 +1348,11 @@ def test_agent_version_mcp_init(monkeypatch):
     def fake_mcp_request(proc, request_id, method, params=None, **kwargs):
         if method == "initialize":
             captured_params.append(params)
-            return {"protocolVersion": "2024-11-05", "capabilities": {}, "serverInfo": {"name": "test-server", "version": "1.0"}}
+            return {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "serverInfo": {"name": "test-server", "version": "1.0"},
+            }
         if method == "model/list":
             return {"models": []}
         return {}
@@ -1349,6 +1364,7 @@ def test_agent_version_mcp_init(monkeypatch):
             self.stdin = StringIO()
             self.stdout = StringIO()
             self.stderr = StringIO()
+
         def wait(self, timeout=None):
             return 0
 
@@ -1382,6 +1398,7 @@ def test_doctor_command_scenarios(monkeypatch, capsys):
 
     # Mock shutil.which to find executables
     import shutil
+
     monkeypatch.setattr(shutil, "which", lambda cmd: f"/usr/bin/{cmd}")
 
     # Invoke --doctor
@@ -1400,7 +1417,7 @@ def test_augment_host_prompt_snapshot():
         abs_image_path="/tmp/input.jpg",
         abs_manifest_path="/tmp/manifest.json",
         abs_output_path="/tmp/output.png",
-        task_id="task-123"
+        task_id="task-123",
     )
     assert original in augmented
     assert "/tmp/input.jpg" in augmented
@@ -1414,6 +1431,7 @@ def test_augment_host_prompt_snapshot():
 
 def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
     import pytest
+
     locks_dir = tmp_path / "locks"
     monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", locks_dir)
 
@@ -1431,6 +1449,7 @@ def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
     # 3. Re-acquisition under stale process overrides
     # Write a PID that doesn't exist
     import json
+
     lock_file.write_text(json.dumps({"pid": 999999, "started_at": "some-time"}), encoding="utf-8")
     dailyfx_agent._acquire_lock(1, "agy")
     assert lock_file.exists()
@@ -1442,6 +1461,7 @@ def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
 
 def test_repeat_manifest_paths(tmp_path, capsys):
     from pathlib import Path
+
     manifest_path = tmp_path / "custom.json"
 
     path_obj = Path(manifest_path)
@@ -1481,12 +1501,9 @@ def test_json_status_target_failure(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
     monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
 
-    exit_code = dailyfx_agent.main([
-        "--schedule-id", "1",
-        "--target", "agy",
-        "--project-dir", str(tmp_path),
-        "--json-status"
-    ])
+    exit_code = dailyfx_agent.main(
+        ["--schedule-id", "1", "--target", "agy", "--project-dir", str(tmp_path), "--json-status"]
+    )
     assert exit_code != 0
     captured = capsys.readouterr()
     status = json.loads(captured.out)
@@ -1505,12 +1522,9 @@ def test_json_status_invalid_manifest(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
     monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
 
-    exit_code = dailyfx_agent.main([
-        "--schedule-id", "1",
-        "--target", "agy",
-        "--project-dir", str(tmp_path),
-        "--json-status"
-    ])
+    exit_code = dailyfx_agent.main(
+        ["--schedule-id", "1", "--target", "agy", "--project-dir", str(tmp_path), "--json-status"]
+    )
     assert exit_code != 0
     captured = capsys.readouterr()
     status = json.loads(captured.out)
@@ -1552,23 +1566,23 @@ def test_json_status_missing_output(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
     monkeypatch.setattr(dailyfx_agent, "_find_latest_agy_image", lambda *args, **kwargs: None)
 
-    exit_code = dailyfx_agent.main([
-        "--schedule-id", "1",
-        "--target", "agy",
-        "--project-dir", str(tmp_path),
-        "--json-status",
-        "--agy-command-template", "exec --manifest {manifest_path}",
-        "--debug"
-    ])
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "1",
+            "--target",
+            "agy",
+            "--project-dir",
+            str(tmp_path),
+            "--json-status",
+            "--agy-command-template",
+            "exec --manifest {manifest_path}",
+            "--debug",
+        ]
+    )
     assert exit_code != 0
     captured = capsys.readouterr()
     status = json.loads(captured.out)
     assert status["stage"] == "recovery"
     assert status["recovery_attempted"] is True
     assert "finished without creating" in status["error"]
-
-
-
-
-
-

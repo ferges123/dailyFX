@@ -184,6 +184,7 @@ def test_dailyfx_cli_finalize_host_requires_updated_metadata(tmp_path, capsys):
     db, schedule = _setup_cli_db()
     try:
         from app.services.generation.history import upsert_history_entry
+
         task_id = "cli-s1-abc123"
         upsert_history_entry(
             db,
@@ -225,7 +226,6 @@ def test_dailyfx_cli_finalize_host_requires_updated_metadata(tmp_path, capsys):
         test_db.unlink(missing_ok=True)
 
 
-
 def test_dailyfx_cli_lists_schedules(capsys):
     db, schedule = _setup_cli_db()
     try:
@@ -255,8 +255,8 @@ def test_to_iso_timestamp_handles_strings_and_datetimes():
 def test_dailyfx_cli_finalize_host_rejects_unchanged_metadata(tmp_path, capsys):
     db, schedule = _setup_cli_db()
     try:
-        from app.services.generation.history import upsert_history_entry
         from app.cli import main as cli_main
+        from app.services.generation.history import upsert_history_entry
 
         # Create a history entry with original metadata
         task_id = "cli-s1-testtask"
@@ -275,18 +275,20 @@ def test_dailyfx_cli_finalize_host_rejects_unchanged_metadata(tmp_path, capsys):
 
         manifest_path = tmp_path / "manifest.json"
         manifest_path.write_text(
-            json.dumps({
-                "task_id": task_id,
-                "schedule_id": schedule.id,
-                "target": "agy",
-                "generation_type": "instafilter",
-                "title": "Original Title",  # Unchanged!
-                "summary": "Original Summary",  # Unchanged!
-                "tags": ["tag1", "tag2", "tag3"],
-                "metadata_source": "host_agent_final_vision",
-                "output_path": str(output_path),
-                "source_asset_id": "asset-1",
-            }),
+            json.dumps(
+                {
+                    "task_id": task_id,
+                    "schedule_id": schedule.id,
+                    "target": "agy",
+                    "generation_type": "instafilter",
+                    "title": "Original Title",  # Unchanged!
+                    "summary": "Original Summary",  # Unchanged!
+                    "tags": ["tag1", "tag2", "tag3"],
+                    "metadata_source": "host_agent_final_vision",
+                    "output_path": str(output_path),
+                    "source_asset_id": "asset-1",
+                }
+            ),
             encoding="utf-8",
         )
 
@@ -298,4 +300,3 @@ def test_dailyfx_cli_finalize_host_rejects_unchanged_metadata(tmp_path, capsys):
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
-

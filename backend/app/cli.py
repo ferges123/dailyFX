@@ -195,20 +195,19 @@ def _parse_json_object(payload: str | None) -> dict[str, object]:
 
 
 def _parse_host_metadata(
-    payload: dict[str, object],
-    original_manifest: dict[str, object] | None = None
+    payload: dict[str, object], original_manifest: dict[str, object] | None = None
 ) -> tuple[str, str, list[str]]:
     from app.services.generation.host_manifest import (
-        validate_and_normalize_host_manifest,
         ManifestValidationError,
+        validate_and_normalize_host_manifest,
     )
+
     try:
         normalized = validate_and_normalize_host_manifest(payload, original_manifest)
     except ManifestValidationError as e:
         raise CLIError(str(e)) from e
 
     return normalized["title"], normalized["summary"], normalized["tags"]
-
 
 
 def _build_handoff_prompt(

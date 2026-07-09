@@ -1,11 +1,12 @@
 HOST_METADATA_SOURCE = "host_agent_final_vision"
 
+
 class ManifestValidationError(ValueError):
     pass
 
+
 def validate_and_normalize_host_manifest(
-    manifest: dict[str, object],
-    original_manifest: dict[str, object] | None = None
+    manifest: dict[str, object], original_manifest: dict[str, object] | None = None
 ) -> dict[str, object]:
     if not isinstance(manifest, dict):
         raise ManifestValidationError("Host manifest is not a JSON object")
@@ -55,11 +56,7 @@ def validate_and_normalize_host_manifest(
                     tag_text = tag.strip()
                     if tag_text:
                         original_tags.append(tag_text)
-        if (
-            title == original_title
-            and summary == original_summary
-            and normalized_tags == original_tags
-        ):
+        if title == original_title and summary == original_summary and normalized_tags == original_tags:
             raise ManifestValidationError("Host agent did not update title, summary, or tags")
 
     return normalized

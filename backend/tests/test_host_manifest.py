@@ -1,92 +1,115 @@
 import pytest
+
 from app.services.generation.host_manifest import (
-    validate_and_normalize_host_manifest,
-    ManifestValidationError,
     HOST_METADATA_SOURCE,
+    ManifestValidationError,
+    validate_and_normalize_host_manifest,
 )
+
 
 def test_validation_empty_fields():
     # Empty title
     with pytest.raises(ManifestValidationError, match="updated title"):
-        validate_and_normalize_host_manifest({
-            "title": "   ",
-            "summary": "Some summary",
-            "tags": ["tag1", "tag2", "tag3"],
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "   ",
+                "summary": "Some summary",
+                "tags": ["tag1", "tag2", "tag3"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
 
     # Empty summary
     with pytest.raises(ManifestValidationError, match="updated summary"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "",
-            "tags": ["tag1", "tag2", "tag3"],
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "",
+                "tags": ["tag1", "tag2", "tag3"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
+
 
 def test_validation_invalid_tags():
     # Tags is not a list
     with pytest.raises(ManifestValidationError, match="valid tags"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": "tag1, tag2, tag3",
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": "tag1, tag2, tag3",
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
 
     # Non-string tag
     with pytest.raises(ManifestValidationError, match="valid tags"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": ["tag1", 123, "tag3"],
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": ["tag1", 123, "tag3"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
 
     # Empty tag in list
     with pytest.raises(ManifestValidationError, match="valid tags"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": ["tag1", "  ", "tag3"],
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": ["tag1", "  ", "tag3"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
 
     # Less than 3 tags
     with pytest.raises(ManifestValidationError, match="valid tags"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": ["tag1", "tag2"],
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": ["tag1", "tag2"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
 
     # More than 6 tags
     with pytest.raises(ManifestValidationError, match="valid tags"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7"],
-            "metadata_source": HOST_METADATA_SOURCE,
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            }
+        )
+
 
 def test_validation_metadata_source():
     # Missing metadata source
     with pytest.raises(ManifestValidationError, match="required metadata_source"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": ["tag1", "tag2", "tag3"],
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": ["tag1", "tag2", "tag3"],
+            }
+        )
 
     # Invalid metadata source
     with pytest.raises(ManifestValidationError, match="required metadata_source"):
-        validate_and_normalize_host_manifest({
-            "title": "Some Title",
-            "summary": "Some summary",
-            "tags": ["tag1", "tag2", "tag3"],
-            "metadata_source": "invalid_source",
-        })
+        validate_and_normalize_host_manifest(
+            {
+                "title": "Some Title",
+                "summary": "Some summary",
+                "tags": ["tag1", "tag2", "tag3"],
+                "metadata_source": "invalid_source",
+            }
+        )
+
 
 def test_validation_unchanged_metadata():
     original = {
@@ -97,39 +120,52 @@ def test_validation_unchanged_metadata():
 
     # Everything identical -> raises validation error
     with pytest.raises(ManifestValidationError, match="did not update title, summary, or tags"):
-        validate_and_normalize_host_manifest({
-            "title": "  Initial Title  ",
+        validate_and_normalize_host_manifest(
+            {
+                "title": "  Initial Title  ",
+                "summary": "Initial Summary",
+                "tags": ["tag1", "tag2", "tag3"],
+                "metadata_source": HOST_METADATA_SOURCE,
+            },
+            original,
+        )
+
+    # Title changed -> succeeds
+    res1 = validate_and_normalize_host_manifest(
+        {
+            "title": "New Title",
             "summary": "Initial Summary",
             "tags": ["tag1", "tag2", "tag3"],
             "metadata_source": HOST_METADATA_SOURCE,
-        }, original)
-
-    # Title changed -> succeeds
-    res1 = validate_and_normalize_host_manifest({
-        "title": "New Title",
-        "summary": "Initial Summary",
-        "tags": ["tag1", "tag2", "tag3"],
-        "metadata_source": HOST_METADATA_SOURCE,
-    }, original)
+        },
+        original,
+    )
     assert res1["title"] == "New Title"
 
     # Summary changed -> succeeds
-    res2 = validate_and_normalize_host_manifest({
-        "title": "Initial Title",
-        "summary": "New Summary",
-        "tags": ["tag1", "tag2", "tag3"],
-        "metadata_source": HOST_METADATA_SOURCE,
-    }, original)
+    res2 = validate_and_normalize_host_manifest(
+        {
+            "title": "Initial Title",
+            "summary": "New Summary",
+            "tags": ["tag1", "tag2", "tag3"],
+            "metadata_source": HOST_METADATA_SOURCE,
+        },
+        original,
+    )
     assert res2["summary"] == "New Summary"
 
     # Tags changed -> succeeds
-    res3 = validate_and_normalize_host_manifest({
-        "title": "Initial Title",
-        "summary": "Initial Summary",
-        "tags": ["tag1", "tag2", "tag4"],
-        "metadata_source": HOST_METADATA_SOURCE,
-    }, original)
+    res3 = validate_and_normalize_host_manifest(
+        {
+            "title": "Initial Title",
+            "summary": "Initial Summary",
+            "tags": ["tag1", "tag2", "tag4"],
+            "metadata_source": HOST_METADATA_SOURCE,
+        },
+        original,
+    )
     assert res3["tags"] == ["tag1", "tag2", "tag4"]
+
 
 def test_normalization_behavior():
     manifest = {

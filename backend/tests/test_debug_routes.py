@@ -1,4 +1,5 @@
 from _contract_helpers import configure_contract_test_db
+
 test_db = configure_contract_test_db("debug_routes")
 
 from fastapi.testclient import TestClient
