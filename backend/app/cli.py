@@ -194,36 +194,21 @@ def _parse_json_object(payload: str | None) -> dict[str, object]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _parse_host_metadata(payload: dict[str, object]) -> tuple[str, str, list[str]]:
-    title = str(payload.get("title") or "").strip()
-    if not title:
-        raise CLIError("Host manifest did not include an updated title")
+def _parse_host_metadata(
+    payload: dict[str, object],
+    original_manifest: dict[str, object] | None = None
+) -> tuple[str, str, list[str]]:
+    from app.services.generation.host_manifest import (
+        validate_and_normalize_host_manifest,
+        ManifestValidationError,
+    )
+    try:
+        normalized = validate_and_normalize_host_manifest(payload, original_manifest)
+    except ManifestValidationError as e:
+        raise CLIError(str(e)) from e
 
-    summary = str(payload.get("summary") or "").strip()
-    if not summary:
-        raise CLIError("Host manifest did not include an updated summary")
+    return normalized["title"], normalized["summary"], normalized["tags"]
 
-    tags = payload.get("tags")
-    if not isinstance(tags, list):
-        raise CLIError("Host manifest did not include valid tags")
-
-    normalized_tags: list[str] = []
-    for tag in tags:
-        if not isinstance(tag, str):
-            raise CLIError("Host manifest did not include valid tags")
-        tag_text = tag.strip()
-        if not tag_text:
-            raise CLIError("Host manifest did not include valid tags")
-        normalized_tags.append(tag_text)
-
-    if not 3 <= len(normalized_tags) <= 6:
-        raise CLIError("Host manifest did not include valid tags")
-
-    metadata_source = str(payload.get("metadata_source") or "").strip()
-    if metadata_source != HOST_METADATA_SOURCE:
-        raise CLIError("Host manifest did not include the required metadata_source")
-
-    return title, summary, normalized_tags
 
 
 def _build_handoff_prompt(
@@ -420,6 +405,8 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
         upsert_history_entry(
             db,
             resolved_task_id,
+            title=host_request.title,
+            summary=host_request.summary,
             source_asset_ids=json.dumps([host_request.source_asset_id]),
         )
 
@@ -486,12 +473,26 @@ async def _finalize_host_render(manifest_path: Path) -> int:
     if not isinstance(config_json, dict):
         config_json = {}
 
-    title, summary, tags = _parse_host_metadata(payload)
-    config_json = {**config_json, "host_agent_tags": tags, "metadata_source": HOST_METADATA_SOURCE}
-
     init_db()
     db = SessionLocal()
     try:
+        history_row = _load_history_row(db, task_id)
+        original_tags = []
+        if history_row.tags_json:
+            try:
+                parsed_tags = json.loads(history_row.tags_json)
+                if isinstance(parsed_tags, list):
+                    original_tags = parsed_tags
+            except Exception:
+                pass
+        original_manifest = {
+            "title": history_row.title,
+            "summary": history_row.summary,
+            "tags": original_tags,
+        }
+        title, summary, tags = _parse_host_metadata(payload, original_manifest)
+        config_json = {**config_json, "host_agent_tags": tags, "metadata_source": HOST_METADATA_SOURCE}
+
         settings = get_or_create_settings(db)
         schedule, _, notification_presets = _load_schedule_context(db, schedule_id)
         _resolve_schedule_ai_settings(db, settings, schedule_id)

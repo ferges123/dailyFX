@@ -181,32 +181,49 @@ def test_dailyfx_cli_generate_missing_schedule_fails(monkeypatch, capsys):
 
 
 def test_dailyfx_cli_finalize_host_requires_updated_metadata(tmp_path, capsys):
-    output_path = tmp_path / "result.png"
-    output_path.write_bytes(b"image")
-    manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "task_id": "cli-s1-abc123",
-                "schedule_id": 1,
-                "target": "agy",
-                "generation_type": "ai_claymation",
-                "title": "Miniature Family Stroll",
-                "summary": "Use the image.",
-                "tags": ["family", "portrait", "claymation"],
-                "output_path": str(output_path),
-                "source_asset_id": "asset-1",
-                "config_json": {},
-            }
-        ),
-        encoding="utf-8",
-    )
+    db, schedule = _setup_cli_db()
+    try:
+        from app.services.generation.history import upsert_history_entry
+        task_id = "cli-s1-abc123"
+        upsert_history_entry(
+            db,
+            task_id,
+            title="Original Title",
+            summary="Original Summary",
+            source_asset_ids='["asset-1"]',
+            generation_type="ai_claymation",
+        )
 
-    exit_code = main(["finalize-host", "--manifest-path", str(manifest_path)])
-    captured = capsys.readouterr()
+        output_path = tmp_path / "result.png"
+        output_path.write_bytes(b"image")
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "task_id": task_id,
+                    "schedule_id": schedule.id,
+                    "target": "agy",
+                    "generation_type": "ai_claymation",
+                    "title": "Miniature Family Stroll",
+                    "summary": "Use the image.",
+                    "tags": ["family", "portrait", "claymation"],
+                    "output_path": str(output_path),
+                    "source_asset_id": "asset-1",
+                    "config_json": {},
+                }
+            ),
+            encoding="utf-8",
+        )
 
-    assert exit_code == 1
-    assert "metadata_source" in captured.err
+        exit_code = main(["finalize-host", "--manifest-path", str(manifest_path)])
+        captured = capsys.readouterr()
+
+        assert exit_code == 1
+        assert "metadata_source" in captured.err
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+
 
 
 def test_dailyfx_cli_lists_schedules(capsys):
@@ -233,3 +250,52 @@ def test_to_iso_timestamp_handles_strings_and_datetimes():
         )
         == "2026-07-05T12:34:56+00:00"
     )
+
+
+def test_dailyfx_cli_finalize_host_rejects_unchanged_metadata(tmp_path, capsys):
+    db, schedule = _setup_cli_db()
+    try:
+        from app.services.generation.history import upsert_history_entry
+        from app.cli import main as cli_main
+
+        # Create a history entry with original metadata
+        task_id = "cli-s1-testtask"
+        upsert_history_entry(
+            db,
+            task_id,
+            title="Original Title",
+            summary="Original Summary",
+            tags_json=json.dumps(["tag1", "tag2", "tag3"]),
+            source_asset_ids='["asset-1"]',
+            generation_type="instafilter",
+        )
+
+        output_path = tmp_path / "result.png"
+        output_path.write_bytes(b"image")
+
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(
+            json.dumps({
+                "task_id": task_id,
+                "schedule_id": schedule.id,
+                "target": "agy",
+                "generation_type": "instafilter",
+                "title": "Original Title",  # Unchanged!
+                "summary": "Original Summary",  # Unchanged!
+                "tags": ["tag1", "tag2", "tag3"],
+                "metadata_source": "host_agent_final_vision",
+                "output_path": str(output_path),
+                "source_asset_id": "asset-1",
+            }),
+            encoding="utf-8",
+        )
+
+        exit_code = cli_main(["finalize-host", "--manifest-path", str(manifest_path)])
+        captured = capsys.readouterr()
+
+        assert exit_code == 1
+        assert "did not update title, summary, or tags" in captured.err
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+
