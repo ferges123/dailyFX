@@ -70,6 +70,8 @@ Execute the agent from the project root:
 | `--status` | `flag` | `False` | Check the status of the daemon process. |
 | `--stop` | `flag` | `False` | Stop the running daemon process. |
 | `--doctor` | `flag` | `False` | Run environment diagnostics and verify dailyfx-agent setup. |
+| `--debug` | `flag` | `False` | Enable print of detailed error backtraces and context information. |
+| `--json-status` | `flag` | `False` | Output execution diagnostics and status formatted as JSON on exit. |
 
 ---
 
@@ -212,3 +214,27 @@ To configure Codex to accept image data on standard input or wrap command execut
 ```
 
 > **Warning**: The orchestrator quotes substituted paths automatically. Do **not** wrap `{image_path}`, `{manifest_path}`, or `{output_path}` in quotes in your templates.
+
+### 5. Error Diagnostics & JSON Status
+To output structured execution summaries on exit (both on success or failure), use `--json-status`:
+```bash
+./dailyfx-agent --schedule-id 1 --target agy --json-status
+```
+The stdout will print a serialized JSON object:
+```json
+{
+  "task_id": "cli-s1-abc123",
+  "schedule_id": 1,
+  "target": "agy",
+  "model": null,
+  "stage": "completed",
+  "manifest_path": "/opt/dailyFX/data/dailyfx-run-abc.json",
+  "source_image_path": "/opt/dailyFX/data/results/cli-s1-abc123.input.png",
+  "output_path": "/opt/dailyFX/data/results/cli-s1-abc123.png",
+  "target_log_path": "/opt/dailyFX/data/dailyfx-run-abc-agy.log",
+  "recovery_attempted": false,
+  "error": null
+}
+```
+Available stages: `prepare`, `manifest load`, `target run`, `metadata validation`, `recovery`, `finalize`, `completed`.
+If detailed error logs and backtraces are needed, add `--debug` to print them to `stderr`.
