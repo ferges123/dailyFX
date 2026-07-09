@@ -1,3 +1,6 @@
+from _contract_helpers import configure_contract_test_db
+test_db = configure_contract_test_db("debug_routes")
+
 from fastapi.testclient import TestClient
 
 import app.config as config_module
@@ -6,7 +9,7 @@ from app.main import app
 
 def test_debug_log_endpoint_no_auth(tmp_path, monkeypatch):
     # Ensure APP_ACCESS_TOKEN is not set
-    monkeypatch.delenv("APP_ACCESS_TOKEN", raising=False)
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "")
     config_module.get_settings.cache_clear()
 
     # Create dummy log file
@@ -55,5 +58,5 @@ def test_debug_log_endpoint_with_auth(tmp_path, monkeypatch):
         assert response.text == "test log content"
 
     # Reset setting
-    monkeypatch.delenv("APP_ACCESS_TOKEN", raising=False)
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "")
     config_module.get_settings.cache_clear()

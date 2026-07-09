@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+os.environ["APP_ACCESS_TOKEN"] = ""
 os.environ.setdefault("APP_SECRET_KEY", "test-api-secret")
 
 from app.immich.client import _client_cache
