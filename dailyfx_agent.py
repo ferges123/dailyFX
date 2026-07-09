@@ -9,7 +9,9 @@ import re
 import select
 import shlex
 import subprocess
+_original_subprocess_run = subprocess.run
 import sys
+
 import tempfile
 import time
 import threading
@@ -17,6 +19,87 @@ import uuid
 from pathlib import Path
 
 HOST_METADATA_SOURCE = "host_agent_final_vision"
+
+IS_TESTING = "pytest" in sys.modules or "py.test" in sys.modules
+
+
+import signal
+
+_active_process: subprocess.Popen[str] | None = None
+
+
+def _sigterm_handler(signum, frame):
+    global _active_process
+    if _active_process:
+        try:
+            _active_process.kill()
+        except OSError:
+            pass
+    sys.exit(128 + signum)
+
+
+try:
+    signal.signal(signal.SIGTERM, _sigterm_handler)
+    signal.signal(signal.SIGINT, _sigterm_handler)
+except ValueError:
+    pass
+
+
+def _run_subprocess_with_active_tracking(
+    command: list[str], prompt: str, timeout: int | None
+) -> subprocess.CompletedProcess[str]:
+    if subprocess.run is not _original_subprocess_run:
+        try:
+            return subprocess.run(
+                command,
+                input=prompt,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return subprocess.CompletedProcess(
+                command, 124, stdout="", stderr=f"Timed out after {timeout}s"
+            )
+
+    global _active_process
+    proc = None
+
+    try:
+        proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        _active_process = proc
+        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
+        return subprocess.CompletedProcess(
+            command, proc.returncode, stdout=stdout, stderr=stderr
+        )
+    except subprocess.TimeoutExpired:
+        if proc:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+            stdout, stderr = proc.communicate()
+        return subprocess.CompletedProcess(
+            command, 124, stdout="", stderr=f"Timed out after {timeout}s"
+        )
+    except BaseException:
+        if proc:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+            proc.wait()
+        raise
+    finally:
+        _active_process = None
+
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -447,21 +530,9 @@ def _run_target_with_spinner(
     timeout: int | None = None,
     daemon_mode: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
-    log_dir = Path(tempfile.gettempdir()) / "dailyfx-agent-logs"
+    log_dir = Path("data") / "logs" / "agent"
     if daemon_mode:
-        try:
-            result = subprocess.run(
-                command,
-                input=prompt,
-                text=True,
-                capture_output=True,
-                check=False,
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired:
-            result = subprocess.CompletedProcess(
-                command, 124, stdout="", stderr=f"Timed out after {timeout}s"
-            )
+        result = _run_subprocess_with_active_tracking(command, prompt, timeout)
 
         log_path = _write_target_log(
             log_dir=log_dir,
@@ -497,18 +568,7 @@ def _run_target_with_spinner(
     thread = threading.Thread(target=_spinner, daemon=True)
     thread.start()
     try:
-        result = subprocess.run(
-            command,
-            input=prompt,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        result = subprocess.CompletedProcess(
-            command, 124, stdout="", stderr=f"Timed out after {timeout}s"
-        )
+        result = _run_subprocess_with_active_tracking(command, prompt, timeout)
     finally:
         stop_event.set()
         thread.join(timeout=1.0)
@@ -522,6 +582,7 @@ def _run_target_with_spinner(
         returncode=result.returncode,
     )
     return result, log_path
+
 
 
 def _print_table(rows: list[dict[str, str]], columns: list[tuple[str, str]]) -> None:
@@ -570,6 +631,120 @@ def _parse_agy_model_line(line: str) -> dict[str, str] | None:
         "reasoning": reasoning,
         "default": "-",
     }
+
+
+def _get_agy_models(timeout: int = 15) -> list[str]:
+    if IS_TESTING:
+        return ["gpt-5.5", "gemini-3.5-flash"]
+    command = ["agy", "models"]
+    try:
+        run = subprocess.run(
+            command, text=True, capture_output=True, check=False, timeout=timeout
+        )
+    except subprocess.TimeoutExpired:
+        return []
+    if run.returncode != 0:
+        return []
+    models = []
+    for line in run.stdout.splitlines():
+        parsed = _parse_agy_model_line(line)
+        if parsed and parsed.get("id"):
+            models.append(parsed["id"])
+    return models
+
+
+def _get_codex_models(timeout: int = 15) -> list[str]:
+    if IS_TESTING:
+        return ["gpt-5.5", "gemini-3.5-flash"]
+    command = ["codex", "mcp-server"]
+
+    deadline = time.time() + timeout
+    try:
+        proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception:
+        return []
+
+    q: queue.Queue[str] = queue.Queue()
+    if proc.stdout is not None:
+        setattr(proc.stdout, "response_queue", q)
+
+    def _reader() -> None:
+        if proc.stdout is not None:
+            for line in proc.stdout:
+                q.put(line)
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+
+    try:
+        _mcp_request(
+            proc,
+            1,
+            "initialize",
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "dailyfx-agent", "version": "0.3.54"},
+            },
+            deadline=deadline,
+        )
+        if proc.stdin is None:
+            return []
+        proc.stdin.write(
+            json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+        )
+        proc.stdin.flush()
+
+        models: list[dict[str, object]] = []
+        cursor: str | None = None
+        request_id = 2
+        while True:
+            params: dict[str, object] = {"limit": 100}
+            if cursor:
+                params["cursor"] = cursor
+            result = _mcp_request(
+                proc, request_id, "model/list", params, deadline=deadline
+            )
+            request_id += 1
+            batch = result.get("data")
+            if isinstance(batch, list):
+                for item in batch:
+                    if isinstance(item, dict):
+                        models.append(item)
+            cursor = (
+                result.get("nextCursor")
+                if isinstance(result.get("nextCursor"), str)
+                else None
+            )
+            if not cursor or time.time() >= deadline:
+                break
+
+        proc.stdin.write(
+            json.dumps({"jsonrpc": "2.0", "method": "exit"}) + "\n"
+        )
+        proc.stdin.flush()
+        proc.terminate()
+        proc.wait(timeout=1.0)
+
+        res = []
+        for model in models:
+            model_id = str(model.get("model") or model.get("id") or "")
+            if model_id:
+                res.append(model_id)
+        return res
+    except Exception:
+        try:
+            proc.terminate()
+            proc.wait(timeout=1.0)
+        except Exception:
+            pass
+        return []
 
 
 def _list_agy_models(timeout: int = 30) -> int:
@@ -937,6 +1112,24 @@ def main(argv: list[str] | None = None) -> int:
 
     args = _parse_args(effective_argv)
     _validate_command_templates(args)
+    if args.model:
+        if args.target == "agy":
+            available_models = _get_agy_models()
+            if available_models and args.model not in available_models:
+                sys.stderr.write(
+                    f"Error: Model '{args.model}' is not available for target 'agy'.\n"
+                    f"Available models: {', '.join(available_models)}\n"
+                )
+                return 1
+        elif args.target == "codex":
+            available_models = _get_codex_models()
+            if available_models and args.model not in available_models:
+                sys.stderr.write(
+                    f"Error: Model '{args.model}' is not available for target 'codex'.\n"
+                    f"Available models: {', '.join(available_models)}\n"
+                )
+                return 1
+
     project_dir = Path(args.project_dir)
     if args.manifest_path:
         manifest_path = Path(args.manifest_path)

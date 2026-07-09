@@ -1035,3 +1035,50 @@ def test_dailyfx_agent_repeat_runs_multiple_times(monkeypatch, tmp_path):
     assert calls[3][8:10] == ["prepare-host", "--schedule-id"]
     assert calls[4][0] == "agy"
     assert calls[5][8:10] == ["finalize-host", "--manifest-path"]
+
+
+def test_target_log_stored_in_workspace(monkeypatch, tmp_path):
+    log_dir_arg = None
+    def fake_write_target_log(*, log_dir, **kwargs):
+        nonlocal log_dir_arg
+        log_dir_arg = log_dir
+        return tmp_path / "fake.log"
+
+    monkeypatch.setattr(dailyfx_agent, "_write_target_log", fake_write_target_log)
+    monkeypatch.setattr(
+        dailyfx_agent,
+        "_run_subprocess_with_active_tracking",
+        lambda *a, **kw: CompletedProcess(["echo"], 0, stdout="test", stderr="")
+    )
+
+    dailyfx_agent._run_target_with_spinner(["echo"], prompt="", task_id="test", labels=[], daemon_mode=True)
+    assert log_dir_arg == Path("data") / "logs" / "agent"
+
+
+def test_sigterm_kills_subprocess(monkeypatch):
+    import signal
+    kill_called = False
+
+    class FakeProc:
+        def kill(self):
+            nonlocal kill_called
+            kill_called = True
+
+    proc = FakeProc()
+    monkeypatch.setattr(dailyfx_agent, "_active_process", proc)
+
+    try:
+        dailyfx_agent._sigterm_handler(signal.SIGTERM, None)
+    except SystemExit as exc:
+        assert exc.code == 128 + signal.SIGTERM
+
+    assert kill_called is True
+
+
+def test_model_validation_fails_on_invalid_model(monkeypatch, capsys):
+    monkeypatch.setattr(dailyfx_agent, "_get_agy_models", lambda *a: ["gemini-3.5-flash"])
+    exit_code = dailyfx_agent.main(["--schedule-id", "1", "--target", "agy", "--model", "invalid-model"])
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "Error: Model 'invalid-model' is not available for target 'agy'" in captured.err
+
