@@ -305,6 +305,16 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run environment diagnostics and verify dailyfx-agent setup",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable print of detailed error backtraces and context information",
+    )
+    parser.add_argument(
+        "--json-status",
+        action="store_true",
+        help="Output execution diagnostics and status formatted as JSON on exit",
+    )
     return parser
 
 
@@ -1536,12 +1546,28 @@ def _release_lock(schedule_id: int, target: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    status_data = {
+        "task_id": "",
+        "schedule_id": None,
+        "target": None,
+        "model": None,
+        "stage": "prepare",
+        "manifest_path": None,
+        "source_image_path": None,
+        "output_path": None,
+        "target_log_path": None,
+        "recovery_attempted": False,
+        "error": None,
+    }
     effective_argv = sys.argv[1:] if argv is None else argv
     if len(effective_argv) == 0:
         _build_parser().print_help()
         return 0
 
     args = _parse_args(effective_argv)
+    status_data["schedule_id"] = args.schedule_id
+    status_data["target"] = args.target
+    status_data["model"] = args.model
     _validate_command_templates(args)
     if args.model:
         if args.target == "agy":
@@ -1744,43 +1770,61 @@ def main(argv: list[str] | None = None) -> int:
                 manifest_path = Path("data") / f"dailyfx-run-{random_suffix}.json"
             shared_manifest_path = manifest_path
 
-            backend_run = subprocess.run(
-                backend_command,
-                cwd=project_dir,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            if backend_run.returncode != 0:
-                if backend_run.stderr:
-                    sys.stderr.write(backend_run.stderr)
-                elif backend_run.stdout:
-                    sys.stderr.write(backend_run.stdout)
-                last_exit = backend_run.returncode or 1
+            # 1. PREPARE STAGE
+            status_data["stage"] = "prepare"
+            try:
+                backend_run = subprocess.run(
+                    backend_command,
+                    cwd=project_dir,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                if backend_run.returncode != 0:
+                    err_msg = (backend_run.stderr or backend_run.stdout or f"exit code {backend_run.returncode}").strip()
+                    raise RuntimeError(f"Backend prepare command failed: {err_msg}")
+            except Exception as e:
+                status_data["error"] = str(e)
+                last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Error: {e}\n")
                 continue
 
-            manifest_path.parent.mkdir(parents=True, exist_ok=True)
-            manifest_path.write_text(backend_run.stdout, encoding="utf-8")
-            if shared_manifest_path != manifest_path:
-                shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
-                shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
+            # 2. MANIFEST LOAD STAGE
+            status_data["stage"] = "manifest load"
+            status_data["manifest_path"] = str(manifest_path.resolve())
             try:
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                manifest_path.write_text(backend_run.stdout, encoding="utf-8")
+                if shared_manifest_path != manifest_path:
+                    shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                    shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
                 manifest = _load_manifest(manifest_path)
-            except json.JSONDecodeError as exc:
-                sys.stderr.write(f"Invalid JSON from backend CLI: {exc}\n")
+            except Exception as e:
+                status_data["error"] = str(e)
                 last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Error loading manifest: {e}\n")
                 continue
 
             if args.verbose:
                 _print_manifest(manifest)
 
             task_id = str(manifest.get("task_id") or "").strip() or "target"
+            status_data["task_id"] = task_id
             prompt = str(
                 manifest.get("prompt") or manifest.get("handoff_prompt") or ""
             ).strip()
             if not prompt:
-                sys.stderr.write("Backend manifest did not include prompt\n")
+                status_data["error"] = "Backend manifest did not include prompt"
                 last_exit = 1
+                sys.stderr.write("Backend manifest did not include prompt\n")
                 continue
 
             task_trace = manifest.get("task_trace")
@@ -1789,7 +1833,8 @@ def main(argv: list[str] | None = None) -> int:
                 if isinstance(config_json, dict):
                     task_trace = config_json.get("task_trace")
             trace_labels = _task_trace_labels(task_trace)
-            print(f"image provider: {args.target}")
+            if not args.json_status:
+                print(f"image provider: {args.target}")
 
             try:
                 image_path = str(
@@ -1804,14 +1849,18 @@ def main(argv: list[str] | None = None) -> int:
                 elif image_path.startswith("/data/"):
                     image_path = _container_to_host_image_path(image_path)
             except ValueError as exc:
+                status_data["error"] = str(exc)
                 sys.stderr.write(f"{exc}\n")
                 last_exit = 1
                 continue
 
             if not image_path:
+                status_data["error"] = "Backend manifest did not include source_image_path"
                 sys.stderr.write("Backend manifest did not include source_image_path\n")
                 last_exit = 1
                 continue
+
+            status_data["source_image_path"] = str(Path(image_path).resolve())
 
             output_path = str(
                 manifest.get("output_path") or manifest.get("image_path") or ""
@@ -1820,14 +1869,18 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     output_path = _container_to_host_image_path(output_path)
                 except ValueError as exc:
+                    status_data["error"] = str(exc)
                     sys.stderr.write(f"{exc}\n")
                     last_exit = 1
                     continue
 
             if not output_path:
+                status_data["error"] = "Backend manifest did not include output_path"
                 sys.stderr.write("Backend manifest did not include output_path\n")
                 last_exit = 1
                 continue
+
+            status_data["output_path"] = str(Path(output_path).resolve())
 
             # Augment prompt with Source Vision and Final Vision instructions for host agent.
             abs_image_path = str(Path(image_path).resolve())
@@ -1852,23 +1905,34 @@ def main(argv: list[str] | None = None) -> int:
             )
 
             target_start_time = time.time()
-            target_run, target_log_path = _run_target_with_spinner(
-                target_command,
-                prompt=prompt,
-                task_id=task_id,
-                labels=trace_labels,
-                timeout=args.timeout,
-                daemon_mode=args.daemon,
-            )
-            if target_run.returncode != 0:
-                if target_run.stderr:
-                    sys.stderr.write(target_run.stderr)
-                elif target_run.stdout:
-                    sys.stderr.write(target_run.stdout)
-                sys.stderr.write(f"\nlog saved to {target_log_path}\n")
-                last_exit = target_run.returncode or 1
+
+            # 3. TARGET RUN STAGE
+            status_data["stage"] = "target run"
+            try:
+                target_run, target_log_path = _run_target_with_spinner(
+                    target_command,
+                    prompt=prompt,
+                    task_id=task_id,
+                    labels=trace_labels,
+                    timeout=args.timeout,
+                    daemon_mode=args.daemon,
+                )
+                status_data["target_log_path"] = str(Path(target_log_path).resolve()) if target_log_path else None
+                if target_run.returncode != 0:
+                    err_msg = (target_run.stderr or target_run.stdout or f"exit code {target_run.returncode}").strip()
+                    raise RuntimeError(f"Target tool '{args.target}' failed: {err_msg}")
+            except Exception as e:
+                status_data["error"] = str(e)
+                last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Error during target execution: {e}\n")
                 continue
 
+            # 4. METADATA VALIDATION STAGE
+            status_data["stage"] = "metadata validation"
             try:
                 updated_manifest = _normalize_host_manifest(
                     _load_manifest(manifest_path), manifest
@@ -1877,30 +1941,46 @@ def main(argv: list[str] | None = None) -> int:
                     json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8",
                 )
-            except (json.JSONDecodeError, ValueError) as exc:
-                sys.stderr.write(f"{exc}\n")
+            except Exception as e:
+                status_data["error"] = str(e)
                 last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Metadata validation failed: {e}\n")
                 continue
 
             output_file = Path(output_path)
             if not output_file.is_absolute():
                 output_file = project_dir / output_file
             if not output_file.exists():
-                generated_image = None
-                missing_message = None
-                if args.target == "codex":
-                    generated_image = _find_latest_codex_image(target_start_time, task_id=task_id)
-                    missing_message = f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
-                elif args.target == "agy":
-                    generated_image = _find_latest_agy_image(target_start_time, task_id=task_id)
-                    missing_message = f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
+                # 5. RECOVERY STAGE
+                status_data["stage"] = "recovery"
+                status_data["recovery_attempted"] = True
+                try:
+                    generated_image = None
+                    missing_message = None
+                    if args.target == "codex":
+                        generated_image = _find_latest_codex_image(target_start_time, task_id=task_id)
+                        missing_message = f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
+                    elif args.target == "agy":
+                        generated_image = _find_latest_agy_image(target_start_time, task_id=task_id)
+                        missing_message = f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
 
-                if generated_image is not None:
-                    output_file.parent.mkdir(parents=True, exist_ok=True)
-                    output_file.write_bytes(generated_image.read_bytes())
-                else:
-                    sys.stderr.write(f"{missing_message}\n")
+                    if generated_image is not None:
+                        output_file.parent.mkdir(parents=True, exist_ok=True)
+                        output_file.write_bytes(generated_image.read_bytes())
+                    else:
+                        raise RuntimeError(missing_message)
+                except Exception as e:
+                    status_data["error"] = str(e)
                     last_exit = 1
+                    if args.debug:
+                        import traceback
+                        traceback.print_exc()
+                    else:
+                        sys.stderr.write(f"Image recovery failed: {e}\n")
                     continue
 
             # Sync updated manifest to shared manifest if they are different files
@@ -1928,24 +2008,35 @@ def main(argv: list[str] | None = None) -> int:
                 "--manifest-path",
                 f"/data/{shared_manifest_path.name}",
             ]
-            finalize_run = subprocess.run(
-                finalize_command,
-                cwd=project_dir,
-                check=False,
-                text=True,
-                capture_output=True,
-            )
-            if finalize_run.returncode != 0:
-                if finalize_run.stderr:
-                    sys.stderr.write(finalize_run.stderr)
-                elif finalize_run.stdout:
-                    sys.stderr.write(finalize_run.stdout)
-                last_exit = finalize_run.returncode or 1
+
+            # 6. FINALIZE STAGE
+            status_data["stage"] = "finalize"
+            try:
+                finalize_run = subprocess.run(
+                    finalize_command,
+                    cwd=project_dir,
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                )
+                if finalize_run.returncode != 0:
+                    err_msg = (finalize_run.stderr or finalize_run.stdout or f"exit code {finalize_run.returncode}").strip()
+                    raise RuntimeError(f"Finalize command failed: {err_msg}")
+            except Exception as e:
+                status_data["error"] = str(e)
+                last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Finalization failed: {e}\n")
                 continue
 
-            print(f"done: {output_path}")
-            if args.verbose:
-                print(f"log: {target_log_path}")
+            status_data["stage"] = "completed"
+            if not args.json_status:
+                print(f"done: {output_path}")
+                if args.verbose:
+                    print(f"log: {target_log_path}")
 
     finally:
         if not args.keep_manifest:
@@ -1963,6 +2054,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.schedule_id is not None and args.target is not None:
             if not locals().get("non_local_lock_release", False):
                 _release_lock(args.schedule_id, args.target)
+        if "args" in locals() and getattr(args, "json_status", False):
+            print(json.dumps(status_data, ensure_ascii=False, indent=2))
 
     return last_exit
 

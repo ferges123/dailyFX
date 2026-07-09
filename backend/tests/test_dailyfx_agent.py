@@ -1449,6 +1449,125 @@ def test_repeat_manifest_paths(tmp_path, capsys):
     assert run2_path.name == "custom-run2.json"
 
 
+def test_diagnostics_arguments_parsing():
+    parser = dailyfx_agent._build_parser()
+    args = parser.parse_args(["--debug", "--json-status", "--schedule-id", "1", "--target", "agy"])
+    assert args.debug is True
+    assert args.json_status is True
+
+
+def test_json_status_target_failure(tmp_path, monkeypatch, capsys):
+    manifest = {
+        "task_id": "cli-s1-abc123",
+        "schedule_id": 1,
+        "status": "PENDING_REVIEW",
+        "title": "Initial",
+        "summary": "Use the image.",
+        "prompt": "Use the image.",
+        "source_image_path": "/data/results/cli-s1-abc123.input.png",
+        "output_path": "/data/results/cli-s1-abc123.png",
+        "target": "agy",
+    }
+    backend_stdout = json.dumps(manifest)
+
+    def fake_run(command, **kwargs):
+        if "dailyfx" in command:
+            return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            return CompletedProcess(command, 1, stdout="", stderr="Fatal target error")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
+
+    exit_code = dailyfx_agent.main([
+        "--schedule-id", "1",
+        "--target", "agy",
+        "--project-dir", str(tmp_path),
+        "--json-status"
+    ])
+    assert exit_code != 0
+    captured = capsys.readouterr()
+    status = json.loads(captured.out)
+    assert status["stage"] == "target run"
+    assert "Fatal target error" in status["error"]
+    assert status["target"] == "agy"
+
+
+def test_json_status_invalid_manifest(tmp_path, monkeypatch, capsys):
+    def fake_run(command, **kwargs):
+        if "dailyfx" in command:
+            return CompletedProcess(command, 0, stdout="corrupt json here{", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
+
+    exit_code = dailyfx_agent.main([
+        "--schedule-id", "1",
+        "--target", "agy",
+        "--project-dir", str(tmp_path),
+        "--json-status"
+    ])
+    assert exit_code != 0
+    captured = capsys.readouterr()
+    status = json.loads(captured.out)
+    assert status["stage"] == "manifest load"
+    assert "JSONDecodeError" in status["error"] or "json" in status["error"].lower()
+
+
+def test_json_status_missing_output(tmp_path, monkeypatch, capsys):
+    manifest = {
+        "task_id": "cli-s1-abc123",
+        "schedule_id": 1,
+        "status": "PENDING_REVIEW",
+        "title": "Initial",
+        "summary": "Use the image.",
+        "prompt": "Use the image.",
+        "source_image_path": "/data/results/cli-s1-abc123.input.png",
+        "output_path": "/data/results/cli-s1-abc123.png",
+        "target": "agy",
+    }
+    backend_stdout = json.dumps(manifest)
+
+    def fake_run(command, **kwargs):
+        if "dailyfx" in command:
+            return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            updated = {
+                "title": "Updated Title",
+                "summary": "Summary updated.",
+                "tags": ["tag1", "tag2", "tag3"],
+                "metadata_source": "host_agent_final_vision",
+            }
+            manifest_file = Path(command[-1])
+            manifest_file.write_text(json.dumps(updated), encoding="utf-8")
+            return CompletedProcess(command, 0, stdout="", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
+    monkeypatch.setattr(dailyfx_agent, "_find_latest_agy_image", lambda *args, **kwargs: None)
+
+    exit_code = dailyfx_agent.main([
+        "--schedule-id", "1",
+        "--target", "agy",
+        "--project-dir", str(tmp_path),
+        "--json-status",
+        "--agy-command-template", "exec --manifest {manifest_path}",
+        "--debug"
+    ])
+    assert exit_code != 0
+    captured = capsys.readouterr()
+    status = json.loads(captured.out)
+    assert status["stage"] == "recovery"
+    assert status["recovery_attempted"] is True
+    assert "finished without creating" in status["error"]
+
+
 
 
 
