@@ -25,6 +25,7 @@ data/cache/*
 data/downloads/*
 data/generation-examples/*
 data/logs/*
+data/*.log
 data/backups/*
 data/scheduler.health
 data/*.pid

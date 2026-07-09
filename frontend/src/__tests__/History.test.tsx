@@ -336,6 +336,8 @@ describe('HistoryPage', () => {
 
     renderHistory();
 
+    expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
+
     const acceptButton = await screen.findByRole('button', { name: 'Accept' });
     fireEvent.click(acceptButton);
 
@@ -357,6 +359,8 @@ describe('HistoryPage', () => {
 
     renderHistory();
 
+    expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
+
     const rejectButton = await screen.findByRole('button', { name: 'Reject' });
     fireEvent.click(rejectButton);
 
@@ -374,6 +378,8 @@ describe('HistoryPage', () => {
     );
 
     renderHistory();
+
+    expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
 
     // Click "Accept..." to open modal
     const acceptMoreButton = await screen.findByRole('button', {
