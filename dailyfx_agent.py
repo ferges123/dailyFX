@@ -943,9 +943,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         random_suffix = uuid.uuid4().hex[:8]
         manifest_path = (
-            Path(tempfile.gettempdir()) / f"dailyfx-run-{random_suffix}.json"
+            Path("data") / f"dailyfx-run-{random_suffix}.json"
         )
-    shared_manifest_path = Path("data") / manifest_path.name
+    shared_manifest_path = manifest_path
     backend_command = _build_backend_command(args)
 
     if args.list_schedules:
