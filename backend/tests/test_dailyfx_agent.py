@@ -900,6 +900,7 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
 
 
 def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(dailyfx_agent.tempfile, "gettempdir", lambda: str(tmp_path))
     monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
 
@@ -1380,7 +1381,9 @@ def test_agent_version_mcp_init(monkeypatch):
     assert captured_params[0]["clientInfo"]["version"] == "99.9.9"
 
 
-def test_doctor_command_scenarios(monkeypatch, capsys):
+def test_doctor_command_scenarios(monkeypatch, tmp_path, capsys):
+    monkeypatch.chdir(tmp_path)
+
     # Mock subprocess.run for docker compose config and doctor commands
     def fake_run(command, *args, **kwargs):
         cmd_str = " ".join(command) if isinstance(command, list) else str(command)
@@ -1408,6 +1411,7 @@ def test_doctor_command_scenarios(monkeypatch, capsys):
     assert "Check" in captured.out
     assert "Status" in captured.out
     assert "Detail" in captured.out
+    assert "stale_run_manifests" in captured.out
 
 
 def test_augment_host_prompt_snapshot():
@@ -1457,6 +1461,23 @@ def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
     # 4. Release lock
     dailyfx_agent._release_lock(1, "agy")
     assert not lock_file.exists()
+
+
+def test_daemon_lock_update_records_child_pid(tmp_path, monkeypatch):
+    locks_dir = tmp_path / "locks"
+    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", locks_dir)
+    monkeypatch.setattr(dailyfx_agent.os, "getpid", lambda: 111)
+
+    dailyfx_agent._acquire_lock(1, "agy")
+    lock_file = locks_dir / "dailyfx-s1-agy.lock"
+
+    dailyfx_agent._update_lock_for_daemon_child(1, "agy", 222)
+
+    payload = json.loads(lock_file.read_text(encoding="utf-8"))
+    assert payload["pid"] == 222
+    assert payload["parent_pid"] == 111
+    assert payload["child_pid"] == 222
+    assert payload["owner_role"] == "daemon_child"
 
 
 def test_repeat_manifest_paths(tmp_path, capsys):
@@ -1586,3 +1607,95 @@ def test_json_status_missing_output(tmp_path, monkeypatch, capsys):
     assert status["stage"] == "recovery"
     assert status["recovery_attempted"] is True
     assert "finished without creating" in status["error"]
+
+
+def test_successful_recovery_records_source_in_status_and_manifest(tmp_path, monkeypatch, capsys):
+    manifest_path = tmp_path / "run.json"
+    generated_image = tmp_path / "generated-cli-s1-abc123.png"
+    generated_image.write_bytes(b"recovered image bytes")
+    manifest = {
+        "task_id": "cli-s1-abc123",
+        "schedule_id": 1,
+        "status": "PENDING_REVIEW",
+        "generation_type": "ai_claymation",
+        "title": "Initial",
+        "summary": "Use the image.",
+        "prompt": "Use the image.",
+        "source_image_path": "/data/results/cli-s1-abc123.input.png",
+        "output_path": "/data/results/cli-s1-abc123.png",
+        "source_asset_id": "asset-1",
+        "target": "agy",
+        "config_json": {"existing": True},
+        "tags": ["old1", "old2", "old3"],
+    }
+    backend_stdout = json.dumps(manifest)
+
+    def fake_run(command, **kwargs):
+        if "prepare-host" in command:
+            return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        if "finalize-host" in command:
+            saved = json.loads(manifest_path.read_text(encoding="utf-8"))
+            assert saved["config_json"]["existing"] is True
+            assert saved["config_json"]["recovered_from"] == str(generated_image.resolve())
+            return CompletedProcess(command, 0, stdout="", stderr="")
+        if command and command[0] in {"agy", "codex"}:
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "title": "Updated Title",
+                        "summary": "Updated final image summary.",
+                        "tags": ["tag1", "tag2", "tag3"],
+                        "metadata_source": "host_agent_final_vision",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return CompletedProcess(command, 0, stdout="", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
+    monkeypatch.setattr(dailyfx_agent, "_find_latest_agy_image", lambda *args, **kwargs: generated_image)
+
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "1",
+            "--target",
+            "agy",
+            "--project-dir",
+            str(tmp_path),
+            "--manifest-path",
+            str(manifest_path),
+            "--agy-command-template",
+            "exec --manifest {manifest_path}",
+            "--json-status",
+            "--keep-manifest",
+        ]
+    )
+
+    assert exit_code == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status["stage"] == "completed"
+    assert status["recovery_attempted"] is True
+    assert status["recovered_from"] == str(generated_image.resolve())
+
+
+def test_json_status_recovery_notes_do_not_pollute_stdout(tmp_path, monkeypatch, capsys):
+    generated_root = tmp_path / "generated"
+    generated_root.mkdir()
+    generated_image = generated_root / "render-cli-s1-abc123.png"
+    generated_image.write_bytes(b"image")
+
+    recovered = dailyfx_agent._find_latest_image(
+        start_time=time.time() - 1,
+        generated_root=generated_root,
+        task_id="cli-s1-abc123",
+        notes_to_stderr=True,
+    )
+
+    captured = capsys.readouterr()
+    assert recovered == generated_image
+    assert captured.out == ""
+    assert "Selected recovery image" in captured.err

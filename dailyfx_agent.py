@@ -44,7 +44,11 @@ except ImportError:
         if not isinstance(manifest, dict):
             raise ManifestValidationError("Host manifest is not a JSON object")
 
-        normalized = dict(manifest)
+        if isinstance(original_manifest, dict):
+            normalized = dict(original_manifest)
+            normalized.update(manifest)
+        else:
+            normalized = dict(manifest)
 
         title = str(normalized.get("title") or "").strip()
         summary = str(normalized.get("summary") or "").strip()
@@ -440,8 +444,12 @@ def _print_command(label: str, command: list[str]) -> None:
     print(f"{label}: {shlex.join(command)}")
 
 
-def _print_note(message: str) -> None:
-    print(f"note: {message}")
+def _print_note(message: str, *, stderr: bool = False) -> None:
+    output = f"note: {message}\n"
+    if stderr:
+        sys.stderr.write(output)
+    else:
+        print(f"note: {message}")
 
 
 def _print_status(message: str) -> None:
@@ -1085,7 +1093,11 @@ def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
 
 
 def _find_latest_image(
-    start_time: float, generated_root: Path, task_id: str = "target"
+    start_time: float,
+    generated_root: Path,
+    task_id: str = "target",
+    *,
+    notes_to_stderr: bool = False,
 ) -> Path | None:
     if not generated_root.exists():
         return None
@@ -1153,7 +1165,8 @@ def _find_latest_image(
     if task_id_matches:
         chosen = max(task_id_matches, key=lambda p: p.stat().st_mtime)
         _print_note(
-            f"Selected recovery image {chosen} because it matches task_id '{task_id}' in its name/path."
+            f"Selected recovery image {chosen} because it matches task_id '{task_id}' in its name/path.",
+            stderr=notes_to_stderr,
         )
         return chosen
     else:
@@ -1162,25 +1175,38 @@ def _find_latest_image(
             f"warning: No image found matching task_id '{task_id}'. Falling back to the latest generated image.\n"
         )
         _print_note(
-            f"Selected recovery image {chosen} (fallback latest image) because no task_id match was found."
+            f"Selected recovery image {chosen} (fallback latest image) because no task_id match was found.",
+            stderr=notes_to_stderr,
         )
         return chosen
 
 
 def _find_latest_codex_image(
-    start_time: float, generated_root: Path | None = None, task_id: str = "target"
+    start_time: float,
+    generated_root: Path | None = None,
+    task_id: str = "target",
+    *,
+    notes_to_stderr: bool = False,
 ) -> Path | None:
     generated_root = generated_root or (Path.home() / ".codex" / "generated_images")
-    return _find_latest_image(start_time, generated_root, task_id)
+    return _find_latest_image(
+        start_time, generated_root, task_id, notes_to_stderr=notes_to_stderr
+    )
 
 
 def _find_latest_agy_image(
-    start_time: float, generated_root: Path | None = None, task_id: str = "target"
+    start_time: float,
+    generated_root: Path | None = None,
+    task_id: str = "target",
+    *,
+    notes_to_stderr: bool = False,
 ) -> Path | None:
     generated_root = generated_root or (
         Path.home() / ".gemini" / "antigravity-cli" / "brain"
     )
-    return _find_latest_image(start_time, generated_root, task_id)
+    return _find_latest_image(
+        start_time, generated_root, task_id, notes_to_stderr=notes_to_stderr
+    )
 
 
 def _get_pid_file_path(args: argparse.Namespace) -> Path:
@@ -1416,6 +1442,17 @@ def _handle_doctor(args: argparse.Namespace) -> int:
         add_check("data_directory_write", "FAIL", str(e))
         has_errors = True
 
+    stale_manifests = sorted(Path("data").glob("dailyfx-run-*.json"))
+    if stale_manifests:
+        add_check(
+            "stale_run_manifests",
+            "WARNING",
+            f"{len(stale_manifests)} temporary manifest(s) remain in data/",
+        )
+        has_warnings = True
+    else:
+        add_check("stale_run_manifests", "OK", "none found")
+
     # 5. Target Executable availability
     agy_path = shutil.which("agy")
     codex_path = shutil.which("codex")
@@ -1529,9 +1566,29 @@ def _acquire_lock(schedule_id: int, target: str) -> None:
     started_at = datetime.now(timezone.utc).isoformat()
     lock_data = {
         "pid": os.getpid(),
-        "started_at": started_at
+        "parent_pid": os.getpid(),
+        "child_pid": None,
+        "owner_role": "foreground",
+        "started_at": started_at,
     }
     lock_file.write_text(json.dumps(lock_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _update_lock_for_daemon_child(schedule_id: int, target: str, child_pid: int) -> None:
+    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}-{target}.lock"
+    if not lock_file.exists():
+        return
+    try:
+        data = json.loads(lock_file.read_text(encoding="utf-8"))
+        data["pid"] = child_pid
+        data["child_pid"] = child_pid
+        data["owner_role"] = "daemon_child"
+        lock_file.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
 
 
 def _release_lock(schedule_id: int, target: str) -> None:
@@ -1539,7 +1596,11 @@ def _release_lock(schedule_id: int, target: str) -> None:
     if lock_file.exists():
         try:
             data = json.loads(lock_file.read_text(encoding="utf-8"))
-            if int(data.get("pid", 0)) == os.getpid():
+            lock_pids = {
+                int(data.get("pid", 0) or 0),
+                int(data.get("child_pid", 0) or 0),
+            }
+            if os.getpid() in lock_pids:
                 lock_file.unlink(missing_ok=True)
         except Exception:
             lock_file.unlink(missing_ok=True)
@@ -1557,6 +1618,7 @@ def main(argv: list[str] | None = None) -> int:
         "output_path": None,
         "target_log_path": None,
         "recovery_attempted": False,
+        "recovered_from": None,
         "error": None,
     }
     effective_argv = sys.argv[1:] if argv is None else argv
@@ -1703,12 +1765,14 @@ def main(argv: list[str] | None = None) -> int:
             pid_file = Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
         pid_file.parent.mkdir(parents=True, exist_ok=True)
 
-        log_file_path = pid_file.with_suffix(".log")
+        log_file_path = Path("data") / "logs" / "agent" / f"{pid_file.stem}.log"
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         pid = os.fork()
         if pid > 0:
             non_local_lock_release = True
+            if args.schedule_id is not None and args.target is not None:
+                _update_lock_for_daemon_child(args.schedule_id, args.target, pid)
             pid_file.write_text(str(pid), encoding="utf-8")
 
             # Write metadata file as JSON
@@ -1727,16 +1791,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"daemon started: pid={pid} pidfile={pid_file}")
             return 0
         os.setsid()
-        # Update lock PID to child process PID
-        if args.schedule_id is not None and args.target is not None:
-            lock_file = LOCKS_DIR / f"dailyfx-s{args.schedule_id}-{args.target}.lock"
-            if lock_file.exists():
-                try:
-                    data = json.loads(lock_file.read_text(encoding="utf-8"))
-                    data["pid"] = os.getpid()
-                    lock_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-                except Exception:
-                    pass
         try:
             log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
             devnull = os.open(os.devnull, os.O_RDONLY)
@@ -1962,15 +2016,36 @@ def main(argv: list[str] | None = None) -> int:
                     generated_image = None
                     missing_message = None
                     if args.target == "codex":
-                        generated_image = _find_latest_codex_image(target_start_time, task_id=task_id)
+                        generated_image = _find_latest_codex_image(
+                            target_start_time,
+                            task_id=task_id,
+                            notes_to_stderr=args.json_status,
+                        )
                         missing_message = f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
                     elif args.target == "agy":
-                        generated_image = _find_latest_agy_image(target_start_time, task_id=task_id)
+                        generated_image = _find_latest_agy_image(
+                            target_start_time,
+                            task_id=task_id,
+                            notes_to_stderr=args.json_status,
+                        )
                         missing_message = f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
 
                     if generated_image is not None:
                         output_file.parent.mkdir(parents=True, exist_ok=True)
                         output_file.write_bytes(generated_image.read_bytes())
+                        recovered_from = str(generated_image.resolve())
+                        status_data["recovered_from"] = recovered_from
+                        updated_manifest_config = updated_manifest.get("config_json")
+                        if not isinstance(updated_manifest_config, dict):
+                            updated_manifest_config = {}
+                        updated_manifest["config_json"] = {
+                            **updated_manifest_config,
+                            "recovered_from": recovered_from,
+                        }
+                        manifest_path.write_text(
+                            json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8",
+                        )
                     else:
                         raise RuntimeError(missing_message)
                 except Exception as e:

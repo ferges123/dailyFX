@@ -21,6 +21,7 @@ from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.schedule import ScheduleModel
 from app.services.generation.engine import run_generation_cycle
+from app.services.generation.host_manifest import HOST_METADATA_SOURCE
 from app.services.generation.history import upsert_history_entry
 from app.services.generation.run_now import preview_run_now_assets, record_run_now_failure_history
 from app.services.generation.schedule_runs import build_scheduled_run_context
@@ -28,7 +29,6 @@ from app.services.generation.tasks import ensure_task, update_task
 from app.services.immich import build_immich_client, get_or_create_settings
 
 logger = logging.getLogger(__name__)
-HOST_METADATA_SOURCE = "host_agent_final_vision"
 
 
 @dataclass(frozen=True)

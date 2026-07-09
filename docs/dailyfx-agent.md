@@ -113,6 +113,8 @@ Before finalizing, `dailyfx-agent` validates the updated manifest file. It raise
 - `metadata_source` is not explicitly set to `"host_agent_final_vision"`.
 - The updated values are identical to the original values (verifies that the agent did not skip the step).
 
+The host agent may write a partial metadata-only manifest update. In that case, `dailyfx-agent` merges the update over the original backend manifest before finalization, preserving technical fields such as `task_id`, `schedule_id`, `target`, `output_path`, and `config_json`.
+
 ---
 
 ## Automatic Image Recovery (Fallback Search)
@@ -129,8 +131,9 @@ Depending on the selected target, the script checks:
 2. It filters out files that contain words like `"input"` or `"original"`.
 3. It filters for image extensions: `.png`, `.webp`, `.jpg`, `.jpeg`.
 4. It only considers files created/modified after the target tool's launch timestamp (with a 10-second safety buffer).
-5. It selects the **most recently modified** file.
-6. The script copies this recovered image to the final `output_path` and proceeds to finalize. If no candidate is found, it reports a missing output file error.
+5. It prefers candidates whose filename or parent directory contains the current `task_id`.
+6. If no task-specific candidate exists, it falls back to the **most recently modified** image and prints a warning.
+7. The script copies this recovered image to the final `output_path`, records the source path as `recovered_from` in the JSON status payload and manifest `config_json`, then proceeds to finalize. If no candidate is found, it reports a missing output file error.
 
 ---
 
@@ -148,16 +151,17 @@ When running interactively (non-daemon mode), the script parses the backend's `t
 
 ### Log files & Rotation
 Target tool output is not printed directly to stdout. Stdin/stderr logs of the executed target command are captured and written to:
-`[TEMP_DIR]/dailyfx-agent-logs/dailyfx-agent-{task_id}-{target}-{timestamp}.log`
+`data/logs/agent/dailyfx-agent-{task_id}-{target}-{timestamp}.log`
 
 The script automatically retains only the **5 most recent logs** for each task runner, deleting older log files to conserve disk space.
 
 ### Daemon Mode
 For background execution, specify the `-d` or `--daemon` flag.
 - The process forks using `os.fork()`.
-- The parent log of the daemon process is redirected to a dedicated log file at `{pid_file}.log` instead of `/dev/null`.
+- The parent log of the daemon process is redirected to a dedicated log file under `data/logs/agent/` instead of `/dev/null`.
 - The child process's PID is printed to the shell and saved to a PID file (e.g. `data/dailyfx-agent-{sched_str}-{target_str}.pid`).
 - A JSON metadata file is created alongside it at `{pid_file}.json`, recording: `pid`, `schedule_id`, `target`, `started_at`, `log_path`, and `manifest_path`.
+- The run lock records `parent_pid`, `child_pid`, and `owner_role` so daemon runs are associated with the child process rather than the short-lived parent.
 - The spinner is automatically bypassed in daemon mode.
 - The PID and metadata files are cleaned up when execution finishes.
 
@@ -231,10 +235,12 @@ The stdout will print a serialized JSON object:
   "manifest_path": "/opt/dailyFX/data/dailyfx-run-abc.json",
   "source_image_path": "/opt/dailyFX/data/results/cli-s1-abc123.input.png",
   "output_path": "/opt/dailyFX/data/results/cli-s1-abc123.png",
-  "target_log_path": "/opt/dailyFX/data/dailyfx-run-abc-agy.log",
+  "target_log_path": "/opt/dailyFX/data/logs/agent/dailyfx-agent-cli-s1-abc123-agy-20260709-130000.log",
   "recovery_attempted": false,
+  "recovered_from": null,
   "error": null
 }
 ```
 Available stages: `prepare`, `manifest load`, `target run`, `metadata validation`, `recovery`, `finalize`, `completed`.
+When `--json-status` is enabled, stdout is reserved for this JSON object. Warnings and recovery notes are written to stderr.
 If detailed error logs and backtraces are needed, add `--debug` to print them to `stderr`.

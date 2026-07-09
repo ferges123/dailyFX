@@ -181,3 +181,32 @@ def test_normalization_behavior():
     assert normalized["tags"] == ["t1", "t2", "t3"]
     assert normalized["metadata_source"] == HOST_METADATA_SOURCE
     assert normalized["custom_key"] == "custom_value"
+
+
+def test_partial_update_preserves_original_manifest_fields():
+    original = {
+        "task_id": "cli-s1-original",
+        "schedule_id": 1,
+        "target": "agy",
+        "output_path": "/data/results/cli-s1-original.png",
+        "title": "Original Title",
+        "summary": "Original summary.",
+        "tags": ["old1", "old2", "old3"],
+        "config_json": {"existing": True},
+    }
+    partial_update = {
+        "title": "Updated Title",
+        "summary": "Updated final image summary.",
+        "tags": ["new1", "new2", "new3"],
+        "metadata_source": HOST_METADATA_SOURCE,
+    }
+
+    normalized = validate_and_normalize_host_manifest(partial_update, original)
+
+    assert normalized["task_id"] == "cli-s1-original"
+    assert normalized["schedule_id"] == 1
+    assert normalized["target"] == "agy"
+    assert normalized["output_path"] == "/data/results/cli-s1-original.png"
+    assert normalized["config_json"] == {"existing": True}
+    assert normalized["title"] == "Updated Title"
+    assert normalized["tags"] == ["new1", "new2", "new3"]

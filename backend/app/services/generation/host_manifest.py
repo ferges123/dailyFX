@@ -11,7 +11,11 @@ def validate_and_normalize_host_manifest(
     if not isinstance(manifest, dict):
         raise ManifestValidationError("Host manifest is not a JSON object")
 
-    normalized = dict(manifest)
+    if isinstance(original_manifest, dict):
+        normalized = dict(original_manifest)
+        normalized.update(manifest)
+    else:
+        normalized = dict(manifest)
 
     title = str(normalized.get("title") or "").strip()
     summary = str(normalized.get("summary") or "").strip()
