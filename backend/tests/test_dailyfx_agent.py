@@ -1146,3 +1146,14 @@ def test_manifest_schema_validation(tmp_path):
         dailyfx_agent._load_manifest(manifest_file)
 
 
+def test_dailyfx_agent_uses_shared_validation():
+    from app.services.generation.host_manifest import ManifestValidationError
+    import pytest
+
+    # We expect _normalize_host_manifest to raise ManifestValidationError (a subclass of ValueError)
+    # when validation fails (e.g. empty manifest).
+    with pytest.raises(ManifestValidationError):
+        dailyfx_agent._normalize_host_manifest({})
+
+
+
