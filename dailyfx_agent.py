@@ -349,9 +349,47 @@ def _print_manifest(manifest: dict[str, object]) -> None:
     sys.stderr.write("\n")
 
 
+def _validate_manifest_schema(manifest: object) -> None:
+    if not isinstance(manifest, dict):
+        raise ValueError("Manifest is not a JSON object")
+
+    type_checks = {
+        "task_id": (str, "string"),
+        "status": (str, "string"),
+        "generation_type": (str, "string"),
+        "title": (str, "string"),
+        "summary": (str, "string"),
+        "prompt": (str, "string"),
+        "handoff_prompt": (str, "string"),
+        "source_image_path": (str, "string"),
+        "host_relative_image_path": (str, "string"),
+        "output_path": (str, "string"),
+        "image_path": (str, "string"),
+        "source_asset_id": (str, "string"),
+        "source_asset_original_file_name": (str, "string"),
+        "config_json": (dict, "object"),
+        "tags": (list, "array"),
+        "task_trace": (list, "array"),
+    }
+
+    for field, (expected_type, type_name) in type_checks.items():
+        if field in manifest:
+            value = manifest[field]
+            if value is not None and not isinstance(value, expected_type):
+                raise ValueError(
+                    f"Manifest validation error: field '{field}' must be a {type_name}, got {type(value).__name__}"
+                )
+
+
 def _load_manifest(path: Path) -> dict[str, object]:
     payload = path.read_text(encoding="utf-8")
-    return json.loads(payload)
+    try:
+        manifest = json.loads(payload)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in manifest file: {e}") from e
+    _validate_manifest_schema(manifest)
+    return manifest
+
 
 
 def _normalize_host_manifest(
@@ -1461,8 +1499,8 @@ def main(argv: list[str] | None = None) -> int:
 
     finally:
         if not args.keep_manifest:
-            if not args.manifest_path:
-                if "manifest_path" in locals() and manifest_path:
+            if "manifest_path" in locals() and manifest_path:
+                if not args.manifest_path or manifest_path.name.startswith("dailyfx-run-"):
                     manifest_path.unlink(missing_ok=True)
             if (
                 "shared_manifest_path" in locals()

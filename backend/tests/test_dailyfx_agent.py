@@ -1082,3 +1082,67 @@ def test_model_validation_fails_on_invalid_model(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "Error: Model 'invalid-model' is not available for target 'agy'" in captured.err
 
+
+def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
+    manifest_file = tmp_path / "dailyfx-run-custom.json"
+    manifest_file.write_text(json.dumps({"task_id": "test"}), encoding="utf-8")
+
+    monkeypatch.setattr(dailyfx_agent, "_validate_command_templates", lambda *a: None)
+
+    manifest = {
+        "task_id": "cli-s1-abc123",
+        "status": "PENDING_REVIEW",
+        "generation_type": "ai_claymation",
+        "title": "Miniature Family Stroll",
+        "summary": "Use the image.",
+        "prompt": "Use the image.",
+        "source_image_path": str(tmp_path / "out.input.png"),
+        "output_path": str(tmp_path / "out.png"),
+        "source_asset_id": "asset-1",
+        "source_asset_original_file_name": "source.jpg",
+        "config_json": {},
+        "tags": ["family"],
+        "task_trace": [],
+    }
+
+    def fake_run(command, **kwargs):
+        if "prepare-host" in command or "finalize-host" in command:
+            return CompletedProcess(command, 0, stdout=json.dumps(manifest), stderr="")
+        if command and command[0] in {"agy", "codex", "echo"}:
+            updated = dict(manifest)
+            updated["title"] = "Updated Title"
+            updated["summary"] = "A summary"
+            updated["tags"] = ["family", "portrait", "claymation"]
+            updated["metadata_source"] = "host_agent_final_vision"
+            manifest_file.write_text(json.dumps(updated), encoding="utf-8")
+            return CompletedProcess(command, 0, stdout="", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    (tmp_path / "out.png").write_bytes(b"image")
+    (tmp_path / "out.input.png").write_bytes(b"image")
+    _seed_agy_generated_image(tmp_path)
+
+
+    exit_code = dailyfx_agent.main([
+        "--schedule-id", "1",
+        "--target", "agy",
+        "--manifest-path", str(manifest_file),
+        "--project-dir", str(tmp_path),
+    ])
+
+    assert exit_code == 0
+    assert not manifest_file.exists()
+
+
+def test_manifest_schema_validation(tmp_path):
+    manifest_file = tmp_path / "invalid-manifest.json"
+    manifest_file.write_text(json.dumps({
+        "task_id": "test",
+        "task_trace": "invalid_string_instead_of_list"
+    }), encoding="utf-8")
+
+    import pytest
+    with pytest.raises(ValueError, match="field 'task_trace' must be a array"):
+        dailyfx_agent._load_manifest(manifest_file)
+
+
