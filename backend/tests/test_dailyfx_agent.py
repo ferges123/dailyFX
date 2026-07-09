@@ -1156,4 +1156,65 @@ def test_dailyfx_agent_uses_shared_validation():
         dailyfx_agent._normalize_host_manifest({})
 
 
+def test_prompt_augmentation(monkeypatch, tmp_path):
+    manifest = {
+        "task_id": "test-task-12345",
+        "status": "PENDING_REVIEW",
+        "generation_type": "ai_claymation",
+        "title": "Miniature Family Stroll",
+        "summary": "Use the image.",
+        "prompt": "Base Prompt Text",
+        "source_image_path": str(tmp_path / "source.png"),
+        "output_path": str(tmp_path / "output.png"),
+        "source_asset_id": "asset-1",
+        "tags": ["family", "portrait", "claymation"],
+        "task_trace": [],
+    }
+    backend_stdout = json.dumps(manifest)
+    (tmp_path / "run.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (tmp_path / "output.png").write_bytes(b"image")
+
+    captured_prompt = []
+
+    def fake_run(command, **kwargs):
+        if "dailyfx" in command:
+            return CompletedProcess(command, 0, stdout=backend_stdout, stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    def fake_run_spinner(command, prompt, task_id, labels, timeout=None, daemon_mode=False):
+        captured_prompt.append(prompt)
+        # Create updated manifest
+        updated = dict(manifest)
+        updated["metadata_source"] = "host_agent_final_vision"
+        updated["title"] = "Updated Title"
+        updated["summary"] = "Updated Summary"
+        updated["tags"] = ["tag1", "tag2", "tag3"]
+        (tmp_path / "run.json").write_text(json.dumps(updated), encoding="utf-8")
+        return CompletedProcess(command, 0, stdout="", stderr=""), "/tmp/log"
+
+    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(dailyfx_agent, "_run_target_with_spinner", fake_run_spinner)
+
+    exit_code = dailyfx_agent.main(
+        [
+            "--schedule-id",
+            "1",
+            "--target",
+            "agy",
+            "--project-dir",
+            str(tmp_path),
+            "--manifest-path",
+            str(tmp_path / "run.json"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert len(captured_prompt) == 1
+    prompt = captured_prompt[0]
+    assert "Base Prompt Text" in prompt
+    assert "test-task-12345" in prompt
+    assert "output.png" in prompt
+
+
+
 

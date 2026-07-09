@@ -1408,7 +1408,9 @@ def main(argv: list[str] | None = None) -> int:
                 f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
                 f"the 'title', 'summary', 'tags', and 'metadata_source' keys before exiting.\n"
                 f"Set 'metadata_source' to '{HOST_METADATA_SOURCE}'.\n"
-                f"The final output image path is '{abs_output_path}'."
+                f"You MUST generate and save the final output image exactly at '{abs_output_path}' or, if the target "
+                f"places it in a session directory, ensure the generated filename or its parent directory is prefixed "
+                f"with or contains the task ID '{task_id}'."
             )
 
             target_command = _build_target_command(
