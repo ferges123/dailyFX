@@ -17,6 +17,7 @@ import time
 import threading
 import uuid
 from pathlib import Path
+from datetime import datetime, timezone
 
 # Try to dynamically import the shared manifest contract from the backend app.
 try:
@@ -286,6 +287,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--pid-file",
         default=None,
         help="Path to write the daemon PID file (default: data/dailyfx-agent.pid)",
+    )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Check the status of the daemon process",
+    )
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+        help="Stop the running daemon process",
     )
     return parser
 
@@ -748,7 +759,7 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
             {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "dailyfx-agent", "version": "0.3.54"},
+                "clientInfo": {"name": "dailyfx-agent", "version": _get_agent_version()},
             },
             deadline=deadline,
         )
@@ -927,7 +938,7 @@ def _list_codex_models(timeout: int = 60) -> int:
             {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "dailyfx-agent", "version": "0.3.54"},
+                "clientInfo": {"name": "dailyfx-agent", "version": _get_agent_version()},
             },
             deadline=deadline,
         )
@@ -1155,6 +1166,134 @@ def _find_latest_agy_image(
     return _find_latest_image(start_time, generated_root, task_id)
 
 
+def _get_pid_file_path(args: argparse.Namespace) -> Path:
+    if args.pid_file:
+        return Path(args.pid_file)
+    target_str = args.target if args.target else "default"
+    sched_str = (
+        f"s{args.schedule_id}" if args.schedule_id is not None else "default"
+    )
+    return Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
+
+
+def _handle_status(pid_file: Path) -> int:
+    if not pid_file.exists():
+        print("status: stopped (no PID file)")
+        return 0
+
+    try:
+        pid_str = pid_file.read_text(encoding="utf-8").strip()
+        pid = int(pid_str)
+    except (ValueError, OSError):
+        print("status: stopped (invalid PID file)")
+        return 0
+
+    alive = False
+    try:
+        os.kill(pid, 0)
+        alive = True
+    except OSError:
+        pass
+
+    metadata_file = pid_file.with_name(pid_file.name + ".json")
+    metadata = {}
+    if metadata_file.exists():
+        try:
+            metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    if alive:
+        print("status: running")
+    else:
+        print("status: stopped (stale PID file)")
+
+    print(f"pid: {pid}")
+    if "schedule_id" in metadata:
+        print(f"schedule_id: {metadata['schedule_id']}")
+    if "target" in metadata:
+        print(f"target: {metadata['target']}")
+    if "started_at" in metadata:
+        print(f"started_at: {metadata['started_at']}")
+    if "log_path" in metadata:
+        print(f"log_path: {metadata['log_path']}")
+    if "manifest_path" in metadata:
+        print(f"manifest_path: {metadata['manifest_path']}")
+
+    return 0
+
+
+def _handle_stop(pid_file: Path) -> int:
+    import signal
+    if not pid_file.exists():
+        print("status: stopped (no PID file)")
+        return 0
+
+    try:
+        pid_str = pid_file.read_text(encoding="utf-8").strip()
+        pid = int(pid_str)
+    except (ValueError, OSError):
+        print("status: stopped (invalid PID file)")
+        return 0
+
+    killed = False
+    try:
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(20):
+            time.sleep(0.1)
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                killed = True
+                break
+        if not killed:
+            os.kill(pid, signal.SIGKILL)
+            killed = True
+    except OSError:
+        killed = True
+
+    pid_file.unlink(missing_ok=True)
+    metadata_file = pid_file.with_name(pid_file.name + ".json")
+    metadata_file.unlink(missing_ok=True)
+
+    print(f"daemon stopped: pid={pid}")
+    return 0
+
+
+def _get_agent_version() -> str:
+    # 1. Try dynamic import from backend app.version
+    try:
+        project_dir = Path(__file__).resolve().parent
+        backend_dir = project_dir / "backend"
+        if backend_dir.is_dir() and str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
+        from app.version import APP_VERSION
+        return APP_VERSION
+    except Exception:
+        pass
+
+    # 2. Try parsing pyproject.toml directly
+    try:
+        import tomllib
+        pyproject_path = Path(__file__).resolve().parent / "backend" / "pyproject.toml"
+        if pyproject_path.exists():
+            with pyproject_path.open("rb") as f:
+                pyproject = tomllib.load(f)
+            return str(pyproject["project"]["version"])
+    except Exception:
+        pass
+
+    # 3. Try importlib.metadata
+    try:
+        import importlib.metadata
+        return importlib.metadata.version("dailyfx-backend")
+    except Exception:
+        pass
+
+    # 4. Fallback default
+    return "0.4.1"
+
+
 def main(argv: list[str] | None = None) -> int:
     effective_argv = sys.argv[1:] if argv is None else argv
     if len(effective_argv) == 0:
@@ -1218,11 +1357,18 @@ def main(argv: list[str] | None = None) -> int:
             return _list_agy_models()
         return _list_codex_models()
 
-    if args.schedule_id is None or args.target is None:
-        sys.stderr.write(
-            "schedule-id and target are required unless --list-schedules is used\n"
-        )
-        return 1
+    if not (args.list_schedules or args.status or args.stop):
+        if args.schedule_id is None or args.target is None:
+            sys.stderr.write(
+                "schedule-id and target are required unless --list-schedules is used\n"
+            )
+            return 1
+
+    if args.status:
+        return _handle_status(_get_pid_file_path(args))
+
+    if args.stop:
+        return _handle_stop(_get_pid_file_path(args))
 
     if args.dry_run:
         target_preview = _target_prefix(args.target, args.model)
@@ -1278,23 +1424,43 @@ def main(argv: list[str] | None = None) -> int:
             )
             pid_file = Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
         pid_file.parent.mkdir(parents=True, exist_ok=True)
+
+        log_file_path = pid_file.with_suffix(".log")
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+
         pid = os.fork()
         if pid > 0:
             pid_file.write_text(str(pid), encoding="utf-8")
+
+            # Write metadata file as JSON
+            metadata_file = pid_file.with_name(pid_file.name + ".json")
+            from datetime import datetime, timezone
+            metadata = {
+                "pid": pid,
+                "schedule_id": args.schedule_id,
+                "target": args.target,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "log_path": str(log_file_path.resolve()),
+                "manifest_path": str(manifest_path.resolve()),
+            }
+            metadata_file.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
             print(f"daemon started: pid={pid} pidfile={pid_file}")
             return 0
         os.setsid()
         try:
-            devnull = os.open(os.devnull, os.O_RDWR)
+            log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+            devnull = os.open(os.devnull, os.O_RDONLY)
             os.dup2(devnull, 0)
-            os.dup2(devnull, 1)
-            os.dup2(devnull, 2)
+            os.dup2(log_fd, 1)
+            os.dup2(log_fd, 2)
             os.close(devnull)
+            os.close(log_fd)
         except OSError:
             pass
         sys.stdin = open(os.devnull, "r")
-        sys.stdout = open(os.devnull, "w")
-        sys.stderr = open(os.devnull, "w")
+        sys.stdout = open(str(log_file_path), "a")
+        sys.stderr = open(str(log_file_path), "a")
 
     try:
         for run_index in range(1, repeat + 1):
@@ -1524,6 +1690,7 @@ def main(argv: list[str] | None = None) -> int:
                 shared_manifest_path.unlink(missing_ok=True)
         if args.daemon and pid_file:
             pid_file.unlink(missing_ok=True)
+            pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
 
     return last_exit
 

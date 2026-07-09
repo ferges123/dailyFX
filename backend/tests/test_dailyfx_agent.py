@@ -6,6 +6,7 @@ import sys
 import time
 from io import StringIO
 from pathlib import Path
+import subprocess
 from subprocess import CompletedProcess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1250,6 +1251,117 @@ def test_find_latest_image_prioritizes_task_id(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "warning:" in captured.err
     assert "another_task" in captured.err
+
+
+def test_daemon_status_and_stop(tmp_path, capsys):
+    pid_file = tmp_path / "test.pid"
+    metadata_file = tmp_path / "test.pid.json"
+
+    # 1. Status: no PID file
+    exit_code = dailyfx_agent.main(["--status", "--pid-file", str(pid_file)])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "status: stopped (no PID file)" in captured.out
+
+    # 2. Status: stale (dead) PID file
+    # We write a PID that doesn't exist (e.g. 999999)
+    pid_file.write_text("999999", encoding="utf-8")
+    metadata_file.write_text(
+        json.dumps({
+            "pid": 999999,
+            "schedule_id": 42,
+            "target": "agy",
+            "started_at": "2026-07-09T13:00:00Z",
+            "log_path": "/tmp/test.log",
+            "manifest_path": "/tmp/manifest.json",
+        }),
+        encoding="utf-8",
+    )
+
+    exit_code = dailyfx_agent.main(["--status", "--pid-file", str(pid_file)])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "status: stopped (stale PID file)" in captured.out
+    assert "pid: 999999" in captured.out
+    assert "schedule_id: 42" in captured.out
+    assert "target: agy" in captured.out
+
+    # 3. Status and Stop: active PID file
+    # Start a dummy background process
+    proc = subprocess.Popen(["sleep", "10"])
+    pid = proc.pid
+
+    pid_file.write_text(str(pid), encoding="utf-8")
+    metadata_file.write_text(
+        json.dumps({
+            "pid": pid,
+            "schedule_id": 42,
+            "target": "agy",
+            "started_at": "2026-07-09T13:00:00Z",
+            "log_path": "/tmp/test.log",
+            "manifest_path": "/tmp/manifest.json",
+        }),
+        encoding="utf-8",
+    )
+
+    # Check status of active pid
+    exit_code = dailyfx_agent.main(["--status", "--pid-file", str(pid_file)])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "status: running" in captured.out
+    assert f"pid: {pid}" in captured.out
+
+    # Stop active pid
+    exit_code = dailyfx_agent.main(["--stop", "--pid-file", str(pid_file)])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert f"daemon stopped: pid={pid}" in captured.out
+
+    # Verify process was killed
+    proc.wait(timeout=2.0)
+    assert proc.returncode is not None
+
+    # Verify files were cleaned up
+    assert not pid_file.exists()
+    assert not metadata_file.exists()
+
+
+def test_agent_version_mcp_init(monkeypatch):
+    # Mock _get_agent_version to return a unique custom version
+    # Since _get_agent_version is not yet implemented, this mock is safe
+    monkeypatch.setattr(dailyfx_agent, "_get_agent_version", lambda: "99.9.9")
+
+    captured_params = []
+
+    def fake_mcp_request(proc, request_id, method, params=None, **kwargs):
+        if method == "initialize":
+            captured_params.append(params)
+            return {"protocolVersion": "2024-11-05", "capabilities": {}, "serverInfo": {"name": "test-server", "version": "1.0"}}
+        if method == "model/list":
+            return {"models": []}
+        return {}
+
+    monkeypatch.setattr(dailyfx_agent, "_mcp_request", fake_mcp_request)
+
+    class FakeProc:
+        def __init__(self):
+            self.stdin = StringIO()
+            self.stdout = StringIO()
+            self.stderr = StringIO()
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(time, "time", lambda: 1000.0)
+
+    try:
+        dailyfx_agent._list_codex_models(timeout=5)
+    except Exception:
+        pass
+
+    assert len(captured_params) == 1
+    assert captured_params[0]["clientInfo"]["version"] == "99.9.9"
+
 
 
 

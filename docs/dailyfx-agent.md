@@ -66,7 +66,9 @@ Execute the agent from the project root:
 | `--timeout` | `int` | `600` | Timeout in seconds for the target tool execution. |
 | `-x, --repeat` | `int` | `1` | Number of times to repeat the execution task. |
 | `-d, --daemon` | `flag` | `False` | Run in background (detached daemon mode). Writes PID and exits immediately. |
-| `--pid-file` | `str` | `None` | Path to write the daemon PID file. Detaults to `data/dailyfx-agent.pid`. |
+| `--pid-file` | `str` | `None` | Path to write the daemon PID file. Defaults to `data/dailyfx-agent-{sched_str}-{target_str}.pid`. |
+| `--status` | `flag` | `False` | Check the status of the daemon process. |
+| `--stop` | `flag` | `False` | Stop the running daemon process. |
 
 ---
 
@@ -150,10 +152,25 @@ The script automatically retains only the **5 most recent logs** for each task r
 ### Daemon Mode
 For background execution, specify the `-d` or `--daemon` flag.
 - The process forks using `os.fork()`.
-- Standard inputs, outputs, and errors are redirected to `/dev/null`.
-- The PID is printed to the shell and saved to a file (defaults to `data/dailyfx-agent.pid`).
+- The parent log of the daemon process is redirected to a dedicated log file at `{pid_file}.log` instead of `/dev/null`.
+- The child process's PID is printed to the shell and saved to a PID file (e.g. `data/dailyfx-agent-{sched_str}-{target_str}.pid`).
+- A JSON metadata file is created alongside it at `{pid_file}.json`, recording: `pid`, `schedule_id`, `target`, `started_at`, `log_path`, and `manifest_path`.
 - The spinner is automatically bypassed in daemon mode.
-- The PID file is cleaned up when execution finishes.
+- The PID and metadata files are cleaned up when execution finishes.
+
+### Process Status and Stopping
+You can manage the running daemon process using these flags:
+- `--status`: Reads the PID and JSON metadata file to check if the daemon process is running. Prints process information (running, stopped due to missing file, or stopped with stale files) along with metadata details.
+- `--stop`: Reads the PID, terminates the daemon process (using SIGTERM, followed by SIGKILL if it does not exit within 2 seconds), and cleans up the PID and metadata files.
+
+## Versioning
+
+The `dailyfx-agent` resolves its version dynamically to stay aligned with the backend application:
+1. It tries to dynamically import the backend package version (`app.version.APP_VERSION`).
+2. If the import fails, it parses the `pyproject.toml` configuration file under the `backend/` directory.
+3. In case both fail, it falls back to using `importlib.metadata` or a default version identifier (e.g. `"0.4.1"`).
+
+This resolved version is used during Codex MCP initialization as the client version (under `clientInfo.version`).
 
 ---
 
