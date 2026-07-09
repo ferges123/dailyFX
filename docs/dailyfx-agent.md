@@ -69,6 +69,7 @@ Execute the agent from the project root:
 | `--pid-file` | `str` | `None` | Path to write the daemon PID file. Defaults to `data/dailyfx-agent-{sched_str}-{target_str}.pid`. |
 | `--status` | `flag` | `False` | Check the status of the daemon process. |
 | `--stop` | `flag` | `False` | Stop the running daemon process. |
+| `--doctor` | `flag` | `False` | Run environment diagnostics and verify dailyfx-agent setup. |
 
 ---
 
