@@ -19,6 +19,8 @@ import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
+LOCKS_DIR = Path("data") / "locks"
+
 # Try to dynamically import the shared manifest contract from the backend app.
 try:
     _script_dir = Path(__file__).resolve().parent
@@ -297,6 +299,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--stop",
         action="store_true",
         help="Stop the running daemon process",
+    )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Run environment diagnostics and verify dailyfx-agent setup",
     )
     return parser
 
@@ -1294,6 +1301,240 @@ def _get_agent_version() -> str:
     return "0.4.1"
 
 
+def _augment_host_prompt(
+    original_prompt: str,
+    abs_image_path: str,
+    abs_manifest_path: str,
+    abs_output_path: str,
+    task_id: str
+) -> str:
+    checklist = (
+        f"\n\nCRITICAL: As the AI agent running on the host, you MUST follow this checklist:\n"
+        f"Checklist:\n"
+        f"- [ ] Source Vision: Open and analyze the input image (source photo) at '{abs_image_path}' to extract context, theme, and subjects.\n"
+        f"- [ ] Image Generation: Apply the requested effects/modifications and save the final output image exactly at '{abs_output_path}' (or in a directory/filename containing the task ID '{task_id}').\n"
+        f"- [ ] Final Vision: Open and analyze the saved output image at '{abs_output_path}' to evaluate quality, aesthetics, and theme match.\n"
+        f"- [ ] Manifest Update: Write/update the local JSON manifest file at '{abs_manifest_path}' with the following keys:\n"
+        f"  * 'title' (short, creative 3-5 word title)\n"
+        f"  * 'summary' (one concise sentence describing the final image)\n"
+        f"  * 'tags' (a JSON array containing 3-6 descriptive keywords)\n"
+        f"  * 'metadata_source' (must be set to '{HOST_METADATA_SOURCE}')\n"
+        f"\n"
+        f"Technical Rules:\n"
+        f"1. DO NOT modify any other technical/system keys in the JSON manifest.\n"
+        f"2. Ensure the JSON written to '{abs_manifest_path}' is standard and correctly structured.\n"
+        f"3. Make sure the output file is saved at '{abs_output_path}' before finalizing."
+    )
+    return original_prompt + checklist
+
+
+def _handle_doctor(args: argparse.Namespace) -> int:
+    import shutil
+    checks = []
+    has_errors = False
+    has_warnings = False
+
+    def add_check(name: str, status: str, detail: str):
+        checks.append((name, status, detail))
+
+    # 1. Docker Compose Config
+    try:
+        run = subprocess.run(
+            ["docker", "compose", "-f", args.compose_file, "config"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        if run.returncode == 0:
+            add_check("docker_compose_config", "OK", "valid configuration")
+        else:
+            add_check("docker_compose_config", "FAIL", (run.stderr or run.stdout or "invalid config").strip())
+            has_errors = True
+    except Exception as e:
+        add_check("docker_compose_config", "FAIL", str(e))
+        has_errors = True
+
+    # 2. API Service Reachability
+    if not has_errors:
+        try:
+            run = subprocess.run(
+                ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "curl", "-s", "http://localhost:8000/health"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if run.returncode == 0:
+                add_check("api_service_reachability", "OK", "service is reachable")
+            else:
+                add_check("api_service_reachability", "FAIL", f"curl exit {run.returncode}: {(run.stderr or run.stdout or '').strip()}")
+                has_errors = True
+        except Exception as e:
+            add_check("api_service_reachability", "FAIL", str(e))
+            has_errors = True
+    else:
+        add_check("api_service_reachability", "FAIL", "skipped (docker compose failure)")
+
+    # 3. DailyFX Schedules
+    if not has_errors:
+        try:
+            run = subprocess.run(
+                ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "dailyfx", "schedules"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if run.returncode == 0:
+                add_check("dailyfx_schedules", "OK", "schedules retrieved successfully")
+            else:
+                add_check("dailyfx_schedules", "FAIL", f"exit {run.returncode}: {(run.stderr or run.stdout or '').strip()}")
+                has_errors = True
+        except Exception as e:
+            add_check("dailyfx_schedules", "FAIL", str(e))
+            has_errors = True
+    else:
+        add_check("dailyfx_schedules", "FAIL", "skipped (docker compose failure)")
+
+    # 4. Data Directory Write
+    try:
+        data_dir = Path("data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        test_file = data_dir / ".doctor-write-test"
+        test_file.write_text("test", encoding="utf-8")
+        test_file.unlink()
+        add_check("data_directory_write", "OK", "write/delete successful")
+    except Exception as e:
+        add_check("data_directory_write", "FAIL", str(e))
+        has_errors = True
+
+    # 5. Target Executable availability
+    agy_path = shutil.which("agy")
+    codex_path = shutil.which("codex")
+
+    if agy_path:
+        add_check("target_agy_executable", "OK", f"found at {agy_path}")
+    else:
+        add_check("target_agy_executable", "WARNING", "not found in PATH")
+        has_warnings = True
+
+    if codex_path:
+        add_check("target_codex_executable", "OK", f"found at {codex_path}")
+    else:
+        add_check("target_codex_executable", "WARNING", "not found in PATH")
+        has_warnings = True
+
+    if not agy_path and not codex_path:
+        has_errors = True
+        # Upgrade warnings to errors for targets if both missing
+        if len(checks) >= 2:
+            checks[-2] = ("target_agy_executable", "FAIL", "not found in PATH")
+            checks[-1] = ("target_codex_executable", "FAIL", "not found in PATH")
+
+    # 6. Target models
+    if agy_path:
+        try:
+            models = _get_agy_models(timeout=5)
+            if models:
+                add_check("agy_models", "OK", f"retrieved {len(models)} models")
+            else:
+                add_check("agy_models", "WARNING", "no models found or empty response")
+                has_warnings = True
+        except Exception as e:
+            add_check("agy_models", "WARNING", f"error: {str(e)}")
+            has_warnings = True
+    else:
+        add_check("agy_models", "WARNING", "skipped (agy target missing)")
+
+    if codex_path:
+        try:
+            models = _get_codex_models(timeout=5)
+            if models:
+                add_check("codex_models", "OK", f"retrieved {len(models)} models")
+            else:
+                add_check("codex_models", "WARNING", "no models found or empty response")
+                has_warnings = True
+        except Exception as e:
+            add_check("codex_models", "WARNING", f"error: {str(e)}")
+            has_warnings = True
+    else:
+        add_check("codex_models", "WARNING", "skipped (codex target missing)")
+
+    # 7. Recovery directories
+    agy_rec = Path.home() / ".gemini" / "antigravity-cli" / "brain"
+    codex_rec = Path.home() / ".codex" / "generated_images"
+
+    if agy_rec.is_dir() and os.access(agy_rec, os.R_OK):
+        add_check("recovery_dir_agy", "OK", "exists and readable")
+    else:
+        add_check("recovery_dir_agy", "WARNING", f"not found or unreadable: {agy_rec}")
+        has_warnings = True
+
+    if codex_rec.is_dir() and os.access(codex_rec, os.R_OK):
+        add_check("recovery_dir_codex", "OK", "exists and readable")
+    else:
+        add_check("recovery_dir_codex", "WARNING", f"not found or unreadable: {codex_rec}")
+        has_warnings = True
+
+    # Output text table
+    print(f"+{'-'*32}+{'-'*10}+{'-'*47}+")
+    print(f"| {'Check':<30} | {'Status':<8} | {'Detail':<45} |")
+    print(f"+{'-'*32}+{'-'*10}+{'-'*47}+")
+    for name, status, detail in checks:
+        detail_val = detail
+        if len(detail_val) > 43:
+            detail_val = detail_val[:40] + "..."
+        print(f"| {name:<30} | {status:<8} | {detail_val:<45} |")
+    print(f"+{'-'*32}+{'-'*10}+{'-'*47}+")
+
+    if has_errors:
+        return 1
+    if has_warnings:
+        return 2
+    return 0
+
+
+def _acquire_lock(schedule_id: int, target: str) -> None:
+    LOCKS_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}-{target}.lock"
+
+    if lock_file.exists():
+        try:
+            data = json.loads(lock_file.read_text(encoding="utf-8"))
+            pid = int(data.get("pid", 0))
+            try:
+                os.kill(pid, 0)
+                raise RuntimeError(
+                    f"Error: another agent (PID {pid}) is already running schedule {schedule_id} for target {target}."
+                )
+            except OSError:
+                sys.stderr.write(
+                    f"warning: removing stale lock file for schedule {schedule_id}, target {target} (PID {pid} was not found)\n"
+                )
+                lock_file.unlink(missing_ok=True)
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
+            sys.stderr.write(
+                f"warning: removing invalid lock file for schedule {schedule_id}, target {target}\n"
+            )
+            lock_file.unlink(missing_ok=True)
+
+    started_at = datetime.now(timezone.utc).isoformat()
+    lock_data = {
+        "pid": os.getpid(),
+        "started_at": started_at
+    }
+    lock_file.write_text(json.dumps(lock_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _release_lock(schedule_id: int, target: str) -> None:
+    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}-{target}.lock"
+    if lock_file.exists():
+        try:
+            data = json.loads(lock_file.read_text(encoding="utf-8"))
+            if int(data.get("pid", 0)) == os.getpid():
+                lock_file.unlink(missing_ok=True)
+        except Exception:
+            lock_file.unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     effective_argv = sys.argv[1:] if argv is None else argv
     if len(effective_argv) == 0:
@@ -1357,12 +1598,15 @@ def main(argv: list[str] | None = None) -> int:
             return _list_agy_models()
         return _list_codex_models()
 
-    if not (args.list_schedules or args.status or args.stop):
+    if not (args.list_schedules or args.status or args.stop or args.doctor):
         if args.schedule_id is None or args.target is None:
             sys.stderr.write(
                 "schedule-id and target are required unless --list-schedules is used\n"
             )
             return 1
+
+    if args.doctor:
+        return _handle_doctor(args)
 
     if args.status:
         return _handle_status(_get_pid_file_path(args))
@@ -1414,6 +1658,14 @@ def main(argv: list[str] | None = None) -> int:
     last_exit = 0
     pid_file = None
 
+    # Acquire lock for schedule and target
+    if args.schedule_id is not None and args.target is not None:
+        try:
+            _acquire_lock(args.schedule_id, args.target)
+        except RuntimeError as exc:
+            sys.stderr.write(f"{exc}\n")
+            return 1
+
     if args.daemon:
         if args.pid_file:
             pid_file = Path(args.pid_file)
@@ -1430,6 +1682,7 @@ def main(argv: list[str] | None = None) -> int:
 
         pid = os.fork()
         if pid > 0:
+            non_local_lock_release = True
             pid_file.write_text(str(pid), encoding="utf-8")
 
             # Write metadata file as JSON
@@ -1448,6 +1701,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"daemon started: pid={pid} pidfile={pid_file}")
             return 0
         os.setsid()
+        # Update lock PID to child process PID
+        if args.schedule_id is not None and args.target is not None:
+            lock_file = LOCKS_DIR / f"dailyfx-s{args.schedule_id}-{args.target}.lock"
+            if lock_file.exists():
+                try:
+                    data = json.loads(lock_file.read_text(encoding="utf-8"))
+                    data["pid"] = os.getpid()
+                    lock_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                except Exception:
+                    pass
         try:
             log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
             devnull = os.open(os.devnull, os.O_RDONLY)
@@ -1466,6 +1729,20 @@ def main(argv: list[str] | None = None) -> int:
         for run_index in range(1, repeat + 1):
             if repeat > 1:
                 print(f"--- run {run_index}/{repeat} ---")
+
+            if args.manifest_path:
+                if run_index == 1:
+                    manifest_path = Path(args.manifest_path)
+                else:
+                    path_obj = Path(args.manifest_path)
+                    manifest_path = path_obj.with_name(f"{path_obj.stem}-run{run_index}{path_obj.suffix}")
+                    sys.stderr.write(
+                        f"warning: using modified manifest path for repeat run {run_index}: {manifest_path}\n"
+                    )
+            else:
+                random_suffix = uuid.uuid4().hex[:8]
+                manifest_path = Path("data") / f"dailyfx-run-{random_suffix}.json"
+            shared_manifest_path = manifest_path
 
             backend_run = subprocess.run(
                 backend_command,
@@ -1556,20 +1833,12 @@ def main(argv: list[str] | None = None) -> int:
             abs_image_path = str(Path(image_path).resolve())
             abs_output_path = str(Path(output_path).resolve())
             abs_manifest_path = str(manifest_path.resolve())
-            prompt += (
-                f"\n\nCRITICAL: As the AI agent running on the host, you MUST perform both:\n"
-                f"1. Source Vision: Analyze the input image (source photo) at '{abs_image_path}' for context, theme, and people.\n"
-                f"2. Final Vision: Analyze the final generated image (after generating/saving it) for what actually appears in it.\n"
-                f"Use these vision steps to generate:\n"
-                f"- A high-quality title (a short, creative 3-5 word title)\n"
-                f"- A summary (one concise sentence describing the final image)\n"
-                f"- A list of 3-6 descriptive tags (keywords) summarizing the image content\n"
-                f"You MUST write/update these values in the local JSON manifest file at '{abs_manifest_path}' under "
-                f"the 'title', 'summary', 'tags', and 'metadata_source' keys before exiting.\n"
-                f"Set 'metadata_source' to '{HOST_METADATA_SOURCE}'.\n"
-                f"You MUST generate and save the final output image exactly at '{abs_output_path}' or, if the target "
-                f"places it in a session directory, ensure the generated filename or its parent directory is prefixed "
-                f"with or contains the task ID '{task_id}'."
+            prompt = _augment_host_prompt(
+                prompt,
+                abs_image_path,
+                abs_manifest_path,
+                abs_output_path,
+                task_id
             )
 
             target_command = _build_target_command(
@@ -1691,6 +1960,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.daemon and pid_file:
             pid_file.unlink(missing_ok=True)
             pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+        if args.schedule_id is not None and args.target is not None:
+            if not locals().get("non_local_lock_release", False):
+                _release_lock(args.schedule_id, args.target)
 
     return last_exit
 

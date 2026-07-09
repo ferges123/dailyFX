@@ -1006,6 +1006,7 @@ def test_dailyfx_agent_repeat_runs_multiple_times(monkeypatch, tmp_path):
                 "metadata_source": "host_agent_final_vision",
             }
             (tmp_path / "run.json").write_text(json.dumps(updated), encoding="utf-8")
+            (tmp_path / "run-run2.json").write_text(json.dumps(updated), encoding="utf-8")
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
@@ -1361,6 +1362,91 @@ def test_agent_version_mcp_init(monkeypatch):
 
     assert len(captured_params) == 1
     assert captured_params[0]["clientInfo"]["version"] == "99.9.9"
+
+
+def test_doctor_command_scenarios(monkeypatch, capsys):
+    # Mock subprocess.run for docker compose config and doctor commands
+    def fake_run(command, *args, **kwargs):
+        cmd_str = " ".join(command) if isinstance(command, list) else str(command)
+        if "docker compose config" in cmd_str:
+            return CompletedProcess(command, 0, stdout="services:\n  api:\n", stderr="")
+        if "curl" in cmd_str:
+            return CompletedProcess(command, 0, stdout="ok", stderr="")
+        if "dailyfx" in cmd_str:
+            return CompletedProcess(command, 0, stdout="schedules", stderr="")
+        if "agy" in cmd_str or "codex" in cmd_str:
+            return CompletedProcess(command, 0, stdout="models", stderr="")
+        return CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    # Mock shutil.which to find executables
+    import shutil
+    monkeypatch.setattr(shutil, "which", lambda cmd: f"/usr/bin/{cmd}")
+
+    # Invoke --doctor
+    exit_code = dailyfx_agent.main(["--doctor"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Check" in captured.out
+    assert "Status" in captured.out
+    assert "Detail" in captured.out
+
+
+def test_augment_host_prompt_snapshot():
+    original = "Generate a stylized photo of a cat."
+    augmented = dailyfx_agent._augment_host_prompt(
+        original_prompt=original,
+        abs_image_path="/tmp/input.jpg",
+        abs_manifest_path="/tmp/manifest.json",
+        abs_output_path="/tmp/output.png",
+        task_id="task-123"
+    )
+    assert original in augmented
+    assert "/tmp/input.jpg" in augmented
+    assert "/tmp/manifest.json" in augmented
+    assert "/tmp/output.png" in augmented
+    assert "task-123" in augmented
+    assert "CRITICAL:" in augmented
+    assert "[ ]" in augmented
+    assert "metadata_source" in augmented
+
+
+def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
+    import pytest
+    locks_dir = tmp_path / "locks"
+    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", locks_dir)
+
+    lock_file = locks_dir / "dailyfx-s1-agy.lock"
+
+    # 1. Normal acquisition
+    dailyfx_agent._acquire_lock(1, "agy")
+    assert lock_file.exists()
+
+    # 2. Re-acquisition under active process fails
+    with pytest.raises(RuntimeError) as exc:
+        dailyfx_agent._acquire_lock(1, "agy")
+    assert "is already running" in str(exc.value)
+
+    # 3. Re-acquisition under stale process overrides
+    # Write a PID that doesn't exist
+    import json
+    lock_file.write_text(json.dumps({"pid": 999999, "started_at": "some-time"}), encoding="utf-8")
+    dailyfx_agent._acquire_lock(1, "agy")
+    assert lock_file.exists()
+
+    # 4. Release lock
+    dailyfx_agent._release_lock(1, "agy")
+    assert not lock_file.exists()
+
+
+def test_repeat_manifest_paths(tmp_path, capsys):
+    from pathlib import Path
+    manifest_path = tmp_path / "custom.json"
+
+    path_obj = Path(manifest_path)
+    run2_path = path_obj.with_name(f"{path_obj.stem}-run2{path_obj.suffix}")
+    assert run2_path.name == "custom-run2.json"
 
 
 
