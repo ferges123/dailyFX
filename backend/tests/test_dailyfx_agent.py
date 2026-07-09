@@ -1216,5 +1216,42 @@ def test_prompt_augmentation(monkeypatch, tmp_path):
     assert "output.png" in prompt
 
 
+def test_find_latest_image_prioritizes_task_id(tmp_path, capsys):
+    generated_root = tmp_path / "gen"
+    generated_root.mkdir()
+
+    now = time.time()
+
+    # Image A: matches task_id 'task123', older
+    img_a = generated_root / "render_task123_output.png"
+    img_a.write_bytes(b"matching")
+    os.utime(img_a, (now + 10, now + 10))
+
+    # Image B: does not match task_id 'task123', newer
+    img_b = generated_root / "render_other_output.png"
+    img_b.write_bytes(b"newer")
+    os.utime(img_b, (now + 20, now + 20))
+
+    # Expect Image A to be returned since it matches task_id 'task123'
+    recovered_a = dailyfx_agent._find_latest_image(
+        start_time=now, generated_root=generated_root, task_id="task123"
+    )
+    assert recovered_a == img_a
+
+    # Clean up captured warnings
+    capsys.readouterr()
+
+    # Expect Image B to be returned when task_id is 'another_task'
+    # and a warning to be printed in stderr
+    recovered_b = dailyfx_agent._find_latest_image(
+        start_time=now, generated_root=generated_root, task_id="another_task"
+    )
+    assert recovered_b == img_b
+    captured = capsys.readouterr()
+    assert "warning:" in captured.err
+    assert "another_task" in captured.err
+
+
+
 
 

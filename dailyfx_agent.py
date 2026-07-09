@@ -1056,32 +1056,29 @@ def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
     }
 
 
-def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
+def _find_latest_image(
+    start_time: float, generated_root: Path, task_id: str = "target"
+) -> Path | None:
     if not generated_root.exists():
         return None
 
     # Find recent subdirectories that might represent the current session/task
-    subdirs = []
+    search_dirs = [generated_root]
     try:
         for path in generated_root.iterdir():
             if path.is_dir():
                 try:
-                    mtime = path.stat().st_mtime
-                    if mtime >= start_time - 10.0:  # 10s safety buffer
-                        subdirs.append((path, mtime))
+                    name_matches = task_id.lower() in path.name.lower()
+                    is_recent = path.stat().st_mtime >= start_time - 10.0
+                    if name_matches or is_recent:
+                        search_dirs.append(path)
                 except OSError:
                     continue
     except OSError:
         return None
 
-    # Sort by mtime, newest first
-    subdirs.sort(key=lambda x: x[1], reverse=True)
-
     candidates: list[Path] = []
     buffer_time = start_time - 300.0  # 5-minute safety window
-
-    # If we found recent subdirectories, search all of them. Otherwise, search the root.
-    search_dirs = [item[0] for item in subdirs] if subdirs else [generated_root]
 
     for search_dir in search_dirs:
         try:
@@ -1095,47 +1092,17 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
                             if path.stat().st_mtime >= start_time - 10.0:
                                 candidates.append(path)
                     elif path.is_dir():
-                        # Only search inside directories that have been modified recently
-                        if path.stat().st_mtime >= buffer_time:
+                        dir_mtime = path.stat().st_mtime
+                        name_matches = task_id.lower() in path.name.lower()
+                        if dir_mtime >= buffer_time or name_matches:
                             for subpath in path.iterdir():
                                 if subpath.is_file():
                                     subname_lower = subpath.name.lower()
-                                    if (
-                                        "input" in subname_lower
-                                        or "original" in subname_lower
-                                    ):
+                                    if "input" in subname_lower or "original" in subname_lower:
                                         continue
-                                    if subpath.suffix.lower() in {
-                                        ".png",
-                                        ".webp",
-                                        ".jpg",
-                                        ".jpeg",
-                                    }:
+                                    if subpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
                                         if subpath.stat().st_mtime >= start_time - 10.0:
                                             candidates.append(subpath)
-                                elif subpath.is_dir():
-                                    if subpath.stat().st_mtime >= buffer_time:
-                                        for subsubpath in subpath.iterdir():
-                                            if subsubpath.is_file():
-                                                subsubname_lower = (
-                                                    subsubpath.name.lower()
-                                                )
-                                                if (
-                                                    "input" in subsubname_lower
-                                                    or "original" in subsubname_lower
-                                                ):
-                                                    continue
-                                                if subsubpath.suffix.lower() in {
-                                                    ".png",
-                                                    ".webp",
-                                                    ".jpg",
-                                                    ".jpeg",
-                                                }:
-                                                    if (
-                                                        subsubpath.stat().st_mtime
-                                                        >= start_time - 10.0
-                                                    ):
-                                                        candidates.append(subsubpath)
                 except OSError:
                     continue
         except OSError:
@@ -1143,23 +1110,49 @@ def _find_latest_image(start_time: float, generated_root: Path) -> Path | None:
 
     if not candidates:
         return None
-    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+    task_id_matches = []
+    other_candidates = []
+
+    for path in candidates:
+        in_filename = task_id.lower() in path.name.lower()
+        in_parent = task_id.lower() in path.parent.name.lower()
+        if in_filename or in_parent:
+            task_id_matches.append(path)
+        else:
+            other_candidates.append(path)
+
+    if task_id_matches:
+        chosen = max(task_id_matches, key=lambda p: p.stat().st_mtime)
+        _print_note(
+            f"Selected recovery image {chosen} because it matches task_id '{task_id}' in its name/path."
+        )
+        return chosen
+    else:
+        chosen = max(other_candidates, key=lambda p: p.stat().st_mtime)
+        sys.stderr.write(
+            f"warning: No image found matching task_id '{task_id}'. Falling back to the latest generated image.\n"
+        )
+        _print_note(
+            f"Selected recovery image {chosen} (fallback latest image) because no task_id match was found."
+        )
+        return chosen
 
 
 def _find_latest_codex_image(
-    start_time: float, generated_root: Path | None = None
+    start_time: float, generated_root: Path | None = None, task_id: str = "target"
 ) -> Path | None:
     generated_root = generated_root or (Path.home() / ".codex" / "generated_images")
-    return _find_latest_image(start_time, generated_root)
+    return _find_latest_image(start_time, generated_root, task_id)
 
 
 def _find_latest_agy_image(
-    start_time: float, generated_root: Path | None = None
+    start_time: float, generated_root: Path | None = None, task_id: str = "target"
 ) -> Path | None:
     generated_root = generated_root or (
         Path.home() / ".gemini" / "antigravity-cli" / "brain"
     )
-    return _find_latest_image(start_time, generated_root)
+    return _find_latest_image(start_time, generated_root, task_id)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1461,10 +1454,10 @@ def main(argv: list[str] | None = None) -> int:
                 generated_image = None
                 missing_message = None
                 if args.target == "codex":
-                    generated_image = _find_latest_codex_image(target_start_time)
+                    generated_image = _find_latest_codex_image(target_start_time, task_id=task_id)
                     missing_message = f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
                 elif args.target == "agy":
-                    generated_image = _find_latest_agy_image(target_start_time)
+                    generated_image = _find_latest_agy_image(target_start_time, task_id=task_id)
                     missing_message = f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
 
                 if generated_image is not None:
