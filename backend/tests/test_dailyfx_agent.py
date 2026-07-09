@@ -5,9 +5,12 @@ import os
 import subprocess
 import sys
 import time
+from io import BytesIO
 from io import StringIO
 from pathlib import Path
 from subprocess import CompletedProcess
+
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -16,11 +19,17 @@ if str(ROOT) not in sys.path:
 import dailyfx_agent  # noqa: E402
 
 
+def _png_bytes(color=(12, 34, 56)) -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", (8, 8), color).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 def _seed_agy_generated_image(tmp_path, filename="desert_diorama_123.jpg"):
     generated_root = tmp_path / ".gemini" / "antigravity-cli" / "brain" / "session-1"
     generated_root.mkdir(parents=True)
     image_path = generated_root / filename
-    image_path.write_bytes(b"agy image bytes")
+    image_path.write_bytes(_png_bytes())
     os.utime(image_path, (time.time() + 100, time.time() + 100))
     return image_path
 
@@ -432,7 +441,7 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
     generated_root = tmp_path / ".codex" / "generated_images" / "session-1"
     generated_root.mkdir(parents=True)
     codex_image = generated_root / "ig_test.png"
-    codex_image.write_bytes(b"codex image bytes")
+    codex_image.write_bytes(_png_bytes())
     os.utime(codex_image, (time.time() + 100, time.time() + 100))
     calls: list[list[str]] = []
     inputs: list[str | None] = []
@@ -693,7 +702,7 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
     generated_root = tmp_path / ".codex" / "generated_images" / "session-1"
     generated_root.mkdir(parents=True)
     codex_image = generated_root / "ig_test.png"
-    codex_image.write_bytes(b"codex image bytes")
+    codex_image.write_bytes(_png_bytes())
     os.utime(codex_image, (time.time() + 100, time.time() + 100))
     calls: list[list[str]] = []
     inputs: list[str | None] = []
@@ -728,7 +737,7 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
     assert exit_code == 0
     assert inputs[1] and inputs[1].startswith("Use the image.")
     output_path = tmp_path / "data" / "results" / "cli-s1-abc123.png"
-    assert output_path.read_bytes() == b"codex image bytes"
+    assert output_path.read_bytes() == codex_image.read_bytes()
 
 
 def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
@@ -752,7 +761,7 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
     generated_root = tmp_path / ".gemini" / "antigravity-cli" / "brain" / "session-1"
     generated_root.mkdir(parents=True)
     agy_image = generated_root / "desert_diorama_123.jpg"
-    agy_image.write_bytes(b"agy image bytes")
+    agy_image.write_bytes(_png_bytes())
     os.utime(agy_image, (time.time() + 100, time.time() + 100))
     calls: list[list[str]] = []
     inputs: list[str | None] = []
@@ -787,7 +796,7 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
     assert exit_code == 0
     assert inputs[1] and inputs[1].startswith("Use the image.")
     output_path = tmp_path / "data" / "results" / "cli-s1-abc123.png"
-    assert output_path.read_bytes() == b"agy image bytes"
+    assert output_path.read_bytes() == agy_image.read_bytes()
 
 
 def test_dailyfx_agent_warns_on_quoted_placeholders_in_templates(monkeypatch, capsys):
@@ -1124,8 +1133,8 @@ def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
         return CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    (tmp_path / "out.png").write_bytes(b"image")
-    (tmp_path / "out.input.png").write_bytes(b"image")
+    (tmp_path / "out.png").write_bytes(_png_bytes())
+    (tmp_path / "out.input.png").write_bytes(_png_bytes())
     _seed_agy_generated_image(tmp_path)
 
     exit_code = dailyfx_agent.main(
@@ -1184,7 +1193,7 @@ def test_prompt_augmentation(monkeypatch, tmp_path):
     }
     backend_stdout = json.dumps(manifest)
     (tmp_path / "run.json").write_text(json.dumps(manifest), encoding="utf-8")
-    (tmp_path / "output.png").write_bytes(b"image")
+    (tmp_path / "output.png").write_bytes(_png_bytes())
 
     captured_prompt = []
 
@@ -1609,10 +1618,21 @@ def test_json_status_missing_output(tmp_path, monkeypatch, capsys):
     assert "finished without creating" in status["error"]
 
 
+def test_validate_output_image_rejects_invalid_image(tmp_path):
+    import pytest
+
+    invalid_image = tmp_path / "not-image.png"
+    invalid_image.write_text("<html>not an image</html>", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not a valid image"):
+        dailyfx_agent._validate_output_image(invalid_image)
+
+
 def test_successful_recovery_records_source_in_status_and_manifest(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
     manifest_path = tmp_path / "run.json"
     generated_image = tmp_path / "generated-cli-s1-abc123.png"
-    generated_image.write_bytes(b"recovered image bytes")
+    generated_image.write_bytes(_png_bytes())
     manifest = {
         "task_id": "cli-s1-abc123",
         "schedule_id": 1,
@@ -1680,13 +1700,22 @@ def test_successful_recovery_records_source_in_status_and_manifest(tmp_path, mon
     assert status["stage"] == "completed"
     assert status["recovery_attempted"] is True
     assert status["recovered_from"] == str(generated_image.resolve())
+    assert status["output_image"]["width"] == 8
+    assert status["output_image"]["height"] == 8
+
+    artifact_dir = Path(status["artifact_dir"])
+    assert (artifact_dir / "prompt.txt").exists()
+    assert (artifact_dir / "manifest.before.json").exists()
+    assert (artifact_dir / "manifest.after.json").exists()
+    assert (artifact_dir / "target.log").exists()
+    assert (artifact_dir / "status.json").exists()
 
 
 def test_json_status_recovery_notes_do_not_pollute_stdout(tmp_path, monkeypatch, capsys):
     generated_root = tmp_path / "generated"
     generated_root.mkdir()
     generated_image = generated_root / "render-cli-s1-abc123.png"
-    generated_image.write_bytes(b"image")
+    generated_image.write_bytes(_png_bytes())
 
     recovered = dailyfx_agent._find_latest_image(
         start_time=time.time() - 1,

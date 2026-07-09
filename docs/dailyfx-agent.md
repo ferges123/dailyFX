@@ -155,6 +155,28 @@ Target tool output is not printed directly to stdout. Stdin/stderr logs of the e
 
 The script automatically retains only the **5 most recent logs** for each task runner, deleting older log files to conserve disk space.
 
+### Per-task Artifacts
+For each prepared task, `dailyfx-agent` also writes a compact diagnostic bundle under:
+`data/logs/agent/tasks/{task_id}/`
+
+The bundle can include:
+- `manifest.before.json`: the backend manifest before the host tool runs.
+- `prompt.txt`: the final augmented prompt sent to the host tool.
+- `target.log`: a copy of the captured host tool stdout/stderr log.
+- `manifest.after.json`: the normalized manifest after metadata validation and optional recovery metadata.
+- `status.json`: the final structured execution status.
+
+These files are intended for debugging failed or surprising host runs without re-running the task.
+
+### Output Image Validation
+Before finalization, the wrapper validates the output file. It must:
+- exist at the resolved `output_path`;
+- contain at least one byte;
+- be readable by Pillow as an image;
+- have non-zero width and height.
+
+If validation fails, finalization is skipped and the run stops at the `output validation` stage.
+
 ### Daemon Mode
 For background execution, specify the `-d` or `--daemon` flag.
 - The process forks using `os.fork()`.
@@ -238,9 +260,17 @@ The stdout will print a serialized JSON object:
   "target_log_path": "/opt/dailyFX/data/logs/agent/dailyfx-agent-cli-s1-abc123-agy-20260709-130000.log",
   "recovery_attempted": false,
   "recovered_from": null,
+  "artifact_dir": "/opt/dailyFX/data/logs/agent/tasks/cli-s1-abc123",
+  "output_image": {
+    "path": "/opt/dailyFX/data/results/cli-s1-abc123.png",
+    "size_bytes": 123456,
+    "width": 1024,
+    "height": 1024,
+    "format": "PNG"
+  },
   "error": null
 }
 ```
-Available stages: `prepare`, `manifest load`, `target run`, `metadata validation`, `recovery`, `finalize`, `completed`.
+Available stages: `prepare`, `manifest load`, `target run`, `metadata validation`, `recovery`, `output validation`, `finalize`, `completed`.
 When `--json-status` is enabled, stdout is reserved for this JSON object. Warnings and recovery notes are written to stderr.
 If detailed error logs and backtraces are needed, add `--debug` to print them to `stderr`.

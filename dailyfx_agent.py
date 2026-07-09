@@ -12,6 +12,7 @@ import subprocess
 _original_subprocess_run = subprocess.run
 import sys
 
+import shutil
 import tempfile
 import time
 import threading
@@ -613,6 +614,78 @@ def _write_target_log(
     )
     _rotate_target_logs(log_dir, keep=5)
     return log_path
+
+
+def _safe_task_id(task_id: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", task_id.strip() or "target")[:120]
+
+
+def _task_artifact_dir(task_id: str) -> Path:
+    return Path("data") / "logs" / "agent" / "tasks" / _safe_task_id(task_id)
+
+
+def _write_task_text_artifact(task_id: str, name: str, content: str) -> Path | None:
+    try:
+        artifact_dir = _task_artifact_dir(task_id)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        path = artifact_dir / name
+        path.write_text(content, encoding="utf-8")
+        return path
+    except OSError:
+        return None
+
+
+def _write_task_json_artifact(task_id: str, name: str, payload: object) -> Path | None:
+    try:
+        artifact_dir = _task_artifact_dir(task_id)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        path = artifact_dir / name
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return path
+    except (OSError, TypeError):
+        return None
+
+
+def _copy_task_artifact(task_id: str, source: Path, name: str) -> Path | None:
+    try:
+        if not source.exists():
+            return None
+        artifact_dir = _task_artifact_dir(task_id)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        path = artifact_dir / name
+        shutil.copyfile(source, path)
+        return path
+    except OSError:
+        return None
+
+
+def _validate_output_image(path: Path, *, min_bytes: int = 1) -> dict[str, object]:
+    if not path.exists():
+        raise ValueError(f"Output image validation failed: file does not exist: {path}")
+    size_bytes = path.stat().st_size
+    if size_bytes < min_bytes:
+        raise ValueError(
+            f"Output image validation failed: file is too small ({size_bytes} bytes): {path}"
+        )
+    try:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            width, height = image.size
+            image_format = image.format or "unknown"
+            image.verify()
+    except Exception as exc:
+        raise ValueError(f"Output image validation failed: {path} is not a valid image") from exc
+
+    if width <= 0 or height <= 0:
+        raise ValueError(f"Output image validation failed: invalid dimensions {width}x{height}: {path}")
+    return {
+        "path": str(path.resolve()),
+        "size_bytes": size_bytes,
+        "width": width,
+        "height": height,
+        "format": image_format,
+    }
 
 
 def _run_target_with_spinner(
@@ -1619,6 +1692,8 @@ def main(argv: list[str] | None = None) -> int:
         "target_log_path": None,
         "recovery_attempted": False,
         "recovered_from": None,
+        "artifact_dir": None,
+        "output_image": None,
         "error": None,
     }
     effective_argv = sys.argv[1:] if argv is None else argv
@@ -1872,6 +1947,9 @@ def main(argv: list[str] | None = None) -> int:
 
             task_id = str(manifest.get("task_id") or "").strip() or "target"
             status_data["task_id"] = task_id
+            artifact_dir = _task_artifact_dir(task_id)
+            status_data["artifact_dir"] = str(artifact_dir.resolve())
+            _write_task_json_artifact(task_id, "manifest.before.json", manifest)
             prompt = str(
                 manifest.get("prompt") or manifest.get("handoff_prompt") or ""
             ).strip()
@@ -1947,6 +2025,7 @@ def main(argv: list[str] | None = None) -> int:
                 abs_output_path,
                 task_id
             )
+            _write_task_text_artifact(task_id, "prompt.txt", prompt)
 
             target_command = _build_target_command(
                 args.target,
@@ -1972,6 +2051,8 @@ def main(argv: list[str] | None = None) -> int:
                     daemon_mode=args.daemon,
                 )
                 status_data["target_log_path"] = str(Path(target_log_path).resolve()) if target_log_path else None
+                if target_log_path:
+                    _copy_task_artifact(task_id, Path(target_log_path), "target.log")
                 if target_run.returncode != 0:
                     err_msg = (target_run.stderr or target_run.stdout or f"exit code {target_run.returncode}").strip()
                     raise RuntimeError(f"Target tool '{args.target}' failed: {err_msg}")
@@ -1995,6 +2076,7 @@ def main(argv: list[str] | None = None) -> int:
                     json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8",
                 )
+                _write_task_json_artifact(task_id, "manifest.after.json", updated_manifest)
             except Exception as e:
                 status_data["error"] = str(e)
                 last_exit = 1
@@ -2046,6 +2128,7 @@ def main(argv: list[str] | None = None) -> int:
                             json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
                             encoding="utf-8",
                         )
+                        _write_task_json_artifact(task_id, "manifest.after.json", updated_manifest)
                     else:
                         raise RuntimeError(missing_message)
                 except Exception as e:
@@ -2057,6 +2140,20 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         sys.stderr.write(f"Image recovery failed: {e}\n")
                     continue
+
+            try:
+                output_details = _validate_output_image(output_file)
+                status_data["output_image"] = output_details
+            except Exception as e:
+                status_data["stage"] = "output validation"
+                status_data["error"] = str(e)
+                last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Output validation failed: {e}\n")
+                continue
 
             # Sync updated manifest to shared manifest if they are different files
             if shared_manifest_path != manifest_path:
@@ -2129,6 +2226,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.schedule_id is not None and args.target is not None:
             if not locals().get("non_local_lock_release", False):
                 _release_lock(args.schedule_id, args.target)
+        if status_data.get("task_id"):
+            _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
         if "args" in locals() and getattr(args, "json_status", False):
             print(json.dumps(status_data, ensure_ascii=False, indent=2))
 
