@@ -5,8 +5,7 @@ import os
 import subprocess
 import sys
 import time
-from io import BytesIO
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from subprocess import CompletedProcess
 
