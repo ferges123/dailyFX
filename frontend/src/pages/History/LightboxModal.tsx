@@ -231,18 +231,18 @@ export const LightboxModal = memo(function LightboxModal({
   return (
     <div
       ref={trapRef}
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/98 p-3 md:items-center md:p-4 backdrop-blur-xl animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-stone-100/90 p-3 md:items-center md:p-4 backdrop-blur-xl animate-fade-in"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="lightbox-modal-title"
-        className="relative flex w-full max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-2xl border border-stone-800 bg-stone-950/80 shadow-2xl animate-scale-in md:max-h-[92vh] md:flex-row"
+        className="relative flex w-full max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-2xl border border-stone-200/80 bg-white/95 shadow-2xl animate-scale-in md:max-h-[92vh] md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Photo Canvas */}
-        <div className="relative flex max-h-[52vh] flex-1 items-center justify-center bg-stone-950 p-2 md:max-h-[85vh]">
+        <div className="relative flex max-h-[52vh] flex-1 items-center justify-center bg-stone-50 p-2 md:max-h-[85vh]">
           <SecureImage
             src={imageUrl}
             alt="Preview"
@@ -250,7 +250,7 @@ export const LightboxModal = memo(function LightboxModal({
           />
           {originalImageUrl && (
             <div
-              className={`absolute inset-0 flex items-center justify-center bg-stone-950 transition-opacity duration-200 pointer-events-none ${
+              className={`absolute inset-0 flex items-center justify-center bg-stone-50 transition-opacity duration-200 pointer-events-none ${
                 showOriginal ? 'opacity-100' : 'opacity-0'
               }`}
             >
@@ -267,8 +267,8 @@ export const LightboxModal = memo(function LightboxModal({
               onClick={() => setShowOriginal(!showOriginal)}
               className={`absolute bottom-4 right-4 z-30 inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition active:scale-95 cursor-pointer ${
                 showOriginal
-                  ? 'border-emerald-600 bg-emerald-800 text-white hover:bg-emerald-900'
-                  : 'border-white/10 bg-stone-900/80 text-white hover:bg-stone-955'
+                  ? 'border-emerald-600 bg-emerald-700 text-white hover:bg-emerald-800'
+                  : 'border-stone-200 bg-white/90 text-stone-800 hover:bg-stone-100'
               }`}
             >
               <Layers size={13} />
@@ -278,20 +278,20 @@ export const LightboxModal = memo(function LightboxModal({
         </div>
 
         {/* Premium EXIF Details Overlay Panel */}
-        <div className="flex max-h-[48vh] min-h-0 w-full shrink-0 flex-col overflow-y-auto bg-stone-900 p-4 text-stone-200 select-none md:max-h-[92vh] md:w-80 md:p-5">
+        <div className="flex max-h-[48vh] min-h-0 w-full shrink-0 flex-col overflow-y-auto bg-stone-50 p-4 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:p-5 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
           <div className="space-y-4">
             <div>
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-1">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">
                 Image Metadata
               </h4>
               <h3
                 id="lightbox-modal-title"
-                className="text-sm font-bold text-white leading-snug truncate"
+                className="text-sm font-bold text-stone-900 leading-snug truncate"
               >
                 {entry.title || 'Untitled Image'}
               </h3>
               {entry.summary && (
-                <p className="text-[11px] text-stone-400 leading-normal mt-1 max-h-32 overflow-y-auto pr-1">
+                <p className="text-[11px] text-stone-600 leading-normal mt-1 max-h-32 overflow-y-auto pr-1">
                   {entry.summary}
                 </p>
               )}
@@ -300,7 +300,7 @@ export const LightboxModal = memo(function LightboxModal({
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-400"
+                      className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8.5px] font-medium text-emerald-700"
                     >
                       #{tag}
                     </span>
@@ -309,7 +309,7 @@ export const LightboxModal = memo(function LightboxModal({
               )}
             </div>
 
-            <div className="h-px bg-stone-800" />
+            <div className="h-px bg-stone-200" />
 
             {/* EXIF Data Fields */}
             {exif ? (
@@ -322,7 +322,7 @@ export const LightboxModal = memo(function LightboxModal({
                       <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
                         Camera
                       </div>
-                      <div className="font-semibold text-white mt-0.5">
+                      <div className="font-semibold text-stone-900 mt-0.5">
                         {(() => {
                           const make = exif.make || '';
                           const model = exif.model || '';
@@ -351,7 +351,7 @@ export const LightboxModal = memo(function LightboxModal({
                       <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
                         Lens
                       </div>
-                      <div className="font-semibold text-white mt-0.5 truncate max-w-[220px]">
+                      <div className="font-semibold text-stone-900 mt-0.5 truncate max-w-[220px]">
                         {exif.lensModel}
                       </div>
                     </div>
@@ -372,7 +372,7 @@ export const LightboxModal = memo(function LightboxModal({
                       <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
                         Settings
                       </div>
-                      <div className="font-semibold text-stone-300 mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                      <div className="font-semibold text-stone-700 mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
                         {exif.exposureTime && (
                           <span>{formatShutterSpeed(exif.exposureTime)}</span>
                         )}
@@ -397,7 +397,7 @@ export const LightboxModal = memo(function LightboxModal({
                       <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
                         File / Dimension
                       </div>
-                      <div className="font-semibold text-stone-300 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                      <div className="font-semibold text-stone-700 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
                         {exif.fileSizeInByte && (
                           <span>{formatFileSize(exif.fileSizeInByte)}</span>
                         )}
@@ -422,7 +422,7 @@ export const LightboxModal = memo(function LightboxModal({
                       <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
                         Captured
                       </div>
-                      <div className="font-semibold text-stone-300 mt-0.5">
+                      <div className="font-semibold text-stone-700 mt-0.5">
                         {formatDateTime(
                           exif.dateTimeOriginal || entry.created_at,
                         )}
@@ -442,12 +442,11 @@ export const LightboxModal = memo(function LightboxModal({
                       <div>
                         <div className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">
                           Location
-                        </div>
-                        <a
+                        </div>                        <a
                           href={`https://www.google.com/maps/search/?api=1&query=${exif.latitude},${exif.longitude}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 mt-0.5 hover:underline"
+                          className="font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 mt-0.5 hover:underline"
                         >
                           <span>
                             {(() => {
@@ -467,14 +466,14 @@ export const LightboxModal = memo(function LightboxModal({
                   )}
               </div>
             ) : (
-              <div className="text-[10px] text-stone-500 text-center py-4 bg-stone-950/20 border border-stone-850/50 rounded-xl">
+              <div className="text-[10px] text-stone-500 text-center py-4 bg-stone-150/30 border border-stone-200 rounded-xl">
                 No EXIF metadata found in database.
               </div>
             )}
           </div>
 
           {/* Lightbox Footer Actions */}
-          <div className="sticky bottom-0 mt-4 border-t border-stone-800 bg-stone-900 pt-4 md:mt-0">
+          <div className="sticky bottom-0 mt-4 border-t border-stone-200 bg-stone-50 pt-4 md:mt-0">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -484,8 +483,8 @@ export const LightboxModal = memo(function LightboxModal({
                 }}
                 className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-lg transition active:scale-95 ${
                   liked === true
-                    ? 'bg-emerald-800 text-white'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white'
+                    ? 'bg-emerald-700 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-850'
                 }`}
                 aria-label="Like image"
                 title="Like image"
@@ -500,8 +499,8 @@ export const LightboxModal = memo(function LightboxModal({
                 }}
                 className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-lg transition active:scale-95 ${
                   liked === false
-                    ? 'bg-rose-900 text-white'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white'
+                    ? 'bg-rose-700 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-850'
                 }`}
                 aria-label="Dislike image"
                 title="Dislike image"
@@ -515,7 +514,7 @@ export const LightboxModal = memo(function LightboxModal({
                   void handleShare();
                 }}
                 disabled={isSharing}
-                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-white shadow-lg transition hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 shadow-lg transition hover:bg-stone-200 hover:text-stone-850 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Share image"
                 title={
                   shareStatus === 'copied'
@@ -533,7 +532,7 @@ export const LightboxModal = memo(function LightboxModal({
                   <Share2 size={14} />
                 )}
                 {shareStatus === 'copied' && (
-                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-sm bg-emerald-800 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-sm bg-emerald-700 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">
                     Copied!
                   </span>
                 )}
@@ -541,7 +540,7 @@ export const LightboxModal = memo(function LightboxModal({
               <a
                 href={`/api/generation/history/${entry.task_id}/image`}
                 download
-                className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-800 text-xs font-semibold text-white shadow-lg transition hover:bg-emerald-900 active:scale-95"
+                className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 text-xs font-semibold text-white shadow-lg transition hover:bg-emerald-800 active:scale-95"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Download size={14} />
@@ -555,7 +554,7 @@ export const LightboxModal = memo(function LightboxModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black/55 text-white hover:bg-white hover:text-stone-900 shadow-md transition active:scale-90"
+          className="absolute right-4 top-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950 shadow-md transition active:scale-90"
           aria-label="Close"
         >
           <X size={18} />
