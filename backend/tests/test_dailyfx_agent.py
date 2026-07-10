@@ -1749,3 +1749,10 @@ def test_json_status_recovery_notes_do_not_pollute_stdout(tmp_path, monkeypatch,
     assert recovered == generated_image
     assert captured.out == ""
     assert "Selected recovery image" in captured.err
+
+
+def test_dailyfx_agent_accepts_schedule_target():
+    from dailyfx_agent import _parse_args
+    args = _parse_args(["--schedule-id", "1", "--target", "schedule"])
+    assert args.target == "schedule"
+

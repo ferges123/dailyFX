@@ -211,7 +211,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-t",
         "--target",
-        choices=["agy", "codex"],
+        choices=["agy", "codex", "schedule"],
         default=None,
         help="Target tool to call",
     )
