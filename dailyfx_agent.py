@@ -1707,6 +1707,9 @@ def main(argv: list[str] | None = None) -> int:
     status_data["model"] = args.model
     _validate_command_templates(args)
     if args.model:
+        if args.target == "schedule":
+            sys.stderr.write("Error: --model option is not supported for target 'schedule'\n")
+            return 1
         if args.target == "agy":
             available_models = _get_agy_models()
             if available_models and args.model not in available_models:
@@ -1755,6 +1758,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_models:
         if args.target is None:
             sys.stderr.write("target is required with --list-models\n")
+            return 1
+        if args.target == "schedule":
+            sys.stderr.write("Error: target 'schedule' does not support listing models (models are defined by backend presets)\n")
             return 1
         _print_model_list_header(args.target)
         if args.target == "agy":

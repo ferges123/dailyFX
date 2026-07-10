@@ -1756,3 +1756,15 @@ def test_dailyfx_agent_accepts_schedule_target():
     args = _parse_args(["--schedule-id", "1", "--target", "schedule"])
     assert args.target == "schedule"
 
+
+def test_schedule_target_rejects_model_options(monkeypatch):
+    from dailyfx_agent import main
+    # test model option rejection
+    exit_code = main(["--schedule-id", "1", "--target", "schedule", "--model", "some-model"])
+    assert exit_code == 1
+
+    # test list-models option rejection
+    exit_code = main(["--target", "schedule", "--list-models"])
+    assert exit_code == 1
+
+
