@@ -1407,7 +1407,7 @@ def _get_agent_version() -> str:
         pass
 
     # 4. Fallback default
-    return "0.4.1"
+    return "0.5.0"
 
 
 def _augment_host_prompt(

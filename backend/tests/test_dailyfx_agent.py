@@ -1753,12 +1753,14 @@ def test_json_status_recovery_notes_do_not_pollute_stdout(tmp_path, monkeypatch,
 
 def test_dailyfx_agent_accepts_schedule_target():
     from dailyfx_agent import _parse_args
+
     args = _parse_args(["--schedule-id", "1", "--target", "schedule"])
     assert args.target == "schedule"
 
 
 def test_schedule_target_rejects_model_options(monkeypatch):
     from dailyfx_agent import main
+
     # test model option rejection
     exit_code = main(["--schedule-id", "1", "--target", "schedule", "--model", "some-model"])
     assert exit_code == 1
@@ -1769,16 +1771,17 @@ def test_schedule_target_rejects_model_options(monkeypatch):
 
 
 def test_schedule_target_execution_short_circuits(monkeypatch):
-    import subprocess
-    from dailyfx_agent import main
     import json
+    import subprocess
+
+    from dailyfx_agent import main
 
     mock_manifest = {
         "task_id": "test-task",
         "status": "COMPLETED",
         "image_path": "/data/test_output.png",
         "prompt": "some prompt",
-        "handoff_prompt": "some handoff prompt"
+        "handoff_prompt": "some handoff prompt",
     }
 
     class MockCompletedProcess:
@@ -1795,6 +1798,3 @@ def test_schedule_target_execution_short_circuits(monkeypatch):
     # run main with schedule target
     exit_code = main(["--schedule-id", "1", "--target", "schedule"])
     assert exit_code == 0
-
-
-
