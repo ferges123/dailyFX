@@ -1413,20 +1413,25 @@ def test_doctor_command_scenarios(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(shutil, "which", lambda cmd: f"/usr/bin/{cmd}")
 
     # Mock Path.is_dir and os.access for recovery directories
-    from pathlib import Path
     import os
+    from pathlib import Path
+
     orig_is_dir = Path.is_dir
+
     def fake_is_dir(self):
         if "brain" in str(self) or "generated_images" in str(self):
             return True
         return orig_is_dir(self)
+
     monkeypatch.setattr(Path, "is_dir", fake_is_dir)
 
     orig_access = os.access
+
     def fake_access(path, mode):
         if "brain" in str(path) or "generated_images" in str(path):
             return True
         return orig_access(path, mode)
+
     monkeypatch.setattr(os, "access", fake_access)
 
     # Invoke --doctor

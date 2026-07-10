@@ -256,9 +256,7 @@ export function HistoryPage() {
       if (!taskId) return;
     }
     setSelectedHistoryTaskId(taskId ?? null);
-    if (taskId) {
-      setMobileShowDetail(true);
-    }
+    setMobileShowDetail(!!taskId);
   }, [taskId, setSelectedHistoryTaskId, setMobileShowDetail]);
 
   const dbExif = useMemo(() => {

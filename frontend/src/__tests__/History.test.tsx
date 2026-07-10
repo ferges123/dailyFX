@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HistoryPage } from '../pages/History/HistoryPage';
 import * as client from '../api/client';
 
@@ -217,7 +217,10 @@ describe('HistoryPage', () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <HistoryPage />
+          <Routes>
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/history/:taskId" element={<HistoryPage />} />
+          </Routes>
         </BrowserRouter>
       </QueryClientProvider>,
     );
@@ -238,7 +241,7 @@ describe('HistoryPage', () => {
 
     // Verify detail panel displays selected item 1 by default
     expect(
-      screen.getByText('"Beautiful sunset with orange filter"'),
+      await screen.findByText('"Beautiful sunset with orange filter"'),
     ).toBeInTheDocument();
     expect(screen.getByText('#sunset')).toBeInTheDocument();
     expect(screen.getByText('#nature')).toBeInTheDocument();
@@ -433,5 +436,34 @@ describe('HistoryPage', () => {
     expect(
       screen.queryByTestId('history-item-skeleton'),
     ).not.toBeInTheDocument();
+  });
+
+  it('resets mobileShowDetail when navigating back to history page without taskId', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
+
+    const { container } = renderHistory('/history/man-2');
+
+    // Wait for the detail panel of man-2 to load
+    expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
+
+    // Verify detail panel is shown initially (has class showing it, not hidden lg:flex on its own)
+    const detailPanel = container.querySelectorAll('.app-panel')[1];
+    expect(detailPanel).not.toBeUndefined();
+    expect(detailPanel?.className).toContain('flex');
+    expect(detailPanel?.className).not.toContain('hidden lg:flex');
+
+    // Simulate clicking browser back to /history
+    window.history.pushState({}, '', '/history');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+
+    // Check that we returned back to /history and detail panel is now hidden on mobile (has hidden lg:flex)
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/history');
+      expect(detailPanel?.className).toContain('hidden lg:flex');
+    });
   });
 });
