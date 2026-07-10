@@ -1347,6 +1347,86 @@ def test_daemon_status_and_stop(tmp_path, capsys):
     assert not metadata_file.exists()
 
 
+def test_multiple_daemons_status_and_stop(tmp_path, monkeypatch, capsys):
+    # Change working directory to tmp_path to isolate data/ folder
+    monkeypatch.chdir(tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    # Create dummy process
+    proc = subprocess.Popen(["sleep", "10"])
+    pid = proc.pid
+
+    # 1. Daemon 1: running
+    pid_file1 = data_dir / "dailyfx-agent-s3-agy.pid"
+    metadata_file1 = data_dir / "dailyfx-agent-s3-agy.pid.json"
+    pid_file1.write_text(str(pid), encoding="utf-8")
+    metadata_file1.write_text(
+        json.dumps(
+            {
+                "pid": pid,
+                "schedule_id": 3,
+                "target": "agy",
+                "started_at": "2026-07-10T23:34:00Z",
+                "log_path": "/tmp/test3.log",
+                "manifest_path": "/tmp/manifest3.json",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # 2. Daemon 2: stale/stopped
+    pid_file2 = data_dir / "dailyfx-agent-s7-agy.pid"
+    metadata_file2 = data_dir / "dailyfx-agent-s7-agy.pid.json"
+    pid_file2.write_text("999999", encoding="utf-8")
+    metadata_file2.write_text(
+        json.dumps(
+            {
+                "pid": 999999,
+                "schedule_id": 7,
+                "target": "agy",
+                "started_at": "2026-07-10T23:34:00Z",
+                "log_path": "/tmp/test7.log",
+                "manifest_path": "/tmp/manifest7.json",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # 3. Test --status (general)
+    exit_code = dailyfx_agent.main(["--status"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "[dailyfx-agent-s3-agy.pid]" in captured.out
+    assert "status: running" in captured.out
+    assert f"pid: {pid}" in captured.out
+    assert "schedule_id: 3" in captured.out
+
+    assert "[dailyfx-agent-s7-agy.pid]" in captured.out
+    assert "status: stopped (stale PID file)" in captured.out
+    assert "pid: 999999" in captured.out
+    assert "schedule_id: 7" in captured.out
+
+    # 4. Test --stop (general)
+    exit_code = dailyfx_agent.main(["--stop"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Stopping daemon: dailyfx-agent-s3-agy.pid" in captured.out
+    assert f"daemon stopped: pid={pid}" in captured.out
+    assert "Stopping daemon: dailyfx-agent-s7-agy.pid" in captured.out
+    assert "daemon stopped: pid=999999" in captured.out
+
+    # Cleanup processes
+    proc.wait(timeout=2.0)
+    assert proc.returncode is not None
+
+    # Verify files were cleaned up
+    assert not pid_file1.exists()
+    assert not metadata_file1.exists()
+    assert not pid_file2.exists()
+    assert not metadata_file2.exists()
+
+
 def test_agent_version_mcp_init(monkeypatch):
     # Mock _get_agent_version to return a unique custom version
     # Since _get_agent_version is not yet implemented, this mock is safe

@@ -1297,7 +1297,7 @@ def _get_pid_file_path(args: argparse.Namespace) -> Path:
     return Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
 
 
-def _handle_status(pid_file: Path) -> int:
+def _show_single_status(pid_file: Path) -> int:
     if not pid_file.exists():
         print("status: stopped (no PID file)")
         return 0
@@ -1344,7 +1344,44 @@ def _handle_status(pid_file: Path) -> int:
     return 0
 
 
-def _handle_stop(pid_file: Path) -> int:
+def _handle_status(args: argparse.Namespace) -> int:
+    # Check if a specific daemon is targeted
+    is_specific = (
+        args.pid_file is not None
+        or args.schedule_id is not None
+        or args.target is not None
+    )
+
+    if is_specific:
+        return _show_single_status(_get_pid_file_path(args))
+
+    # General status check: find all dailyfx-agent-*.pid files in the data directory
+    data_dir = Path("data")
+    if not data_dir.is_dir():
+        print("status: stopped (no PID file)")
+        return 0
+
+    # Match files matching "dailyfx-agent-*.pid" (ensure we ignore *.pid.json)
+    pid_files = [
+        f for f in data_dir.glob("dailyfx-agent-*.pid")
+        if f.name.endswith(".pid")
+    ]
+
+    if not pid_files:
+        print("status: stopped (no PID file)")
+        return 0
+
+    pid_files.sort()
+    for idx, pf in enumerate(pid_files):
+        if idx > 0:
+            print()
+        print(f"[{pf.name}]")
+        _show_single_status(pf)
+
+    return 0
+
+
+def _stop_single_daemon(pid_file: Path) -> int:
     import signal
     if not pid_file.exists():
         print("status: stopped (no PID file)")
@@ -1378,6 +1415,40 @@ def _handle_stop(pid_file: Path) -> int:
     metadata_file.unlink(missing_ok=True)
 
     print(f"daemon stopped: pid={pid}")
+    return 0
+
+
+def _handle_stop(args: argparse.Namespace) -> int:
+    # Check if a specific daemon is targeted
+    is_specific = (
+        args.pid_file is not None
+        or args.schedule_id is not None
+        or args.target is not None
+    )
+
+    if is_specific:
+        return _stop_single_daemon(_get_pid_file_path(args))
+
+    # General stop check: stop all dailyfx-agent-*.pid files in the data directory
+    data_dir = Path("data")
+    if not data_dir.is_dir():
+        print("status: stopped (no PID file)")
+        return 0
+
+    pid_files = [
+        f for f in data_dir.glob("dailyfx-agent-*.pid")
+        if f.name.endswith(".pid")
+    ]
+
+    if not pid_files:
+        print("status: stopped (no PID file)")
+        return 0
+
+    pid_files.sort()
+    for pf in pid_files:
+        print(f"Stopping daemon: {pf.name}")
+        _stop_single_daemon(pf)
+
     return 0
 
 
@@ -1804,10 +1875,10 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_doctor(args)
 
     if args.status:
-        return _handle_status(_get_pid_file_path(args))
+        return _handle_status(args)
 
     if args.stop:
-        return _handle_stop(_get_pid_file_path(args))
+        return _handle_stop(args)
 
     if args.dry_run:
         target_preview = _target_prefix(args.target, args.model)
