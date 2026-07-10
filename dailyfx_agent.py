@@ -311,6 +311,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run environment diagnostics and verify dailyfx-agent setup",
     )
     parser.add_argument(
+        "--clean-manifests",
+        action="store_true",
+        help="Remove stale temporary manifest files (dailyfx-run-*.json) from the data/ directory",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable print of detailed error backtraces and context information",
@@ -1437,6 +1442,24 @@ def _augment_host_prompt(
     return original_prompt + checklist
 
 
+def _handle_clean_manifests() -> int:
+    stale_manifests = list(Path("data").glob("dailyfx-run-*.json"))
+    if not stale_manifests:
+        print("No stale temporary manifests found in data/.")
+        return 0
+
+    count = 0
+    for path in stale_manifests:
+        try:
+            path.unlink(missing_ok=True)
+            count += 1
+        except Exception as e:
+            sys.stderr.write(f"Failed to remove {path.name}: {e}\n")
+
+    print(f"Successfully removed {count} stale manifest file(s) from data/.")
+    return 0
+
+
 def _handle_doctor(args: argparse.Namespace) -> int:
     import shutil
     checks = []
@@ -1467,7 +1490,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
     if not has_errors:
         try:
             run = subprocess.run(
-                ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "curl", "-s", "http://localhost:8000/health"],
+                ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8438/api/health')"],
                 capture_output=True,
                 text=True,
                 check=False
@@ -1475,7 +1498,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
             if run.returncode == 0:
                 add_check("api_service_reachability", "OK", "service is reachable")
             else:
-                add_check("api_service_reachability", "FAIL", f"curl exit {run.returncode}: {(run.stderr or run.stdout or '').strip()}")
+                add_check("api_service_reachability", "FAIL", f"check exit {run.returncode}: {(run.stderr or run.stdout or '').strip()}")
                 has_errors = True
         except Exception as e:
             add_check("api_service_reachability", "FAIL", str(e))
@@ -1767,12 +1790,15 @@ def main(argv: list[str] | None = None) -> int:
             return _list_agy_models()
         return _list_codex_models()
 
-    if not (args.list_schedules or args.status or args.stop or args.doctor):
+    if not (args.list_schedules or args.status or args.stop or args.doctor or args.clean_manifests):
         if args.schedule_id is None or args.target is None:
             sys.stderr.write(
                 "schedule-id and target are required unless --list-schedules is used\n"
             )
             return 1
+
+    if args.clean_manifests:
+        return _handle_clean_manifests()
 
     if args.doctor:
         return _handle_doctor(args)
