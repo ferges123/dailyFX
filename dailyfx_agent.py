@@ -1906,7 +1906,9 @@ def main(argv: list[str] | None = None) -> int:
             shared_manifest_path = manifest_path
 
             # 1. PREPARE STAGE
-            status_data["stage"] = "prepare"
+            status_data["stage"] = "prepare" if args.target != "schedule" else "generate"
+            if args.target == "schedule" and not args.json_status:
+                print("Executing schedule generation on the backend...")
             try:
                 backend_run = subprocess.run(
                     backend_command,
@@ -1946,6 +1948,14 @@ def main(argv: list[str] | None = None) -> int:
                     traceback.print_exc()
                 else:
                     sys.stderr.write(f"Error loading manifest: {e}\n")
+                continue
+
+            if args.target == "schedule":
+                status_data["stage"] = "completed"
+                output_path = manifest.get("image_path") or ""
+                status_data["output_path"] = str(Path(output_path).resolve()) if output_path else ""
+                if not args.json_status:
+                    print(f"done: {output_path}")
                 continue
 
             if args.verbose:

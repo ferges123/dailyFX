@@ -1768,3 +1768,33 @@ def test_schedule_target_rejects_model_options(monkeypatch):
     assert exit_code == 1
 
 
+def test_schedule_target_execution_short_circuits(monkeypatch):
+    import subprocess
+    from dailyfx_agent import main
+    import json
+
+    mock_manifest = {
+        "task_id": "test-task",
+        "status": "COMPLETED",
+        "image_path": "/data/test_output.png",
+        "prompt": "some prompt",
+        "handoff_prompt": "some handoff prompt"
+    }
+
+    class MockCompletedProcess:
+        def __init__(self, stdout, returncode=0):
+            self.stdout = stdout
+            self.stderr = ""
+            self.returncode = returncode
+
+    def mock_run(cmd, *args, **kwargs):
+        return MockCompletedProcess(json.dumps(mock_manifest))
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    # run main with schedule target
+    exit_code = main(["--schedule-id", "1", "--target", "schedule"])
+    assert exit_code == 0
+
+
+
