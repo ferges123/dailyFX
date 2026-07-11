@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 from sqlalchemy.orm import Session
 from app.models.generation_task import GenerationTaskModel
+from app.services.audit import record_audit_event
 
 class QueueRepository:
     @staticmethod
@@ -45,7 +46,20 @@ class QueueRepository:
         db.commit()
         if updated_rows > 0:
             db.expire(target_task)
-            return db.get(GenerationTaskModel, target_task.task_id)
+            claimed = db.get(GenerationTaskModel, target_task.task_id)
+            if claimed:
+                record_audit_event(
+                    db=db,
+                    action="task_started",
+                    category="generation",
+                    outcome="success",
+                    actor_type="system",
+                    target_type="task",
+                    target_id=claimed.task_id,
+                    task_id=claimed.task_id,
+                    summary=f"Task {claimed.task_id} claimed by worker {worker_id}"
+                )
+            return claimed
         return None
 
     @staticmethod
@@ -60,11 +74,33 @@ class QueueRepository:
             task.cancelled_at = now
             task.finished_at = now
             db.commit()
+            record_audit_event(
+                db=db,
+                action="task_cancelled",
+                category="generation",
+                outcome="success",
+                actor_type="user",
+                target_type="task",
+                target_id=task.task_id,
+                task_id=task.task_id,
+                summary=f"Queued task {task.task_id} cancelled immediately"
+            )
             return True
         elif task.status == "running":
             task.status = "cancel_requested"
             task.cancel_requested_at = now
             db.commit()
+            record_audit_event(
+                db=db,
+                action="task_cancel_requested",
+                category="generation",
+                outcome="success",
+                actor_type="user",
+                target_type="task",
+                target_id=task.task_id,
+                task_id=task.task_id,
+                summary=f"Cancellation requested for running task {task.task_id}"
+            )
             return True
         return False
 
@@ -89,4 +125,15 @@ class QueueRepository:
         )
         db.add(new_task)
         db.commit()
+        record_audit_event(
+            db=db,
+            action="task_retried",
+            category="generation",
+            outcome="success",
+            actor_type="user",
+            target_type="task",
+            target_id=new_task.task_id,
+            task_id=new_task.task_id,
+            summary=f"Retried task {parent.task_id} as new task {new_task.task_id}"
+        )
         return new_task

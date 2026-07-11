@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.generation_task import GenerationTaskModel
 from app.services.generation.queue_repository import QueueRepository
+from app.services.audit import record_audit_event
 
 logger = logging.getLogger("queue_worker")
 
@@ -53,6 +54,17 @@ class QueueWorkerManager:
                     task.cancelled_at = datetime.now(timezone.utc)
                     task.finished_at = datetime.now(timezone.utc)
                     db.commit()
+                    record_audit_event(
+                        db=db,
+                        action="task_cancelled",
+                        category="generation",
+                        outcome="success",
+                        actor_type="system",
+                        target_type="task",
+                        target_id=task_id,
+                        task_id=task_id,
+                        summary=f"Running task {task_id} gracefully cancelled"
+                    )
                     return
                 task.progress = float(progress_step * 33)
                 task.heartbeat_at = datetime.now(timezone.utc)
@@ -65,6 +77,17 @@ class QueueWorkerManager:
                 task.progress = 100.0
                 task.finished_at = datetime.now(timezone.utc)
                 db.commit()
+                record_audit_event(
+                    db=db,
+                    action="task_succeeded",
+                    category="generation",
+                    outcome="success",
+                    actor_type="system",
+                    target_type="task",
+                    target_id=task_id,
+                    task_id=task_id,
+                    summary=f"Task {task_id} completed successfully"
+                )
         except Exception as e:
             logger.exception("Error running task %s", task_id)
             db.rollback()
@@ -75,6 +98,18 @@ class QueueWorkerManager:
                     task.error = str(e)
                     task.finished_at = datetime.now(timezone.utc)
                     db.commit()
+                    record_audit_event(
+                        db=db,
+                        action="task_failed",
+                        category="generation",
+                        outcome="failure",
+                        actor_type="system",
+                        target_type="task",
+                        target_id=task_id,
+                        task_id=task_id,
+                        error_code="execution_error",
+                        summary=f"Task {task_id} failed: {str(e)}"
+                    )
             except Exception:
                 pass
         finally:
@@ -95,5 +130,17 @@ class QueueWorkerManager:
             task.error = "Task timed out due to lost worker connection (stale heartbeat)."
             task.error_code = "worker_lost"
             task.finished_at = now
+            record_audit_event(
+                db=db,
+                action="task_recovered",
+                category="generation",
+                outcome="failure",
+                actor_type="system",
+                target_type="task",
+                target_id=task.task_id,
+                task_id=task.task_id,
+                error_code="worker_lost",
+                summary=f"Recovered stale orphaned task {task.task_id} as failed"
+            )
             
         db.commit()
