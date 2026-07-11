@@ -87,10 +87,14 @@ class GenerationModuleRegistry:
         modules: dict[str, object] = {module_class.name: module_class() for module_class in LOCAL_MODULE_CLASSES}
         from app.services.generation.ai_effects_builder import build_ai_module
         from app.services.generation.ai_effects_repository import list_ai_effect_rows
+        from sqlalchemy.exc import OperationalError, ProgrammingError
 
-        rows = list_ai_effect_rows()
-        ai_modules = {row.id: build_ai_module(row) for row in rows}
-        modules.update(ai_modules)
+        try:
+            rows = list_ai_effect_rows()
+            ai_modules = {row.id: build_ai_module(row) for row in rows}
+            modules.update(ai_modules)
+        except (OperationalError, ProgrammingError):
+            pass
         return modules
 
     def _ensure(self) -> dict[str, object]:
