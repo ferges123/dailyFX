@@ -1,0 +1,8 @@
+{
+  "id": "ai_ukiyo_e_modern",
+  "title": "AI Modern Ukiyo-e",
+  "description": "Blends contemporary scenery with traditional Japanese woodblock-print language.",
+  "positive_prompt": "Transform the input photo into a contemporary scene rendered through traditional Japanese woodblock-print techniques. Preserve the number of people, recognizable identity cues, pose, camera angle, framing, modern clothing and objects, main composition, and scene context. Use elegant carved contour lines, flat mineral-pigment color planes, subtle bokashi color transitions, handmade washi paper texture, stylized wind, clouds, rain, or waves where contextually appropriate, and balanced negative space. Keep the setting unmistakably contemporary while the printmaking language feels traditional. Do not add writing or seals.",
+  "negative_prompt": "text, Japanese characters, captions, logos, watermarks, signatures, red seals, extra people, missing people, changed identity, distorted face, malformed hands, duplicate limbs, historical costume unless present in source, generic anime, photorealism, glossy 3D render, neon cyberpunk, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. modern subway in rain, indigo and vermilion palette..."
+}

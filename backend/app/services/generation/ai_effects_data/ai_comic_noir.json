@@ -1,0 +1,8 @@
+{
+  "id": "ai_comic_noir",
+  "title": "AI Comic Noir",
+  "description": "Turns a photo into a stark, rain-soaked noir graphic-novel panel.",
+  "positive_prompt": "Transform the input photo into a dramatic noir graphic-novel illustration. Preserve the number of people, recognizable identity, key facial features, pose, camera angle, framing, main composition, and scene context. Use stark black-and-white ink work with selective deep crimson accents, hard-edged shadows, wet-street reflections where appropriate, atmospheric rain or haze, sharp rim lighting, cross-hatching, distressed paper grain, and tense cinematic framing. Keep the image as one clean panel without borders, captions, or speech bubbles.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, speech bubbles, panel borders, multiple panels, extra people, missing people, changed identity, distorted faces, malformed hands, extra fingers, duplicate limbs, duplicate face, cheerful pastel palette, full color, glossy 3D render, flat lighting, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. red umbrella accent, heavier rain, detective atmosphere..."
+}

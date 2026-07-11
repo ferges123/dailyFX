@@ -1,0 +1,8 @@
+{
+  "id": "ai_papercut_shadowbox",
+  "title": "AI Papercut Shadowbox",
+  "description": "Builds the scene as a layered handcrafted paper-cut shadowbox.",
+  "positive_prompt": "Transform the input photo into a handcrafted layered paper-cut shadowbox diorama. Preserve the number of people, recognizable silhouettes and identity cues, pose, camera angle, framing, main composition, outfit color cues, and scene context. Construct the image from many precisely cut cardstock layers at distinct depths, with visible paper fibers, gently curled edges, soft cast shadows, warm light between layers, clean cut contours, and tactile handmade detail. Keep faces simplified but recognizable and maintain convincing spatial depth.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, missing people, changed identity, distorted face, malformed hands, extra fingers, duplicate limbs, flat vector illustration, plastic, clay, glossy 3D render, metal, photorealistic skin, torn messy paper, harsh digital glow, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. forest-green layers, warm backlight, deeper shadowbox..."
+}

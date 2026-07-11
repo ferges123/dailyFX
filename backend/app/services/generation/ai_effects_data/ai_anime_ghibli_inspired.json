@@ -1,0 +1,8 @@
+{
+  "id": "ai_anime_ghibli_inspired",
+  "title": "AI Whimsical Anime Storybook",
+  "description": "Creates a warm, hand-painted anime storybook scene with gentle wonder.",
+  "positive_prompt": "Transform the input photo into a warm hand-painted Japanese animated storybook scene filled with gentle wonder. Preserve the number of people, recognizable identity cues, age, pose, camera angle, framing, main composition, outfit colors, and scene context. Use expressive clean linework, softly painted watercolor-and-gouache backgrounds, lush natural detail, warm diffused daylight, subtle atmospheric perspective, believable everyday objects, restrained facial expressions, and a cozy sense of quiet adventure. Keep anatomy natural and faces recognizable. Do not introduce fantasy creatures unless requested.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, missing people, changed age, changed identity, distorted faces, oversized eyes, malformed hands, extra fingers, duplicate limbs, duplicate face, random fantasy creatures, plastic 3D animation, photorealism, neon cyberpunk, harsh contrast, oversaturated colors, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. breezy summer afternoon, lush countryside, gentle magic..."
+}

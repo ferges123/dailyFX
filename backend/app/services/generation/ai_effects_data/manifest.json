@@ -290,6 +290,66 @@
       "id": "ai_museum_diorama",
       "display_group": "3D / Toy",
       "hidden": false
+    },
+    {
+      "id": "ai_pop_art",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_cubist_portrait",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_comic_noir",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_bauhaus_poster",
+      "display_group": "Poster",
+      "hidden": false
+    },
+    {
+      "id": "ai_linocut_print",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_expressionist_portrait",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_minimalist_poster",
+      "display_group": "Poster",
+      "hidden": false
+    },
+    {
+      "id": "ai_retro_arcade",
+      "display_group": "Pop Culture",
+      "hidden": false
+    },
+    {
+      "id": "ai_papercut_shadowbox",
+      "display_group": "3D / Toy",
+      "hidden": false
+    },
+    {
+      "id": "ai_ukiyo_e_modern",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_anime_ghibli_inspired",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_anime_chibi",
+      "display_group": "Illustration",
+      "hidden": false
     }
   ]
 }

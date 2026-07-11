@@ -1,0 +1,8 @@
+{
+  "id": "ai_bauhaus_poster",
+  "title": "AI Bauhaus Poster",
+  "description": "Converts a photo into a clean geometric Bauhaus-inspired poster.",
+  "positive_prompt": "Transform the input photo into a 1920s modernist Bauhaus-inspired poster. Preserve the number of people, recognizable silhouettes and identity cues, pose, camera angle, framing, and main subject hierarchy. Simplify the scene into precise circles, rectangles, diagonals, flat color planes, asymmetrical balance, strong negative space, and a disciplined palette of red, yellow, blue, black, and warm off-white. Integrate the subject naturally into the geometric composition while keeping the face readable. Produce a complete poster image without any letters or text.",
+  "negative_prompt": "text, letters, numbers, typography, captions, logos, watermarks, signatures, extra people, missing people, changed identity, distorted face, malformed hands, duplicate limbs, gradients, photorealism, ornate decoration, baroque elements, glossy 3D render, clutter, muddy colors, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. stronger red circles, more asymmetrical composition..."
+}

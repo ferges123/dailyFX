@@ -1,0 +1,8 @@
+{
+  "id": "ai_linocut_print",
+  "title": "AI Linocut Print",
+  "description": "Renders a photo as a hand-carved high-contrast linocut print.",
+  "positive_prompt": "Transform the input photo into a hand-carved linocut print. Preserve the number of people, recognizable identity cues, pose, camera angle, framing, main composition, and important scene objects. Render the image with bold black carved shapes, expressive white gouge marks, rough irregular edges, visible ink pressure, cross-cut texture, strong negative space, and handmade fibrous paper. Prioritize a readable silhouette and recognizable facial structure. Use black ink on warm ivory paper with at most one restrained accent color.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, missing people, changed identity, distorted face, malformed hands, extra fingers, duplicate limbs, smooth vector art, fine photorealistic shading, gradients, glossy 3D render, watercolor washes, full-color photograph, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. rust-red accent ink, rougher carving marks..."
+}

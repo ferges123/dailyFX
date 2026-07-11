@@ -1,0 +1,8 @@
+{
+  "id": "ai_cubist_portrait",
+  "title": "AI Cubist Portrait",
+  "description": "Reimagines a photo as a geometric cubist portrait while retaining identity cues.",
+  "positive_prompt": "Transform the input photo into a refined early-20th-century cubist portrait. Preserve the number of people, recognizable identity cues, pose, framing, dominant outfit colors, and essential scene context. Reconstruct the subjects with intersecting geometric planes, multiple subtly combined viewpoints, angular contours, faceted shading, and a sophisticated palette of ochre, cobalt, rust, cream, charcoal, and muted green. Keep the face readable and recognizable despite the deliberate abstraction. Use painterly canvas texture and a balanced gallery-quality composition.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, missing people, unrecognizable subject, random facial features, misplaced eyes, duplicate eyes, duplicate face, malformed hands, extra fingers, duplicate limbs, complete abstraction, photorealism, glossy 3D render, childish drawing, neon cyberpunk, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. warmer ochre palette, stronger geometric fragmentation..."
+}

@@ -1,0 +1,8 @@
+{
+  "id": "ai_anime_chibi",
+  "title": "AI Anime Chibi",
+  "description": "Turns people and pets into cheerful small-bodied chibi characters.",
+  "positive_prompt": "Transform the input photo into a polished chibi anime illustration. Preserve the exact number of people and pets, recognizable hairstyles, facial identity cues, clothing colors, accessories, pose, camera angle, framing, and main scene context. Render each subject with a large expressive head, compact two-to-three-head-tall body, rounded simplified anatomy, clean line art, bright cel shading, soft blush, lively eyes, and charming but controlled facial expressions. Simplify the background into a colorful matching anime setting while preserving essential objects and relationships between subjects.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, extra pets, missing subjects, changed identity, adult body proportions, realistic body proportions, grotesque oversized head, distorted face, crossed eyes, malformed hands, extra fingers, duplicate limbs, duplicate face, suggestive clothing, photorealism, glossy 3D render, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. pastel café background, extra cute expressions..."
+}

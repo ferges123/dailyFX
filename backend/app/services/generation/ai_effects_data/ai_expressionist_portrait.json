@@ -1,0 +1,8 @@
+{
+  "id": "ai_expressionist_portrait",
+  "title": "AI Expressionist Portrait",
+  "description": "Creates an emotionally charged expressionist painted portrait.",
+  "positive_prompt": "Transform the input photo into an emotionally charged expressionist painted portrait. Preserve the number of people, recognizable identity, key facial landmarks, pose, framing, and essential scene context. Use energetic visible brushstrokes, deliberately intensified but coherent facial expression, slightly angular forms, dramatic directional lighting, textured impasto, and a bold palette of saturated complementary colors. Let the background echo the mood through rhythmic painted shapes while keeping the subject dominant and recognizable.",
+  "negative_prompt": "text, captions, logos, watermarks, signatures, extra people, missing people, unrecognizable subject, grotesque facial distortion, random facial features, duplicate eyes, duplicate face, malformed hands, extra fingers, duplicate limbs, photorealism, smooth airbrush, glossy 3D render, flat emotion, pastel sweetness, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. anxious blue and orange mood, heavier impasto..."
+}

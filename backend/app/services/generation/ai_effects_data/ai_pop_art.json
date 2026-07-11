@@ -1,0 +1,8 @@
+{
+  "id": "ai_pop_art",
+  "title": "AI Pop Art",
+  "description": "Transforms a photo into a bold mid-century pop-art screen print.",
+  "positive_prompt": "Transform the input photo into a bold mid-century pop-art screen print. Preserve the number of people, recognizable identity, key facial features, pose, camera angle, framing, main composition, outfit shapes, and scene context. Use a limited palette of vivid primary and secondary colors, thick graphic contours, flat color blocks, high contrast, Ben-Day halftone dots, offset screen-print registration, and energetic poster-like composition. Keep faces recognizable and visually clean. Do not add text.",
+  "negative_prompt": "text, captions, logos, trademarks, watermarks, signatures, speech bubbles, extra people, missing people, changed identity, distorted face, asymmetrical eyes, malformed hands, extra fingers, missing fingers, duplicate limbs, duplicate face, photorealism, muddy colors, gradients, glossy 3D render, low contrast, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. cyan, magenta and yellow palette, stronger halftone dots..."
+}

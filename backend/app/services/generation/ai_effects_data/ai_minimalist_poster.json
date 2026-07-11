@@ -1,0 +1,8 @@
+{
+  "id": "ai_minimalist_poster",
+  "title": "AI Minimalist Poster",
+  "description": "Reduces a photo to an elegant minimalist poster composition.",
+  "positive_prompt": "Transform the input photo into an elegant contemporary minimalist poster. Preserve the number of people, recognizable identity cues, pose, camera angle, framing, and the single most important contextual element. Simplify forms into clean silhouettes and a few confident flat shapes, use generous negative space, crisp edges, restrained visual hierarchy, and a harmonious palette of three to five colors derived from the source photo. Keep subtle facial cues where needed for recognition. Create a finished poster composition without any text or typography.",
+  "negative_prompt": "text, letters, numbers, typography, captions, logos, watermarks, signatures, extra people, missing people, changed identity, distorted face, malformed hands, duplicate limbs, clutter, busy background, excessive detail, gradients, photorealism, glossy 3D render, heavy texture, muddy palette, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. cream, navy and coral palette, more negative space..."
+}

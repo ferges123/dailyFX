@@ -1,0 +1,8 @@
+{
+  "id": "ai_retro_arcade",
+  "title": "AI Retro Arcade",
+  "description": "Turns a photo into vibrant 1980s arcade cabinet artwork.",
+  "positive_prompt": "Transform the input photo into vibrant 1980s arcade cabinet key art. Preserve the number of people, recognizable identity cues, pose, camera angle, framing, main composition, and scene context. Use crisp pixel-informed shapes combined with hand-painted arcade illustration, electric cyan, magenta, violet, and amber highlights, dramatic action lighting, glowing grid motifs, starbursts, subtle CRT scanlines, and energetic retro-futuristic composition. Keep people recognizable and avoid adding game interface elements or words.",
+  "negative_prompt": "text, game title, letters, numbers, score, HUD, user interface, logos, trademarks, watermarks, signatures, extra people, missing people, changed identity, distorted faces, malformed hands, extra fingers, duplicate limbs, duplicate face, modern photorealistic game render, flat lighting, muddy colors, blurry, low quality",
+  "custom_prompt_placeholder": "e.g. purple arcade cabinet palette, stronger CRT scanlines..."
+}
