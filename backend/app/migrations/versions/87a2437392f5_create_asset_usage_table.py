@@ -39,8 +39,18 @@ def upgrade() -> None:
             sa.Column("accepted_at", app.database.UTCDateTime(timezone=True), nullable=True),
             sa.Column("released_at", app.database.UTCDateTime(timezone=True), nullable=True),
             sa.Column("release_reason", sa.String(length=50), nullable=True),
-            sa.Column("created_at", app.database.UTCDateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False),
-            sa.Column("updated_at", app.database.UTCDateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False),
+            sa.Column(
+                "created_at",
+                app.database.UTCDateTime(timezone=True),
+                server_default=sa.text("(CURRENT_TIMESTAMP)"),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                app.database.UTCDateTime(timezone=True),
+                server_default=sa.text("(CURRENT_TIMESTAMP)"),
+                nullable=False,
+            ),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("task_id", "asset_id", name="uq_asset_usage_task_asset"),
         )
@@ -50,7 +60,9 @@ def upgrade() -> None:
     if "collage_history" in tables:
         op.drop_table("collage_history")
 
-    settings_columns = {column["name"] for column in inspector.get_columns("settings")} if "settings" in tables else set()
+    settings_columns = (
+        {column["name"] for column in inspector.get_columns("settings")} if "settings" in tables else set()
+    )
     if "collage_output_size" in settings_columns:
         op.drop_column("settings", "collage_output_size")
 

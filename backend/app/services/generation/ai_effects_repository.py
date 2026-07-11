@@ -15,6 +15,7 @@ def list_ai_effect_rows(db: Session | None = None) -> list[AIEffectModel]:
 
     try:
         from sqlalchemy.exc import OperationalError
+
         try:
             rows = db.query(AIEffectModel).all()
         except OperationalError:
@@ -41,6 +42,7 @@ def get_ai_effect_row(effect_id: str, db: Session | None = None) -> AIEffectMode
 
     try:
         from sqlalchemy.exc import OperationalError
+
         try:
             return db.get(AIEffectModel, effect_id)
         except OperationalError:

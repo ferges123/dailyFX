@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 # Configure test DB first
 test_db = configure_contract_test_db("audit_service")
 
-from app.database import SessionLocal, init_db
+from app.database import init_db
 
 # Initialize database
 init_db()
@@ -22,6 +22,7 @@ from app.services.audit import (
 @pytest.fixture
 def db_session():
     from app.database import get_db
+
     db = next(get_db())
     try:
         db.query(AuditEventModel).delete()
@@ -244,7 +245,9 @@ def test_generation_api_auditing(db_session: Session):
         response = client.post("/api/generation/history/task-test-audit/dislike")
         assert response.status_code == 200
 
-        events = db_session.query(AuditEventModel).filter_by(action="generation.unliked", task_id="task-test-audit").all()
+        events = (
+            db_session.query(AuditEventModel).filter_by(action="generation.unliked", task_id="task-test-audit").all()
+        )
         assert len(events) == 1
         assert events[0].task_id == "task-test-audit"
 
@@ -252,7 +255,9 @@ def test_generation_api_auditing(db_session: Session):
         response = client.post("/api/generation/history/task-test-audit/reject")
         assert response.status_code == 200
 
-        events = db_session.query(AuditEventModel).filter_by(action="generation.rejected", task_id="task-test-audit").all()
+        events = (
+            db_session.query(AuditEventModel).filter_by(action="generation.rejected", task_id="task-test-audit").all()
+        )
         assert len(events) == 1
         assert events[0].task_id == "task-test-audit"
 
@@ -260,7 +265,12 @@ def test_generation_api_auditing(db_session: Session):
         response = client.delete("/api/generation/history/rejected")
         assert response.status_code == 204
 
-        events = db_session.query(AuditEventModel).filter_by(action="generation.deleted").filter(AuditEventModel.summary.contains("status filter: REJECTED")).all()
+        events = (
+            db_session.query(AuditEventModel)
+            .filter_by(action="generation.deleted")
+            .filter(AuditEventModel.summary.contains("status filter: REJECTED"))
+            .all()
+        )
         assert len(events) == 1
         assert events[0].summary == "Deleted 1 generation history records (status filter: REJECTED)"
 

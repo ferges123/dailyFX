@@ -1,15 +1,18 @@
-import threading
-import uuid
 import logging
+import threading
 import time
-from datetime import datetime, timezone, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy.orm import Session
+
 from app.database import SessionLocal
 from app.models.generation_task import GenerationTaskModel
-from app.services.generation.queue_repository import QueueRepository
 from app.services.audit import record_audit_event
+from app.services.generation.queue_repository import QueueRepository
 
 logger = logging.getLogger("queue_worker")
+
 
 class QueueWorkerManager:
     def __init__(self, max_concurrency: int = 2):
@@ -20,10 +23,8 @@ class QueueWorkerManager:
     def tick(self) -> None:
         db = SessionLocal()
         try:
-            active_count = db.query(GenerationTaskModel).filter(
-                GenerationTaskModel.status == "running"
-            ).count()
-            
+            active_count = db.query(GenerationTaskModel).filter(GenerationTaskModel.status == "running").count()
+
             slots_available = self.max_concurrency - active_count
             for _ in range(slots_available):
                 task = QueueRepository.claim_next_task(db, self.worker_id)
@@ -42,7 +43,7 @@ class QueueWorkerManager:
             task = db.get(GenerationTaskModel, task_id)
             if not task:
                 return
-                
+
             # Symulacja pętli aktualizacji heartbeat oraz postępu
             for progress_step in range(1, 4):
                 time.sleep(0.1)  # Krótki sleep dla testów
@@ -63,13 +64,13 @@ class QueueWorkerManager:
                         target_type="task",
                         target_id=task_id,
                         task_id=task_id,
-                        summary=f"Running task {task_id} gracefully cancelled"
+                        summary=f"Running task {task_id} gracefully cancelled",
                     )
                     return
                 task.progress = float(progress_step * 33)
                 task.heartbeat_at = datetime.now(timezone.utc)
                 db.commit()
-                
+
             # Sukces
             task = db.get(GenerationTaskModel, task_id)
             if task and task.status == "running":
@@ -86,7 +87,7 @@ class QueueWorkerManager:
                     target_type="task",
                     target_id=task_id,
                     task_id=task_id,
-                    summary=f"Task {task_id} completed successfully"
+                    summary=f"Task {task_id} completed successfully",
                 )
         except Exception as e:
             logger.exception("Error running task %s", task_id)
@@ -108,7 +109,7 @@ class QueueWorkerManager:
                         target_id=task_id,
                         task_id=task_id,
                         error_code="execution_error",
-                        summary=f"Task {task_id} failed: {str(e)}"
+                        summary=f"Task {task_id} failed: {str(e)}",
                     )
             except Exception:
                 pass
@@ -119,12 +120,13 @@ class QueueWorkerManager:
     def recover_orphaned_tasks(self, db: Session) -> None:
         now = datetime.now(timezone.utc)
         heartbeat_timeout = now - timedelta(minutes=15)
-        
-        stale_tasks = db.query(GenerationTaskModel).filter(
-            GenerationTaskModel.status == "running",
-            GenerationTaskModel.heartbeat_at < heartbeat_timeout
-        ).all()
-        
+
+        stale_tasks = (
+            db.query(GenerationTaskModel)
+            .filter(GenerationTaskModel.status == "running", GenerationTaskModel.heartbeat_at < heartbeat_timeout)
+            .all()
+        )
+
         for task in stale_tasks:
             task.status = "failed"
             task.error = "Task timed out due to lost worker connection (stale heartbeat)."
@@ -140,7 +142,7 @@ class QueueWorkerManager:
                 target_id=task.task_id,
                 task_id=task.task_id,
                 error_code="worker_lost",
-                summary=f"Recovered stale orphaned task {task.task_id} as failed"
+                summary=f"Recovered stale orphaned task {task.task_id} as failed",
             )
-            
+
         db.commit()

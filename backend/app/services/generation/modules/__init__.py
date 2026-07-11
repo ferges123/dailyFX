@@ -85,9 +85,10 @@ class GenerationModuleRegistry:
 
     def _build(self) -> dict[str, object]:
         modules: dict[str, object] = {module_class.name: module_class() for module_class in LOCAL_MODULE_CLASSES}
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+
         from app.services.generation.ai_effects_builder import build_ai_module
         from app.services.generation.ai_effects_repository import list_ai_effect_rows
-        from sqlalchemy.exc import OperationalError, ProgrammingError
 
         try:
             rows = list_ai_effect_rows()

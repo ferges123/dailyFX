@@ -1,7 +1,8 @@
-import pytest
 from datetime import datetime, timezone
-from app.models.generation_task import GenerationTaskModel
+
 from app.database import SessionLocal, init_db
+from app.models.generation_task import GenerationTaskModel
+
 
 def test_extended_generation_task_columns():
     init_db()
