@@ -82,4 +82,18 @@ class QueueWorkerManager:
             self._running_threads.pop(task_id, None)
 
     def recover_orphaned_tasks(self, db: Session) -> None:
-        pass
+        now = datetime.now(timezone.utc)
+        heartbeat_timeout = now - timedelta(minutes=15)
+        
+        stale_tasks = db.query(GenerationTaskModel).filter(
+            GenerationTaskModel.status == "running",
+            GenerationTaskModel.heartbeat_at < heartbeat_timeout
+        ).all()
+        
+        for task in stale_tasks:
+            task.status = "failed"
+            task.error = "Task timed out due to lost worker connection (stale heartbeat)."
+            task.error_code = "worker_lost"
+            task.finished_at = now
+            
+        db.commit()
