@@ -1,8 +1,9 @@
 import json
-import pytest
 from datetime import datetime, timezone
-from sqlalchemy.exc import IntegrityError
+
+import pytest
 from _contract_helpers import configure_contract_test_db, make_generation_history_row
+from sqlalchemy.exc import IntegrityError
 
 from app.database import SessionLocal
 from app.database import init_db as _init_db
@@ -191,9 +192,9 @@ def test_registry_service_status_and_actions(setup_db):
     db = setup_db
 
     from app.services.generation.asset_usage import (
+        accept_task_assets,
         get_assets_usage_status,
         record_assets_usage_pending,
-        accept_task_assets,
         release_task_assets,
     )
 
@@ -241,5 +242,3 @@ def test_registry_service_status_and_actions(setup_db):
     assert status["asset-a"]["is_unavailable"] is True  # still True because of Task 1 (accepted)
     assert status["asset-a"]["ever_accepted"] is True  # still True because of Task 1
     assert status["asset-a"]["returned_to_pool"] is True  # True because of Task 2 (released)
-
-

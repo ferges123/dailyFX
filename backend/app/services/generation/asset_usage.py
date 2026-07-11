@@ -1,9 +1,11 @@
 import json
 import logging
 from datetime import datetime, timezone
+
 from sqlalchemy.orm import Session
-from app.models.generation_history import GenerationHistoryModel
+
 from app.models.asset_usage import AssetUsageModel
+from app.models.generation_history import GenerationHistoryModel
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,7 @@ def backfill_asset_usage(db: Session) -> None:
         added_count = 0
 
         # Get existing unique (task_id, asset_id) pairs to ensure idempotency
-        existing_pairs = set(
-            db.query(AssetUsageModel.task_id, AssetUsageModel.asset_id).all()
-        )
+        existing_pairs = set(db.query(AssetUsageModel.task_id, AssetUsageModel.asset_id).all())
 
         for record in history_records:
             if not record.source_asset_ids:
@@ -174,10 +174,7 @@ def record_assets_usage_pending(
 
     # Check for existing entries for this task_id to ensure idempotency
     existing_asset_ids = {
-        row[0]
-        for row in db.query(AssetUsageModel.asset_id)
-        .filter(AssetUsageModel.task_id == task_id)
-        .all()
+        row[0] for row in db.query(AssetUsageModel.asset_id).filter(AssetUsageModel.task_id == task_id).all()
     }
 
     now = datetime.now(timezone.utc)
@@ -210,10 +207,14 @@ def accept_task_assets(db: Session, task_id: str, accepted_at: datetime | None =
     Transitions pending asset usage entries for task_id to accepted.
     This operation is idempotent.
     """
-    usages = db.query(AssetUsageModel).filter(
-        AssetUsageModel.task_id == task_id,
-        AssetUsageModel.status == "pending",
-    ).all()
+    usages = (
+        db.query(AssetUsageModel)
+        .filter(
+            AssetUsageModel.task_id == task_id,
+            AssetUsageModel.status == "pending",
+        )
+        .all()
+    )
 
     if not usages:
         return
@@ -237,9 +238,13 @@ def release_task_assets(db: Session, task_id: str, reason: str) -> None:
     if reason not in ("rejected", "failed", "deleted"):
         raise ValueError(f"Invalid release reason: {reason}")
 
-    usages = db.query(AssetUsageModel).filter(
-        AssetUsageModel.task_id == task_id,
-    ).all()
+    usages = (
+        db.query(AssetUsageModel)
+        .filter(
+            AssetUsageModel.task_id == task_id,
+        )
+        .all()
+    )
 
     if not usages:
         return

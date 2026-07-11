@@ -156,6 +156,16 @@ describe('API Layer - Settings', () => {
       debug_mode: false,
       favorite_albums_json: null,
       ai_custom_prompt: null,
+      retention_enabled: false,
+      retention_rejected_files_days: null,
+      retention_rejected_metadata_days: null,
+      retention_failed_files_days: null,
+      retention_failed_metadata_days: null,
+      retention_uploaded_files_days: null,
+      retention_uploaded_metadata_days: null,
+      retention_task_days: null,
+      retention_audit_days: null,
+      retention_backup_count: 5,
     };
     await updateSettings(fullPayload);
     expect(fetch).toHaveBeenCalledWith(

@@ -65,9 +65,10 @@ def _fake_image_bytes_color(color: tuple[int, int, int]) -> bytes:
 
 
 def _setup_db():
+    import os
+
     import app.database as database
     from app.config import get_settings
-    import os
 
     os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     get_settings.cache_clear()
@@ -78,6 +79,7 @@ def _setup_db():
     database._current_database_url = None
     database._initialized_databases.clear()
     from pathlib import Path
+
     for suffix in ["", "-wal", "-shm"]:
         Path(str(test_db) + suffix).unlink(missing_ok=True)
     init_db()

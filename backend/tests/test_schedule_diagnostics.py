@@ -1,16 +1,17 @@
-import pytest
 import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from _contract_helpers import configure_contract_test_db
 
+from app.api.routes_schedules import get_schedule_diagnostics
 from app.database import SessionLocal
 from app.database import init_db as _init_db
-from app.models.schedule import ScheduleModel
-from app.models.filter_preset import FilterPresetModel
-from app.models.effect_preset import EffectPresetModel
 from app.models.asset_usage import AssetUsageModel
-from app.api.routes_schedules import get_schedule_diagnostics
+from app.models.effect_preset import EffectPresetModel
+from app.models.filter_preset import FilterPresetModel
+from app.models.schedule import ScheduleModel
 from app.services.immich import get_or_create_settings
 
 test_db = configure_contract_test_db("schedule_diagnostics")
@@ -53,7 +54,7 @@ def _make_mock_page(items, total=None):
 @patch("app.services.immich.build_immich_client")
 def test_schedule_diagnostics(mock_build_client, setup_db):
     db = setup_db
-    settings = get_or_create_settings(db)
+    _ = get_or_create_settings(db)
     db.commit()
 
     # Create filter preset
@@ -91,16 +92,24 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
     # Setup database registry state:
     # asset-1 is accepted, asset-2 is released, asset-3 is pending, asset-4 is never used
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-1",
+        task_id="task-old-1",
+        generation_type="duotone",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
     )
     u2 = AssetUsageModel(
-        asset_id="asset-2", task_id="task-old-2", generation_type="collage",
-        usage_source="automatic", status="released", release_reason="rejected", released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-2",
+        task_id="task-old-2",
+        generation_type="collage",
+        usage_source="automatic",
+        status="released",
+        release_reason="rejected",
+        released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc),
     )
     u3 = AssetUsageModel(
-        asset_id="asset-3", task_id="task-old-3", generation_type="duotone",
-        usage_source="automatic", status="pending"
+        asset_id="asset-3", task_id="task-old-3", generation_type="duotone", usage_source="automatic", status="pending"
     )
     db.add_all([u1, u2, u3])
     db.commit()

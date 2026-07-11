@@ -9,6 +9,7 @@ from starlette.datastructures import QueryParams
 
 def configure_contract_test_db(stem: str) -> Path:
     import app.database as database
+
     if getattr(database, "engine", None) is not None:
         try:
             database.engine.dispose()

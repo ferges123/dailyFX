@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   BarChart3,
+  ClipboardList,
 } from 'lucide-react';
 
 import {
@@ -81,6 +82,7 @@ const GalleryPage = lazy(() =>
     default: module.GalleryPage,
   })),
 );
+const AuditLogPage = lazy(() => import('./pages/AuditLog/AuditLogPage'));
 
 function PageLoadingFallback() {
   return (
@@ -132,6 +134,7 @@ function AppShell() {
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isStatisticsRoute = location.pathname.startsWith('/statistics');
   const isGalleryRoute = location.pathname.startsWith('/gallery');
+  const isAuditRoute = location.pathname.startsWith('/audit');
 
   function handleLogout() {
     setToken(null);
@@ -225,6 +228,13 @@ function AppShell() {
             icon={<BarChart3 size={17} />}
           >
             Statistics
+          </SidebarNavLink>
+          <SidebarNavLink
+            to="/audit"
+            active={isAuditRoute}
+            icon={<ClipboardList size={17} />}
+          >
+            Audit Log
           </SidebarNavLink>
           <SidebarNavLink
             to="/settings"
@@ -379,6 +389,14 @@ function AppShell() {
               }
             />
             <Route
+              path="/audit"
+              element={
+                <RouteView>
+                  <AuditLogPage />
+                </RouteView>
+              }
+            />
+            <Route
               path="/settings"
               element={
                 <RouteView>
@@ -421,6 +439,13 @@ function AppShell() {
           label="Stats"
         >
           <BarChart3 size={18} />
+        </BottomNavLink>
+        <BottomNavLink
+          to="/audit"
+          active={isAuditRoute}
+          label="Audit"
+        >
+          <ClipboardList size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/settings"

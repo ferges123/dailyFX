@@ -431,6 +431,9 @@ def test_cleanup_old_results_retention(tmp_path):
     from app.workers.scheduler import _cleanup_old_results
 
     db = _setup_scheduler_db()
+    settings = get_or_create_settings(db)
+    settings.retention_rejected_metadata_days = 7
+    db.commit()
     try:
         now = datetime.now(timezone.utc)
 

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.immich.models import ImmichSearchFilters
 from app.models.settings import SettingsModel
+from app.services.audit import record_audit_event
 from app.services.generation.ai_budget import AIUsageLimitExceededError
 
 # Expose standard modules/functions imported in pipeline for test patching compatibility
@@ -68,6 +69,7 @@ from .shared import (  # noqa: F401
     _failed_history_provider,
     _record_generation_failure,
     _trace_stage,
+    resolve_pipeline_actor,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,6 +107,25 @@ async def run_generation_pipeline(
     module_selection = _pipeline_setup_and_planning(ctx)
     if module_selection is None:
         return None
+
+    try:
+        actor = resolve_pipeline_actor(task_id, schedule_id)
+        record_audit_event(
+            db=db,
+            action="generation.started",
+            category="generation",
+            outcome="success",
+            actor_type=actor,
+            task_id=task_id,
+            schedule_id=schedule_id,
+            summary=f"Generation started (Module: {module_selection.name})",
+            metadata={
+                "module_name": module_selection.name,
+                "schedule_id": schedule_id,
+            },
+        )
+    except Exception:
+        logger.exception("Could not save generation.started audit event for task %s", task_id)
 
     try:
         # Faza 2: Pobieranie i selekcja zdjęć

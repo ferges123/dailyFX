@@ -57,6 +57,7 @@ def _ensure_engine() -> Engine:
 
     if database_url.startswith("sqlite") and "test" in database_url:
         from sqlalchemy.pool import NullPool
+
         engine = create_engine(
             database_url,
             connect_args=connect_args,
@@ -137,6 +138,7 @@ def init_db() -> None:
     db = SessionLocal()
     try:
         from app.services.generation.asset_usage import backfill_asset_usage
+
         backfill_asset_usage(db)
     finally:
         db.close()

@@ -14,7 +14,11 @@ def list_ai_effect_rows(db: Session | None = None) -> list[AIEffectModel]:
         own_session = True
 
     try:
-        rows = db.query(AIEffectModel).all()
+        from sqlalchemy.exc import OperationalError
+        try:
+            rows = db.query(AIEffectModel).all()
+        except OperationalError:
+            return []
         seed_order = get_seed_order_map()
         rows.sort(
             key=lambda row: (
@@ -36,7 +40,11 @@ def get_ai_effect_row(effect_id: str, db: Session | None = None) -> AIEffectMode
         own_session = True
 
     try:
-        return db.get(AIEffectModel, effect_id)
+        from sqlalchemy.exc import OperationalError
+        try:
+            return db.get(AIEffectModel, effect_id)
+        except OperationalError:
+            return None
     finally:
         if own_session:
             db.close()

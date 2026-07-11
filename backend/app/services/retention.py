@@ -7,9 +7,9 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings as get_app_settings
 from app.models.generation_history import GenerationHistoryModel
 from app.models.settings import SettingsModel
-from app.config import get_settings as get_app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class RetentionPreview:
     bytes: int = 0
     missing_files: int = 0
     orphan_files: int = 0
+    audits: int = 0
     warnings: tuple[str, ...] = ()
 
 
@@ -61,10 +62,12 @@ def _metadata_policy(row: GenerationHistoryModel, settings: SettingsModel, now: 
     return None
 
 
-def plan_retention(db: Session, settings: SettingsModel, *, now: datetime | None = None, data_dir: Path | None = None) -> RetentionPreview:
+def plan_retention(
+    db: Session, settings: SettingsModel, *, now: datetime | None = None, data_dir: Path | None = None
+) -> RetentionPreview:
     now = now or datetime.now(timezone.utc)
     data_dir = (data_dir or get_app_settings().data_dir).resolve()
-    files = metadata = tasks = total_bytes = missing = 0
+    files = metadata = tasks = total_bytes = missing = audits = 0
     warnings: list[str] = []
     rows = db.query(GenerationHistoryModel).all()
     known_paths: set[Path] = set()
@@ -88,19 +91,42 @@ def plan_retention(db: Session, settings: SettingsModel, *, now: datetime | None
     if task_cutoff:
         from app.models.generation_task import GenerationTaskModel
 
-        tasks = db.query(GenerationTaskModel).filter(
-            GenerationTaskModel.status.in_(("succeeded", "failed", "cancelled")),
-            GenerationTaskModel.updated_at < task_cutoff,
-        ).count()
+        tasks = (
+            db.query(GenerationTaskModel)
+            .filter(
+                GenerationTaskModel.status.in_(("succeeded", "failed", "cancelled")),
+                GenerationTaskModel.updated_at < task_cutoff,
+            )
+            .count()
+        )
+
+    audit_cutoff = _cutoff(getattr(settings, "retention_audit_days", 90), now)
+    if audit_cutoff:
+        from app.models.audit_event import AuditEventModel
+
+        audits = db.query(AuditEventModel).filter(AuditEventModel.created_at < audit_cutoff).count()
+
     results_dir = data_dir / "results"
     if results_dir.exists():
         for path in results_dir.iterdir():
-            if path.is_file() and path not in known_paths and path.stat().st_mtime < (now - timedelta(days=7)).timestamp():
+            if (
+                path.is_file()
+                and path not in known_paths
+                and path.stat().st_mtime < (now - timedelta(days=7)).timestamp()
+            ):
                 warnings.append(f"orphan:{path.name}")
-    return RetentionPreview(files, metadata, tasks, total_bytes, missing, len(warnings), tuple(warnings))
+    return RetentionPreview(files, metadata, tasks, total_bytes, missing, len(warnings), audits, tuple(warnings))
 
 
-def execute_retention(db: Session, settings: SettingsModel, *, now: datetime | None = None, dry_run: bool = False, data_dir: Path | None = None) -> RetentionPreview:
+def execute_retention(
+    db: Session,
+    settings: SettingsModel,
+    *,
+    now: datetime | None = None,
+    dry_run: bool = False,
+    data_dir: Path | None = None,
+    actor_ctx: object | None = None,
+) -> RetentionPreview:
     preview = plan_retention(db, settings, now=now, data_dir=data_dir)
     if dry_run or not getattr(settings, "retention_enabled", True):
         return preview
@@ -140,5 +166,42 @@ def execute_retention(db: Session, settings: SettingsModel, *, now: datetime | N
         )
         for row in metadata_cutoffs:
             db.delete(row)
+
+    # Perform audit logs retention (Task 7)
+    audit_cutoff = _cutoff(getattr(settings, "retention_audit_days", 90), now)
+    if audit_cutoff:
+        from app.models.audit_event import AuditEventModel
+
+        db.query(AuditEventModel).filter(AuditEventModel.created_at < audit_cutoff).delete(synchronize_session=False)
+
     db.commit()
+
+    # Record audit event for retention completion (Task 5)
+    try:
+        from app.services.audit import record_audit_event
+
+        actor_type = getattr(actor_ctx, "actor_type", "scheduler")
+        request_id = getattr(actor_ctx, "request_id", None)
+        source_ip_hash = getattr(actor_ctx, "source_ip_hash", None)
+
+        record_audit_event(
+            db=db,
+            action="retention.completed",
+            category="retention",
+            outcome="success",
+            actor_type=actor_type,
+            request_id=request_id,
+            source_ip_hash=source_ip_hash,
+            summary=f"Retention executed: deleted {preview.files} files, {preview.metadata} metadata rows, {preview.tasks} tasks, {preview.audits} audit logs",
+            metadata={
+                "deleted_files": preview.files,
+                "deleted_metadata_rows": preview.metadata,
+                "deleted_tasks": preview.tasks,
+                "deleted_audit_logs": preview.audits,
+                "released_bytes": preview.bytes,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to record retention.completed audit event")
+
     return preview

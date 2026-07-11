@@ -1,17 +1,17 @@
-import json
-import pytest
 import asyncio
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 from _contract_helpers import configure_contract_test_db
 
 from app.database import SessionLocal
 from app.database import init_db as _init_db
-from app.models.asset_usage import AssetUsageModel
 from app.immich.models import ImmichSearchFilters
-from app.services.immich import get_or_create_settings
-from app.services.generation.pipeline.shared import GenerationPipelineContext, GenerationModuleSelection
+from app.models.asset_usage import AssetUsageModel
 from app.services.generation.pipeline.assets import _pipeline_retrieve_and_select_assets
+from app.services.generation.pipeline.shared import GenerationModuleSelection, GenerationPipelineContext
+from app.services.immich import get_or_create_settings
 
 test_db = configure_contract_test_db("asset_selection_pipeline")
 
@@ -55,12 +55,21 @@ def test_select_prefers_never_used(mock_search, setup_db):
 
     # Setup database registry state: asset-1 is accepted, asset-2 is released, asset-3 is never used
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-1",
+        task_id="task-old-1",
+        generation_type="duotone",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
     )
     u2 = AssetUsageModel(
-        asset_id="asset-2", task_id="task-old-2", generation_type="collage",
-        usage_source="automatic", status="released", release_reason="rejected", released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-2",
+        task_id="task-old-2",
+        generation_type="collage",
+        usage_source="automatic",
+        status="released",
+        release_reason="rejected",
+        released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc),
     )
     db.add_all([u1, u2])
     db.commit()
@@ -101,12 +110,21 @@ def test_select_prefers_released_over_accepted(mock_search, setup_db):
 
     # asset-1 is accepted, asset-2 is released (no never-used asset exists in search results)
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-1",
+        task_id="task-old-1",
+        generation_type="duotone",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
     )
     u2 = AssetUsageModel(
-        asset_id="asset-2", task_id="task-old-2", generation_type="collage",
-        usage_source="automatic", status="released", release_reason="rejected", released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-2",
+        task_id="task-old-2",
+        generation_type="collage",
+        usage_source="automatic",
+        status="released",
+        release_reason="rejected",
+        released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc),
     )
     db.add_all([u1, u2])
     db.commit()
@@ -143,12 +161,15 @@ def test_select_excludes_pending_completely(mock_search, setup_db):
 
     # asset-1 is pending, asset-2 is accepted
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="pending"
+        asset_id="asset-1", task_id="task-old-1", generation_type="duotone", usage_source="automatic", status="pending"
     )
     u2 = AssetUsageModel(
-        asset_id="asset-2", task_id="task-old-2", generation_type="collage",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-2",
+        task_id="task-old-2",
+        generation_type="collage",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
     )
     db.add_all([u1, u2])
     db.commit()
@@ -185,12 +206,20 @@ def test_select_oldest_accepted_when_all_accepted(mock_search, setup_db):
 
     # asset-1 accepted on July 5, asset-2 accepted on July 1
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 5, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-1",
+        task_id="task-old-1",
+        generation_type="duotone",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 5, 12, 0, tzinfo=timezone.utc),
     )
     u2 = AssetUsageModel(
-        asset_id="asset-2", task_id="task-old-2", generation_type="collage",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-2",
+        task_id="task-old-2",
+        generation_type="collage",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
     )
     db.add_all([u1, u2])
     db.commit()
@@ -226,8 +255,12 @@ def test_multiple_search_attempts_automatic_runs(mock_search, setup_db):
 
     # Setup database registry state: asset-1 is accepted
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="accepted", accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+        asset_id="asset-1",
+        task_id="task-old-1",
+        generation_type="duotone",
+        usage_source="automatic",
+        status="accepted",
+        accepted_at=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
     )
     db.add(u1)
     db.commit()
@@ -235,6 +268,7 @@ def test_multiple_search_attempts_automatic_runs(mock_search, setup_db):
     # Attempt 1 returns only asset-1 (already accepted)
     # Attempt 2 returns asset-1 and asset-2 (never used)
     call_count = 0
+
     def mock_search_fn(*args, **kwargs):
         nonlocal call_count
         call_count += 1
@@ -272,8 +306,7 @@ def test_manual_selection_override(mock_search, setup_db):
 
     # asset-1 is pending, but manual selection overrides protection and selects it anyway
     u1 = AssetUsageModel(
-        asset_id="asset-1", task_id="task-old-1", generation_type="duotone",
-        usage_source="automatic", status="pending"
+        asset_id="asset-1", task_id="task-old-1", generation_type="duotone", usage_source="automatic", status="pending"
     )
     db.add(u1)
     db.commit()
@@ -285,8 +318,11 @@ def test_manual_selection_override(mock_search, setup_db):
     mock_search.return_value = (MagicMock(), _make_mock_page(assets))
 
     ctx = GenerationPipelineContext(
-        db=db, settings=settings, task_id="manual-task-1", filters=ImmichSearchFilters(album_ids=None, person_filters=[]),
-        selected_asset_ids=["asset-1"]
+        db=db,
+        settings=settings,
+        task_id="manual-task-1",
+        filters=ImmichSearchFilters(album_ids=None, person_filters=[]),
+        selected_asset_ids=["asset-1"],
     )
     module = MagicMock()
     module.source_asset_count = 1

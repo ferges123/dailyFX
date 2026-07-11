@@ -27,6 +27,4 @@ class AssetUsageModel(Base):
         onupdate=func.now(),
     )
 
-    __table_args__ = (
-        UniqueConstraint("task_id", "asset_id", name="uq_asset_usage_task_asset"),
-    )
+    __table_args__ = (UniqueConstraint("task_id", "asset_id", name="uq_asset_usage_task_asset"),)

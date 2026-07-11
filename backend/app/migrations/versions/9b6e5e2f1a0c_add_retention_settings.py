@@ -1,7 +1,7 @@
 """add configurable retention settings"""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "9b6e5e2f1a0c"
 down_revision = "87a2437392f5"
@@ -28,9 +28,15 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for name in [
-        "retention_backup_count", "retention_audit_days", "retention_task_days",
-        "retention_uploaded_metadata_days", "retention_uploaded_files_days",
-        "retention_failed_metadata_days", "retention_failed_files_days",
-        "retention_rejected_metadata_days", "retention_rejected_files_days", "retention_enabled",
+        "retention_backup_count",
+        "retention_audit_days",
+        "retention_task_days",
+        "retention_uploaded_metadata_days",
+        "retention_uploaded_files_days",
+        "retention_failed_metadata_days",
+        "retention_failed_files_days",
+        "retention_rejected_metadata_days",
+        "retention_rejected_files_days",
+        "retention_enabled",
     ]:
         op.drop_column("settings", name)

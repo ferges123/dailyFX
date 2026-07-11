@@ -27,7 +27,8 @@ from app.schemas.generation import (
     TrendDataPoint,
     TrendsResponse,
 )
-from app.security import authorize_review_access, require_auth
+from app.security import ActorContext, authorize_review_access, get_actor_context, require_auth, resolve_actor_context
+from app.services.audit import record_audit_event
 from app.services.generation.ai_effects import get_seed_hidden_map
 from app.services.generation.examples import ensure_example_preview, list_example_previews
 from app.services.generation.history import get_or_create_thumbnail
@@ -371,7 +372,9 @@ async def accept_generation(
     request: GenerationAcceptRequest,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     """Accept and upload a generated image to Immich."""
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
@@ -422,11 +425,32 @@ async def accept_generation(
 
         try:
             from app.services.generation.asset_usage import accept_task_assets
+
             accept_task_assets(db, task_id)
         except Exception as registry_exc:
             logger.exception("Failed to accept assets in registry for task %s: %s", task_id, registry_exc)
 
         record_history_snapshot(db, row)
+
+        record_audit_event(
+            db=db,
+            action="generation.accepted",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary=f"Generation accepted and uploaded to Immich (Asset ID: {upload_result.id})",
+            metadata={
+                "uploaded_asset_id": upload_result.id,
+                "album_name": album_name,
+                "album_id": album_id,
+            },
+        )
+
         return row
     except Exception as exc:
         row.status = "FAILED"
@@ -434,6 +458,23 @@ async def accept_generation(
         db.commit()
         db.refresh(row)
         record_history_snapshot(db, row)
+
+        record_audit_event(
+            db=db,
+            action="generation.accepted",
+            category="generation",
+            outcome="failure",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary=f"Failed to accept generation: {str(exc)}",
+            error_code=exc.__class__.__name__,
+            metadata={"error": str(exc)},
+        )
+
         logger.exception("Failed to upload image to Immich: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to upload image to Immich") from exc
 
@@ -443,7 +484,9 @@ async def retry_acceptance(
     task_id: str,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     """Retry album/tag steps or the entire upload for a generation."""
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
@@ -504,11 +547,32 @@ async def retry_acceptance(
 
         try:
             from app.services.generation.asset_usage import accept_task_assets
+
             accept_task_assets(db, task_id)
         except Exception as registry_exc:
             logger.exception("Failed to accept assets in registry during retry for task %s: %s", task_id, registry_exc)
 
         record_history_snapshot(db, row)
+
+        record_audit_event(
+            db=db,
+            action="generation.retried",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary="Generation retry succeeded",
+            metadata={
+                "uploaded_asset_id": row.uploaded_asset_id,
+                "album_name": album_name,
+                "album_id": album_id,
+            },
+        )
+
         return row
     except Exception as exc:
         row.status = "FAILED"
@@ -516,12 +580,35 @@ async def retry_acceptance(
         db.commit()
         db.refresh(row)
         record_history_snapshot(db, row)
+
+        record_audit_event(
+            db=db,
+            action="generation.retried",
+            category="generation",
+            outcome="failure",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary=f"Generation retry failed: {str(exc)}",
+            error_code=exc.__class__.__name__,
+            metadata={"error": str(exc)},
+        )
+
         logger.exception("Retry failed for task %s", task_id)
         raise HTTPException(status_code=500, detail="Retry failed") from exc
 
 
 @router.post("/history/{task_id}/reject", response_model=GenerationHistoryResponse)
-async def reject_generation(task_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+async def reject_generation(
+    task_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
+    actor_ctx = resolve_actor_context(actor_ctx)
     """Reject generated image and keep it in history as reviewed."""
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
@@ -530,21 +617,62 @@ async def reject_generation(task_id: str, db: Session = Depends(get_db), _: None
     if row.accepted_at:
         raise HTTPException(status_code=409, detail="Cannot reject already uploaded generation")
 
-    row.status = "REJECTED"
-    db.commit()
-    db.refresh(row)
-
     try:
-        from app.services.generation.asset_usage import release_task_assets
-        release_task_assets(db, task_id, reason="rejected")
-    except Exception as registry_exc:
-        logger.exception("Failed to release assets in registry for task %s: %s", task_id, registry_exc)
+        row.status = "REJECTED"
+        db.commit()
+        db.refresh(row)
 
-    record_history_snapshot(db, row)
-    return row
+        try:
+            from app.services.generation.asset_usage import release_task_assets
+
+            release_task_assets(db, task_id, reason="rejected")
+        except Exception as registry_exc:
+            logger.exception("Failed to release assets in registry for task %s: %s", task_id, registry_exc)
+
+        record_history_snapshot(db, row)
+
+        record_audit_event(
+            db=db,
+            action="generation.rejected",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary="Generation rejected",
+        )
+
+        return row
+    except Exception as exc:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        record_audit_event(
+            db=db,
+            action="generation.rejected",
+            category="generation",
+            outcome="failure",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary=f"Failed to reject generation: {str(exc)}",
+            error_code=exc.__class__.__name__,
+            metadata={"error": str(exc)},
+        )
+        raise
 
 
-def _delete_history_records_and_files(db: Session, status: str | None = None) -> None:
+def _delete_history_records_and_files(
+    db: Session, status: str | None = None, actor_ctx: ActorContext | None = None
+) -> None:
+    actor_ctx = resolve_actor_context(actor_ctx)
     """Helper to physically delete generated files/thumbnails and purge database history records."""
     from app.models.generation_stream_event import GenerationStreamEventModel
     from app.models.generation_task import GenerationTaskModel
@@ -554,6 +682,7 @@ def _delete_history_records_and_files(db: Session, status: str | None = None) ->
         query = query.filter(GenerationHistoryModel.status == status)
 
     rows = query.all()
+    count = len(rows)
     task_ids = [row.task_id for row in rows]
 
     data_dir = get_settings().data_dir.resolve()
@@ -572,6 +701,7 @@ def _delete_history_records_and_files(db: Session, status: str | None = None) ->
     if task_ids:
         try:
             from app.services.generation.asset_usage import release_task_assets
+
             for tid in task_ids:
                 release_task_assets(db, tid, reason="deleted")
         except Exception as registry_exc:
@@ -586,16 +716,42 @@ def _delete_history_records_and_files(db: Session, status: str | None = None) ->
             synchronize_session=False
         )
 
+    if actor_ctx and count > 0:
+        record_audit_event(
+            db=db,
+            action="generation.deleted",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            summary=f"Deleted {count} generation history records (status filter: {status or 'all'})",
+            metadata={
+                "status_filter": status,
+                "deleted_count": count,
+                "deleted_task_ids": task_ids,
+            },
+        )
+
 
 @router.delete("/history/rejected", status_code=204)
-async def delete_rejected_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+async def delete_rejected_cache(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
     """Delete all rejected generations (files + DB records)."""
-    _delete_history_records_and_files(db, "REJECTED")
+    _delete_history_records_and_files(db, "REJECTED", actor_ctx)
     db.commit()
 
 
 @router.delete("/history/status/{status}", status_code=204)
-async def delete_history_by_status(status: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+async def delete_history_by_status(
+    status: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
     """Delete all generations of a specific status (files + DB records)."""
     status_map = {
         "rejected": "REJECTED",
@@ -608,14 +764,18 @@ async def delete_history_by_status(status: str, db: Session = Depends(get_db), _
     if not db_status:
         raise HTTPException(status_code=400, detail=f"Invalid or unsupported status: {status}")
 
-    _delete_history_records_and_files(db, db_status)
+    _delete_history_records_and_files(db, db_status, actor_ctx)
     db.commit()
 
 
 @router.delete("/history/cache", status_code=204)
-async def clear_generation_cache(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+async def clear_generation_cache(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
     """Delete all generation history (files + DB records)."""
-    _delete_history_records_and_files(db)
+    _delete_history_records_and_files(db, None, actor_ctx)
     db.commit()
 
 
@@ -625,7 +785,9 @@ async def like_generation(
     review_token: str | None = None,
     db: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
     if not row:
@@ -642,6 +804,23 @@ async def like_generation(
     db.commit()
     db.refresh(row)
     record_history_snapshot(db, row)
+
+    action = "generation.liked" if log.liked is True else "generation.rating_reset"
+    summary = "Generation liked" if log.liked is True else "Generation rating reset"
+    record_audit_event(
+        db=db,
+        action=action,
+        category="generation",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="generation",
+        target_id=task_id,
+        task_id=task_id,
+        summary=summary,
+    )
+
     return row
 
 
@@ -651,7 +830,9 @@ async def dislike_generation(
     review_token: str | None = None,
     db: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
     if not row:
@@ -668,6 +849,23 @@ async def dislike_generation(
     db.commit()
     db.refresh(row)
     record_history_snapshot(db, row)
+
+    action = "generation.unliked" if log.liked is False else "generation.rating_reset"
+    summary = "Generation unliked" if log.liked is False else "Generation rating reset"
+    record_audit_event(
+        db=db,
+        action=action,
+        category="generation",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="generation",
+        target_id=task_id,
+        task_id=task_id,
+        summary=summary,
+    )
+
     return row
 
 

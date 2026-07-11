@@ -1,5 +1,9 @@
+import logging
 import time
 
+logger = logging.getLogger(__name__)
+
+from app.services.audit import record_audit_event
 from app.utils.debug_logger import debug_log
 
 from .shared import (
@@ -7,6 +11,7 @@ from .shared import (
     GenerationPipelineContext,
     _format_duration,
     _trace_stage,
+    resolve_pipeline_actor,
 )
 
 
@@ -76,4 +81,26 @@ async def _pipeline_persist_result(
         progress=1.0,
         details={"elapsed_seconds": round(total_elapsed, 2), "generation_type": result.generation_type},
     )
+
+    try:
+        actor = resolve_pipeline_actor(ctx.task_id, ctx.schedule_id)
+        record_audit_event(
+            db=ctx.db,
+            action="generation.completed",
+            category="generation",
+            outcome="success",
+            actor_type=actor,
+            task_id=ctx.task_id,
+            schedule_id=ctx.schedule_id,
+            summary=f"Generation completed successfully for task {ctx.task_id}",
+            metadata={
+                "generation_type": result.generation_type,
+                "title": artifacts.ai_title,
+                "provider": artifacts.ai_provider,
+                "model": artifacts.ai_model,
+            },
+        )
+    except Exception:
+        logger.exception("Could not save successful generation audit event for task %s", ctx.task_id)
+
     return {"task_id": ctx.task_id, "type": result.generation_type, **result.config}

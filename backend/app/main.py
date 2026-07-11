@@ -10,6 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routes_ai_effects import router as ai_effects_router
+from app.api.routes_audit import router as audit_router
 from app.api.routes_debug import router as debug_router
 from app.api.routes_generation import router as generation_router
 from app.api.routes_health import router as health_router
@@ -125,3 +126,4 @@ app.include_router(ai_effects_router)
 app.include_router(schedules_router)
 app.include_router(studio_router)
 app.include_router(metrics_router)
+app.include_router(audit_router)

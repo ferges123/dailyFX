@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.immich.models import ImmichExifInfo
 from app.models.settings import SettingsModel
+from app.services.audit import record_audit_event
 from app.services.generation.history import append_history_trace, history_status_for_task_status, upsert_history_entry
 from app.services.generation.tasks import update_task
 
@@ -175,6 +176,20 @@ def _failed_history_provider(group_name: str, settings: SettingsModel) -> tuple[
     return "local", None
 
 
+def resolve_pipeline_actor(task_id: str, schedule_id: int | None = None) -> str:
+    if task_id.startswith("auto-"):
+        return "scheduler"
+    elif task_id.startswith("cli-"):
+        return "cli"
+    elif task_id.startswith("man-"):
+        return "app_token"
+    elif task_id.startswith("studio-"):
+        return "app_token"
+    elif schedule_id is not None:
+        return "scheduler"
+    return "unknown"
+
+
 def _record_generation_failure(
     *,
     db: Session,
@@ -188,6 +203,7 @@ def _record_generation_failure(
     _task_update(status="failed", step="failed", progress=current_progress, error=str(exc))
     try:
         from app.services.generation.asset_usage import release_task_assets
+
         release_task_assets(db, task_id, reason="failed")
     except Exception as registry_exc:
         logger.exception("Failed to release assets in registry after task failure: %s", registry_exc)
@@ -220,3 +236,38 @@ def _record_generation_failure(
         )
     except Exception:
         logger.exception("Could not save FAILED history entry for task %s", task_id)
+
+    # Log audit event for failure
+    try:
+        actor = resolve_pipeline_actor(task_id)
+        # Parse schedule_id if possible
+        schedule_id = None
+        if task_id.startswith("auto-s"):
+            parts = task_id.split("-")
+            if len(parts) >= 2 and parts[1].startswith("s"):
+                try:
+                    schedule_id = int(parts[1][1:])
+                except ValueError:
+                    pass
+        elif task_id.startswith("cli-s"):
+            parts = task_id.split("-")
+            if len(parts) >= 2 and parts[1].startswith("s"):
+                try:
+                    schedule_id = int(parts[1][1:])
+                except ValueError:
+                    pass
+
+        record_audit_event(
+            db=db,
+            action="generation.failed",
+            category="generation",
+            outcome="failure",
+            actor_type=actor,
+            task_id=task_id,
+            schedule_id=schedule_id,
+            summary=f"Generation failed: {str(exc)}",
+            error_code=exc.__class__.__name__,
+            metadata={"error": str(exc), "group_name": group_name},
+        )
+    except Exception:
+        logger.exception("Could not save failed generation audit event for task %s", task_id)

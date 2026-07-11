@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import HTTPException, Security
+from fastapi import HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import get_settings
@@ -166,3 +166,64 @@ def mask_secret(value: str | None) -> str | None:
     if len(value) <= 8:
         return "****"
     return f"{value[:3]}...{value[-4:]}"
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class ActorContext:
+    actor_type: str
+    request_id: str | None = None
+    source_ip_hash: str | None = None
+
+
+def resolve_actor_context(actor_ctx) -> ActorContext:
+    if not isinstance(actor_ctx, ActorContext):
+        return ActorContext(actor_type="user", request_id=None, source_ip_hash=None)
+    return actor_ctx
+
+
+def get_actor_context(request: Request) -> ActorContext:
+    app_token = get_settings().app_access_token
+    auth_header = request.headers.get("authorization")
+    review_token = request.query_params.get("review_token") or request.headers.get("x-review-token")
+    task_id = request.path_params.get("task_id")
+
+    # Extract correlation IDs
+    request_id = request.headers.get("x-request-id") or request.headers.get("x-correlation-id")
+
+    # Source IP hash
+    source_ip_hash = None
+    if request.client and request.client.host:
+        source_ip_hash = hashlib.sha256(request.client.host.encode("utf-8")).hexdigest()[:16]
+
+    actor_type = "unknown"
+
+    if app_token:
+        # Auth is enabled
+        if auth_header and auth_header.startswith("Bearer "):
+            provided_token = auth_header[7:]
+            if secrets.compare_digest(provided_token, app_token):
+                actor_type = "app_token"
+            elif review_token and task_id and verify_review_token(review_token, task_id):
+                actor_type = "review_token"
+        else:
+            # Check review token if auth header is missing/invalid
+            if review_token and task_id and verify_review_token(review_token, task_id):
+                actor_type = "review_token"
+            elif "review" in request.url.path:
+                if not get_settings().require_auth_for_review:
+                    actor_type = "unauthenticated_review"
+    else:
+        # Auth is disabled
+        if "review" in request.url.path:
+            actor_type = "unauthenticated_review"
+        else:
+            actor_type = "unknown"
+
+    return ActorContext(
+        actor_type=actor_type,
+        request_id=request_id,
+        source_ip_hash=source_ip_hash,
+    )

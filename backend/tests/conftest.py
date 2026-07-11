@@ -23,9 +23,10 @@ def configure_limiter(request):
 @pytest.fixture(autouse=True)
 def isolate_database(request):
     import os
+    from pathlib import Path
+
     import app.database as database
     from app.config import get_settings
-    from pathlib import Path
 
     module = request.module
     test_db = getattr(module, "test_db", None)
@@ -37,7 +38,11 @@ def isolate_database(request):
         test_data_dir.mkdir(parents=True, exist_ok=True)
         db_url = f"sqlite:///{test_data_dir}/app.db"
 
-    if database._current_database_url == db_url:
+    db_path = None
+    if db_url.startswith("sqlite:///"):
+        db_path = Path(db_url.replace("sqlite:///", ""))
+
+    if database._current_database_url == db_url and (db_path is None or db_path.exists()):
         return
 
     os.environ["DATABASE_URL"] = db_url
@@ -48,4 +53,3 @@ def isolate_database(request):
     database.engine = None
     database._current_database_url = None
     database._initialized_databases.clear()
-

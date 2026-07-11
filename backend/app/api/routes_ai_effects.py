@@ -16,7 +16,8 @@ from app.schemas.ai_effects import (
     AIEffectResponse,
     AIEffectUpdate,
 )
-from app.security import require_auth
+from app.security import ActorContext, get_actor_context, require_auth, resolve_actor_context
+from app.services.audit import record_audit_event
 from app.services.generation.ai_effects import (
     get_seed_hidden_map,
     get_seed_manifest_entry_map,
@@ -27,6 +28,16 @@ from app.services.generation.ai_effects import (
 from app.services.generation.modules import MODULES
 
 router = APIRouter(prefix="/api/ai-effects", tags=["ai-effects"])
+
+
+def build_effect_diff(old_dict: dict, new_dict: dict) -> dict:
+    diff = {}
+    for k in old_dict.keys() | new_dict.keys():
+        old_val = old_dict.get(k)
+        new_val = new_dict.get(k)
+        if old_val != new_val:
+            diff[k] = {"from": old_val, "to": new_val}
+    return diff
 
 
 def _effect_in_use(db: Session, effect_id: str) -> bool:
@@ -84,7 +95,13 @@ def list_ai_effects(db: Session = Depends(get_db), _: None = Depends(require_aut
 
 
 @router.post("", response_model=AIEffectResponse, status_code=201)
-def create_ai_effect(body: AIEffectCreate, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+def create_ai_effect(
+    body: AIEffectCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
+    actor_ctx = resolve_actor_context(actor_ctx)
     if db.get(AIEffectModel, body.id) is not None:
         raise HTTPException(status_code=409, detail="AI effect with this id already exists")
     row = AIEffectModel(
@@ -103,6 +120,21 @@ def create_ai_effect(body: AIEffectCreate, db: Session = Depends(get_db), _: Non
     db.commit()
     db.refresh(row)
     MODULES.invalidate()
+
+    record_audit_event(
+        db=db,
+        action="effect.created",
+        category="effect",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="effect",
+        target_id=row.id,
+        summary=f"AI effect '{row.title}' created",
+        metadata={"id": row.id, "title": row.title},
+    )
+
     return _row_to_response(row)
 
 
@@ -112,8 +144,21 @@ def update_ai_effect(
     body: AIEffectUpdate,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     row = _get_row_or_404(db, effect_id)
+
+    old_dict = {
+        "title": row.title,
+        "description": row.description,
+        "display_group": row.display_group,
+        "positive_prompt": row.positive_prompt,
+        "negative_prompt": row.negative_prompt,
+        "custom_prompt_placeholder": row.custom_prompt_placeholder,
+        "enabled": row.enabled,
+    }
+
     _set_user_modified_if_needed(row, body)
     row.title = body.title
     row.description = body.description
@@ -125,11 +170,45 @@ def update_ai_effect(
     db.commit()
     db.refresh(row)
     MODULES.invalidate()
+
+    new_dict = {
+        "title": body.title,
+        "description": body.description,
+        "display_group": body.display_group,
+        "positive_prompt": body.positive_prompt,
+        "negative_prompt": body.negative_prompt,
+        "custom_prompt_placeholder": body.custom_prompt_placeholder,
+        "enabled": body.enabled,
+    }
+
+    diff = build_effect_diff(old_dict, new_dict)
+    if diff:
+        record_audit_event(
+            db=db,
+            action="effect.updated",
+            category="effect",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="effect",
+            target_id=effect_id,
+            summary=f"AI effect '{row.title}' updated",
+            changes=diff,
+            metadata={"id": effect_id, "title": row.title},
+        )
+
     return _row_to_response(row)
 
 
 @router.post("/{effect_id}/reset", response_model=AIEffectResponse)
-def reset_ai_effect(effect_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+def reset_ai_effect(
+    effect_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
+    actor_ctx = resolve_actor_context(actor_ctx)
     row = _get_row_or_404(db, effect_id)
     if row.source != "builtin":
         raise HTTPException(status_code=409, detail="Only built-in AI effects can be reset")
@@ -152,6 +231,21 @@ def reset_ai_effect(effect_id: str, db: Session = Depends(get_db), _: None = Dep
     db.commit()
     db.refresh(row)
     MODULES.invalidate()
+
+    record_audit_event(
+        db=db,
+        action="effect.reset",
+        category="effect",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="effect",
+        target_id=effect_id,
+        summary=f"Built-in AI effect '{row.title}' reset to factory defaults",
+        metadata={"id": effect_id, "title": row.title},
+    )
+
     return _row_to_response(row)
 
 
@@ -160,7 +254,9 @@ def duplicate_ai_effect(
     effect_id: str,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     row = _get_row_or_404(db, effect_id)
     suffix = 1
     while db.get(AIEffectModel, f"{effect_id}_copy{suffix if suffix > 1 else ''}") is not None:
@@ -182,17 +278,53 @@ def duplicate_ai_effect(
     db.commit()
     db.refresh(copy_row)
     MODULES.invalidate()
+
+    record_audit_event(
+        db=db,
+        action="effect.duplicated",
+        category="effect",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="effect",
+        target_id=effect_id,
+        summary=f"AI effect '{row.title}' duplicated to '{copy_row.title}'",
+        metadata={"source_id": effect_id, "new_id": new_id, "new_title": copy_row.title},
+    )
+
     return _row_to_response(copy_row)
 
 
 @router.delete("/{effect_id}", response_model=AIEffectResponse)
-def delete_ai_effect(effect_id: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
+def delete_ai_effect(
+    effect_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
+):
+    actor_ctx = resolve_actor_context(actor_ctx)
     row = _get_row_or_404(db, effect_id)
     if row.source == "builtin":
         row.enabled = False
         db.commit()
         db.refresh(row)
         MODULES.invalidate()
+
+        record_audit_event(
+            db=db,
+            action="effect.updated",
+            category="effect",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="effect",
+            target_id=effect_id,
+            summary=f"Built-in AI effect '{row.title}' disabled",
+            metadata={"id": effect_id, "title": row.title},
+        )
+
         return _row_to_response(row)
     if _effect_in_use(db, effect_id):
         raise HTTPException(status_code=409, detail="AI effect is used by one or more effect presets")
@@ -200,6 +332,21 @@ def delete_ai_effect(effect_id: str, db: Session = Depends(get_db), _: None = De
     db.delete(row)
     db.commit()
     MODULES.invalidate()
+
+    record_audit_event(
+        db=db,
+        action="effect.deleted",
+        category="effect",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="effect",
+        target_id=effect_id,
+        summary=f"Custom AI effect '{payload.title}' deleted",
+        metadata={"id": effect_id, "title": payload.title},
+    )
+
     return payload
 
 
@@ -208,7 +355,9 @@ def import_ai_effects(
     body: AIEffectImportRequest,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context),
 ):
+    actor_ctx = resolve_actor_context(actor_ctx)
     result = AIEffectImportResult()
 
     for item in body.effects:
@@ -253,6 +402,25 @@ def import_ai_effects(
 
     db.commit()
     MODULES.invalidate()
+
+    if len(result.added) > 0 or len(result.updated) > 0:
+        record_audit_event(
+            db=db,
+            action="effect.imported",
+            category="effect",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            summary=f"Imported AI effects: added {len(result.added)}, updated {len(result.updated)}",
+            metadata={
+                "added_count": len(result.added),
+                "updated_count": len(result.updated),
+                "added_ids": result.added,
+                "updated_ids": result.updated,
+            },
+        )
+
     return result
 
 

@@ -5,3 +5,4 @@ export * from './settings';
 export * from './immich';
 export * from './generation';
 export * from './notifications';
+export * from './audit';
