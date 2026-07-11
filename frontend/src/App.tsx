@@ -11,6 +11,7 @@ import {
   Sparkles,
   BarChart3,
   ClipboardList,
+  ListTodo,
 } from 'lucide-react';
 
 import {
@@ -32,6 +33,11 @@ import { APP_VERSION } from './version';
 const GITHUB_URL = 'https://github.com/ferges123/dailyFX';
 
 const HistoryPage = lazy(() => import('./pages/History/HistoryPage'));
+const QueuePage = lazy(() =>
+  import('./pages/QueuePage').then((module) => ({
+    default: module.QueuePage,
+  })),
+);
 const StudioPage = lazy(() =>
   import('./pages/StudioPage').then((module) => ({
     default: module.StudioPage,
@@ -135,6 +141,7 @@ function AppShell() {
   const isStatisticsRoute = location.pathname.startsWith('/statistics');
   const isGalleryRoute = location.pathname.startsWith('/gallery');
   const isAuditRoute = location.pathname.startsWith('/audit');
+  const isQueueRoute = location.pathname.startsWith('/queue');
 
   function handleLogout() {
     setToken(null);
@@ -237,6 +244,13 @@ function AppShell() {
             Audit Log
           </SidebarNavLink>
           <SidebarNavLink
+            to="/queue"
+            active={isQueueRoute}
+            icon={<ListTodo size={17} />}
+          >
+            Queue
+          </SidebarNavLink>
+          <SidebarNavLink
             to="/settings"
             active={isSettingsRoute}
             icon={<Settings size={17} />}
@@ -306,6 +320,14 @@ function AppShell() {
               element={
                 <RouteView>
                   <StudioPage />
+                </RouteView>
+              }
+            />
+            <Route
+              path="/queue"
+              element={
+                <RouteView>
+                  <QueuePage />
                 </RouteView>
               }
             />
@@ -446,6 +468,13 @@ function AppShell() {
           label="Audit"
         >
           <ClipboardList size={18} />
+        </BottomNavLink>
+        <BottomNavLink
+          to="/queue"
+          active={isQueueRoute}
+          label="Queue"
+        >
+          <ListTodo size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/settings"

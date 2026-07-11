@@ -6,3 +6,4 @@ export * from './immich';
 export * from './generation';
 export * from './notifications';
 export * from './audit';
+export * from './queue';
