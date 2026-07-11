@@ -33,9 +33,9 @@ import { APP_VERSION } from './version';
 const GITHUB_URL = 'https://github.com/ferges123/dailyFX';
 
 const HistoryPage = lazy(() => import('./pages/History/HistoryPage'));
-const QueuePage = lazy(() =>
-  import('./pages/QueuePage').then((module) => ({
-    default: module.QueuePage,
+const SystemPage = lazy(() =>
+  import('./pages/SystemPage').then((module) => ({
+    default: module.SystemPage,
   })),
 );
 const StudioPage = lazy(() =>
@@ -88,7 +88,6 @@ const GalleryPage = lazy(() =>
     default: module.GalleryPage,
   })),
 );
-const AuditLogPage = lazy(() => import('./pages/AuditLog/AuditLogPage'));
 
 function PageLoadingFallback() {
   return (
@@ -140,8 +139,7 @@ function AppShell() {
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isStatisticsRoute = location.pathname.startsWith('/statistics');
   const isGalleryRoute = location.pathname.startsWith('/gallery');
-  const isAuditRoute = location.pathname.startsWith('/audit');
-  const isQueueRoute = location.pathname.startsWith('/queue');
+  const isSystemRoute = location.pathname.startsWith('/system');
 
   function handleLogout() {
     setToken(null);
@@ -237,18 +235,11 @@ function AppShell() {
             Statistics
           </SidebarNavLink>
           <SidebarNavLink
-            to="/audit"
-            active={isAuditRoute}
+            to="/system"
+            active={isSystemRoute}
             icon={<ClipboardList size={17} />}
           >
-            Audit Log
-          </SidebarNavLink>
-          <SidebarNavLink
-            to="/queue"
-            active={isQueueRoute}
-            icon={<ListTodo size={17} />}
-          >
-            Queue
+            Queue & Audit
           </SidebarNavLink>
           <SidebarNavLink
             to="/settings"
@@ -324,12 +315,16 @@ function AppShell() {
               }
             />
             <Route
-              path="/queue"
+              path="/system"
               element={
                 <RouteView>
-                  <QueuePage />
+                  <SystemPage />
                 </RouteView>
               }
+            />
+            <Route
+              path="/queue"
+              element={<Navigate to="/system" replace />}
             />
             <Route
               path="/schedules"
@@ -412,11 +407,7 @@ function AppShell() {
             />
             <Route
               path="/audit"
-              element={
-                <RouteView>
-                  <AuditLogPage />
-                </RouteView>
-              }
+              element={<Navigate to="/system" replace />}
             />
             <Route
               path="/settings"
@@ -463,18 +454,11 @@ function AppShell() {
           <BarChart3 size={18} />
         </BottomNavLink>
         <BottomNavLink
-          to="/audit"
-          active={isAuditRoute}
-          label="Audit"
+          to="/system"
+          active={isSystemRoute}
+          label="System"
         >
           <ClipboardList size={18} />
-        </BottomNavLink>
-        <BottomNavLink
-          to="/queue"
-          active={isQueueRoute}
-          label="Queue"
-        >
-          <ListTodo size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/settings"
