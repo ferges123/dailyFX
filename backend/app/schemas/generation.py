@@ -30,6 +30,9 @@ class GenerationHistoryBase(BaseModel):
     summary: str
     source_asset_ids: str
     output_path: str | None = None
+    local_file_status: str = "available"
+    local_file_deleted_at: datetime | None = None
+    local_file_delete_reason: str | None = None
     image_url: str | None = None
     provider: str | None = None
     model: str | None = None

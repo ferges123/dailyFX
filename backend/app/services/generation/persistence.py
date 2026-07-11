@@ -26,6 +26,7 @@ def _build_generation_history_config(*, existing_config: dict, result, artifacts
         **existing_config,
         **result.config,
         "metadata_provenance": artifacts.metadata_provenance,
+        "asset_selection": artifacts.metadata_provenance.get("asset_selection"),
         **(
             {"source_created_at": artifacts.source_asset.created_at}
             if artifacts.source_asset and artifacts.source_asset.created_at

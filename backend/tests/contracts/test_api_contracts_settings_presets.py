@@ -64,6 +64,16 @@ def test_settings_contract():
             "xiaomi_api_key_masked": "********",
             "local_ai_base_url": "https://local-ai.example.test/v1",
             "local_ai_api_key_masked": "********",
+            "retention_enabled": True,
+            "retention_rejected_files_days": 7,
+            "retention_rejected_metadata_days": 90,
+            "retention_failed_files_days": 7,
+            "retention_failed_metadata_days": 90,
+            "retention_uploaded_files_days": 30,
+            "retention_uploaded_metadata_days": 30,
+            "retention_task_days": 30,
+            "retention_audit_days": 180,
+            "retention_backup_count": 7,
         }
 
         read_response = read_settings(db)

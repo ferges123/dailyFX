@@ -24,8 +24,14 @@ from app.services.settings.connection_tests import (
     test_optional_configured_http_provider as _test_optional_configured_http_provider,
 )
 from app.services.settings.response import build_settings_response
+from app.services.retention import execute_retention, plan_retention
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+def _retention_payload(preview) -> dict:
+    return {"files": preview.files, "metadata": preview.metadata, "tasks": preview.tasks, "bytes": preview.bytes,
+            "missing_files": preview.missing_files, "orphan_files": preview.orphan_files, "warnings": list(preview.warnings)}
 
 _HTTP_PROVIDER_TESTS = {
     "openai": {
@@ -80,6 +86,18 @@ def read_settings(db: Session = Depends(get_db), _: None = Depends(require_auth)
     return build_settings_response(row)
 
 
+@router.get("/retention/preview")
+def retention_preview(db: Session = Depends(get_db), _: None = Depends(require_auth)) -> dict:
+    row = get_or_create_settings(db)
+    return _retention_payload(plan_retention(db, row))
+
+
+@router.post("/retention/run")
+def retention_run(dry_run: bool = True, db: Session = Depends(get_db), _: None = Depends(require_auth)) -> dict:
+    row = get_or_create_settings(db)
+    return _retention_payload(execute_retention(db, row, dry_run=dry_run))
+
+
 @router.put("", response_model=SettingsResponse)
 @limiter.limit("10/minute")
 def update_settings(
@@ -93,6 +111,16 @@ def update_settings(
     row.debug_mode = payload.debug_mode
     row.favorite_albums_json = payload.favorite_albums_json
     row.ai_custom_prompt = payload.ai_custom_prompt
+    row.retention_enabled = payload.retention_enabled
+    row.retention_rejected_files_days = payload.retention_rejected_files_days
+    row.retention_rejected_metadata_days = payload.retention_rejected_metadata_days
+    row.retention_failed_files_days = payload.retention_failed_files_days
+    row.retention_failed_metadata_days = payload.retention_failed_metadata_days
+    row.retention_uploaded_files_days = payload.retention_uploaded_files_days
+    row.retention_uploaded_metadata_days = payload.retention_uploaded_metadata_days
+    row.retention_task_days = payload.retention_task_days
+    row.retention_audit_days = payload.retention_audit_days
+    row.retention_backup_count = payload.retention_backup_count
     row.encrypted_immich_api_key = _update_secret(row.encrypted_immich_api_key, payload.immich_api_key)
     row.encrypted_openai_api_key = _update_secret(row.encrypted_openai_api_key, payload.openai_api_key)
     row.encrypted_gemini_api_key = _update_secret(row.encrypted_gemini_api_key, payload.gemini_api_key)

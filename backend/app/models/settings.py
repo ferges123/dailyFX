@@ -33,6 +33,16 @@ class SettingsModel(Base):
     debug_mode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     favorite_albums_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_custom_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retention_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    retention_rejected_files_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=7)
+    retention_rejected_metadata_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=90)
+    retention_failed_files_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=7)
+    retention_failed_metadata_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=90)
+    retention_uploaded_files_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=30)
+    retention_uploaded_metadata_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=30)
+    retention_task_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=30)
+    retention_audit_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=180)
+    retention_backup_count: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         UTCDateTime,

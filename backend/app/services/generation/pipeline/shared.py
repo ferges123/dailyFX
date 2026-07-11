@@ -186,6 +186,11 @@ def _record_generation_failure(
     _task_update: Callable[..., None],
 ) -> None:
     _task_update(status="failed", step="failed", progress=current_progress, error=str(exc))
+    try:
+        from app.services.generation.asset_usage import release_task_assets
+        release_task_assets(db, task_id, reason="failed")
+    except Exception as registry_exc:
+        logger.exception("Failed to release assets in registry after task failure: %s", registry_exc)
     _trace_stage(
         db,
         task_id,

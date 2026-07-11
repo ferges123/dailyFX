@@ -568,58 +568,22 @@ def _backup_database() -> None:
 
 
 def _cleanup_old_results(results_dir) -> None:
+    """Run the configured, safe retention policy."""
     try:
-        from datetime import timedelta
-
         from app.database import SessionLocal
-        from app.models.generation_history import GenerationHistoryModel
+        from app.services.immich import get_or_create_settings
+        from app.services.retention import execute_retention
 
         session = SessionLocal()
         try:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
-
-            # 1. Delete REJECTED entries older than 7 days (and their files)
-            old_rejected = (
-                session.query(GenerationHistoryModel)
-                .filter(
-                    GenerationHistoryModel.status == "REJECTED",
-                    GenerationHistoryModel.created_at < cutoff,
-                )
-                .all()
+            settings = get_or_create_settings(session)
+            preview = execute_retention(session, settings, data_dir=results_dir.parent)
+            logger.info(
+                "Retention removed %d files and found %d old metadata records (%d bytes)",
+                preview.files,
+                preview.metadata,
+                preview.bytes,
             )
-            if old_rejected:
-                for row in old_rejected:
-                    if row.output_path:
-                        from pathlib import Path as _Path
-
-                        _Path(row.output_path).unlink(missing_ok=True)
-                    session.delete(row)
-                session.commit()
-                logger.info("Pruned %d old REJECTED entries (>7 days)", len(old_rejected))
-
-            # 2. Delete non-REJECTED entries older than 30 days (and their files)
-            cutoff_non_rejected = datetime.now(timezone.utc) - timedelta(days=30)
-            old_non_rejected = (
-                session.query(GenerationHistoryModel)
-                .filter(
-                    GenerationHistoryModel.status != "REJECTED",
-                    GenerationHistoryModel.created_at < cutoff_non_rejected,
-                )
-                .all()
-            )
-            if old_non_rejected:
-                old_task_ids = {row.task_id for row in old_non_rejected}
-                for row in old_non_rejected:
-                    if row.output_path:
-                        from pathlib import Path as _Path
-
-                        _Path(row.output_path).unlink(missing_ok=True)
-                    session.delete(row)
-                session.commit()
-                logger.info("Pruned %d old non-REJECTED entries (>30 days)", len(old_non_rejected))
-                for task_id in old_task_ids:
-                    for f in results_dir.glob(f"{task_id}.*"):
-                        f.unlink(missing_ok=True)
         finally:
             session.close()
     except Exception:

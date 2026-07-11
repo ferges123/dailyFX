@@ -53,6 +53,21 @@ export interface MetadataProvenance {
     exif_summary?: string | null;
     context_hint?: string | null;
   } | null;
+  asset_selection?: {
+    policy?: string;
+    mode?: 'manual' | 'automatic';
+    candidate_count?: number;
+    unique_candidate_count?: number;
+    never_used_count?: number;
+    released_count?: number;
+    accepted_count?: number;
+    pending_excluded_count?: number;
+    search_attempts?: number;
+    required_asset_count?: number;
+    selected_asset_ids?: string[];
+    selection_reason_code?: string;
+    selection_reason?: string;
+  };
 }
 
 interface AdditionalInfoDetailsProps {
@@ -178,6 +193,32 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
                     ))}
                   </div>
                 )}
+              {metadataProvenance.asset_selection && (
+                <div className="rounded-lg border border-sky-200/70 bg-white/70 p-2 text-[8.5px] leading-relaxed text-sky-950">
+                  <div className="flex items-center gap-1.5 text-[7.5px] font-bold uppercase tracking-[0.12em] text-sky-600 mb-1">
+                    Wybór zdjęcia (Photo selection)
+                  </div>
+                  <div className="space-y-1">
+                    <div>
+                      <span className="font-semibold text-sky-800">Uzasadnienie:</span>{' '}
+                      {metadataProvenance.asset_selection.selection_reason || '—'}
+                    </div>
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[7.5px] text-sky-700 mt-1 border-t border-sky-100 pt-1">
+                      <span>Metoda: <strong>{metadataProvenance.asset_selection.mode}</strong></span>
+                      <span>•</span>
+                      <span>Kandydaci: <strong>{metadataProvenance.asset_selection.unique_candidate_count}</strong></span>
+                      <span>•</span>
+                      <span>Nowe: <strong>{metadataProvenance.asset_selection.never_used_count}</strong></span>
+                      <span>•</span>
+                      <span>Zwolnione: <strong>{metadataProvenance.asset_selection.released_count}</strong></span>
+                      <span>•</span>
+                      <span>Użyte: <strong>{metadataProvenance.asset_selection.accepted_count}</strong></span>
+                      <span>•</span>
+                      <span>Oczekujące (pominięte): <strong>{metadataProvenance.asset_selection.pending_excluded_count}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              )}
               {metadataProvenance.prompt_enrichment_context && (
                 <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/60 p-2 text-[9px] text-emerald-950">
                   <div className="flex items-center gap-1.5 text-[7.5px] font-bold uppercase tracking-[0.12em] text-emerald-700 mb-1">

@@ -68,3 +68,7 @@ export function getProviderModels(provider: string) {
 export function getDebugLog() {
   return requestText('/api/debug/log');
 }
+
+export type RetentionPreview = { files: number; metadata: number; tasks: number; bytes: number; missing_files: number; orphan_files: number; warnings: string[] };
+export function getRetentionPreview() { return request<RetentionPreview>('/api/settings/retention/preview'); }
+export function runRetention(dryRun = true) { return request<RetentionPreview>(`/api/settings/retention/run?dry_run=${dryRun}`, { method: 'POST' }); }

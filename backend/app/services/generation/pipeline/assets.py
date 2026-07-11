@@ -315,6 +315,25 @@ async def rank_source_assets_for_effect(
         return fallback
 
 
+def format_polish_date(dt) -> str:
+    if dt is None:
+        return "nieznanej dacie"
+    months = {
+        1: "stycznia", 2: "lutego", 3: "marca", 4: "kwietnia",
+        5: "maja", 6: "czerwca", 7: "lipca", 8: "sierpnia",
+        9: "września", 10: "października", 11: "listopada", 12: "grudnia"
+    }
+    return f"{dt.day} {months.get(dt.month, '')} {dt.year}"
+
+
+def polish_plural(count: int, singular: str, plural_234: str, plural_many: str) -> str:
+    if count == 1:
+        return f"{count} {singular}"
+    if 2 <= count % 10 <= 4 and not (12 <= count % 100 <= 14):
+        return f"{count} {plural_234}"
+    return f"{count} {plural_many}"
+
+
 async def _pipeline_retrieve_and_select_assets(
     ctx: GenerationPipelineContext,
     module_selection: GenerationModuleSelection,
@@ -325,51 +344,335 @@ async def _pipeline_retrieve_and_select_assets(
         ctx.task_update(status="failed", step="failed", error="No filters provided")
         return None
 
-    client, page = await _search_assets_for_generation(
-        settings=ctx.settings,
-        filters=_search_filters_for_module(filters=ctx.filters, module=module_selection.module, settings=ctx.settings),
-        task_id=ctx.task_id,
-        _task_update=ctx.task_update,
-        _progress=ctx.progress_msg,
-    )
+    # Determine mode and parameters
+    is_manual = bool(ctx.selected_asset_ids)
+    required_count = max(1, int(getattr(module_selection.module, "source_asset_count", 1) or 1))
+    
+    client = None
+    page = None
+    page_items = []
+    ai_photo_selection_enabled = False
+    
+    # Selection statistics for trace
+    candidate_count = 0
+    unique_candidate_count = 0
+    never_used_count = 0
+    released_count = 0
+    accepted_count = 0
+    pending_excluded_count = 0
+    search_attempts = 0
+    selection_reason_code = "never_used"
+    selection_reason = ""
+    
+    # Try importing asset usage registry status
+    registry_available = True
+    try:
+        from app.services.generation.asset_usage import get_assets_usage_status
+    except Exception as exc:
+        logger.warning("Asset usage registry service unavailable: %s", exc)
+        registry_available = False
+
+    if is_manual:
+        # Manual Selection (direct bypass)
+        search_attempts = 1
+        client, page = await _search_assets_for_generation(
+            settings=ctx.settings,
+            filters=_search_filters_for_module(filters=ctx.filters, module=module_selection.module, settings=ctx.settings),
+            task_id=ctx.task_id,
+            _task_update=ctx.task_update,
+            _progress=ctx.progress_msg,
+        )
+        if not page or not page.items:
+            debug_log("Skipping: no assets found", task_id=ctx.task_id)
+            logger.warning("No assets found for the given automation filter.")
+            ctx.task_update(status="failed", step="failed", error="No assets found for the given automation filter")
+            return None
+
+        # Select manual assets
+        page_items = _select_page_items(
+            page=page, selected_asset_ids=ctx.selected_asset_ids, task_id=ctx.task_id, _task_update=ctx.task_update
+        )
+        if not page_items:
+            return None
+        
+        # Deduplicate
+        page_items = _dedupe_page_items(page_items)
+        # Select required count
+        page_items = page_items[:required_count]
+        
+        # Metadata
+        candidate_count = len(page.items)
+        unique_candidate_count = len(page_items)
+        selection_reason_code = "manual_override"
+        selection_reason = "Zdjęcie zostało wskazane ręcznie; globalna ochrona przed powtórkami została pominięta."
+
+    else:
+        # Automatic Selection with priority rules and up to 3 attempts
+        collected_items = []
+        seen_ids = set()
+        usage_statuses = {}
+        
+        for attempt in range(3):
+            if not registry_available:
+                break
+                
+            search_attempts += 1
+            try:
+                client, page = await _search_assets_for_generation(
+                    settings=ctx.settings,
+                    filters=_search_filters_for_module(filters=ctx.filters, module=module_selection.module, settings=ctx.settings),
+                    task_id=ctx.task_id,
+                    _task_update=ctx.task_update,
+                    _progress=ctx.progress_msg,
+                )
+            except Exception as exc:
+                logger.warning("Search attempt %d failed: %s", search_attempts, exc)
+                break
+            
+            if not page or not page.items:
+                break
+                
+            # Filter and deduplicate
+            filtered = []
+            for item in page.items:
+                aid = getattr(item, "id", None)
+                if not aid or aid in seen_ids:
+                    continue
+                # Skip self-generated dailyFX photos
+                if getattr(item, "original_file_name", None) and "dailyfx" in getattr(item, "original_file_name", "").lower():
+                    continue
+                filtered.append(item)
+                seen_ids.add(aid)
+                
+            collected_items.extend(filtered)
+            
+            # Fetch registry info
+            collected_ids = [x.id for x in collected_items]
+            try:
+                from app.services.generation.asset_usage import get_assets_usage_status
+                usage_statuses = get_assets_usage_status(ctx.db, collected_ids)
+            except Exception as exc:
+                logger.exception("Failed to query registry usage statuses: %s", exc)
+                _trace_stage(
+                    ctx.db,
+                    ctx.task_id,
+                    stage="registry_error",
+                    message=f"Problem z rejestrem: {exc}",
+                    step=ctx.current_step,
+                    status="running",
+                    progress=ctx.current_progress,
+                    details={"error": str(exc)},
+                )
+                registry_available = False
+                break
+                
+            # Categorize
+            never_used = []
+            released = []
+            accepted = []
+            for item in collected_items:
+                status = usage_statuses.get(item.id, {})
+                if status.get("has_pending"):
+                    continue
+                if status.get("ever_accepted"):
+                    accepted.append(item)
+                elif status.get("returned_to_pool"):
+                    released.append(item)
+                else:
+                    never_used.append(item)
+                    
+            # Stop searching if we have enough of the absolute highest category (never_used)
+            if never_used and len(never_used) >= required_count:
+                break
+
+        if not registry_available:
+            # Fallback mode (using standard recency fallback)
+            search_attempts = 1
+            client, page = await _search_assets_for_generation(
+                settings=ctx.settings,
+                filters=_search_filters_for_module(filters=ctx.filters, module=module_selection.module, settings=ctx.settings),
+                task_id=ctx.task_id,
+                _task_update=ctx.task_update,
+                _progress=ctx.progress_msg,
+            )
+            if not page or not page.items:
+                debug_log("Skipping: no assets found in fallback", task_id=ctx.task_id)
+                ctx.task_update(status="failed", step="failed", error="No assets found for the given automation filter")
+                return None
+            
+            # Use fallback recency lists
+            recent_source_asset_ids = _recent_source_asset_id_recency(ctx.db, limit=25)
+            page_items = _prepare_page_items_for_module(
+                page=page,
+                module=module_selection.module,
+                selected_asset_ids=None,
+                ai_photo_selection_enabled=False,
+                task_id=ctx.task_id,
+                _task_update=ctx.task_update,
+                recent_source_asset_ids=recent_source_asset_ids,
+            )
+            if not page_items:
+                return None
+                
+            candidate_count = len(page.items)
+            unique_candidate_count = len(page_items)
+            selection_reason_code = "registry_unavailable_fallback"
+            selection_reason = "Globalny rejestr wykorzystania był niedostępny. Zastosowano awaryjną ochronę przed powtórkami."
+            
+        else:
+            # Categorize the candidates collected across all attempts
+            never_used_candidates = []
+            released_candidates = []
+            accepted_candidates = []
+            pending_excluded = []
+            
+            for item in collected_items:
+                status = usage_statuses.get(item.id, {})
+                if status.get("has_pending"):
+                    pending_excluded.append(item)
+                elif status.get("ever_accepted"):
+                    accepted_candidates.append(item)
+                elif status.get("returned_to_pool"):
+                    released_candidates.append(item)
+                else:
+                    never_used_candidates.append(item)
+                    
+            candidate_count = len(collected_items)
+            unique_candidate_count = len(collected_items) - len(pending_excluded)
+            never_used_count = len(never_used_candidates)
+            released_count = len(released_candidates)
+            accepted_count = len(accepted_candidates)
+            pending_excluded_count = len(pending_excluded)
+            
+            # Sort/shuffle groups
+            random.shuffle(never_used_candidates)
+            random.shuffle(released_candidates)
+            
+            # Accepted candidates sorted ascending by last_accepted_at, tie-break on id
+            from datetime import datetime, timezone
+            epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+            def accepted_sort_key(x):
+                status = usage_statuses.get(x.id, {})
+                dt = status.get("last_accepted_at") or epoch
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return (dt, x.id)
+            accepted_candidates.sort(key=accepted_sort_key)
+            
+            # Build priority list
+            priority_list = never_used_candidates + released_candidates + accepted_candidates
+            
+            # Apply required asset count selection
+            if not priority_list:
+                debug_log("Skipping: no available candidates found after exclusions", task_id=ctx.task_id)
+                ctx.task_update(status="failed", step="failed", error="No available candidates found after exclusions")
+                return None
+                
+            ai_photo_selection_enabled = (
+                bool(getattr(ctx.settings, "ai_photo_selection_enabled", False))
+                and required_count == 1
+            )
+            
+            if ai_photo_selection_enabled:
+                # Select top 4 from highest available priority group for AI selection
+                if never_used_candidates:
+                    page_items = never_used_candidates[:4]
+                elif released_candidates:
+                    page_items = released_candidates[:4]
+                else:
+                    page_items = accepted_candidates[:4]
+            else:
+                # Fill positions for multi-source modules sequentially
+                page_items = priority_list[:required_count]
+                
+            # Build Polish selection explanation
+            if required_count == 1 and not ai_photo_selection_enabled:
+                chosen = page_items[0]
+                if chosen in never_used_candidates:
+                    selection_reason_code = "never_used"
+                    selection_reason = "Wybrano zdjęcie, które nie było wcześniej używane przez DailyFX."
+                elif chosen in released_candidates:
+                    status = usage_statuses.get(chosen.id, {})
+                    reason = status.get("last_release_reason")
+                    if reason == "rejected":
+                        selection_reason_code = "returned_after_rejection"
+                        selection_reason = "Zdjęcie wróciło do puli po odrzuceniu poprzedniego wyniku."
+                    elif reason == "failed":
+                        selection_reason_code = "returned_after_failure"
+                        selection_reason = "Zdjęcie wróciło do puli po nieudanej generacji."
+                    else:
+                        selection_reason_code = "returned_after_failure"
+                        selection_reason = "Zdjęcie wróciło do puli po usunięciu poprzedniego wyniku."
+                else:
+                    status = usage_statuses.get(chosen.id, {})
+                    formatted_date = format_polish_date(status.get("last_accepted_at"))
+                    selection_reason_code = "least_recently_accepted"
+                    selection_reason = f"Wszystkie dostępne zdjęcia były już zaakceptowane. Wybrano zdjęcie zaakceptowane najdawniej: {formatted_date}."
+            elif required_count > 1:
+                # Multi-source explanation
+                selected_never = len([x for x in page_items if x in never_used_candidates])
+                selected_released = len([x for x in page_items if x in released_candidates])
+                selected_accepted = len([x for x in page_items if x in accepted_candidates])
+                
+                if selected_never == len(page_items):
+                    selection_reason_code = "never_used"
+                    selection_reason = "Wybrano zdjęcia, które nie były wcześniej używane przez DailyFX."
+                elif selected_accepted == len(page_items):
+                    selection_reason_code = "least_recently_accepted"
+                    selection_reason = "Wszystkie dostępne zdjęcia były już zaakceptowane. Wybrano zdjęcia zaakceptowane najdawniej."
+                else:
+                    selection_reason_code = "mixed_selection"
+                    never_str = polish_plural(selected_never, "nowe zdjęcie", "nowe zdjęcia", "nowych zdjęć")
+                    accepted_str = polish_plural(selected_accepted, "zdjęcie zaakceptowane najdawniej", "zdjęcia zaakceptowane najdawniej", "zdjęć zaakceptowanych najdawniej")
+                    if selected_never > 0 and selected_accepted > 0:
+                        selection_reason = f"Wybrano {never_str} i {accepted_str}."
+                    elif selected_never > 0:
+                        selection_reason = f"Wybrano {never_str}."
+                    else:
+                        selection_reason = f"Wybrano {accepted_str}."
+
+    # Pack selection trace details
+    selected_asset_ids = [getattr(x, "id", None) for x in page_items if getattr(x, "id", None)]
+    
+    # We set selection metadata on context
+    ctx.asset_selection = {
+        "policy": "global_usage_registry",
+        "mode": "manual" if is_manual else "automatic",
+        "candidate_count": candidate_count,
+        "unique_candidate_count": unique_candidate_count,
+        "never_used_count": never_used_count,
+        "released_count": released_count,
+        "accepted_count": accepted_count,
+        "pending_excluded_count": pending_excluded_count,
+        "search_attempts": search_attempts,
+        "required_asset_count": required_count,
+        "selected_asset_ids": selected_asset_ids,
+        "selection_reason_code": selection_reason_code,
+        "selection_reason": selection_reason,
+    }
+
     _trace_stage(
         ctx.db,
         ctx.task_id,
         stage="assets_found",
-        message=f"Found {len(page.items)} candidate assets",
+        message=f"Found {unique_candidate_count} candidate assets after registry check",
         step=ctx.current_step,
         status="running",
         progress=ctx.current_progress,
-        details={"asset_count": len(page.items)},
+        details={"asset_count": unique_candidate_count},
     )
-    if not page.items:
-        debug_log("Skipping: no assets found", task_id=ctx.task_id)
-        logger.warning("No assets found for the given automation filter.")
+    
+    if not page_items:
+        debug_log("Skipping: no assets found after filtering", task_id=ctx.task_id)
         ctx.task_update(status="failed", step="failed", error="No assets found for the given automation filter")
         return None
 
     debug_log(
-        "Random asset selected", task_id=ctx.task_id, count=len(page.items), asset_ids=[a.id for a in page.items[:10]]
+        "Random asset selected", task_id=ctx.task_id, count=len(page_items), asset_ids=[a.id for a in page_items[:10]]
     )
-    logger.info("📸 Selected random asset, running module %s (task_id=%s)", ctx.selected_group_name, ctx.task_id)
+    logger.info("📸 Selected assets, running module %s (task_id=%s)", ctx.selected_group_name, ctx.task_id)
 
-    ai_photo_selection_enabled = (
-        bool(getattr(ctx.settings, "ai_photo_selection_enabled", False))
-        and int(getattr(module_selection.module, "source_asset_count", 1) or 1) == 1
-    )
-    recent_source_asset_ids = _recent_source_asset_id_recency(ctx.db, limit=25)
-    page_items = _prepare_page_items_for_module(
-        page=page,
-        module=module_selection.module,
-        selected_asset_ids=ctx.selected_asset_ids,
-        ai_photo_selection_enabled=ai_photo_selection_enabled,
-        task_id=ctx.task_id,
-        _task_update=ctx.task_update,
-        recent_source_asset_ids=recent_source_asset_ids,
-    )
-    if not page_items:
-        return None
-
+    # Handle AI photo selection ranking
     photo_selection_trace = None
     if ai_photo_selection_enabled and len(page_items) > 1:
         photo_selection_trace = {}
@@ -383,6 +686,30 @@ async def _pipeline_retrieve_and_select_assets(
         )
         if selected_asset is not None:
             page_items = [selected_asset]
+            # Update explanation with the single selected asset ID
+            ctx.asset_selection["selected_asset_ids"] = [selected_asset.id]
+            # Update explanation reason code and text
+            if selected_asset in never_used_candidates:
+                ctx.asset_selection["selection_reason_code"] = "never_used"
+                ctx.asset_selection["selection_reason"] = "Wybrano zdjęcie, które nie było wcześniej używane przez DailyFX."
+            elif selected_asset in released_candidates:
+                status = usage_statuses.get(selected_asset.id, {})
+                reason = status.get("last_release_reason")
+                if reason == "rejected":
+                    ctx.asset_selection["selection_reason_code"] = "returned_after_rejection"
+                    ctx.asset_selection["selection_reason"] = "Zdjęcie wróciło do puli po odrzuceniu poprzedniego wyniku."
+                elif reason == "failed":
+                    ctx.asset_selection["selection_reason_code"] = "returned_after_failure"
+                    ctx.asset_selection["selection_reason"] = "Zdjęcie wróciło do puli po nieudanej generacji."
+                else:
+                    ctx.asset_selection["selection_reason_code"] = "returned_after_failure"
+                    ctx.asset_selection["selection_reason"] = "Zdjęcie wróciło do puli po usunięciu poprzedniego wyniku."
+            else:
+                status = usage_statuses.get(selected_asset.id, {})
+                formatted_date = format_polish_date(status.get("last_accepted_at"))
+                ctx.asset_selection["selection_reason_code"] = "least_recently_accepted"
+                ctx.asset_selection["selection_reason"] = f"Wszystkie dostępne zdjęcia były już zaakceptowane. Wybrano zdjęcie zaakceptowane najdawniej: {formatted_date}."
+            
         _trace_stage(
             ctx.db,
             ctx.task_id,
@@ -395,6 +722,7 @@ async def _pipeline_retrieve_and_select_assets(
             progress=ctx.current_progress,
             details=photo_selection_trace,
         )
+        
     _trace_stage(
         ctx.db,
         ctx.task_id,
@@ -405,4 +733,19 @@ async def _pipeline_retrieve_and_select_assets(
         progress=ctx.current_progress,
         details={"selected_asset_ids": [a.id for a in page_items]},
     )
+
+    if registry_available:
+        try:
+            from app.services.generation.asset_usage import record_assets_usage_pending
+            record_assets_usage_pending(
+                ctx.db,
+                task_id=ctx.task_id,
+                asset_ids=selected_asset_ids,
+                generation_type=module_selection.name,
+                usage_source="automatic" if ctx.task_id.startswith("auto-") else "manual",
+                schedule_id=ctx.schedule_id,
+            )
+        except Exception as exc:
+            logger.exception("Failed to record assets as pending in registry: %s", exc)
+
     return client, page, page_items, photo_selection_trace

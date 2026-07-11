@@ -92,3 +92,20 @@ class ScheduleResponse(BaseModel):
 class ScheduleRunNowResponse(BaseModel):
     message: str
     task_id: str
+
+
+class DiagnosticAssetDetail(BaseModel):
+    id: str
+    original_file_name: str | None = None
+    created_at: str | None = None
+    status: Literal["never_used", "released", "accepted", "pending"]
+    last_action_at: datetime | None = None
+
+
+class ScheduleDiagnosticsResponse(BaseModel):
+    total_candidates: int
+    never_used_count: int
+    released_count: int
+    accepted_count: int
+    pending_count: int
+    selection_order: list[DiagnosticAssetDetail]

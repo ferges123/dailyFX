@@ -20,6 +20,7 @@ import {
   type AIEffectImportResult,
   type AIEffectExport,
   type Schedule,
+  type ScheduleDiagnosticsResponse,
   type EffectStats,
   type TrendsResponse,
 } from './types';
@@ -363,3 +364,5 @@ export const triggerScheduleNow = (id: number) =>
     `/api/schedules/${id}/run-now`,
     { method: 'POST' },
   );
+export const getScheduleDiagnostics = (id: number) =>
+  request<ScheduleDiagnosticsResponse>(`/api/schedules/${id}/diagnostics`);

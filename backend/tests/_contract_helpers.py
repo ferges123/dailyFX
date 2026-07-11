@@ -8,6 +8,16 @@ from starlette.datastructures import QueryParams
 
 
 def configure_contract_test_db(stem: str) -> Path:
+    import app.database as database
+    if getattr(database, "engine", None) is not None:
+        try:
+            database.engine.dispose()
+        except Exception:
+            pass
+        database.engine = None
+        database._current_database_url = None
+        database._initialized_databases.clear()
+
     os.environ["APP_ENV"] = "development"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
     project_root = Path(__file__).resolve().parents[2]
@@ -15,7 +25,8 @@ def configure_contract_test_db(stem: str) -> Path:
     test_data_dir.mkdir(parents=True, exist_ok=True)
     os.environ["DATA_DIR"] = str(test_data_dir)
     test_db = test_data_dir / "app.db"
-    test_db.unlink(missing_ok=True)
+    for suffix in ["", "-wal", "-shm"]:
+        Path(str(test_db) + suffix).unlink(missing_ok=True)
     os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     return test_db
 

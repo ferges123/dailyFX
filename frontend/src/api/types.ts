@@ -6,6 +6,16 @@ export type Settings = {
   debug_mode: boolean;
   favorite_albums_json: string | null;
   ai_custom_prompt: string | null;
+  retention_enabled: boolean;
+  retention_rejected_files_days: number | null;
+  retention_rejected_metadata_days: number | null;
+  retention_failed_files_days: number | null;
+  retention_failed_metadata_days: number | null;
+  retention_uploaded_files_days: number | null;
+  retention_uploaded_metadata_days: number | null;
+  retention_task_days: number | null;
+  retention_audit_days: number | null;
+  retention_backup_count: number;
   immich_api_key_masked: string | null;
   openai_api_key_masked: string | null;
   gemini_api_key_masked: string | null;
@@ -204,6 +214,9 @@ export type GenerationHistoryEntry = {
   summary: string;
   source_asset_ids: string;
   output_path: string | null;
+  local_file_status?: string;
+  local_file_deleted_at?: string | null;
+  local_file_delete_reason?: string | null;
   image_url: string | null;
   provider: string | null;
   model: string | null;
@@ -392,4 +405,21 @@ export type Schedule = {
   filter_preset_name: string | null;
   effect_preset_name: string | null;
   notification_preset_names: string[];
+};
+
+export type DiagnosticAssetDetail = {
+  id: string;
+  original_file_name: string | null;
+  created_at: string | null;
+  status: 'never_used' | 'released' | 'accepted' | 'pending';
+  last_action_at: string | null;
+};
+
+export type ScheduleDiagnosticsResponse = {
+  total_candidates: number;
+  never_used_count: number;
+  released_count: number;
+  accepted_count: number;
+  pending_count: number;
+  selection_order: DiagnosticAssetDetail[];
 };

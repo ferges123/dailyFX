@@ -447,4 +447,8 @@ async def _pipeline_enrich_metadata(
         _progress=ctx.progress_msg,
         photo_selection_trace=photo_selection_trace,
     )
+
+    if hasattr(ctx, "asset_selection") and ctx.asset_selection:
+        artifacts.metadata_provenance["asset_selection"] = ctx.asset_selection
+
     return source_asset, artifacts

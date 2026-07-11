@@ -7,7 +7,13 @@ from app.models.effect_preset import EffectPresetModel
 from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
 from app.models.schedule import ScheduleModel
-from app.schemas.schedules import ScheduleCreate, ScheduleResponse, ScheduleRunNowResponse, ScheduleUpdate
+from app.schemas.schedules import (
+    ScheduleCreate,
+    ScheduleDiagnosticsResponse,
+    ScheduleResponse,
+    ScheduleRunNowResponse,
+    ScheduleUpdate,
+)
 from app.security import require_auth
 from app.services.generation.task_flow import trigger_schedule_run_now
 from app.workers.scheduler import _compute_next_run
@@ -143,3 +149,124 @@ async def trigger_schedule_now(
     request: Request = None,
 ):
     return await trigger_schedule_run_now(db, schedule_id)
+
+
+@router.get("/{schedule_id}/diagnostics", response_model=ScheduleDiagnosticsResponse)
+async def get_schedule_diagnostics(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+):
+    from datetime import datetime, timezone
+    from app.models.filter_preset import FilterPresetModel
+    from app.models.effect_preset import EffectPresetModel
+    from app.services.generation.schedule_runs import build_scheduled_run_context
+    from app.services.immich import build_immich_client, get_or_create_settings
+    from app.services.generation.asset_usage import get_assets_usage_status
+    from app.schemas.schedules import ScheduleDiagnosticsResponse, DiagnosticAssetDetail
+    
+    schedule = db.get(ScheduleModel, schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+        
+    fp = db.get(FilterPresetModel, schedule.filter_preset_id)
+    ep = db.get(EffectPresetModel, schedule.effect_preset_id)
+    if not fp or not ep:
+        raise HTTPException(status_code=400, detail="Schedule has missing presets")
+        
+    run_context = build_scheduled_run_context(
+        schedule_id=schedule_id,
+        album_name=schedule.album_name,
+        filter_preset=fp,
+        effect_preset=ep,
+    )
+    
+    settings = get_or_create_settings(db)
+    client = build_immich_client(settings)
+    
+    try:
+        # Fetch matching assets using paginated metadata search (size=1000)
+        page = await client.get_assets(page=1, size=1000, filters=run_context.filters)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to query Immich assets: {exc}")
+        
+    collected_items = page.items
+    collected_ids = [item.id for item in collected_items]
+    
+    usage_statuses = get_assets_usage_status(db, collected_ids)
+    
+    never_used_candidates = []
+    released_candidates = []
+    accepted_candidates = []
+    pending_candidates = []
+    
+    for item in collected_items:
+        status = usage_statuses.get(item.id, {})
+        if status.get("has_pending"):
+            pending_candidates.append(item)
+        elif status.get("ever_accepted"):
+            accepted_candidates.append(item)
+        elif status.get("returned_to_pool"):
+            released_candidates.append(item)
+        else:
+            never_used_candidates.append(item)
+            
+    # Sort never_used: newest first
+    never_used_sorted = sorted(never_used_candidates, key=lambda x: x.created_at or "", reverse=True)
+    
+    # Sort released: most recently released first
+    def released_sort_key(x):
+        st = usage_statuses.get(x.id, {})
+        dt = st.get("last_released_at")
+        if dt and dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt or datetime.min.replace(tzinfo=timezone.utc)
+        
+    released_sorted = sorted(released_candidates, key=released_sort_key, reverse=True)
+    
+    # Sort accepted: oldest accepted first
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    def accepted_sort_key(x):
+        st = usage_statuses.get(x.id, {})
+        dt = st.get("last_accepted_at") or epoch
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (dt, x.id)
+        
+    accepted_sorted = sorted(accepted_candidates, key=accepted_sort_key)
+    
+    priority_list = never_used_sorted + released_sorted + accepted_sorted
+    
+    # Construct details for first 10
+    selection_order_details = []
+    for x in priority_list[:10]:
+        st = usage_statuses.get(x.id, {})
+        # Map last action time
+        last_action_at = None
+        if x in accepted_sorted:
+            last_action_at = st.get("last_accepted_at")
+            status_val = "accepted"
+        elif x in released_sorted:
+            last_action_at = st.get("last_released_at")
+            status_val = "released"
+        else:
+            status_val = "never_used"
+            
+        selection_order_details.append(
+            DiagnosticAssetDetail(
+                id=x.id,
+                original_file_name=x.original_file_name,
+                created_at=x.created_at,
+                status=status_val,
+                last_action_at=last_action_at,
+            )
+        )
+        
+    return ScheduleDiagnosticsResponse(
+        total_candidates=page.total,
+        never_used_count=len(never_used_candidates),
+        released_count=len(released_candidates),
+        accepted_count=len(accepted_candidates),
+        pending_count=len(pending_candidates),
+        selection_order=selection_order_details,
+    )

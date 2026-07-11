@@ -13,6 +13,7 @@ import {
   describeAutomationSchedule,
 } from '../automation.utils';
 import { formatDateTime } from '../datetime.utils';
+import { ScheduleDiagnostics } from './ScheduleDiagnostics';
 
 interface ScheduleItemCardProps {
   schedule: Schedule;
@@ -218,6 +219,15 @@ export const ScheduleItemCard = memo(function ScheduleItemCard({
           <span className="app-chip px-2 py-0.5">AI photo selection on</span>
         )}
       </div>
+
+      {schedule.ai_photo_selection_enabled && (
+        <details className="mt-2 text-stone-700 bg-stone-50/30 rounded-lg border border-stone-200/60 px-2 py-1.5 text-[11px] transition">
+          <summary className="cursor-pointer font-bold uppercase text-[8px] text-stone-400 hover:text-stone-600 select-none tracking-wider">
+            Diagnostyka wyboru zdjęć (Diagnostics)
+          </summary>
+          <ScheduleDiagnostics scheduleId={schedule.id} />
+        </details>
+      )}
     </article>
   );
 });

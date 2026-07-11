@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, Database } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
 import {
@@ -8,6 +8,8 @@ import {
   clearHistoryByStatus,
   clearGenerationCache,
   getDebugLog,
+  getRetentionPreview,
+  runRetention,
   type SettingsUpdate,
 } from '../api/client';
 import { APP_VERSION } from '../version';
@@ -40,6 +42,16 @@ const defaults: SettingsUpdate = {
   debug_mode: false,
   favorite_albums_json: null,
   ai_custom_prompt: null,
+  retention_enabled: true,
+  retention_rejected_files_days: 7,
+  retention_rejected_metadata_days: 90,
+  retention_failed_files_days: 7,
+  retention_failed_metadata_days: 90,
+  retention_uploaded_files_days: 30,
+  retention_uploaded_metadata_days: 30,
+  retention_task_days: 30,
+  retention_audit_days: 180,
+  retention_backup_count: 7,
   immich_api_key: '',
   openai_api_key: '',
   gemini_api_key: '',
@@ -97,6 +109,7 @@ export function SettingsPage() {
     {},
   );
   const [logLoading, setLogLoading] = useState(false);
+  const [retentionMessage, setRetentionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!settings.data) return;
@@ -109,6 +122,16 @@ export function SettingsPage() {
       debug_mode: settings.data.debug_mode,
       favorite_albums_json: settings.data.favorite_albums_json,
       ai_custom_prompt: settings.data.ai_custom_prompt,
+      retention_enabled: settings.data.retention_enabled,
+      retention_rejected_files_days: settings.data.retention_rejected_files_days,
+      retention_rejected_metadata_days: settings.data.retention_rejected_metadata_days,
+      retention_failed_files_days: settings.data.retention_failed_files_days,
+      retention_failed_metadata_days: settings.data.retention_failed_metadata_days,
+      retention_uploaded_files_days: settings.data.retention_uploaded_files_days,
+      retention_uploaded_metadata_days: settings.data.retention_uploaded_metadata_days,
+      retention_task_days: settings.data.retention_task_days,
+      retention_audit_days: settings.data.retention_audit_days,
+      retention_backup_count: settings.data.retention_backup_count,
     }));
   }, [settings.data]);
 
@@ -177,6 +200,25 @@ export function SettingsPage() {
       );
     } finally {
       setLogLoading(false);
+    }
+  };
+
+  const handleRetentionPreview = async () => {
+    try {
+      const result = await getRetentionPreview();
+      setRetentionMessage(`Preview: ${result.files} files, ${result.metadata} metadata records, ${Math.round(result.bytes / 1024)} KiB.`);
+    } catch {
+      setRetentionMessage('Retention preview failed.');
+    }
+  };
+
+  const handleRetentionRun = async () => {
+    if (!window.confirm('Run retention cleanup now?')) return;
+    try {
+      const result = await runRetention(false);
+      setRetentionMessage(`Cleanup complete: ${result.files} files scheduled, ${result.metadata} metadata records.`);
+    } catch {
+      setRetentionMessage('Retention cleanup failed.');
     }
   };
 
@@ -251,6 +293,41 @@ export function SettingsPage() {
             </span>
           </div>
         </label>
+      </div>
+
+      {/* Data Retention */}
+      <div className="app-panel p-3 md:p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Database size={16} className="text-emerald-700" />
+          <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-stone-700">Data retention</h3>
+        </div>
+        <label className="flex items-center gap-2 text-xs font-medium">
+          <input type="checkbox" checked={form.retention_enabled} onChange={(e) => setValue('retention_enabled', e.target.checked)} />
+          Enable automatic cleanup
+        </label>
+        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+          {([
+            ['retention_rejected_files_days', 'Rejected files'],
+            ['retention_rejected_metadata_days', 'Rejected metadata'],
+            ['retention_failed_files_days', 'Failed files'],
+            ['retention_failed_metadata_days', 'Failed metadata'],
+            ['retention_uploaded_files_days', 'Uploaded files'],
+            ['retention_uploaded_metadata_days', 'Uploaded metadata'],
+            ['retention_task_days', 'Task metadata'],
+            ['retention_audit_days', 'Audit log'],
+            ['retention_backup_count', 'DB backups'],
+          ] as const).map(([key, label]) => (
+            <label key={key} className="text-xs text-stone-600">
+              {label} (days)
+              <input type="number" min={1} value={form[key] ?? ''} onChange={(e) => setValue(key, e.target.value === '' ? null : Number(e.target.value))} className="mt-1 h-8 w-full rounded-lg border border-stone-200 px-2" />
+            </label>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={handleRetentionPreview} className="inline-flex h-8 items-center rounded-lg border border-stone-300 bg-white px-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50">Preview cleanup</button>
+          <button type="button" onClick={handleRetentionRun} disabled={!form.retention_enabled} className="inline-flex h-8 items-center rounded-lg border border-rose-300 bg-white px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50">Run cleanup now</button>
+          {retentionMessage && <span className="text-xs text-stone-500">{retentionMessage}</span>}
+        </div>
       </div>
 
       {/* Danger Zone */}

@@ -268,6 +268,8 @@ async def get_review_thumbnail(
     """Public thumbnail for push notification image previews."""
     authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+    if row and getattr(row, "local_file_status", "available") == "deleted_by_retention":
+        raise HTTPException(status_code=410, detail="Local image was deleted by retention")
     if not row or not row.output_path:
         raise HTTPException(status_code=404, detail="Not found")
     path = Path(row.output_path).resolve()
@@ -339,6 +341,8 @@ def get_generation_image(
     """Serve the generated image file or its thumbnail preview."""
     authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+    if row and getattr(row, "local_file_status", "available") == "deleted_by_retention":
+        raise HTTPException(status_code=410, detail="Local image was deleted by retention")
     if not row or not row.output_path:
         raise HTTPException(status_code=404, detail="Image not found")
     path = Path(row.output_path).resolve()
@@ -415,6 +419,13 @@ async def accept_generation(
 
         db.commit()
         db.refresh(row)
+
+        try:
+            from app.services.generation.asset_usage import accept_task_assets
+            accept_task_assets(db, task_id)
+        except Exception as registry_exc:
+            logger.exception("Failed to accept assets in registry for task %s: %s", task_id, registry_exc)
+
         record_history_snapshot(db, row)
         return row
     except Exception as exc:
@@ -490,6 +501,13 @@ async def retry_acceptance(
         row.status = "UPLOADED"
         db.commit()
         db.refresh(row)
+
+        try:
+            from app.services.generation.asset_usage import accept_task_assets
+            accept_task_assets(db, task_id)
+        except Exception as registry_exc:
+            logger.exception("Failed to accept assets in registry during retry for task %s: %s", task_id, registry_exc)
+
         record_history_snapshot(db, row)
         return row
     except Exception as exc:
@@ -515,6 +533,13 @@ async def reject_generation(task_id: str, db: Session = Depends(get_db), _: None
     row.status = "REJECTED"
     db.commit()
     db.refresh(row)
+
+    try:
+        from app.services.generation.asset_usage import release_task_assets
+        release_task_assets(db, task_id, reason="rejected")
+    except Exception as registry_exc:
+        logger.exception("Failed to release assets in registry for task %s: %s", task_id, registry_exc)
+
     record_history_snapshot(db, row)
     return row
 
@@ -543,6 +568,14 @@ def _delete_history_records_and_files(db: Session, status: str | None = None) ->
             thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
             if thumb.exists():
                 thumb.unlink(missing_ok=True)
+
+    if task_ids:
+        try:
+            from app.services.generation.asset_usage import release_task_assets
+            for tid in task_ids:
+                release_task_assets(db, tid, reason="deleted")
+        except Exception as registry_exc:
+            logger.exception("Failed to release assets in registry for deleted tasks: %s", registry_exc)
 
     query.delete(synchronize_session=False)
     if task_ids:

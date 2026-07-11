@@ -13,6 +13,16 @@ class SettingsBase(BaseModel):
     debug_mode: bool = False
     favorite_albums_json: str | None = None
     ai_custom_prompt: str | None = Field(default=None, max_length=10000)
+    retention_enabled: bool = True
+    retention_rejected_files_days: int | None = Field(default=7, ge=1)
+    retention_rejected_metadata_days: int | None = Field(default=90, ge=1)
+    retention_failed_files_days: int | None = Field(default=7, ge=1)
+    retention_failed_metadata_days: int | None = Field(default=90, ge=1)
+    retention_uploaded_files_days: int | None = Field(default=30, ge=1)
+    retention_uploaded_metadata_days: int | None = Field(default=30, ge=1)
+    retention_task_days: int | None = Field(default=30, ge=1)
+    retention_audit_days: int | None = Field(default=180, ge=1)
+    retention_backup_count: int = Field(default=7, ge=1, le=365)
 
     @field_validator("immich_url", mode="before")
     @classmethod
@@ -74,6 +84,16 @@ class SettingsResponse(SettingsBase):
             debug_mode=row.debug_mode,
             favorite_albums_json=row.favorite_albums_json,
             ai_custom_prompt=row.ai_custom_prompt,
+            retention_enabled=getattr(row, "retention_enabled", True),
+            retention_rejected_files_days=getattr(row, "retention_rejected_files_days", 7),
+            retention_rejected_metadata_days=getattr(row, "retention_rejected_metadata_days", 90),
+            retention_failed_files_days=getattr(row, "retention_failed_files_days", 7),
+            retention_failed_metadata_days=getattr(row, "retention_failed_metadata_days", 90),
+            retention_uploaded_files_days=getattr(row, "retention_uploaded_files_days", 30),
+            retention_uploaded_metadata_days=getattr(row, "retention_uploaded_metadata_days", 30),
+            retention_task_days=getattr(row, "retention_task_days", 30),
+            retention_audit_days=getattr(row, "retention_audit_days", 180),
+            retention_backup_count=getattr(row, "retention_backup_count", 7),
             immich_api_key_masked="********" if getattr(row, "encrypted_immich_api_key", None) else None,
             openai_api_key_masked="********" if getattr(row, "encrypted_openai_api_key", None) else None,
             gemini_api_key_masked="********" if getattr(row, "encrypted_gemini_api_key", None) else None,

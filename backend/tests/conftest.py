@@ -18,3 +18,34 @@ def clear_immich_client_cache():
 def configure_limiter(request):
     if "test_rate_limits" not in request.node.fspath.strpath:
         limiter.enabled = False
+
+
+@pytest.fixture(autouse=True)
+def isolate_database(request):
+    import os
+    import app.database as database
+    from app.config import get_settings
+    from pathlib import Path
+
+    module = request.module
+    test_db = getattr(module, "test_db", None)
+    if test_db is not None:
+        db_url = f"sqlite:///{test_db}"
+    else:
+        project_root = Path(__file__).resolve().parents[2]
+        test_data_dir = project_root / "data" / "tests" / "default"
+        test_data_dir.mkdir(parents=True, exist_ok=True)
+        db_url = f"sqlite:///{test_data_dir}/app.db"
+
+    if database._current_database_url == db_url:
+        return
+
+    os.environ["DATABASE_URL"] = db_url
+    get_settings.cache_clear()
+
+    if database.engine is not None:
+        database.engine.dispose()
+    database.engine = None
+    database._current_database_url = None
+    database._initialized_databases.clear()
+

@@ -1,5 +1,6 @@
 from app.models.ai_effect import AIEffectModel
 from app.models.ai_usage import AIUsageEventModel
+from app.models.asset_usage import AssetUsageModel
 from app.models.effect_preset import EffectPresetModel
 from app.models.effect_statistics_log import EffectStatisticsLogModel
 from app.models.filter_preset import FilterPresetModel
@@ -25,4 +26,5 @@ __all__ = [
     "NotificationPresetModel",
     "ScheduleModel",
     "EffectStatisticsLogModel",
+    "AssetUsageModel",
 ]

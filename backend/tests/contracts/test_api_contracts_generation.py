@@ -118,6 +118,9 @@ def test_generation_history_contract():
                     "created_at": "2026-05-12T10:00:00Z",
                     "updated_at": "2026-05-12T10:31:00Z",
                     "liked": None,
+                    "local_file_status": "available",
+                    "local_file_deleted_at": None,
+                    "local_file_delete_reason": None,
                 }
             ],
             "total": 1,

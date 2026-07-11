@@ -55,14 +55,22 @@ def _ensure_engine() -> Engine:
             "timeout": 30,
         }
 
-    engine = create_engine(
-        database_url,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_timeout=30,
-    )
+    if database_url.startswith("sqlite") and "test" in database_url:
+        from sqlalchemy.pool import NullPool
+        engine = create_engine(
+            database_url,
+            connect_args=connect_args,
+            poolclass=NullPool,
+        )
+    else:
+        engine = create_engine(
+            database_url,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+        )
 
     if database_url.startswith("sqlite"):
         from sqlalchemy import event
@@ -124,4 +132,13 @@ def init_db() -> None:
 
     command.upgrade(alembic_cfg, "head")
     bootstrap_builtin_ai_effects()
+
+    # Backfill asset usage registry from existing history
+    db = SessionLocal()
+    try:
+        from app.services.generation.asset_usage import backfill_asset_usage
+        backfill_asset_usage(db)
+    finally:
+        db.close()
+
     _initialized_databases.add(database_url)
