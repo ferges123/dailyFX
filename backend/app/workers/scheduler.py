@@ -535,8 +535,8 @@ async def _async_main() -> None:
         health_path.touch()
         tick_count += 1
         ticks_per_hour = max(1, 3600 // POLL_INTERVAL_SECONDS)
-        # Clean up result files once per hour
-        if tick_count % ticks_per_hour == 0:
+        # Clean up result files once per day
+        if tick_count % (ticks_per_hour * 24) == 0:
             _cleanup_old_results(results_dir)
         # DB backup once per day
         if tick_count % (ticks_per_hour * 24) == 0:
