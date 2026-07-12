@@ -5,6 +5,7 @@ import {
   WandSparkles,
   History,
   Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -415,11 +416,11 @@ export function StudioPage() {
             onClick={() => previewMutation.mutate()}
           >
             {previewMutation.isPending ? (
-              <InlineSpinner />
+              <Loader2 className="animate-spin" size={16} />
             ) : (
               <WandSparkles size={16} />
             )}
-            Create preview
+            {previewMutation.isPending ? 'Creating preview...' : 'Create preview'}
           </button>
         </div>
       </SectionCard>
