@@ -145,13 +145,22 @@ export function QueuePage() {
                     <td className="p-4 text-xs text-stone-600">{item.attempt}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 bg-stone-200 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${item.progress ?? 0}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-stone-500 font-mono">{Math.round(item.progress ?? 0)}%</span>
+                        {(() => {
+                          const pct = item.progress != null
+                            ? (item.progress <= 1.0 ? item.progress * 100 : item.progress)
+                            : 0;
+                          return (
+                            <>
+                              <div className="w-16 bg-stone-200 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-stone-500 font-mono">{Math.round(pct)}%</span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
                     <td className="p-4 text-xs text-stone-500">{formatTime(item.created_at)}</td>
