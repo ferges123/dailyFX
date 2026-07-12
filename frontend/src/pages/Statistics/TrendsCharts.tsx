@@ -75,7 +75,7 @@ export function TrendsCharts() {
 
   return (
     <div className="app-surface p-4 md:p-6">
-      <div className="mb-4 grid gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="grid min-w-0 gap-2 sm:flex sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp size={20} className="text-emerald-700" />
           <h2 className="text-lg font-bold text-stone-900">Trends</h2>
@@ -109,18 +109,19 @@ export function TrendsCharts() {
             <button
               type="button"
               onClick={() => setChartType('generations')}
-              className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs font-semibold transition-colors ${
                 chartType === 'generations'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Generations
+              <span className="hidden xs:inline">Generations</span>
+              <span className="xs:hidden">Gen</span>
             </button>
             <button
               type="button"
               onClick={() => setChartType('triggers')}
-              className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs font-semibold transition-colors ${
                 chartType === 'triggers'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
@@ -131,7 +132,7 @@ export function TrendsCharts() {
             <button
               type="button"
               onClick={() => setChartType('ratings')}
-              className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs font-semibold transition-colors ${
                 chartType === 'ratings'
                   ? 'bg-white text-stone-900 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'

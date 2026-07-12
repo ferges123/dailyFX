@@ -33,7 +33,7 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
     return (
       <div className="flex items-center gap-2 py-3 text-stone-500 text-xs justify-center">
         <Loader2 className="animate-spin text-emerald-600" size={14} />
-        Wczytywanie diagnostyki zdjęć...
+        Loading photo diagnostics...
       </div>
     );
   }
@@ -47,7 +47,7 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
           onClick={fetchDiagnostics}
           className="text-rose-700 hover:text-rose-900 font-semibold inline-flex items-center gap-1"
         >
-          <RefreshCw size={10} /> Ponów
+          <RefreshCw size={10} /> Retry
         </button>
       </div>
     );
@@ -59,32 +59,32 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
     <div className="mt-2.5 space-y-2 border-t border-stone-100 pt-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-          Diagnostyka puli zdjęć
+          Photo pool diagnostics
         </span>
         <button
           type="button"
           onClick={fetchDiagnostics}
           className="inline-flex items-center gap-1 text-[9px] font-semibold text-stone-500 hover:text-stone-800 transition"
         >
-          <RefreshCw size={10} /> Odśwież
+          <RefreshCw size={10} /> Refresh
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5 text-center">
         <div className="rounded-lg bg-stone-50 border border-stone-200/60 p-1.5">
-          <div className="text-[10px] text-stone-500">Wszystkie</div>
+          <div className="text-[10px] text-stone-500">All</div>
           <div className="text-sm font-bold text-stone-800">{data.total_candidates}</div>
         </div>
         <div className="rounded-lg bg-emerald-50/50 border border-emerald-100 p-1.5">
-          <div className="text-[10px] text-emerald-700">Nieużywane</div>
+          <div className="text-[10px] text-emerald-700">Unused</div>
           <div className="text-sm font-bold text-stone-800">{data.never_used_count}</div>
         </div>
         <div className="rounded-lg bg-amber-50/50 border border-amber-100 p-1.5">
-          <div className="text-[10px] text-amber-700">Zwolnione</div>
+          <div className="text-[10px] text-amber-700">Released</div>
           <div className="text-sm font-bold text-stone-800">{data.released_count}</div>
         </div>
         <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-1.5">
-          <div className="text-[10px] text-blue-700">Użyte</div>
+          <div className="text-[10px] text-blue-700">Used</div>
           <div className="text-sm font-bold text-emerald-800">{data.accepted_count}</div>
         </div>
         <div className="rounded-lg bg-stone-100 border border-stone-200/50 p-1.5 opacity-60">
@@ -95,21 +95,21 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
 
       <div>
         <div className="text-[9.5px] font-bold text-stone-500 mb-1.5">
-          Kolejka wyboru (top 10 kandydatów):
+          Selection queue (top 10 candidates):
         </div>
         {data.selection_order.length === 0 ? (
           <div className="text-[10px] text-stone-500 italic bg-stone-50 rounded-lg p-2 text-center">
-            Brak kwalifikujących się zdjęć w puli (wszystkie mogą być w stanie pending lub brak zasobów).
+            No eligible photos in the pool (all might be pending or resources are missing).
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
             <table className="w-full text-left border-collapse text-[10px]">
               <thead>
                 <tr className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold">
-                  <th className="px-2 py-1 w-10 text-center">Poz.</th>
-                  <th className="px-2 py-1">Zdjęcie</th>
+                  <th className="px-2 py-1 w-10 text-center">Pos.</th>
+                  <th className="px-2 py-1">Photo</th>
                   <th className="px-2 py-1 w-20">Status</th>
-                  <th className="px-2 py-1 w-32">Ostatnie zwolnienie/użycie</th>
+                  <th className="px-2 py-1 w-32">Last release/use</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -133,7 +133,7 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
                       </td>
                       <td className="px-2 py-1">
                         <span className={`inline-block px-1 rounded border text-[9px] leading-3 font-medium ${statusColors[asset.status] ?? 'bg-stone-50 border-stone-200 text-stone-600'}`}>
-                          {asset.status === 'never_used' ? 'nowe' : asset.status === 'released' ? 'zwolnione' : 'użyte'}
+                          {asset.status === 'never_used' ? 'new' : asset.status === 'released' ? 'released' : 'used'}
                         </span>
                       </td>
                       <td className="px-2 py-1 text-stone-500">

@@ -196,25 +196,25 @@ export const AdditionalInfoDetails = memo(function AdditionalInfoDetails({
               {metadataProvenance.asset_selection && (
                 <div className="rounded-lg border border-sky-200/70 bg-white/70 p-2 text-[8.5px] leading-relaxed text-sky-950">
                   <div className="flex items-center gap-1.5 text-[7.5px] font-bold uppercase tracking-[0.12em] text-sky-600 mb-1">
-                    Wybór zdjęcia (Photo selection)
+                    Photo selection
                   </div>
                   <div className="space-y-1">
                     <div>
-                      <span className="font-semibold text-sky-800">Uzasadnienie:</span>{' '}
+                      <span className="font-semibold text-sky-800">Reason:</span>{' '}
                       {metadataProvenance.asset_selection.selection_reason || '—'}
                     </div>
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[7.5px] text-sky-700 mt-1 border-t border-sky-100 pt-1">
-                      <span>Metoda: <strong>{metadataProvenance.asset_selection.mode}</strong></span>
+                      <span>Method: <strong>{metadataProvenance.asset_selection.mode}</strong></span>
                       <span>•</span>
-                      <span>Kandydaci: <strong>{metadataProvenance.asset_selection.unique_candidate_count}</strong></span>
+                      <span>Candidates: <strong>{metadataProvenance.asset_selection.unique_candidate_count}</strong></span>
                       <span>•</span>
-                      <span>Nowe: <strong>{metadataProvenance.asset_selection.never_used_count}</strong></span>
+                      <span>New: <strong>{metadataProvenance.asset_selection.never_used_count}</strong></span>
                       <span>•</span>
-                      <span>Zwolnione: <strong>{metadataProvenance.asset_selection.released_count}</strong></span>
+                      <span>Released: <strong>{metadataProvenance.asset_selection.released_count}</strong></span>
                       <span>•</span>
-                      <span>Użyte: <strong>{metadataProvenance.asset_selection.accepted_count}</strong></span>
+                      <span>Used: <strong>{metadataProvenance.asset_selection.accepted_count}</strong></span>
                       <span>•</span>
-                      <span>Oczekujące (pominięte): <strong>{metadataProvenance.asset_selection.pending_excluded_count}</strong></span>
+                      <span>Pending (skipped): <strong>{metadataProvenance.asset_selection.pending_excluded_count}</strong></span>
                     </div>
                   </div>
                 </div>

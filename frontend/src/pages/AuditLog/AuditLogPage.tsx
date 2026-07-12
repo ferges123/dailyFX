@@ -269,114 +269,200 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      {/* Audit Log Table */}
-      <div className="overflow-hidden rounded-2xl border border-stone-200/60 bg-white/70 shadow-2xs backdrop-blur-md">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-stone-200/60 bg-stone-50/50 text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                <th className="px-4 py-3">Timestamp</th>
-                <th className="px-4 py-3">Action</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Actor</th>
-                <th className="px-4 py-3">Outcome</th>
-                <th className="px-4 py-3">Summary</th>
-                <th className="px-4 py-3 text-center">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-stone-500 font-medium">
-                    Loading audit events...
-                  </td>
+      {/* Audit Log Content Container */}
+      <div className="flex flex-col gap-3">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-hidden rounded-2xl border border-stone-200/60 bg-white/70 shadow-2xs backdrop-blur-md">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-stone-200/60 bg-stone-50/50 text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  <th className="px-4 py-3">Timestamp</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Actor</th>
+                  <th className="px-4 py-3">Outcome</th>
+                  <th className="px-4 py-3">Summary</th>
+                  <th className="px-4 py-3 text-center">Details</th>
                 </tr>
-              ) : events.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-stone-500 font-medium">
-                    No audit log events found matching the criteria.
-                  </td>
-                </tr>
-              ) : (
-                events.map((event) => (
-                  <tr
-                    key={event.event_id}
-                    onClick={() => setSelectedEvent(event)}
-                    className="border-b border-stone-100 bg-white/40 hover:bg-emerald-50/10 transition cursor-pointer"
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 text-stone-500 font-medium">
-                      {formatDateTime(event.occurred_at)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-stone-900 font-mono text-[11px]">
-                      {event.action}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getCategoryBadgeClass(event.category)}`}>
-                        {event.category}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-stone-600">
-                      {event.actor_type}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getOutcomeBadgeClass(event.outcome)}`}>
-                        {event.outcome}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-stone-700 font-medium max-w-xs md:max-w-md truncate">
-                      {event.summary}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedEvent(event);
-                        }}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-emerald-700 hover:border-emerald-200 shadow-2xs transition"
-                      >
-                        <Eye size={13} />
-                      </button>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-stone-500 font-medium">
+                      Loading audit events...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : events.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-stone-500 font-medium">
+                      No audit log events found matching the criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  events.map((event) => (
+                    <tr
+                      key={event.event_id}
+                      onClick={() => setSelectedEvent(event)}
+                      className="border-b border-stone-100 bg-white/40 hover:bg-emerald-50/10 transition cursor-pointer"
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 text-stone-500 font-medium">
+                        {formatDateTime(event.occurred_at)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-stone-900 font-mono text-[11px]">
+                        {event.action}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getCategoryBadgeClass(event.category)}`}>
+                          {event.category}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-stone-600">
+                        {event.actor_type}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getOutcomeBadgeClass(event.outcome)}`}>
+                          {event.outcome}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-stone-700 font-medium max-w-xs md:max-w-md truncate">
+                        {event.summary}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-emerald-700 hover:border-emerald-200 shadow-2xs transition"
+                        >
+                          <Eye size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination footer - Desktop */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-stone-200/60 bg-stone-50/30 px-4 py-3">
+              <span className="text-xs font-medium text-stone-500">
+                Showing <span className="font-semibold text-stone-900">{offset + 1}</span> to{' '}
+                <span className="font-semibold text-stone-900">{Math.min(offset + limit, total)}</span> of{' '}
+                <span className="font-semibold text-stone-900">{total}</span> entries
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={page === 1 || isFetching}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-xs font-semibold text-stone-700 px-1">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page === totalPages || isFetching}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Pagination footer */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-stone-200/60 bg-stone-50/30 px-4 py-3">
-            <span className="text-xs font-medium text-stone-500">
-              Showing <span className="font-semibold text-stone-900">{offset + 1}</span> to{' '}
-              <span className="font-semibold text-stone-900">{Math.min(offset + limit, total)}</span> of{' '}
-              <span className="font-semibold text-stone-900">{total}</span> entries
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={page === 1 || isFetching}
-                onClick={() => setPage((p) => p - 1)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-xs font-semibold text-stone-700 px-1">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={page === totalPages || isFetching}
-                onClick={() => setPage((p) => p + 1)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+        {/* Mobile Cards View */}
+        <div className="flex flex-col gap-3 md:hidden" aria-label="System audit log mobile list">
+          <div className="grid gap-3">
+            {isLoading ? (
+              <div className="app-surface p-6 text-center text-stone-500 font-medium">
+                Loading audit events...
+              </div>
+            ) : events.length === 0 ? (
+              <div className="app-surface p-6 text-center text-stone-500 font-medium">
+                No audit log events found matching the criteria.
+              </div>
+            ) : (
+              events.map((event) => (
+                <div
+                  key={event.event_id}
+                  onClick={() => setSelectedEvent(event)}
+                  className="app-surface p-4 flex flex-col gap-2.5 cursor-pointer hover:border-emerald-200/80 transition-colors"
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="font-mono text-xs font-semibold text-stone-900 truncate max-w-[200px]">{event.action}</span>
+                    <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getOutcomeBadgeClass(event.outcome)}`}>
+                      {event.outcome}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getCategoryBadgeClass(event.category)}`}>
+                      {event.category}
+                    </span>
+                    <span className="text-[11px] text-stone-500 font-semibold">{event.actor_type}</span>
+                  </div>
+                  <p className="text-xs text-stone-700 font-medium leading-relaxed">{event.summary}</p>
+                  <div className="flex justify-between items-center border-t border-stone-100/80 pt-2.5 text-[10px] text-stone-500 font-medium">
+                    <span>{formatDateTime(event.occurred_at)}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEvent(event);
+                      }}
+                      className="inline-flex h-7 px-3.5 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-emerald-700 hover:border-emerald-200 shadow-2xs transition"
+                    >
+                      Details
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        )}
+
+          {/* Pagination footer - Mobile */}
+          {!isLoading && totalPages > 1 && (
+            <div className="flex flex-col gap-3.5 items-center justify-center app-surface p-4 text-center">
+              <span className="text-xs font-medium text-stone-500">
+                Showing <span className="font-semibold text-stone-900">{offset + 1}</span> to{' '}
+                <span className="font-semibold text-stone-900">{Math.min(offset + limit, total)}</span> of{' '}
+                <span className="font-semibold text-stone-900">{total}</span> entries
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page === 1 || isFetching}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-xs font-bold text-stone-700 px-2">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page === totalPages || isFetching}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Detail Modal Overlay */}

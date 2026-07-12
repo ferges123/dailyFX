@@ -208,8 +208,8 @@ export function StatisticsPage({ defaultTab = 'ai' }: { defaultTab?: 'ai' | 'sta
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-        <div className="app-surface p-3">
+      <div className="grid grid-cols-2 gap-2.5 overflow-hidden xl:grid-cols-4">
+        <div className="app-surface p-3 overflow-hidden">
           <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
             <Play size={15} />
             Total runs
@@ -219,7 +219,7 @@ export function StatisticsPage({ defaultTab = 'ai' }: { defaultTab?: 'ai' | 'sta
           </div>
           <div className="text-xs text-stone-500">{ratedRuns} rated</div>
         </div>
-        <div className="app-surface p-3">
+        <div className="app-surface p-3 overflow-hidden">
           <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
             <ThumbsUp size={15} />
             Rated runs
@@ -232,7 +232,7 @@ export function StatisticsPage({ defaultTab = 'ai' }: { defaultTab?: 'ai' | 'sta
             coverage
           </div>
         </div>
-        <div className="app-surface p-3">
+        <div className="app-surface p-3 overflow-hidden">
           <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
             <Star size={15} />
             Best rated
@@ -246,7 +246,7 @@ export function StatisticsPage({ defaultTab = 'ai' }: { defaultTab?: 'ai' | 'sta
               : 'No rated effects'}
           </div>
         </div>
-        <div className="app-surface p-3">
+        <div className="app-surface p-3 overflow-hidden">
           <div className="flex items-center gap-2 text-xs font-semibold text-stone-500">
             <AlertTriangle size={15} />
             Needs attention

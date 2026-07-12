@@ -23,6 +23,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useParams,
 } from 'react-router-dom';
 import { getHealth } from './api/client';
 import { AuthProvider, useAuth } from './api/AuthContext';
@@ -84,6 +85,11 @@ const GalleryPage = lazy(() =>
     default: module.GalleryPage,
   })),
 );
+
+function StatisticsTabRedirect() {
+  const { tab } = useParams<{ tab?: string }>();
+  return <Navigate to={`/system/${tab || 'statistics'}`} replace />;
+}
 
 function PageLoadingFallback() {
   return (
@@ -304,7 +310,7 @@ function AppShell() {
               }
             />
             <Route
-              path="/system"
+              path="/system/:tab?"
               element={
                 <RouteView>
                   <SystemPage />
@@ -313,7 +319,7 @@ function AppShell() {
             />
             <Route
               path="/queue"
-              element={<Navigate to="/system" replace />}
+              element={<Navigate to="/system/queue" replace />}
             />
             <Route
               path="/schedules"
@@ -376,11 +382,11 @@ function AppShell() {
             </Route>
             <Route
               path="/statistics"
-              element={<Navigate to="/system" replace />}
+              element={<Navigate to="/system/statistics" replace />}
             />
             <Route
               path="/statistics/:tab"
-              element={<Navigate to="/system" replace />}
+              element={<StatisticsTabRedirect />}
             />
             <Route
               path="/gallery"
@@ -392,7 +398,7 @@ function AppShell() {
             />
             <Route
               path="/audit"
-              element={<Navigate to="/system" replace />}
+              element={<Navigate to="/system/audit" replace />}
             />
             <Route
               path="/settings"

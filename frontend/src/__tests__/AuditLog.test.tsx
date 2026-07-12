@@ -62,8 +62,8 @@ describe('AuditLogPage', () => {
     expect(screen.getByText('System Audit Log')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('settings.updated')).toBeInTheDocument();
-      expect(screen.getByText('Settings updated successfully')).toBeInTheDocument();
+      expect(screen.getAllByText('settings.updated')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Settings updated successfully')[0]).toBeInTheDocument();
     });
   });
 
@@ -78,7 +78,7 @@ describe('AuditLogPage', () => {
     renderAuditLog();
 
     await waitFor(() => {
-      expect(screen.getByText('settings.updated')).toBeInTheDocument();
+      expect(screen.getAllByText('settings.updated')[0]).toBeInTheDocument();
     });
 
     const actionInput = screen.getByPlaceholderText('e.g. settings.updated');
@@ -102,10 +102,10 @@ describe('AuditLogPage', () => {
     renderAuditLog();
 
     await waitFor(() => {
-      expect(screen.getByText('settings.updated')).toBeInTheDocument();
+      expect(screen.getAllByText('settings.updated')[0]).toBeInTheDocument();
     });
 
-    const row = screen.getByText('Settings updated successfully');
+    const row = screen.getAllByText('Settings updated successfully')[0];
     fireEvent.click(row);
 
     expect(screen.getByText('Event: evt-1')).toBeInTheDocument();
@@ -132,5 +132,24 @@ describe('AuditLogPage', () => {
         format: 'csv',
       })
     );
+  });
+
+  it('renders mobile layout list with correct classes', async () => {
+    vi.mocked(client.getAuditLogs).mockResolvedValue({
+      events: [mockEvent],
+      total: 1,
+      limit: 25,
+      offset: 0,
+    });
+
+    renderAuditLog();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('settings.updated')[0]).toBeInTheDocument();
+    });
+
+    const mobileList = screen.getByLabelText('System audit log mobile list');
+    expect(mobileList).toBeInTheDocument();
+    expect(mobileList.className).toContain('md:hidden');
   });
 });

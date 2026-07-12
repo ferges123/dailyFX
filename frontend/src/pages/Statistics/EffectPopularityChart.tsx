@@ -83,7 +83,10 @@ export const EffectPopularityChart = memo(function EffectPopularityChart({
               tick={{ fontSize: 10, fill: '#78716c' }}
               tickLine={false}
               axisLine={{ stroke: '#d6d3d1' }}
-              width={100}
+              width={70}
+              tickFormatter={(value: string) =>
+                value.length > 10 ? `${value.slice(0, 10)}…` : value
+              }
             />
             <Tooltip
               contentStyle={{
