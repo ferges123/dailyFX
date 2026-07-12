@@ -1,8 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { test, expect } from 'vitest';
+import { test, expect, vi, beforeEach } from 'vitest';
 import { SystemPage } from '../pages/SystemPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as client from '../api/client';
+
+vi.mock('../api/client', () => ({
+  getEffectStats: vi.fn(),
+  getStatsTrends: vi.fn(),
+}));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,12 +18,19 @@ const queryClient = new QueryClient({
   },
 });
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(client.getEffectStats).mockResolvedValue([]);
+  vi.mocked(client.getStatsTrends).mockResolvedValue({ daily: [], weekly: [] });
+});
+
 test('renders system page tab options', () => {
     render(
         <QueryClientProvider client={queryClient}>
             <SystemPage />
         </QueryClientProvider>
     );
+    expect(screen.getByText(/Statistics/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Generation Queue/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Audit Log/i)).toBeInTheDocument();
 });

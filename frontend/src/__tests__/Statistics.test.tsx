@@ -65,15 +65,14 @@ const mockStats: client.EffectStats[] = [
 ];
 
 function renderPage(initialRoute = '/statistics/standard') {
+  const tab = initialRoute.includes('standard') ? 'standard' : 'ai';
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route path="/statistics/:tab" element={<StatisticsPage />} />
-        </Routes>
+      <MemoryRouter>
+        <StatisticsPage defaultTab={tab} />
       </MemoryRouter>
     </QueryClientProvider>,
   );

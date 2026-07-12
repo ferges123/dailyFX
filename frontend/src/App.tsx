@@ -78,11 +78,7 @@ const LoginPage = lazy(() =>
     default: module.LoginPage,
   })),
 );
-const StatisticsPage = lazy(() =>
-  import('./pages/Statistics').then((module) => ({
-    default: module.StatisticsPage,
-  })),
-);
+
 const GalleryPage = lazy(() =>
   import('./pages/Gallery').then((module) => ({
     default: module.GalleryPage,
@@ -137,7 +133,7 @@ function AppShell() {
   const isSchedulesRoute = location.pathname.startsWith('/schedules');
   const isPresetsRoute = location.pathname.startsWith('/presets');
   const isSettingsRoute = location.pathname.startsWith('/settings');
-  const isStatisticsRoute = location.pathname.startsWith('/statistics');
+
   const isGalleryRoute = location.pathname.startsWith('/gallery');
   const isSystemRoute = location.pathname.startsWith('/system');
 
@@ -228,18 +224,11 @@ function AppShell() {
             Studio
           </SidebarNavLink>
           <SidebarNavLink
-            to="/statistics"
-            active={isStatisticsRoute}
-            icon={<BarChart3 size={17} />}
-          >
-            Statistics
-          </SidebarNavLink>
-          <SidebarNavLink
             to="/system"
             active={isSystemRoute}
             icon={<ClipboardList size={17} />}
           >
-            Queue & Audit
+            System
           </SidebarNavLink>
           <SidebarNavLink
             to="/settings"
@@ -387,15 +376,11 @@ function AppShell() {
             </Route>
             <Route
               path="/statistics"
-              element={<Navigate to="/statistics/ai" replace />}
+              element={<Navigate to="/system" replace />}
             />
             <Route
               path="/statistics/:tab"
-              element={
-                <RouteView>
-                  <StatisticsPage />
-                </RouteView>
-              }
+              element={<Navigate to="/system" replace />}
             />
             <Route
               path="/gallery"
@@ -445,13 +430,6 @@ function AppShell() {
         </BottomNavLink>
         <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
           <Camera size={18} />
-        </BottomNavLink>
-        <BottomNavLink
-          to="/statistics"
-          active={isStatisticsRoute}
-          label="Stats"
-        >
-          <BarChart3 size={18} />
         </BottomNavLink>
         <BottomNavLink
           to="/system"

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getEffectStats } from '../api/client';
 import type * as client from '../api/client';
 import { useState } from 'react';
@@ -61,13 +61,12 @@ type SortKey =
   | 'quality_score';
 type SortOrder = 'asc' | 'desc';
 
-export function StatisticsPage() {
-  const navigate = useNavigate();
-  const { tab } = useParams<{ tab?: string }>();
-  const activeTab = tab === 'ai' ? 'ai' : 'standard';
+export function StatisticsPage({ defaultTab = 'ai' }: { defaultTab?: 'ai' | 'standard' } = {}) {
+  const [activeTab, setActiveTab] = useState<'ai' | 'standard'>(defaultTab);
 
   const [sortKey, setSortKey] = useState<SortKey>('title');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -268,7 +267,7 @@ export function StatisticsPage() {
         <div className="flex gap-1.5 border-b border-stone-200/70 pb-2">
           <button
             type="button"
-            onClick={() => navigate('/statistics/ai')}
+            onClick={() => setActiveTab('ai')}
             className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
               activeTab === 'ai'
                 ? 'border-emerald-600 bg-transparent text-emerald-700'
@@ -288,7 +287,7 @@ export function StatisticsPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/statistics/standard')}
+            onClick={() => setActiveTab('standard')}
             className={`flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-2 text-xs font-semibold transition-all duration-200 -mb-px ${
               activeTab === 'standard'
                 ? 'border-emerald-600 bg-transparent text-emerald-700'
