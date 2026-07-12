@@ -1,11 +1,13 @@
 import json
 import logging
+import random
 import time
 
 from sqlalchemy.orm import Session
 
 from app.models.settings import SettingsModel
 from app.services.generation.history import upsert_history_entry
+from app.services.generation.modules import MODULES
 from app.utils.debug_logger import debug_log, set_debug_mode
 
 from .shared import (
@@ -60,20 +62,29 @@ def _resolve_schedule_ai_settings(db: Session, settings: SettingsModel, schedule
 
 
 def _merge_module_defaults(groups_config: dict) -> dict:
-    from app.services.generation.engine import _merge_module_defaults as merge_defaults
-
-    return merge_defaults(groups_config)
+    merged = {}
+    for name, module in MODULES.items():
+        current = groups_config.get(name) if isinstance(groups_config, dict) else None
+        if not isinstance(current, dict):
+            current = {}
+        in_preset = isinstance(groups_config, dict) and name in groups_config
+        merged[name] = {
+            "enabled": current.get("enabled", False) if in_preset else False,
+            "weight": current.get("weight", module.default_weight),
+            "config": {
+                **(module.default_config or {}),
+                **(current.get("config") if isinstance(current.get("config"), dict) else {}),
+            },
+        }
+    return merged
 
 
 def _select_generation_module(effects_config: dict) -> GenerationModuleSelection | None:
-    from app.services.generation import engine as engine_module
-
     groups_config = _merge_module_defaults(effects_config)
-    modules = getattr(engine_module, "MODULES", {}) or {}
     active_groups = []
     for name, data in groups_config.items():
         if data.get("enabled", False):
-            mod = modules.get(name)
+            mod = MODULES.get(name)
             if mod is not None and getattr(mod, "enabled", True):
                 active_groups.append((name, data))
     debug_log(
@@ -85,8 +96,8 @@ def _select_generation_module(effects_config: dict) -> GenerationModuleSelection
         return None
 
     weights = [data.get("weight", 1) for _, data in active_groups]
-    group_name, group_config = engine_module.random.choices(active_groups, weights=weights, k=1)[0]
-    module = modules.get(group_name)
+    group_name, group_config = random.choices(active_groups, weights=weights, k=1)[0]
+    module = MODULES.get(group_name)
     if module is None:
         raise ValueError(f"Unknown generation group: {group_name}")
     return GenerationModuleSelection(name=group_name, module=module, config=group_config)

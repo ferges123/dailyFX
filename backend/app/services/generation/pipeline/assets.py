@@ -26,9 +26,9 @@ async def _search_assets_for_generation(
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
 ) -> tuple[object, object]:
-    from app.services.generation import engine as engine_module
+    from app.services.immich import build_immich_client
 
-    client = engine_module.build_immich_client(settings)
+    client = build_immich_client(settings)
     debug_log(
         "Searching assets",
         task_id=task_id,

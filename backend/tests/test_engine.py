@@ -13,12 +13,13 @@ from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.schedule import ScheduleModel
 from app.services.generation.ai_vision import AIVisionResult
-from app.services.generation.engine import _merge_module_defaults, run_generation_cycle
+from app.services.generation.engine import run_generation_cycle
 from app.services.generation.pipeline import (
     _prepare_page_items_for_module,
     _search_filters_for_module,
     rank_source_assets_for_effect,
 )
+from app.services.generation.pipeline.planning import _merge_module_defaults
 from app.services.immich import get_or_create_settings
 
 test_db = configure_contract_test_db("engine")
@@ -198,7 +199,7 @@ def test_run_generation_cycle_no_assets():
 
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {}}}
 
-        with patch("app.services.generation.engine.build_immich_client", return_value=fake_client):
+        with patch("app.services.immich.build_immich_client", return_value=fake_client):
             result = asyncio.run(
                 run_generation_cycle(
                     db, row, "task-noassets", force=True, effects_config=effects_config, filters=_get_test_filters()
@@ -226,11 +227,10 @@ def test_run_generation_cycle_instafilter(tmp_path):
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}}}
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
-            patch("app.services.generation.engine._send_gen_notification", new=AsyncMock()),
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
             patch(
-                "app.services.generation.engine.random.choices",
+                "app.services.generation.pipeline.planning.random.choices",
                 return_value=[("instafilter", {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}})],
             ),
         ):
@@ -273,11 +273,10 @@ def test_run_generation_cycle_requested_module_and_selected_assets(tmp_path):
         }
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
-            patch("app.services.generation.engine._send_gen_notification", new=AsyncMock()),
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
             patch(
-                "app.services.generation.engine.random.choices",
+                "app.services.generation.pipeline.planning.random.choices",
                 return_value=[("glitch", {"enabled": True, "weight": 1, "config": {}})],
             ),
         ):
@@ -316,8 +315,8 @@ def test_run_generation_cycle_saves_failed_on_error(tmp_path):
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}}}
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
         ):
             mock_cfg.return_value.data_dir = tmp_path
             result = asyncio.run(
@@ -352,11 +351,10 @@ def test_run_generation_cycle_collage(tmp_path):
         }
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
-            patch("app.services.generation.engine._send_gen_notification", new=AsyncMock()),
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
             patch(
-                "app.services.generation.engine.random.choices",
+                "app.services.generation.pipeline.planning.random.choices",
                 return_value=[
                     ("collage", {"enabled": True, "weight": 1, "config": {"styles": ["aden", "moon", "lark", "lofi"]}})
                 ],
@@ -611,16 +609,15 @@ def test_ai_module_tags_injection(tmp_path):
         effects_config = {"ai_fantasy_hero": {"enabled": True, "weight": 1, "config": {}}}
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
-            patch("app.services.generation.engine._send_gen_notification", new=AsyncMock()),
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
             patch(
-                "app.services.generation.engine.random.choices",
+                "app.services.generation.pipeline.planning.random.choices",
                 return_value=[("ai_fantasy_hero", {"enabled": True, "weight": 1, "config": {}})],
             ),
             # Mock module class
             patch(
-                "app.services.generation.engine.MODULES",
+                "app.services.generation.pipeline.planning.MODULES",
                 {"ai_fantasy_hero": mock_hero},
             ),
             patch(
@@ -718,22 +715,21 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
         effects_config = {"ai_anime": {"enabled": True, "weight": 1, "config": {}}}
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
-            patch("app.services.generation.engine._send_gen_notification", new=AsyncMock()),
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
             patch(
-                "app.services.generation.engine.random.choices",
+                "app.services.generation.pipeline.planning.random.choices",
                 return_value=[("ai_anime", {"enabled": True, "weight": 1, "config": {}})],
             ),
             patch(
-                "app.services.generation.engine.MODULES",
+                "app.services.generation.pipeline.planning.MODULES",
                 {"ai_anime": mock_anime},
             ),
             patch(
                 "app.services.generation.modules.MODULES.get",
                 return_value=mock_anime,
             ),
-            patch("app.services.generation.engine.analyze_image", side_effect=fake_analyze),
+            patch("app.services.generation.ai_vision.analyze_image", side_effect=fake_analyze),
         ):
             mock_cfg.return_value.data_dir = tmp_path
             result = asyncio.run(
@@ -856,22 +852,21 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}}}
 
         with (
-            patch("app.services.generation.engine.build_immich_client", return_value=fake_client),
-            patch("app.services.generation.engine.get_settings") as mock_cfg,
-            patch("app.services.generation.engine._send_gen_notification", new=AsyncMock()),
+            patch("app.services.immich.build_immich_client", return_value=fake_client),
+            patch("app.config.get_settings") as mock_cfg,
             patch(
-                "app.services.generation.engine.random.choices",
+                "app.services.generation.pipeline.planning.random.choices",
                 return_value=[("instafilter", {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}})],
             ),
             patch(
-                "app.services.generation.engine.MODULES",
+                "app.services.generation.pipeline.planning.MODULES",
                 {"instafilter": mock_instafilter},
             ),
             patch(
                 "app.services.generation.modules.MODULES.get",
                 return_value=mock_instafilter,
             ),
-            patch("app.services.generation.engine.analyze_image", side_effect=fake_analyze),
+            patch("app.services.generation.ai_vision.analyze_image", side_effect=fake_analyze),
         ):
             mock_cfg.return_value.data_dir = tmp_path
             result = asyncio.run(

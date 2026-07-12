@@ -16,10 +16,10 @@ from .shared import (
 
 
 def _generation_output_paths(task_id: str, output_format: str | None = None) -> tuple[object, str]:
-    from app.services.generation import engine as engine_module
+    from app.config import get_settings
     from app.services.generation.output_format import output_extension
 
-    output_dir = engine_module.get_settings().data_dir / "results"
+    output_dir = get_settings().data_dir / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{task_id}.{output_extension(output_format)}"
     image_url = f"/api/generation/history/{task_id}/image"
@@ -33,7 +33,7 @@ async def _pipeline_persist_result(
     output_path: str,
     image_url: str,
 ) -> dict:
-    from app.services.generation import engine as engine_module
+    from app.services.generation.persistence import persist_generation_result
 
     ctx.task_update(step="saving_result", progress=0.95)
     ctx.progress_msg("Saving result…")
@@ -46,7 +46,7 @@ async def _pipeline_persist_result(
         status="running",
         progress=0.95,
     )
-    engine_module._persist_generation_result(
+    persist_generation_result(
         db=ctx.db,
         task_id=ctx.task_id,
         result=result,

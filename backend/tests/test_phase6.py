@@ -201,7 +201,7 @@ def test_log_rotation_noop_when_under_limit(tmp_path):
 
 
 def test_webhook_sends_post():
-    from app.services.generation.engine import _send_webhook
+    from app.services.generation.output import send_webhook
 
     settings = MagicMock()
     settings.webhook_url = "https://example.com/hook"
@@ -219,7 +219,7 @@ def test_webhook_sends_post():
     mock_client.post = AsyncMock(side_effect=fake_post)
 
     with patch("httpx.AsyncClient", return_value=mock_client):
-        asyncio.run(_send_webhook(settings.webhook_url, "task-1", "bokeh_blur", "Test Title"))
+        asyncio.run(send_webhook(settings.webhook_url, "task-1", "bokeh_blur", "Test Title"))
 
     assert posted["url"] == "https://example.com/hook"
     assert posted["json"]["task_id"] == "task-1"
@@ -227,12 +227,12 @@ def test_webhook_sends_post():
 
 
 def test_webhook_skipped_when_no_url():
-    from app.services.generation.engine import _send_webhook
+    from app.services.generation.output import send_webhook
 
     settings = MagicMock()
     settings.webhook_url = None
     with patch("httpx.AsyncClient") as mock_cls:
-        asyncio.run(_send_webhook(settings.webhook_url, "task-1", "bokeh_blur", "Title"))
+        asyncio.run(send_webhook(settings.webhook_url, "task-1", "bokeh_blur", "Title"))
     mock_cls.assert_not_called()
 
 

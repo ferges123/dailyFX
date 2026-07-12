@@ -108,7 +108,7 @@ async def _apply_source_vision(
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
 ) -> None:
-    from app.services.generation import engine as engine_module
+    from app.services.generation.ai_vision import analyze_image
 
     metadata_provenance["source_vision"]["attempted"] = True
     _trace_stage(
@@ -130,7 +130,7 @@ async def _apply_source_vision(
     )
     t0 = time.time()
     original_bytes = await client.get_asset_data(source_asset_id)
-    ai_analysis = await engine_module.analyze_image(
+    ai_analysis = await analyze_image(
         settings,
         original_bytes,
         context_hint=people_context.anonymized_prompt_hint() if people_context else None,
@@ -174,7 +174,7 @@ async def _apply_final_vision(
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
 ) -> None:
-    from app.services.generation import engine as engine_module
+    from app.services.generation.ai_vision import analyze_image
 
     metadata_provenance["final_vision"]["attempted"] = True
     _trace_stage(
@@ -195,7 +195,7 @@ async def _apply_final_vision(
         model=settings.default_ai_model,
     )
     t1 = time.time()
-    final_ai_analysis = await engine_module.analyze_image(settings, result.image_bytes, prompt=FINAL_AI_VISION_PROMPT)
+    final_ai_analysis = await analyze_image(settings, result.image_bytes, prompt=FINAL_AI_VISION_PROMPT)
     state["ai_title"] = final_ai_analysis.title
     state["ai_summary"] = final_ai_analysis.summary
     state["ai_tags"] = final_ai_analysis.tags or []

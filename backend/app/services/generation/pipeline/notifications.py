@@ -1,3 +1,4 @@
+from app.services.generation.output import dispatch_generation_outputs
 from app.utils.debug_logger import debug_log
 
 from .shared import (
@@ -12,9 +13,7 @@ async def _pipeline_dispatch_notifications(
     image_url: str,
     artifacts: GenerationArtifacts,
 ) -> None:
-    from app.services.generation import engine as engine_module
-
-    await engine_module._dispatch_generation_outputs(
+    await dispatch_generation_outputs(
         notification_presets=ctx.notification_presets,
         webhook_url=ctx.webhook_url,
         result=result,
