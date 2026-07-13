@@ -45,7 +45,7 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
 
     client = build_immich_client(settings)
     task_id = f"man-{uuid.uuid4().hex[:8]}"
-    ensure_task(db, task_id, status="queued", step="queued", progress=0.0)
+    ensure_task(db, task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
 
     try:
         # Preview happens before enqueueing so invalid filters fail fast.

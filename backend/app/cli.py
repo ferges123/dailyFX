@@ -363,7 +363,7 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
                 f"Schedule {schedule_id} is already being processed by task {active_task.task_id}"
             )
 
-        ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0)
+        ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
         ctx = GenerationPipelineContext(
             db=db,
             settings=settings,
@@ -621,7 +621,7 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
                 f"Schedule {schedule_id} is already being processed by task {active_task.task_id}"
             )
 
-        ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0)
+        ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
 
         try:
             await preview_run_now_assets(

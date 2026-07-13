@@ -412,7 +412,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
             payload = run_context.to_run_now_task_payload()
 
             task_id = f"auto-s{schedule.id}-{uuid.uuid4().hex[:8]}"
-            ensure_task(session, task_id, status="queued", step="queued", progress=0.0, payload_json=payload.to_json())
+            ensure_task(session, task_id, status="queued", step="queued", progress=0.0, payload_json=payload.to_json(), schedule_id=schedule.id)
 
             schedule.last_run_at = current
             schedule.last_task_id = task_id

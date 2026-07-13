@@ -21,6 +21,7 @@ def ensure_task(
     progress: float | None = 0.0,
     error: str | None = None,
     payload_json: str | None = None,
+    schedule_id: int | None = None,
 ) -> GenerationTaskModel:
     row = db.get(GenerationTaskModel, task_id)
     if row is None:
@@ -31,6 +32,7 @@ def ensure_task(
             progress=progress,
             error=error,
             payload_json=payload_json,
+            schedule_id=schedule_id,
         )
         db.add(row)
     else:
@@ -40,6 +42,8 @@ def ensure_task(
         row.error = error
         if payload_json is not None:
             row.payload_json = payload_json
+        if schedule_id is not None:
+            row.schedule_id = schedule_id
     db.commit()
     db.refresh(row)
     record_task_snapshot(db, row)
