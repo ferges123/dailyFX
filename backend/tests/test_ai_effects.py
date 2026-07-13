@@ -265,6 +265,24 @@ def test_expanded_ai_effect_prompt_pack_is_seeded_and_listed():
         db.close()
 
 
+def test_all_builtin_ai_effect_prompts_define_precise_rendering_constraints():
+    effects = load_seed_effects()
+
+    assert effects
+    for effect in effects:
+        assert "Rendering contract: Use the input image as visual ground truth." in effect.positive_prompt
+        assert "exact number of subjects" in effect.positive_prompt
+        assert "left-to-right order" in effect.positive_prompt
+        assert "retain recognizable face geometry" in effect.positive_prompt
+        assert "Apply the transformation consistently" in effect.positive_prompt
+        assert "not a before-and-after comparison" in effect.positive_prompt
+        assert effect.negative_prompt is not None
+        assert "identity drift" in effect.negative_prompt
+        assert "wrong subject count" in effect.negative_prompt
+        assert "inconsistent transformation" in effect.negative_prompt
+        assert "gibberish letters" in effect.negative_prompt
+
+
 def test_hidden_builtins_do_not_hide_custom_overrides(monkeypatch):
     init_db()
     db = SessionLocal()
