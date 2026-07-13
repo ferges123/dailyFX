@@ -19,6 +19,7 @@ from app.services.generation.tasks import ensure_task
 from app.services.immich import get_or_create_settings
 
 _running_task_ids: set[str] = set()
+_background_tasks: set[asyncio.Task] = set()
 
 logger = logging.getLogger(__name__)
 
@@ -443,7 +444,9 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
                 break
 
             _running_task_ids.add(task.task_id)
-            asyncio.create_task(_run_queued_task_in_background(task.task_id))
+            task_obj = asyncio.create_task(_run_queued_task_in_background(task.task_id))
+            _background_tasks.add(task_obj)
+            task_obj.add_done_callback(_background_tasks.discard)
             spawned_count += 1
 
         return {
