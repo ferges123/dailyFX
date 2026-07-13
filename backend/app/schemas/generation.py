@@ -68,12 +68,12 @@ class GenerationHistoryResponse(GenerationHistoryBase):
     def from_model(cls, row: object) -> "GenerationHistoryResponse":
         return cls.model_validate(row)
 
-    @model_validator(mode='after')
-    def append_cache_buster(self) -> 'GenerationHistoryResponse':
+    @model_validator(mode="after")
+    def append_cache_buster(self) -> "GenerationHistoryResponse":
         if self.image_url and self.updated_at:
             t = int(self.updated_at.timestamp())
-            if 't=' not in self.image_url:
-                if '?' in self.image_url:
+            if "t=" not in self.image_url:
+                if "?" in self.image_url:
                     self.image_url = f"{self.image_url}&t={t}"
                 else:
                     self.image_url = f"{self.image_url}?t={t}"

@@ -447,5 +447,3 @@ def test_cli_prevents_duplicate_active_task_with_different_task_id(monkeypatch):
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
-
-
