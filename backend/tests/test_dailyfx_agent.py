@@ -111,13 +111,10 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
     assert exit_code == 0
     assert calls[0][:4] == ["docker", "compose", "-f", "docker-compose.yml"]
     assert calls[0][8:10] == ["prepare-host", "--schedule-id"]
-    assert calls[1] == [
-        "agy",
-        "--print",
-        "--image",
-        "./data/results/cli-s1-abc123.input.png",
-    ]
-    assert inputs[1] and inputs[1].startswith("Use the image.")
+    assert calls[1][0] == "agy"
+    assert calls[1][1] == "--print"
+    assert "CRITICAL: As the AI agent running on the host, you MUST follow this checklist:" in calls[1][2]
+    assert "cli-s1-abc123.input.png" in calls[1][2]
     assert calls[2][8:10] == ["finalize-host", "--manifest-path"]
     saved_manifest = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
     assert saved_manifest["title"] == "Updated Family Stroll"
@@ -361,13 +358,10 @@ def test_dailyfx_agent_supports_short_aliases(monkeypatch, tmp_path):
     )
 
     assert exit_code == 0
-    assert calls[1] == [
-        "agy",
-        "--print",
-        "--image",
-        "./data/results/cli-s1-abc123.input.png",
-    ]
-    assert inputs[1] and inputs[1].startswith("Use the image.")
+    assert calls[1][0] == "agy"
+    assert calls[1][1] == "--print"
+    assert "CRITICAL: As the AI agent running on the host, you MUST follow this checklist:" in calls[1][2]
+    assert "cli-s1-abc123.input.png" in calls[1][2]
 
 
 def test_dailyfx_agent_passes_model_to_agy(monkeypatch, tmp_path):

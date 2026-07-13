@@ -257,10 +257,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--agy-command-template",
-        default="--print --image {image_path}",
+        default="--print {prompt}",
         help=(
             "Template used when --target agy is selected. Supports {image_path}, "
-            "{output_path}, and {manifest_path}. Prompt is sent on stdin."
+            "{output_path}, {manifest_path}, and {prompt}. Prompt is sent on stdin."
         ),
     )
     parser.add_argument(
@@ -419,6 +419,7 @@ def _build_target_command(
     manifest_path: str,
     output_path: str,
     model: str | None,
+    prompt: str,
     *,
     agy_template: str,
     codex_template: str,
@@ -428,6 +429,7 @@ def _build_target_command(
             image_path=shlex.quote(image_path),
             manifest_path=shlex.quote(manifest_path),
             output_path=shlex.quote(output_path),
+            prompt=shlex.quote(prompt),
         )
     )
 
@@ -1494,7 +1496,12 @@ def _augment_host_prompt(
     task_id: str
 ) -> str:
     checklist = (
-        f"\n\nCRITICAL: As the AI agent running on the host, you MUST follow this checklist:\n"
+        f"\n\nCRITICAL SYSTEM INSTRUCTION: THIS IS NOT A SOFTWARE DEVELOPMENT, CODING, OR TESTING TASK. "
+        f"DO NOT look at the git status, DO NOT read files from the repository (e.g., Python source code files), "
+        f"DO NOT run any tests (like pytest), and DO NOT execute any make commands (such as make test, make lint, or make *). "
+        f"Focus EXCLUSIVELY on generating the requested image and writing/updating the metadata. "
+        f"Do not attempt to verify or review the codebase code.\n\n"
+        f"CRITICAL: As the AI agent running on the host, you MUST follow this checklist:\n"
         f"Checklist:\n"
         f"- [ ] Source Vision: Open and analyze the input image (source photo) at '{abs_image_path}' to extract context, theme, and subjects.\n"
         f"- [ ] Image Generation: Apply the requested effects/modifications and save the final output image exactly at '{abs_output_path}' (or in a directory/filename containing the task ID '{task_id}').\n"
@@ -2146,6 +2153,7 @@ def main(argv: list[str] | None = None) -> int:
                 str(manifest_path),
                 output_path,
                 args.model,
+                prompt,
                 agy_template=args.agy_command_template,
                 codex_template=args.codex_command_template,
             )

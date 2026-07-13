@@ -61,7 +61,7 @@ Execute the agent from the project root:
 | `--keep-manifest` | `flag` | `False` | Prevent deletion of temporary manifest files after execution. |
 | `--dry-run` | `flag` | `False` | Print compose and host commands without executing them. |
 | `-v, --verbose` | `flag` | `False` | Print the loaded manifest payload before calling the target. |
-| `--agy-command-template` | `str` | `"--print --image {image_path}"` | Command template for `agy`. Supports `{image_path}`, `{output_path}`, and `{manifest_path}`. |
+| `--agy-command-template` | `str` | `"--print {prompt}"` | Command template for `agy`. Supports `{image_path}`, `{output_path}`, `{manifest_path}`, and `{prompt}`. |
 | `--codex-command-template`| `str` | `"exec --image {image_path} -"`| Command template for `codex`. Supports `{image_path}`, `{output_path}`, and `{manifest_path}`. |
 | `--timeout` | `int` | `600` | Timeout in seconds for the target tool execution. |
 | `-x, --repeat` | `int` | `1` | Number of times to repeat the execution task. |
