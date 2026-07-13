@@ -786,7 +786,7 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
             id="asset-1",
             original_file_name="photo.jpg",
             created_at="2024-06-15T10:30:00.000Z",
-            people=[SimpleNamespace(id="person-1", name="Alice")],
+            people=[SimpleNamespace(id="person-1", name="Alicja")],
         )
         fake_client = AsyncMock()
         fake_client.search_assets = AsyncMock(return_value=_make_fake_page([fake_asset]))
@@ -797,7 +797,7 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
                 "people": [
                     {
                         "id": "person-1",
-                        "name": "Alice",
+                        "name": "Alicja",
                         "faces": [
                             {
                                 "id": "face-1",
@@ -890,7 +890,7 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
         config = json.loads(entry.config_json)
         provenance = config["metadata_provenance"]
         assert provenance["people_context"]["used"] is True
-        assert provenance["people_context"]["names"] == ["Alice"]
+        assert provenance["people_context"]["names"] == ["Alicja"]
         assert provenance["source_vision"]["people_context_used"] is True
     finally:
         db.close()

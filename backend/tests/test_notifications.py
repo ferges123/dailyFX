@@ -199,6 +199,11 @@ def test_push_subscription_list_shows_device_label():
     init_db()
     db = SessionLocal()
     try:
+        from app.models.push import PushSubscriptionModel
+
+        db.query(PushSubscriptionModel).delete()
+        db.commit()
+
         save_subscription(
             db,
             "https://push.example.test/endpoint-1",

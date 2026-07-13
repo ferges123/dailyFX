@@ -15,6 +15,15 @@ def clear_immich_client_cache():
 
 
 @pytest.fixture(autouse=True)
+def clear_settings_cache():
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def configure_limiter(request):
     if "test_rate_limits" not in request.node.fspath.strpath:
         limiter.enabled = False
