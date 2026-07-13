@@ -308,3 +308,82 @@ def test_host_render_paths_resolves_correctly():
     assert source_path.name == "test-task-123.input.png"
     assert output_path.name == "test-task-123.png"
 
+
+def test_prepare_host_render_sets_failed_status_on_exception(monkeypatch):
+    import asyncio
+    import pytest
+    db, schedule = _setup_cli_db()
+    try:
+        from app.cli import _prepare_host_render, CLIError
+        from app.services.generation.tasks import get_task
+
+        # Force a failure during planning
+        monkeypatch.setattr(
+            "app.services.generation.pipeline.planning._pipeline_setup_and_planning",
+            lambda ctx: None  # trigger CLIError "Unable to prepare host render..."
+        )
+
+        with pytest.raises(CLIError):
+            asyncio.run(_prepare_host_render(schedule.id, "fail-task-1", "agy"))
+
+        task = get_task(db, "fail-task-1")
+        assert task is not None
+        assert task.status == "failed"
+        assert "Unable to prepare host render" in task.error
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+
+
+def test_generate_sets_failed_status_on_exception(monkeypatch):
+    import asyncio
+    import pytest
+    db, schedule = _setup_cli_db()
+    try:
+        from app.cli import _generate, CLIError
+        from app.services.generation.tasks import get_task
+
+        # Mock settings and client to get past init phase
+        monkeypatch.setattr(
+            "app.cli.get_or_create_settings",
+            lambda _db: SimpleNamespace(
+                id=1,
+                immich_url="https://immich.example.test",
+                encrypted_immich_api_key="encrypted",
+                debug_mode=False,
+                default_ai_provider="none",
+                default_ai_model="",
+                ai_image_provider="openai",
+                ai_image_model="gpt-image-1",
+                ai_prompt_enrichment=False,
+                ai_photo_selection_enabled=False,
+            ),
+        )
+        monkeypatch.setattr(
+            "app.cli.build_immich_client",
+            lambda _settings: SimpleNamespace(),
+        )
+
+        # Force preview_run_now_assets to raise exception
+        async def mock_preview_failed(**kwargs):
+            raise Exception("Mocked preview failure")
+
+        monkeypatch.setattr(
+            "app.cli.preview_run_now_assets",
+            mock_failed := mock_preview_failed
+        )
+
+        with pytest.raises(Exception) as excinfo:
+            asyncio.run(_generate(schedule.id, "fail-task-2"))
+
+        assert "Mocked preview failure" in str(excinfo.value)
+        task = get_task(db, "fail-task-2")
+        assert task is not None
+        assert task.status == "failed"
+        assert "Mocked preview failure" in task.error
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+
+
+

@@ -364,91 +364,95 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
             )
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
-        ctx = GenerationPipelineContext(
-            db=db,
-            settings=settings,
-            task_id=resolved_task_id,
-            force=True,
-            filters=run_context.filters,
-            effects_config=run_context.effects_config,
-            schedule_id=schedule_id,
-            album_name=schedule.album_name,
-            notification_presets=notification_presets,
-        )
+        try:
+            ctx = GenerationPipelineContext(
+                db=db,
+                settings=settings,
+                task_id=resolved_task_id,
+                force=True,
+                filters=run_context.filters,
+                effects_config=run_context.effects_config,
+                schedule_id=schedule_id,
+                album_name=schedule.album_name,
+                notification_presets=notification_presets,
+            )
 
-        module_selection = _pipeline_setup_and_planning(ctx)
-        if module_selection is None:
-            raise CLIError(f"Unable to prepare host render for schedule {schedule_id}")
+            module_selection = _pipeline_setup_and_planning(ctx)
+            if module_selection is None:
+                raise CLIError(f"Unable to prepare host render for schedule {schedule_id}")
 
-        assets_res = await _pipeline_retrieve_and_select_assets(ctx, module_selection)
-        if assets_res is None:
-            raise CLIError(f"Unable to select assets for schedule {schedule_id}")
+            assets_res = await _pipeline_retrieve_and_select_assets(ctx, module_selection)
+            if assets_res is None:
+                raise CLIError(f"Unable to select assets for schedule {schedule_id}")
 
-        client, page, page_items, photo_selection_trace = assets_res
-        module = MODULES.get(module_selection.name)
-        if module is None or not hasattr(module, "build_host_render_request"):
-            raise CLIError(f"Module {module_selection.name} does not support host rendering")
+            client, page, page_items, photo_selection_trace = assets_res
+            module = MODULES.get(module_selection.name)
+            if module is None or not hasattr(module, "build_host_render_request"):
+                raise CLIError(f"Module {module_selection.name} does not support host rendering")
 
-        host_request = await module.build_host_render_request(
-            page_items,
-            module_selection.config.get("config", {}),
-            client,
-            settings,
-        )
+            host_request = await module.build_host_render_request(
+                page_items,
+                module_selection.config.get("config", {}),
+                client,
+                settings,
+            )
 
-        source_path, output_path = _host_render_paths(resolved_task_id)
-        source_path.write_bytes(host_request.source_image_bytes)
+            source_path, output_path = _host_render_paths(resolved_task_id)
+            source_path.write_bytes(host_request.source_image_bytes)
 
-        _trace_stage(
-            db,
-            resolved_task_id,
-            stage="host_render_ready",
-            message=f"Prepared host render for {target}",
-            step="host_render_ready",
-            status="running",
-            progress=0.6,
-            details={
-                "target": target,
-                "source_asset_id": host_request.source_asset_id,
-                "source_image_path": str(source_path),
-                "output_path": str(output_path),
-                "photo_selection": photo_selection_trace or {},
-            },
-        )
-
-        upsert_history_entry(
-            db,
-            resolved_task_id,
-            title=host_request.title,
-            summary=host_request.summary,
-            source_asset_ids=json.dumps([host_request.source_asset_id]),
-        )
-
-        host_manifest = _host_render_manifest_from_request(
-            task_id=resolved_task_id,
-            schedule_id=schedule_id,
-            target=target,
-            request=host_request,
-            source_path=source_path,
-            output_path=output_path,
-        )
-        history_row = _load_history_row(db, resolved_task_id)
-        history_config = _parse_json_object(history_row.config_json)
-        task_trace = history_config.get("task_trace")
-
-        return HostRenderManifest(
-            **{
-                **asdict(host_manifest),
-                "source_asset_created_at": _to_iso_timestamp(
-                    getattr(page_items[0], "created_at", None),
-                ),
-                "config_json": {
-                    **host_request.config,
-                    "photo_selection_trace": photo_selection_trace or {},
+            _trace_stage(
+                db,
+                resolved_task_id,
+                stage="host_render_ready",
+                message=f"Prepared host render for {target}",
+                step="host_render_ready",
+                status="running",
+                progress=0.6,
+                details={
+                    "target": target,
+                    "source_asset_id": host_request.source_asset_id,
+                    "source_image_path": str(source_path),
+                    "output_path": str(output_path),
+                    "photo_selection": photo_selection_trace or {},
                 },
-                "task_trace": list(task_trace) if isinstance(task_trace, list) else [],
-            },
-        )
+            )
+
+            upsert_history_entry(
+                db,
+                resolved_task_id,
+                title=host_request.title,
+                summary=host_request.summary,
+                source_asset_ids=json.dumps([host_request.source_asset_id]),
+            )
+
+            host_manifest = _host_render_manifest_from_request(
+                task_id=resolved_task_id,
+                schedule_id=schedule_id,
+                target=target,
+                request=host_request,
+                source_path=source_path,
+                output_path=output_path,
+            )
+            history_row = _load_history_row(db, resolved_task_id)
+            history_config = _parse_json_object(history_row.config_json)
+            task_trace = history_config.get("task_trace")
+
+            return HostRenderManifest(
+                **{
+                    **asdict(host_manifest),
+                    "source_asset_created_at": _to_iso_timestamp(
+                        getattr(page_items[0], "created_at", None),
+                    ),
+                    "config_json": {
+                        **host_request.config,
+                        "photo_selection_trace": photo_selection_trace or {},
+                    },
+                    "task_trace": list(task_trace) if isinstance(task_trace, list) else [],
+                },
+            )
+        except Exception as exc:
+            update_task(db, resolved_task_id, status="failed", step="failed", error=str(exc))
+            raise
     finally:
         db.close()
 
@@ -622,58 +626,61 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
             )
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
-
         try:
-            await preview_run_now_assets(
-                client=client,
-                filters=run_context.filters,
-                task_id=resolved_task_id,
-                db=db,
-                no_assets_message="No assets matched the filter preset",
-            )
-        except HTTPException as exc:
-            record_run_now_failure_history(
+            try:
+                await preview_run_now_assets(
+                    client=client,
+                    filters=run_context.filters,
+                    task_id=resolved_task_id,
+                    db=db,
+                    no_assets_message="No assets matched the filter preset",
+                )
+            except HTTPException as exc:
+                record_run_now_failure_history(
+                    db,
+                    resolved_task_id,
+                    generation_type="schedule_run",
+                    title="Failed: schedule run",
+                    summary=str(exc.detail) if isinstance(exc.detail, str) else "Failed to preview assets",
+                )
+                raise CLIError(str(exc.detail) if isinstance(exc.detail, str) else "Failed to preview assets") from exc
+
+            payload_json = run_context.to_run_now_task_payload().to_json()
+            update_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, payload_json=payload_json)
+            upsert_history_entry(
                 db,
                 resolved_task_id,
                 generation_type="schedule_run",
-                title="Failed: schedule run",
-                summary=str(exc.detail) if isinstance(exc.detail, str) else "Failed to preview assets",
+                status="QUEUED",
+                title=f"Queued: {schedule.name}",
+                summary="Waiting for the worker to start this scheduled run.",
+                source_asset_ids="[]",
+                config_json=payload_json,
+                task_step="queued",
+                schedule_id=schedule_id,
+                album_name=schedule.album_name,
             )
-            raise CLIError(str(exc.detail) if isinstance(exc.detail, str) else "Failed to preview assets") from exc
 
-        payload_json = run_context.to_run_now_task_payload().to_json()
-        update_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, payload_json=payload_json)
-        upsert_history_entry(
-            db,
-            resolved_task_id,
-            generation_type="schedule_run",
-            status="QUEUED",
-            title=f"Queued: {schedule.name}",
-            summary="Waiting for the worker to start this scheduled run.",
-            source_asset_ids="[]",
-            config_json=payload_json,
-            task_step="queued",
-            schedule_id=schedule_id,
-            album_name=schedule.album_name,
-        )
+            result = await run_generation_cycle(
+                db,
+                settings,
+                resolved_task_id,
+                force=True,
+                **run_context.to_run_now_task_payload().to_run_generation_kwargs(notification_presets=notification_presets),
+            )
+            if result is None:
+                raise CLIError(f"Generation failed for task {resolved_task_id}")
 
-        result = await run_generation_cycle(
-            db,
-            settings,
-            resolved_task_id,
-            force=True,
-            **run_context.to_run_now_task_payload().to_run_generation_kwargs(notification_presets=notification_presets),
-        )
-        if result is None:
-            raise CLIError(f"Generation failed for task {resolved_task_id}")
+            row = _load_history_row(db, resolved_task_id)
+            if row.status == "FAILED":
+                raise CLIError(row.summary or f"Generation failed for task {resolved_task_id}")
+            if not row.output_path:
+                raise CLIError(f"Generation completed but output path is missing for task {resolved_task_id}")
 
-        row = _load_history_row(db, resolved_task_id)
-        if row.status == "FAILED":
-            raise CLIError(row.summary or f"Generation failed for task {resolved_task_id}")
-        if not row.output_path:
-            raise CLIError(f"Generation completed but output path is missing for task {resolved_task_id}")
-
-        return _build_manifest(row)
+            return _build_manifest(row)
+        except Exception as exc:
+            update_task(db, resolved_task_id, status="failed", step="failed", error=str(exc))
+            raise
     finally:
         db.close()
 
