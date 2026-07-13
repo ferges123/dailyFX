@@ -4,7 +4,7 @@ import logging
 
 import httpx
 
-from app.api.routes_generation import accept_generation, reject_generation
+from app.api.routes_generation_actions import accept_generation, reject_generation
 from app.database import SessionLocal
 from app.models.generation_history import GenerationHistoryModel
 from app.models.notification_preset import NotificationPresetModel

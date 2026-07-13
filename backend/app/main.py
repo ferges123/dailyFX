@@ -13,6 +13,8 @@ from app.api.routes_ai_effects import router as ai_effects_router
 from app.api.routes_audit import router as audit_router
 from app.api.routes_debug import router as debug_router
 from app.api.routes_generation import router as generation_router
+from app.api.routes_generation_actions import router as generation_actions_router
+from app.api.routes_generation_stats import router as generation_stats_router
 from app.api.routes_health import router as health_router
 from app.api.routes_immich import router as immich_router
 from app.api.routes_metrics import router as metrics_router
@@ -120,6 +122,8 @@ app.include_router(health_router)
 app.include_router(immich_router)
 app.include_router(settings_router)
 app.include_router(generation_router)
+app.include_router(generation_actions_router)
+app.include_router(generation_stats_router)
 app.include_router(push_router)
 app.include_router(debug_router)
 app.include_router(presets_router)

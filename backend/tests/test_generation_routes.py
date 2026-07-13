@@ -5,12 +5,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from _contract_helpers import configure_contract_test_db, make_generation_history_row, make_generation_task_row
 
 from app.api.routes_generation import (
-    accept_generation,
     get_generation_history,
     get_generation_image,
     get_review_page,
     get_task_status,
     list_generation_modules,
+)
+from app.api.routes_generation_actions import (
+    accept_generation,
     reject_generation,
     retry_acceptance,
 )
@@ -359,7 +361,7 @@ def test_accept_generation(tmp_path, monkeypatch):
         fake_client.ensure_tag = AsyncMock(return_value=tag_mock)
         fake_client.tag_assets = AsyncMock()
 
-        with patch("app.api.routes_generation.build_immich_client", return_value=fake_client):
+        with patch("app.api.routes_generation_actions.build_immich_client", return_value=fake_client):
             req = GenerationAcceptRequest(create_album=False, album_name="AI Photos", album_id=None)
             result = asyncio.run(accept_generation("task-accept", req, db))
 
@@ -404,7 +406,7 @@ def test_accept_generation_records_partial_warnings(tmp_path, monkeypatch):
         fake_client.list_albums = AsyncMock(side_effect=ImmichError("albums endpoint unavailable"))
         fake_client.ensure_tag = AsyncMock(side_effect=ImmichError("tag endpoint unavailable"))
 
-        with patch("app.api.routes_generation.build_immich_client", return_value=fake_client):
+        with patch("app.api.routes_generation_actions.build_immich_client", return_value=fake_client):
             req = GenerationAcceptRequest(create_album=False, album_name="AI Photos", album_id=None)
             result = asyncio.run(accept_generation("task-accept-warn", req, db))
 
@@ -445,7 +447,7 @@ def test_retry_acceptance_replays_album_and_tag(tmp_path):
         fake_client.ensure_tag = AsyncMock(return_value=tag_mock)
         fake_client.tag_assets = AsyncMock()
 
-        with patch("app.api.routes_generation.build_immich_client", return_value=fake_client):
+        with patch("app.api.routes_generation_actions.build_immich_client", return_value=fake_client):
             result = asyncio.run(retry_acceptance("task-retry", db))
 
         assert result.album_id == "album-id-1"
@@ -492,7 +494,7 @@ def test_review_page_avoids_innerhtml_for_dynamic_api_values():
 
 def test_delete_history_by_status(tmp_path, monkeypatch):
     import app.config
-    from app.api.routes_generation import delete_history_by_status
+    from app.api.routes_generation_actions import delete_history_by_status
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     app.config.get_settings.cache_clear()
