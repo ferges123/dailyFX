@@ -386,3 +386,39 @@ def test_generate_sets_failed_status_on_exception(monkeypatch):
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
+
+
+def test_cli_prevents_duplicate_active_task(monkeypatch):
+    import asyncio
+    import pytest
+    from app.cli import CLIError, _prepare_host_render, _generate
+    from app.services.generation.tasks import ensure_task
+
+    db, schedule = _setup_cli_db()
+    try:
+        # Create an existing queued task in the database
+        task_id = "dup-task-1"
+        ensure_task(db, task_id, status="queued", schedule_id=schedule.id)
+
+        # 1. Test prepare_host_render rejects enqueuing a queued task
+        with pytest.raises(CLIError) as excinfo:
+            asyncio.run(_prepare_host_render(schedule.id, task_id, "agy"))
+        assert f"Task {task_id} is already in state queued" in str(excinfo.value)
+
+        # Change status to running
+        ensure_task(db, task_id, status="running", schedule_id=schedule.id)
+
+        # 2. Test prepare_host_render rejects enqueuing a running task
+        with pytest.raises(CLIError) as excinfo:
+            asyncio.run(_prepare_host_render(schedule.id, task_id, "agy"))
+        assert f"Task {task_id} is already in state running" in str(excinfo.value)
+
+        # 3. Test generate rejects enqueuing a running task
+        with pytest.raises(CLIError) as excinfo:
+            asyncio.run(_generate(schedule.id, task_id))
+        assert f"Task {task_id} is already in state running" in str(excinfo.value)
+
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+

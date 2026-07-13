@@ -345,9 +345,13 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
     init_db()
     db = SessionLocal()
     try:
+        resolved_task_id = task_id or f"cli-s{schedule_id}-{uuid.uuid4().hex[:8]}"
+        existing_task = db.get(GenerationTaskModel, resolved_task_id)
+        if existing_task and existing_task.status in ["queued", "running"]:
+            raise CLIError(f"Task {resolved_task_id} is already in state {existing_task.status}")
+
         settings = get_or_create_settings(db)
         schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
-        resolved_task_id = task_id or f"cli-s{schedule_id}-{uuid.uuid4().hex[:8]}"
 
         active_task = (
             db.query(GenerationTaskModel)
@@ -604,10 +608,14 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
     init_db()
     db = SessionLocal()
     try:
+        resolved_task_id = task_id or f"man-{uuid.uuid4().hex[:8]}"
+        existing_task = db.get(GenerationTaskModel, resolved_task_id)
+        if existing_task and existing_task.status in ["queued", "running"]:
+            raise CLIError(f"Task {resolved_task_id} is already in state {existing_task.status}")
+
         settings = get_or_create_settings(db)
         schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
         client = build_immich_client(settings)
-        resolved_task_id = task_id or f"man-{uuid.uuid4().hex[:8]}"
 
         active_task = (
             db.query(GenerationTaskModel)
@@ -618,8 +626,6 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
             )
             .first()
         )
-        if active_task:
-            raise CLIError(f"Schedule {schedule_id} is already being processed by task {active_task.task_id}")
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
         try:

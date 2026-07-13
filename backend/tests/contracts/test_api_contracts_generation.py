@@ -98,7 +98,7 @@ def test_generation_history_contract():
                     "summary": "Contract summary",
                     "source_asset_ids": '["asset-1"]',
                     "output_path": "/tmp/output.png",
-                    "image_url": "/api/generation/history/task-contract-1/image",
+                    "image_url": f"/api/generation/history/task-contract-1/image?t={int(row.updated_at.timestamp())}",
                     "provider": "openai",
                     "model": "gpt-4o",
                     "total_token_count": 42,
