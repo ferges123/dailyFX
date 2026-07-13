@@ -359,9 +359,7 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
             .first()
         )
         if active_task:
-            raise CLIError(
-                f"Schedule {schedule_id} is already being processed by task {active_task.task_id}"
-            )
+            raise CLIError(f"Schedule {schedule_id} is already being processed by task {active_task.task_id}")
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
         try:
@@ -621,9 +619,7 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
             .first()
         )
         if active_task:
-            raise CLIError(
-                f"Schedule {schedule_id} is already being processed by task {active_task.task_id}"
-            )
+            raise CLIError(f"Schedule {schedule_id} is already being processed by task {active_task.task_id}")
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
         try:
@@ -666,7 +662,9 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
                 settings,
                 resolved_task_id,
                 force=True,
-                **run_context.to_run_now_task_payload().to_run_generation_kwargs(notification_presets=notification_presets),
+                **run_context.to_run_now_task_payload().to_run_generation_kwargs(
+                    notification_presets=notification_presets
+                ),
             )
             if result is None:
                 raise CLIError(f"Generation failed for task {resolved_task_id}")
