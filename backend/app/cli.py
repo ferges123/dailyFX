@@ -336,6 +336,7 @@ def _host_render_manifest_from_request(
 
 
 async def _prepare_host_render(schedule_id: int, task_id: str | None, target: str) -> HostRenderManifest:
+    from app.models.generation_task import GenerationTaskModel
     from app.services.generation.modules import MODULES
     from app.services.generation.pipeline.assets import _pipeline_retrieve_and_select_assets
     from app.services.generation.pipeline.planning import _pipeline_setup_and_planning
@@ -347,6 +348,20 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
         settings = get_or_create_settings(db)
         schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
         resolved_task_id = task_id or f"cli-s{schedule_id}-{uuid.uuid4().hex[:8]}"
+
+        active_task = (
+            db.query(GenerationTaskModel)
+            .filter(
+                GenerationTaskModel.schedule_id == schedule_id,
+                GenerationTaskModel.status.in_(["queued", "running"]),
+                GenerationTaskModel.task_id != resolved_task_id,
+            )
+            .first()
+        )
+        if active_task:
+            raise CLIError(
+                f"Schedule {schedule_id} is already being processed by task {active_task.task_id}"
+            )
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0)
         ctx = GenerationPipelineContext(
@@ -582,6 +597,8 @@ async def _finalize_host_render(manifest_path: Path) -> int:
 
 
 async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
+    from app.models.generation_task import GenerationTaskModel
+
     init_db()
     db = SessionLocal()
     try:
@@ -589,6 +606,20 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
         schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
         client = build_immich_client(settings)
         resolved_task_id = task_id or f"man-{uuid.uuid4().hex[:8]}"
+
+        active_task = (
+            db.query(GenerationTaskModel)
+            .filter(
+                GenerationTaskModel.schedule_id == schedule_id,
+                GenerationTaskModel.status.in_(["queued", "running"]),
+                GenerationTaskModel.task_id != resolved_task_id,
+            )
+            .first()
+        )
+        if active_task:
+            raise CLIError(
+                f"Schedule {schedule_id} is already being processed by task {active_task.task_id}"
+            )
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0)
 
