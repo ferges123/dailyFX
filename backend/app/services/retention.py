@@ -13,6 +13,8 @@ from app.models.settings import SettingsModel
 
 logger = logging.getLogger(__name__)
 
+_RETAINABLE_STATUSES = ("REJECTED", "FAILED", "UPLOADED")
+
 
 @dataclass(frozen=True)
 class RetentionPreview:
@@ -30,6 +32,17 @@ def _cutoff(days: int | None, now: datetime) -> datetime | None:
     return None if days is None else now - timedelta(days=max(1, days))
 
 
+def _min_retention_days(settings: SettingsModel) -> int:
+    return min(
+        getattr(settings, "retention_rejected_files_days", 7) or 7,
+        getattr(settings, "retention_failed_files_days", 7) or 7,
+        getattr(settings, "retention_uploaded_files_days", 30) or 30,
+        getattr(settings, "retention_rejected_metadata_days", 90) or 90,
+        getattr(settings, "retention_failed_metadata_days", 90) or 90,
+        getattr(settings, "retention_uploaded_metadata_days", 30) or 30,
+    )
+
+
 def _safe_path(value: str | None, data_dir: Path) -> Path | None:
     if not value:
         return None
@@ -42,24 +55,39 @@ def _safe_path(value: str | None, data_dir: Path) -> Path | None:
     return path
 
 
-def _file_policy(row: GenerationHistoryModel, settings: SettingsModel, now: datetime) -> datetime | None:
-    if row.status == "REJECTED":
+def _file_cutoff(row_status: str, settings: SettingsModel, now: datetime) -> datetime | None:
+    if row_status == "REJECTED":
         return _cutoff(getattr(settings, "retention_rejected_files_days", 7), now)
-    if row.status == "FAILED":
+    if row_status == "FAILED":
         return _cutoff(getattr(settings, "retention_failed_files_days", 7), now)
-    if row.status == "UPLOADED":
+    if row_status == "UPLOADED":
         return _cutoff(getattr(settings, "retention_uploaded_files_days", 30), now)
     return None
 
 
-def _metadata_policy(row: GenerationHistoryModel, settings: SettingsModel, now: datetime) -> datetime | None:
-    if row.status == "REJECTED":
+def _metadata_cutoff(row_status: str, settings: SettingsModel, now: datetime) -> datetime | None:
+    if row_status == "REJECTED":
         return _cutoff(getattr(settings, "retention_rejected_metadata_days", 90), now)
-    if row.status == "FAILED":
+    if row_status == "FAILED":
         return _cutoff(getattr(settings, "retention_failed_metadata_days", 90), now)
-    if row.status == "UPLOADED":
+    if row_status == "UPLOADED":
         return _cutoff(getattr(settings, "retention_uploaded_metadata_days", 30), now)
     return None
+
+
+def _query_retention_candidates(db: Session, settings: SettingsModel, now: datetime):
+    """Query only rows eligible for any retention policy, using SQL WHERE filters."""
+    min_days = _min_retention_days(settings)
+    earliest_cutoff = now - timedelta(days=min_days)
+
+    return (
+        db.query(GenerationHistoryModel)
+        .filter(
+            GenerationHistoryModel.status.in_(_RETAINABLE_STATUSES),
+            GenerationHistoryModel.created_at < earliest_cutoff,
+        )
+        .all()
+    )
 
 
 def plan_retention(
@@ -69,24 +97,26 @@ def plan_retention(
     data_dir = (data_dir or get_app_settings().data_dir).resolve()
     files = metadata = tasks = total_bytes = missing = audits = 0
     warnings: list[str] = []
-    rows = db.query(GenerationHistoryModel).all()
     known_paths: set[Path] = set()
+
+    rows = _query_retention_candidates(db, settings, now)
     for row in rows:
         path = _safe_path(row.output_path, data_dir)
         if path:
             known_paths.add(path)
             if not path.exists():
                 missing += 1
-            cutoff = _file_policy(row, settings, now)
+            cutoff = _file_cutoff(row.status, settings, now)
             if cutoff and row.created_at and row.created_at < cutoff and path.exists():
                 files += 1
                 total_bytes += path.stat().st_size
                 thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
                 if thumb.exists():
                     total_bytes += thumb.stat().st_size
-        metadata_cutoff = _metadata_policy(row, settings, now)
-        if metadata_cutoff and row.created_at and row.created_at < metadata_cutoff:
+        meta_cutoff = _metadata_cutoff(row.status, settings, now)
+        if meta_cutoff and row.created_at and row.created_at < meta_cutoff:
             metadata += 1
+
     task_cutoff = _cutoff(getattr(settings, "retention_task_days", 30), now)
     if task_cutoff:
         from app.models.generation_task import GenerationTaskModel
@@ -127,32 +157,43 @@ def execute_retention(
     data_dir: Path | None = None,
     actor_ctx: object | None = None,
 ) -> RetentionPreview:
-    preview = plan_retention(db, settings, now=now, data_dir=data_dir)
-    if dry_run or not getattr(settings, "retention_enabled", True):
-        return preview
     now = now or datetime.now(timezone.utc)
     data_dir = (data_dir or get_app_settings().data_dir).resolve()
-    rows = db.query(GenerationHistoryModel).all()
+
+    rows = _query_retention_candidates(db, settings, now)
+
+    if dry_run or not getattr(settings, "retention_enabled", True):
+        return plan_retention(db, settings, now=now, data_dir=data_dir)
+
+    files = total_bytes = missing = 0
     metadata_cutoffs: list[GenerationHistoryModel] = []
     for row in rows:
         path = _safe_path(row.output_path, data_dir)
-        if path and not path.exists() and getattr(row, "local_file_status", "available") == "available":
-            row.local_file_status = "missing"
-        cutoff = _file_policy(row, settings, now)
-        if path and cutoff and row.created_at and row.created_at < cutoff:
-            try:
-                path.unlink(missing_ok=True)
-                thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
-                thumb.unlink(missing_ok=True)
-                row.local_file_status = "deleted_by_retention"
-                row.local_file_deleted_at = now
-                row.local_file_delete_reason = "retention"
-                row.output_path = None
-            except OSError:
-                logger.exception("Retention failed to delete %s", path)
-        metadata_cutoff = _metadata_policy(row, settings, now)
-        if metadata_cutoff and row.created_at and row.created_at < metadata_cutoff:
+        if path:
+            if not path.exists() and getattr(row, "local_file_status", "available") == "available":
+                row.local_file_status = "missing"
+                missing += 1
+            cutoff = _file_cutoff(row.status, settings, now)
+            if cutoff and row.created_at and row.created_at < cutoff and path.exists():
+                try:
+                    file_size = path.stat().st_size
+                    path.unlink(missing_ok=True)
+                    thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
+                    if thumb.exists():
+                        total_bytes += thumb.stat().st_size
+                        thumb.unlink(missing_ok=True)
+                    total_bytes += file_size
+                    files += 1
+                    row.local_file_status = "deleted_by_retention"
+                    row.local_file_deleted_at = now
+                    row.local_file_delete_reason = "retention"
+                    row.output_path = None
+                except OSError:
+                    logger.exception("Retention failed to delete %s", path)
+        meta_cutoff = _metadata_cutoff(row.status, settings, now)
+        if meta_cutoff and row.created_at and row.created_at < meta_cutoff:
             metadata_cutoffs.append(row)
+
     if metadata_cutoffs:
         from app.models.generation_stream_event import GenerationStreamEventModel
         from app.models.generation_task import GenerationTaskModel
@@ -167,7 +208,15 @@ def execute_retention(
         for row in metadata_cutoffs:
             db.delete(row)
 
-    # Perform audit logs retention (Task 7)
+    task_cutoff = _cutoff(getattr(settings, "retention_task_days", 30), now)
+    if task_cutoff:
+        from app.models.generation_task import GenerationTaskModel
+
+        db.query(GenerationTaskModel).filter(
+            GenerationTaskModel.status.in_(("succeeded", "failed", "cancelled")),
+            GenerationTaskModel.updated_at < task_cutoff,
+        ).delete(synchronize_session=False)
+
     audit_cutoff = _cutoff(getattr(settings, "retention_audit_days", 90), now)
     if audit_cutoff:
         from app.models.audit_event import AuditEventModel
@@ -176,7 +225,19 @@ def execute_retention(
 
     db.commit()
 
-    # Record audit event for retention completion (Task 5)
+    # Count orphans for preview
+    orphan_count = 0
+    known_paths = {_safe_path(r.output_path, data_dir) for r in rows if r.output_path}
+    results_dir = data_dir / "results"
+    if results_dir.exists():
+        for path in results_dir.iterdir():
+            if (
+                path.is_file()
+                and path not in known_paths
+                and path.stat().st_mtime < (now - timedelta(days=7)).timestamp()
+            ):
+                orphan_count += 1
+
     try:
         from app.services.audit import record_audit_event
 
@@ -192,16 +253,22 @@ def execute_retention(
             actor_type=actor_type,
             request_id=request_id,
             source_ip_hash=source_ip_hash,
-            summary=f"Retention executed: deleted {preview.files} files, {preview.metadata} metadata rows, {preview.tasks} tasks, {preview.audits} audit logs",
+            summary=f"Retention executed: deleted {files} files, {len(metadata_cutoffs)} metadata rows, tasks and audit logs",
             metadata={
-                "deleted_files": preview.files,
-                "deleted_metadata_rows": preview.metadata,
-                "deleted_tasks": preview.tasks,
-                "deleted_audit_logs": preview.audits,
-                "released_bytes": preview.bytes,
+                "deleted_files": files,
+                "deleted_metadata_rows": len(metadata_cutoffs),
+                "released_bytes": total_bytes,
             },
         )
     except Exception:
         logger.exception("Failed to record retention.completed audit event")
 
-    return preview
+    return RetentionPreview(
+        files=files,
+        metadata=len(metadata_cutoffs),
+        tasks=0,
+        bytes=total_bytes,
+        missing_files=missing,
+        orphan_files=orphan_count,
+        audits=0,
+    )
