@@ -284,9 +284,9 @@ def _build_host_render_prompt(*, task_id: str, generation_type: str, title: str,
 
 
 def _host_render_paths(task_id: str) -> tuple[Path, Path]:
-    from app.services.generation import engine as engine_module
+    from app.config import get_settings
 
-    results_dir = engine_module.get_settings().data_dir / "results"
+    results_dir = get_settings().data_dir / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     source_path = results_dir / f"{task_id}.input.png"
     output_path = results_dir / f"{task_id}.png"

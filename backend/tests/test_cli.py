@@ -300,3 +300,11 @@ def test_dailyfx_cli_finalize_host_rejects_unchanged_metadata(tmp_path, capsys):
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
+
+
+def test_host_render_paths_resolves_correctly():
+    from app.cli import _host_render_paths
+    source_path, output_path = _host_render_paths("test-task-123")
+    assert source_path.name == "test-task-123.input.png"
+    assert output_path.name == "test-task-123.png"
+
