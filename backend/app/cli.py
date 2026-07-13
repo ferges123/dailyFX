@@ -613,10 +613,6 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
         if existing_task and existing_task.status in ["queued", "running"]:
             raise CLIError(f"Task {resolved_task_id} is already in state {existing_task.status}")
 
-        settings = get_or_create_settings(db)
-        schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
-        client = build_immich_client(settings)
-
         active_task = (
             db.query(GenerationTaskModel)
             .filter(
@@ -626,6 +622,12 @@ async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
             )
             .first()
         )
+        if active_task:
+            raise CLIError(f"Schedule {schedule_id} is already being processed by task {active_task.task_id}")
+
+        settings = get_or_create_settings(db)
+        schedule, run_context, notification_presets = _load_schedule_context(db, schedule_id)
+        client = build_immich_client(settings)
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
         try:

@@ -390,8 +390,10 @@ def test_generate_sets_failed_status_on_exception(monkeypatch):
 
 def test_cli_prevents_duplicate_active_task(monkeypatch):
     import asyncio
+
     import pytest
-    from app.cli import CLIError, _prepare_host_render, _generate
+
+    from app.cli import CLIError, _generate, _prepare_host_render
     from app.services.generation.tasks import ensure_task
 
     db, schedule = _setup_cli_db()
@@ -421,4 +423,29 @@ def test_cli_prevents_duplicate_active_task(monkeypatch):
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
+
+
+def test_cli_prevents_duplicate_active_task_with_different_task_id(monkeypatch):
+    import asyncio
+
+    import pytest
+
+    from app.cli import CLIError, _generate
+    from app.services.generation.tasks import ensure_task
+
+    db, schedule = _setup_cli_db()
+    try:
+        # Create an existing running task in the database for our schedule
+        task_id_1 = "dup-task-1"
+        ensure_task(db, task_id_1, status="running", schedule_id=schedule.id)
+
+        # Test _generate rejects running with a different task_id
+        task_id_2 = "dup-task-2"
+        with pytest.raises(CLIError) as excinfo:
+            asyncio.run(_generate(schedule.id, task_id_2))
+        assert f"Schedule {schedule.id} is already being processed by task {task_id_1}" in str(excinfo.value)
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+
 
