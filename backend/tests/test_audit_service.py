@@ -315,7 +315,7 @@ def test_config_api_auditing(db_session: Session):
 
         # 2. Test Connection tested Auditing
         # Try a quick connection test
-        client.post("/api/settings/test-openai")
+        client.post("/api/settings/test-provider/openai")
         events_conn = db_session.query(AuditEventModel).filter_by(action="settings.connection_tested").all()
         assert len(events_conn) >= 1
 

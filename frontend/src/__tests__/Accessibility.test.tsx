@@ -36,12 +36,7 @@ vi.mock('../api/client', () => ({
   clearHistoryByStatus: vi.fn(() => Promise.resolve({})),
   updateSettings: vi.fn(() => Promise.resolve({})),
   testImmichConnection: vi.fn(() => Promise.resolve({})),
-  testOpenAIConnection: vi.fn(() => Promise.resolve({})),
-  testGeminiConnection: vi.fn(() => Promise.resolve({})),
-  testOpenRouterConnection: vi.fn(() => Promise.resolve({})),
-  testBytePlusConnection: vi.fn(() => Promise.resolve({})),
-  testLocalAIConnection: vi.fn(() => Promise.resolve({})),
-  testXiaomiConnection: vi.fn(() => Promise.resolve({})),
+  testProviderConnection: vi.fn(() => Promise.resolve({})),
 }));
 
 vi.mock('../api/generationStream', () => ({

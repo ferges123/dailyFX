@@ -6,7 +6,6 @@ from PIL import Image
 from app.models.settings import SettingsModel
 from app.services.generation.modules.instaweather import (
     InstaWeatherModule,
-    calculate_season_and_icon,
     map_wmo_code,
     parse_date,
 )
@@ -17,13 +16,6 @@ def test_map_wmo_code():
     assert map_wmo_code(3) == ("Cloudy", "☁")
     assert map_wmo_code(95) == ("Thunderstorm", "⚡")
     assert map_wmo_code(999) == ("Clear", "☀")
-
-
-def test_calculate_season_and_icon():
-    assert calculate_season_and_icon(3) == ("Spring", "❀")
-    assert calculate_season_and_icon(6) == ("Summer", "☀")
-    assert calculate_season_and_icon(10) == ("Autumn", "❧")
-    assert calculate_season_and_icon(12) == ("Winter", "❄")
 
 
 def test_parse_date():

@@ -46,7 +46,7 @@ export default function AuditLogPage() {
     };
   }, [actionFilter, categoryFilter, outcomeFilter, actorTypeFilter, dateFrom, dateTo, offset]);
 
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['auditLogs', queryParams],
     queryFn: () => getAuditLogs(queryParams),
   });

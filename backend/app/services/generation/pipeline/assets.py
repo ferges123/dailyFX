@@ -120,21 +120,6 @@ def _recent_source_asset_id_recency(db, *, limit: int = 25) -> dict[str, int]:
     return recency
 
 
-def _order_page_items_by_recent_history(page_items: list, recent_source_asset_ids: dict[str, int]) -> list:
-    unique_items = _dedupe_page_items(page_items)
-    if not unique_items or not recent_source_asset_ids:
-        return unique_items
-
-    unused_items = [item for item in unique_items if getattr(item, "id", None) not in recent_source_asset_ids]
-    used_items = [item for item in unique_items if getattr(item, "id", None) in recent_source_asset_ids]
-
-    if unused_items:
-        random.shuffle(unused_items)
-
-    used_items.sort(key=lambda item: recent_source_asset_ids[getattr(item, "id", "")], reverse=True)
-    return unused_items + used_items
-
-
 def _prepare_page_items_for_module(
     *,
     page,

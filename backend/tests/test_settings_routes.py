@@ -7,14 +7,9 @@ from _contract_helpers import configure_contract_test_db
 from sqlalchemy.exc import IntegrityError
 
 from app.api.routes_settings import (
+    perform_provider_connection_test,
     read_settings,
     update_settings,
-)
-from app.api.routes_settings import (
-    test_local_ai_connection as routes_test_local_ai_connection,
-)
-from app.api.routes_settings import (
-    test_xiaomi_connection as routes_test_xiaomi_connection,
 )
 from app.database import SessionLocal, init_db
 from app.models.settings import SettingsModel
@@ -102,7 +97,7 @@ def test_xiaomi_connection_uses_mimo_models_endpoint():
                 new=AsyncMock(return_value=fake_result),
             ) as mock_test,
         ):
-            response = asyncio.run(routes_test_xiaomi_connection(db))
+            response = asyncio.run(perform_provider_connection_test(provider="xiaomi", db=db))
 
         assert response.ok is True
         assert response.provider == "xiaomi"
@@ -153,7 +148,7 @@ def test_local_ai_connection_uses_configured_base_url_without_token():
                 new=AsyncMock(return_value=fake_result),
             ) as mock_test,
         ):
-            response = asyncio.run(routes_test_local_ai_connection(db))
+            response = asyncio.run(perform_provider_connection_test(provider="local-ai", db=db))
 
         assert response.ok is True
         assert response.provider == "local"

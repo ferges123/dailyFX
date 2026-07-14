@@ -9,15 +9,12 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-import { getGenerationHistory, getImmichAssetExif } from '../api/client';
+import { getGenerationHistory } from '../api/client';
 import { type GenerationHistoryEntry } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
 import { useDebounce } from './History/useDebounce';
-import {
-  parseFirstSourceAssetId,
-  parseGenerationExif,
-} from '../utils/generationMetadata';
+import { useSelectedExif } from '../hooks/useSelectedExif';
 
 const PAGE_SIZE = 24;
 
@@ -105,30 +102,10 @@ export function GalleryPage() {
   const [lightboxEntry, setLightboxEntry] =
     useState<GenerationHistoryEntry | null>(null);
 
-  const dbExif = useMemo(() => {
-    return parseGenerationExif(lightboxEntry?.config_json);
-  }, [lightboxEntry?.config_json]);
-
-  const sourceAssetId = useMemo(() => {
-    return parseFirstSourceAssetId(lightboxEntry?.source_asset_ids);
-  }, [lightboxEntry?.source_asset_ids]);
-
-  const fetchedExifQuery = useQuery({
-    queryKey: ['immich-asset-exif', sourceAssetId],
-    queryFn: () => getImmichAssetExif(sourceAssetId!),
-    enabled: !dbExif && !!sourceAssetId,
-  });
-
-  const selectedExif = useMemo(() => {
-    if (dbExif) return dbExif;
-    if (
-      fetchedExifQuery.data &&
-      Object.keys(fetchedExifQuery.data).length > 0
-    ) {
-      return fetchedExifQuery.data;
-    }
-    return null;
-  }, [dbExif, fetchedExifQuery.data]);
+  const { selectedExif } = useSelectedExif(
+    lightboxEntry?.config_json,
+    lightboxEntry?.source_asset_ids,
+  );
   const [offset, setOffset] = useState(0);
   const [loadedEntries, setLoadedEntries] = useState<GenerationHistoryEntry[]>(
     [],

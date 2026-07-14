@@ -1543,22 +1543,23 @@ def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
     locks_dir = tmp_path / "locks"
     monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", locks_dir)
 
-    lock_file = locks_dir / "dailyfx-s1-agy.lock"
+    lock_file = locks_dir / "dailyfx-s1.lock"
 
     # 1. Normal acquisition
     dailyfx_agent._acquire_lock(1, "agy")
     assert lock_file.exists()
 
-    # 2. Re-acquisition under active process fails
+    # 2. Re-acquisition under active process fails (even with different target)
     with pytest.raises(RuntimeError) as exc:
-        dailyfx_agent._acquire_lock(1, "agy")
+        dailyfx_agent._acquire_lock(1, "codex")
     assert "is already running" in str(exc.value)
+    assert "for target agy" in str(exc.value)
 
     # 3. Re-acquisition under stale process overrides
     # Write a PID that doesn't exist
     import json
 
-    lock_file.write_text(json.dumps({"pid": 999999, "started_at": "some-time"}), encoding="utf-8")
+    lock_file.write_text(json.dumps({"pid": 999999, "started_at": "some-time", "target": "agy"}), encoding="utf-8")
     dailyfx_agent._acquire_lock(1, "agy")
     assert lock_file.exists()
 
@@ -1573,7 +1574,7 @@ def test_daemon_lock_update_records_child_pid(tmp_path, monkeypatch):
     monkeypatch.setattr(dailyfx_agent.os, "getpid", lambda: 111)
 
     dailyfx_agent._acquire_lock(1, "agy")
-    lock_file = locks_dir / "dailyfx-s1-agy.lock"
+    lock_file = locks_dir / "dailyfx-s1.lock"
 
     dailyfx_agent._update_lock_for_daemon_child(1, "agy", 222)
 

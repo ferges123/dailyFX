@@ -25,7 +25,7 @@ from app.immich.models import (
     ImmichConnectionResult,
     ImmichExifInfo,
     ImmichFaceSummary,
-    ImmichPersonFilter,
+    ImmichPersonFilter,  # noqa: F401
     ImmichPersonSummary,
     ImmichSearchFilters,
     ImmichTagSummary,
@@ -856,29 +856,6 @@ class ImmichClient:
         elif filters.media_type == "video":
             body["type"] = "VIDEO"
         return body
-
-    @staticmethod
-    def _filter_assets_by_people(
-        items: list[ImmichAssetSummary],
-        person_filters: list[ImmichPersonFilter] | None,
-    ) -> list[ImmichAssetSummary]:
-        if not person_filters:
-            return items
-        excluded_ids = {item.person_id for item in person_filters if item.mode == "exclude"}
-        obligatory_ids = {item.person_id for item in person_filters if item.mode == "obligatory"}
-        optional_ids = {item.person_id for item in person_filters if item.mode == "optional"}
-
-        filtered_items = [item for item in items if not any(person.id in excluded_ids for person in item.people)]
-        if obligatory_ids:
-            filtered_items = [
-                item for item in filtered_items if obligatory_ids.issubset({person.id for person in item.people})
-            ]
-            if optional_ids:
-                return [item for item in filtered_items if any(person.id in optional_ids for person in item.people)]
-            return filtered_items
-        if optional_ids:
-            return [item for item in filtered_items if any(person.id in optional_ids for person in item.people)]
-        return filtered_items
 
     @staticmethod
     def _dedupe_assets(items: list[ImmichAssetSummary]) -> list[ImmichAssetSummary]:

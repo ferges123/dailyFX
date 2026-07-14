@@ -1,7 +1,7 @@
 import logging
 
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -295,76 +295,22 @@ async def test_immich_connection(
     return response
 
 
-@router.post("/test-openai", response_model=ConnectionTestResponse)
+@router.post("/test-provider/{provider}", response_model=ConnectionTestResponse)
 @limiter.limit("10/minute")
-async def test_openai_connection(
+async def perform_provider_connection_test(
+    provider: str,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     request: Request = None,
     actor_ctx: ActorContext = Depends(get_actor_context),
 ) -> ConnectionTestResponse:
     row = get_or_create_settings(db)
-    return await _test_provider_connection(db, row, "openai", actor_ctx)
-
-
-@router.post("/test-gemini", response_model=ConnectionTestResponse)
-@limiter.limit("10/minute")
-async def test_gemini_connection(
-    db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
-    request: Request = None,
-    actor_ctx: ActorContext = Depends(get_actor_context),
-) -> ConnectionTestResponse:
-    row = get_or_create_settings(db)
-    return await _test_provider_connection(db, row, "gemini", actor_ctx)
-
-
-@router.post("/test-openrouter", response_model=ConnectionTestResponse)
-@limiter.limit("10/minute")
-async def test_openrouter_connection(
-    db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
-    request: Request = None,
-    actor_ctx: ActorContext = Depends(get_actor_context),
-) -> ConnectionTestResponse:
-    row = get_or_create_settings(db)
-    return await _test_provider_connection(db, row, "openrouter", actor_ctx)
-
-
-@router.post("/test-byteplus", response_model=ConnectionTestResponse)
-@limiter.limit("10/minute")
-async def test_byteplus_connection(
-    db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
-    request: Request = None,
-    actor_ctx: ActorContext = Depends(get_actor_context),
-) -> ConnectionTestResponse:
-    row = get_or_create_settings(db)
-    return await _test_provider_connection(db, row, "byteplus", actor_ctx)
-
-
-@router.post("/test-xiaomi", response_model=ConnectionTestResponse)
-@limiter.limit("10/minute")
-async def test_xiaomi_connection(
-    db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
-    request: Request = None,
-    actor_ctx: ActorContext = Depends(get_actor_context),
-) -> ConnectionTestResponse:
-    row = get_or_create_settings(db)
-    return await _test_provider_connection(db, row, "xiaomi", actor_ctx)
-
-
-@router.post("/test-local-ai", response_model=ConnectionTestResponse)
-@limiter.limit("10/minute")
-async def test_local_ai_connection(
-    db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
-    request: Request = None,
-    actor_ctx: ActorContext = Depends(get_actor_context),
-) -> ConnectionTestResponse:
-    row = get_or_create_settings(db)
-    return await _test_local_connection(db, row, actor_ctx)
+    if provider == "local-ai":
+        return await _test_local_connection(db, row, actor_ctx)
+    elif provider in _HTTP_PROVIDER_TESTS:
+        return await _test_provider_connection(db, row, provider, actor_ctx)
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid provider: {provider}")
 
 
 async def _test_provider_connection(

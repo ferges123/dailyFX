@@ -1765,25 +1765,26 @@ def _handle_doctor(args: argparse.Namespace) -> int:
 
 def _acquire_lock(schedule_id: int, target: str) -> None:
     LOCKS_DIR.mkdir(parents=True, exist_ok=True)
-    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}-{target}.lock"
+    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}.lock"
 
     if lock_file.exists():
         try:
             data = json.loads(lock_file.read_text(encoding="utf-8"))
             pid = int(data.get("pid", 0))
+            owner_target = data.get("target", target)
             try:
                 os.kill(pid, 0)
                 raise RuntimeError(
-                    f"Error: another agent (PID {pid}) is already running schedule {schedule_id} for target {target}."
+                    f"Error: another agent (PID {pid}) is already running schedule {schedule_id} for target {owner_target}."
                 )
             except OSError:
                 sys.stderr.write(
-                    f"warning: removing stale lock file for schedule {schedule_id}, target {target} (PID {pid} was not found)\n"
+                    f"warning: removing stale lock file for schedule {schedule_id} (PID {pid} was not found)\n"
                 )
                 lock_file.unlink(missing_ok=True)
         except (json.JSONDecodeError, ValueError, KeyError, OSError):
             sys.stderr.write(
-                f"warning: removing invalid lock file for schedule {schedule_id}, target {target}\n"
+                f"warning: removing invalid lock file for schedule {schedule_id}\n"
             )
             lock_file.unlink(missing_ok=True)
 
@@ -1794,12 +1795,13 @@ def _acquire_lock(schedule_id: int, target: str) -> None:
         "child_pid": None,
         "owner_role": "foreground",
         "started_at": started_at,
+        "target": target,
     }
     lock_file.write_text(json.dumps(lock_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def _update_lock_for_daemon_child(schedule_id: int, target: str, child_pid: int) -> None:
-    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}-{target}.lock"
+    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}.lock"
     if not lock_file.exists():
         return
     try:
@@ -1816,7 +1818,7 @@ def _update_lock_for_daemon_child(schedule_id: int, target: str, child_pid: int)
 
 
 def _release_lock(schedule_id: int, target: str) -> None:
-    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}-{target}.lock"
+    lock_file = LOCKS_DIR / f"dailyfx-s{schedule_id}.lock"
     if lock_file.exists():
         try:
             data = json.loads(lock_file.read_text(encoding="utf-8"))

@@ -8,12 +8,7 @@ import { Sparkles } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import {
   type SettingsUpdate,
-  testOpenAIConnection,
-  testGeminiConnection,
-  testOpenRouterConnection,
-  testBytePlusConnection,
-  testLocalAIConnection,
-  testXiaomiConnection,
+  testProviderConnection,
 } from '../../api/client';
 import { Field } from '../../components/Field';
 import { TestableInputRow, TestButton } from './TestableInputRow';
@@ -120,27 +115,27 @@ export function AIProviderSettingsSection({
   });
 
   const openaiTest = useMutation({
-    mutationFn: testOpenAIConnection,
+    mutationFn: () => testProviderConnection('openai'),
     ...createConnectionTestHandlers('OpenAI', setTestResult),
   });
   const geminiTest = useMutation({
-    mutationFn: testGeminiConnection,
+    mutationFn: () => testProviderConnection('gemini'),
     ...createConnectionTestHandlers('Gemini', setTestResult),
   });
   const openrouterTest = useMutation({
-    mutationFn: testOpenRouterConnection,
+    mutationFn: () => testProviderConnection('openrouter'),
     ...createConnectionTestHandlers('OpenRouter', setTestResult),
   });
   const byteplusTest = useMutation({
-    mutationFn: testBytePlusConnection,
+    mutationFn: () => testProviderConnection('byteplus'),
     ...createConnectionTestHandlers('BytePlus', setTestResult),
   });
   const localAiTest = useMutation({
-    mutationFn: testLocalAIConnection,
+    mutationFn: () => testProviderConnection('local-ai'),
     ...createConnectionTestHandlers('Local AI', setTestResult),
   });
   const xiaomiTest = useMutation({
-    mutationFn: testXiaomiConnection,
+    mutationFn: () => testProviderConnection('xiaomi'),
     ...createConnectionTestHandlers('Xiaomi MiMo', setTestResult),
   });
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.services.generation.ai_effects_builder import AIEffectModule, build_ai_module
-from app.services.generation.ai_effects_repository import get_ai_effect_row, list_ai_effect_rows
+from app.services.generation.ai_effects_repository import list_ai_effect_rows
 from app.services.generation.ai_effects_seed import (
     AIEffectHash,
     AIEffectManifest,
@@ -26,7 +26,6 @@ __all__ = [
     "AIEffectModule",
     "AIEffectSeedItem",
     "build_ai_module",
-    "get_ai_effect_row",
     "get_seed_dir",
     "get_seed_hidden_map",
     "get_seed_manifest_entry_map",

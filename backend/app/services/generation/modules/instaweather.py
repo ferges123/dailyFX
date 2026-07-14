@@ -54,18 +54,6 @@ def map_wmo_code(code: int) -> tuple[str, str]:
     return "Clear", "☀"
 
 
-def calculate_season_and_icon(month: int) -> tuple[str, str]:
-    """Calculate season and corresponding icon from month number."""
-    if month in (3, 4, 5):
-        return "Spring", "❀"
-    elif month in (6, 7, 8):
-        return "Summer", "☀"
-    elif month in (9, 10, 11):
-        return "Autumn", "❧"
-    else:
-        return "Winter", "❄"
-
-
 def parse_date(date_str: str | None) -> datetime | None:
     """Parse ISO or standard EXIF date string into datetime object."""
     if not date_str:

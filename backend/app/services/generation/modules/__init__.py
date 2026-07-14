@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from app.schemas.generation import GenerationModuleResponse
 from app.services.generation.modules.aerochrome import AerochromeModule
 from app.services.generation.modules.apple_weather import AppleWeatherModule
-from app.services.generation.modules.base import ModuleDefinition
 from app.services.generation.modules.bokeh_blur import BokehBlurModule
 from app.services.generation.modules.cartoon import CartoonModule
 from app.services.generation.modules.collage import CollageModule
@@ -136,31 +134,3 @@ class GenerationModuleRegistry:
 
 
 MODULES = GenerationModuleRegistry()
-
-
-def list_module_definitions() -> list[ModuleDefinition]:
-    return [
-        ModuleDefinition(
-            name=module.name,
-            label=module.label,
-            description=module.description,
-            default_weight=module.default_weight,
-            default_config=module.default_config or {},
-            config_schema=getattr(module, "config_schema", None) or [],
-        )
-        for module in MODULES.values()
-    ]
-
-
-def list_generation_module_responses() -> list[GenerationModuleResponse]:
-    return [
-        GenerationModuleResponse(
-            name=module.name,
-            label=module.label,
-            description=module.description,
-            default_weight=module.default_weight,
-            default_config=module.default_config or {},
-            config_schema=getattr(module, "config_schema", None) or [],
-        )
-        for module in MODULES.values()
-    ]

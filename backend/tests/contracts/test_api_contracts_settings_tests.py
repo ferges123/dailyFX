@@ -57,12 +57,12 @@ def test_http_provider_contracts(monkeypatch):
     monkeypatch.setattr("app.api.routes_settings.get_local_ai_base_url", lambda row: "https://local-ai.example.test/v1")
 
     responses = {
-        "openai": asyncio.run(routes_settings.test_openai_connection(db=None)),
-        "gemini": asyncio.run(routes_settings.test_gemini_connection(db=None)),
-        "openrouter": asyncio.run(routes_settings.test_openrouter_connection(db=None)),
-        "byteplus": asyncio.run(routes_settings.test_byteplus_connection(db=None)),
-        "xiaomi": asyncio.run(routes_settings.test_xiaomi_connection(db=None)),
-        "local": asyncio.run(routes_settings.test_local_ai_connection(db=None)),
+        "openai": asyncio.run(routes_settings.perform_provider_connection_test(provider="openai", db=None)),
+        "gemini": asyncio.run(routes_settings.perform_provider_connection_test(provider="gemini", db=None)),
+        "openrouter": asyncio.run(routes_settings.perform_provider_connection_test(provider="openrouter", db=None)),
+        "byteplus": asyncio.run(routes_settings.perform_provider_connection_test(provider="byteplus", db=None)),
+        "xiaomi": asyncio.run(routes_settings.perform_provider_connection_test(provider="xiaomi", db=None)),
+        "local": asyncio.run(routes_settings.perform_provider_connection_test(provider="local-ai", db=None)),
     }
 
     assert responses["openai"].model_dump(mode="json") == {

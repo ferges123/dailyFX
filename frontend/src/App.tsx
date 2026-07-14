@@ -9,9 +9,7 @@ import {
   LogOut,
   Settings,
   Sparkles,
-  BarChart3,
   ClipboardList,
-  ListTodo,
 } from 'lucide-react';
 
 import {

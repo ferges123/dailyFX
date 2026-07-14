@@ -947,49 +947,6 @@ def test_prepare_page_items_retains_dailyfx_assets_manually():
     assert [asset.id for asset in selected] == ["asset-2"]
 
 
-def test_order_page_items_prefers_unused_then_oldest_used_assets():
-    from app.services.generation.pipeline.assets import _order_page_items_by_recent_history
-
-    page_items = [_make_fake_asset(f"asset-{index}") for index in range(1, 7)]
-    recent_source_asset_ids = {
-        "asset-1": 0,
-        "asset-3": 1,
-        "asset-5": 2,
-    }
-
-    with patch("app.services.generation.pipeline.assets.random.shuffle") as shuffle:
-        shuffle.side_effect = lambda items: items.reverse()
-        ordered = _order_page_items_by_recent_history(page_items, recent_source_asset_ids)
-
-    assert [asset.id for asset in ordered] == [
-        "asset-6",
-        "asset-4",
-        "asset-2",
-        "asset-5",
-        "asset-3",
-        "asset-1",
-    ]
-    shuffle.assert_called_once()
-
-
-def test_order_page_items_falls_back_to_lru_when_all_candidates_are_recent():
-    from app.services.generation.pipeline.assets import _order_page_items_by_recent_history
-
-    page_items = [_make_fake_asset(f"asset-{index}") for index in range(1, 5)]
-    recent_source_asset_ids = {
-        "asset-1": 0,
-        "asset-2": 3,
-        "asset-3": 1,
-        "asset-4": 2,
-    }
-
-    with patch("app.services.generation.pipeline.assets.random.shuffle") as shuffle:
-        ordered = _order_page_items_by_recent_history(page_items, recent_source_asset_ids)
-
-    assert [asset.id for asset in ordered] == ["asset-2", "asset-4", "asset-3", "asset-1"]
-    shuffle.assert_not_called()
-
-
 def test_recent_source_asset_ids_limits_flattened_unique_assets():
     from datetime import datetime, timedelta, timezone
 

@@ -32,21 +32,3 @@ def list_ai_effect_rows(db: Session | None = None) -> list[AIEffectModel]:
     finally:
         if own_session:
             db.close()
-
-
-def get_ai_effect_row(effect_id: str, db: Session | None = None) -> AIEffectModel | None:
-    own_session = False
-    if db is None:
-        db = SessionLocal()
-        own_session = True
-
-    try:
-        from sqlalchemy.exc import OperationalError
-
-        try:
-            return db.get(AIEffectModel, effect_id)
-        except OperationalError:
-            return None
-    finally:
-        if own_session:
-            db.close()

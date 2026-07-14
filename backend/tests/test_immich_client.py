@@ -9,7 +9,7 @@ from PIL import Image
 
 from app.immich.client import ImmichClient, ImmichPersonFilter, ImmichSearchFilters
 from app.immich.errors import ImmichAuthenticationError
-from app.immich.models import ImmichAssetSummary, ImmichPersonSummary, ImmichUploadMetadata
+from app.immich.models import ImmichUploadMetadata
 
 
 def test_normalizes_api_url() -> None:
@@ -487,66 +487,6 @@ def test_search_assets_exclude_retries_same_variant(monkeypatch: pytest.MonkeyPa
     assert requests[0]["personIds"] == ["person-1"]
     assert requests[1]["personIds"] == ["person-1"]
     assert [item.id for item in result.items] == ["asset-allowed"]
-
-
-def test_filter_assets_by_people_supports_modes() -> None:
-    items = [
-        ImmichAssetSummary(id="asset-1", people=[ImmichPersonSummary(id="p1", name="Alice")]),
-        ImmichAssetSummary(id="asset-2", people=[ImmichPersonSummary(id="p2", name="Bob")]),
-        ImmichAssetSummary(
-            id="asset-3",
-            people=[
-                ImmichPersonSummary(id="p1", name="Alice"),
-                ImmichPersonSummary(id="p2", name="Bob"),
-            ],
-        ),
-        ImmichAssetSummary(id="asset-4", people=[]),
-    ]
-
-    optional = ImmichClient._filter_assets_by_people(
-        items,
-        [ImmichPersonFilter(person_id="p1", mode="optional")],
-    )
-    obligatory = ImmichClient._filter_assets_by_people(
-        items,
-        [
-            ImmichPersonFilter(person_id="p1", mode="obligatory"),
-            ImmichPersonFilter(person_id="p2", mode="obligatory"),
-        ],
-    )
-    excluded = ImmichClient._filter_assets_by_people(
-        items,
-        [ImmichPersonFilter(person_id="p1", mode="exclude")],
-    )
-    mixed = ImmichClient._filter_assets_by_people(
-        items,
-        [
-            ImmichPersonFilter(person_id="p1", mode="obligatory"),
-            ImmichPersonFilter(person_id="p2", mode="optional"),
-        ],
-    )
-    obligatory_with_optional = ImmichClient._filter_assets_by_people(
-        items,
-        [
-            ImmichPersonFilter(person_id="p1", mode="obligatory"),
-            ImmichPersonFilter(person_id="p2", mode="optional"),
-            ImmichPersonFilter(person_id="p3", mode="optional"),
-        ],
-    )
-    optional_union = ImmichClient._filter_assets_by_people(
-        items,
-        [
-            ImmichPersonFilter(person_id="p1", mode="optional"),
-            ImmichPersonFilter(person_id="p2", mode="optional"),
-        ],
-    )
-
-    assert [item.id for item in optional] == ["asset-1", "asset-3"]
-    assert [item.id for item in obligatory] == ["asset-3"]
-    assert [item.id for item in excluded] == ["asset-2", "asset-4"]
-    assert [item.id for item in mixed] == ["asset-3"]
-    assert [item.id for item in obligatory_with_optional] == ["asset-3"]
-    assert [item.id for item in optional_union] == ["asset-1", "asset-2", "asset-3"]
 
 
 def test_list_people_orders_by_asset_count(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -21,16 +21,12 @@ import {
   type ImmichAsset,
 } from '../api/client';
 import { InlineError, SectionCard } from '../components/FormUI';
-import { InlineSpinner } from '../components/ErrorUI';
 import { ModuleConfigEditor } from '../components/EffectsComponents';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
 import { getAIEffectGroupOrder } from './AIEffects/AIEffectCard';
 import { ImmichAssetBrowserModal } from './Studio/ImmichAssetBrowserModal';
-import {
-  parseFirstSourceAssetId,
-  parseGenerationExif,
-} from '../utils/generationMetadata';
+import { useSelectedExif } from '../hooks/useSelectedExif';
 
 type StudioSource =
   | { type: 'local'; file: File }
@@ -81,30 +77,10 @@ export function StudioPage() {
     };
   }, [preview, source]);
 
-  const dbExif = useMemo(() => {
-    return parseGenerationExif(entryForLightbox?.config_json);
-  }, [entryForLightbox?.config_json]);
-
-  const sourceAssetId = useMemo(() => {
-    return parseFirstSourceAssetId(entryForLightbox?.source_asset_ids);
-  }, [entryForLightbox?.source_asset_ids]);
-
-  const fetchedExifQuery = useQuery({
-    queryKey: ['immich-asset-exif', sourceAssetId],
-    queryFn: () => getImmichAssetExif(sourceAssetId!),
-    enabled: !dbExif && !!sourceAssetId,
-  });
-
-  const selectedExif = useMemo(() => {
-    if (dbExif) return dbExif;
-    if (
-      fetchedExifQuery.data &&
-      Object.keys(fetchedExifQuery.data).length > 0
-    ) {
-      return fetchedExifQuery.data;
-    }
-    return null;
-  }, [dbExif, fetchedExifQuery.data]);
+  const { selectedExif } = useSelectedExif(
+    entryForLightbox?.config_json,
+    entryForLightbox?.source_asset_ids,
+  );
 
   useEffect(() => {
     if (!preview) {

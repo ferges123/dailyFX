@@ -22,38 +22,8 @@ export function testImmichConnection() {
   });
 }
 
-export function testOpenAIConnection() {
-  return request<ConnectionTest>('/api/settings/test-openai', {
-    method: 'POST',
-  });
-}
-
-export function testGeminiConnection() {
-  return request<ConnectionTest>('/api/settings/test-gemini', {
-    method: 'POST',
-  });
-}
-
-export function testOpenRouterConnection() {
-  return request<ConnectionTest>('/api/settings/test-openrouter', {
-    method: 'POST',
-  });
-}
-
-export function testBytePlusConnection() {
-  return request<ConnectionTest>('/api/settings/test-byteplus', {
-    method: 'POST',
-  });
-}
-
-export function testXiaomiConnection() {
-  return request<ConnectionTest>('/api/settings/test-xiaomi', {
-    method: 'POST',
-  });
-}
-
-export function testLocalAIConnection() {
-  return request<ConnectionTest>('/api/settings/test-local-ai', {
+export function testProviderConnection(provider: string) {
+  return request<ConnectionTest>(`/api/settings/test-provider/${provider}`, {
     method: 'POST',
   });
 }

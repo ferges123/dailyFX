@@ -8,7 +8,6 @@ import {
   rejectGeneration,
   retryGenerationAcceptance,
   getImmichFilterOptions,
-  getImmichAssetExif,
   type GenerationHistoryEntry,
 } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
@@ -26,10 +25,7 @@ import { useHistoryFilters } from './useHistoryFilters';
 import { useHistoryQuery } from './useHistoryQuery';
 import { useHistorySelection } from './useHistorySelection';
 import { useHistoryStreamSync } from './useHistoryStreamSync';
-import {
-  parseFirstSourceAssetId,
-  parseGenerationExif,
-} from '../../utils/generationMetadata';
+import { useSelectedExif } from '../../hooks/useSelectedExif';
 
 function shouldRetrySettingsQuery(failureCount: number, error: unknown) {
   if (import.meta.env.MODE === 'test') return false;
@@ -263,30 +259,10 @@ export function HistoryPage() {
     setMobileShowDetail(!!taskId);
   }, [taskId, setSelectedHistoryTaskId, setMobileShowDetail]);
 
-  const dbExif = useMemo(() => {
-    return parseGenerationExif(selectedHistoryEntry?.config_json);
-  }, [selectedHistoryEntry?.config_json]);
-
-  const sourceAssetId = useMemo(() => {
-    return parseFirstSourceAssetId(selectedHistoryEntry?.source_asset_ids);
-  }, [selectedHistoryEntry?.source_asset_ids]);
-
-  const fetchedExifQuery = useQuery({
-    queryKey: ['immich-asset-exif', sourceAssetId],
-    queryFn: () => getImmichAssetExif(sourceAssetId!),
-    enabled: !dbExif && !!sourceAssetId,
-  });
-
-  const selectedExif = useMemo(() => {
-    if (dbExif) return dbExif;
-    if (
-      fetchedExifQuery.data &&
-      Object.keys(fetchedExifQuery.data).length > 0
-    ) {
-      return fetchedExifQuery.data;
-    }
-    return null;
-  }, [dbExif, fetchedExifQuery.data]);
+  const { selectedExif, sourceAssetId } = useSelectedExif(
+    selectedHistoryEntry?.config_json,
+    selectedHistoryEntry?.source_asset_ids,
+  );
 
   // Mutations
   const acceptHistoryMutation = useMutation({

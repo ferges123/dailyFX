@@ -14,12 +14,7 @@ vi.mock('../api/client', async (importOriginal) => {
     getSettings: vi.fn(),
     updateSettings: vi.fn(),
     testImmichConnection: vi.fn(),
-    testOpenAIConnection: vi.fn(),
-    testGeminiConnection: vi.fn(),
-    testOpenRouterConnection: vi.fn(),
-    testBytePlusConnection: vi.fn(),
-    testLocalAIConnection: vi.fn(),
-    testXiaomiConnection: vi.fn(),
+    testProviderConnection: vi.fn(),
     clearHistoryByStatus: vi.fn(),
     clearGenerationCache: vi.fn(),
   };
