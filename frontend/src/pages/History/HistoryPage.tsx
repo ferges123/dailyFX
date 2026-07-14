@@ -26,6 +26,10 @@ import { useHistoryFilters } from './useHistoryFilters';
 import { useHistoryQuery } from './useHistoryQuery';
 import { useHistorySelection } from './useHistorySelection';
 import { useHistoryStreamSync } from './useHistoryStreamSync';
+import {
+  parseFirstSourceAssetId,
+  parseGenerationExif,
+} from '../../utils/generationMetadata';
 
 function shouldRetrySettingsQuery(failureCount: number, error: unknown) {
   if (import.meta.env.MODE === 'test') return false;
@@ -260,24 +264,12 @@ export function HistoryPage() {
   }, [taskId, setSelectedHistoryTaskId, setMobileShowDetail]);
 
   const dbExif = useMemo(() => {
-    if (!selectedHistoryEntry?.config_json) return null;
-    try {
-      const config = JSON.parse(selectedHistoryEntry.config_json);
-      return config.exif || null;
-    } catch {
-      return null;
-    }
-  }, [selectedHistoryEntry]);
+    return parseGenerationExif(selectedHistoryEntry?.config_json);
+  }, [selectedHistoryEntry?.config_json]);
 
   const sourceAssetId = useMemo(() => {
-    if (!selectedHistoryEntry?.source_asset_ids) return null;
-    try {
-      const ids = JSON.parse(selectedHistoryEntry.source_asset_ids);
-      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
-    } catch {
-      return null;
-    }
-  }, [selectedHistoryEntry]);
+    return parseFirstSourceAssetId(selectedHistoryEntry?.source_asset_ids);
+  }, [selectedHistoryEntry?.source_asset_ids]);
 
   const fetchedExifQuery = useQuery({
     queryKey: ['immich-asset-exif', sourceAssetId],

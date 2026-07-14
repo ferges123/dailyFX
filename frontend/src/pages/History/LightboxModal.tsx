@@ -25,6 +25,7 @@ import { SecureImage } from '../../components/SecureImage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { formatDateTime } from '../datetime.utils';
 import { logger } from '../../utils/logger';
+import { parseFirstSourceAssetId } from '../../utils/generationMetadata';
 
 // Format shutter speed decimal into a readable fraction
 function formatShutterSpeed(
@@ -140,15 +141,7 @@ export const LightboxModal = memo(function LightboxModal({
     setShowOriginal(false);
   }, [imageUrl, isOpen]);
 
-  const sourceAssetId = (() => {
-    if (!entry?.source_asset_ids) return null;
-    try {
-      const ids = JSON.parse(entry.source_asset_ids);
-      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
-    } catch {
-      return null;
-    }
-  })();
+  const sourceAssetId = parseFirstSourceAssetId(entry?.source_asset_ids);
   const originalImageUrl = sourceAssetId
     ? `/api/immich/assets/${sourceAssetId}/thumbnail?size=preview`
     : null;

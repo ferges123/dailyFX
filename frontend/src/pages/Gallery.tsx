@@ -14,6 +14,10 @@ import { type GenerationHistoryEntry } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
 import { useDebounce } from './History/useDebounce';
+import {
+  parseFirstSourceAssetId,
+  parseGenerationExif,
+} from '../utils/generationMetadata';
 
 const PAGE_SIZE = 24;
 
@@ -102,24 +106,12 @@ export function GalleryPage() {
     useState<GenerationHistoryEntry | null>(null);
 
   const dbExif = useMemo(() => {
-    if (!lightboxEntry?.config_json) return null;
-    try {
-      const config = JSON.parse(lightboxEntry.config_json);
-      return config.exif || null;
-    } catch {
-      return null;
-    }
-  }, [lightboxEntry]);
+    return parseGenerationExif(lightboxEntry?.config_json);
+  }, [lightboxEntry?.config_json]);
 
   const sourceAssetId = useMemo(() => {
-    if (!lightboxEntry?.source_asset_ids) return null;
-    try {
-      const ids = JSON.parse(lightboxEntry.source_asset_ids);
-      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
-    } catch {
-      return null;
-    }
-  }, [lightboxEntry]);
+    return parseFirstSourceAssetId(lightboxEntry?.source_asset_ids);
+  }, [lightboxEntry?.source_asset_ids]);
 
   const fetchedExifQuery = useQuery({
     queryKey: ['immich-asset-exif', sourceAssetId],

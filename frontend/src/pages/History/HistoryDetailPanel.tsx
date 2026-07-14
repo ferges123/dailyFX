@@ -21,6 +21,7 @@ import {
   AdditionalInfoDetails,
   type TaskTraceItem,
 } from './AdditionalInfoDetails';
+import { parseFirstSourceAssetId } from '../../utils/generationMetadata';
 
 interface HistoryDetailPanelProps {
   entry: GenerationHistoryEntry | null;
@@ -59,15 +60,10 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
     setShowOriginal(false);
   }, [entry]);
 
-  const sourceAssetId = useMemo(() => {
-    if (!entry?.source_asset_ids) return null;
-    try {
-      const ids = JSON.parse(entry.source_asset_ids);
-      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
-    } catch {
-      return null;
-    }
-  }, [entry?.source_asset_ids]);
+  const sourceAssetId = useMemo(
+    () => parseFirstSourceAssetId(entry?.source_asset_ids),
+    [entry?.source_asset_ids],
+  );
 
   const metadataProvenance = useMemo(() => {
     if (!entry?.config_json) return null;

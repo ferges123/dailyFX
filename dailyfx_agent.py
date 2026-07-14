@@ -111,12 +111,62 @@ import signal
 
 _active_process: subprocess.Popen[str] | None = None
 
+_DAEMON_STARTUP_TIMEOUT = 10.0
+
+
+def _atomic_write_text(path: Path, content: str, *, mode: int = 0o600) -> None:
+    """Replace a small state file atomically, keeping it private."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary_path = Path(temporary_name)
+    try:
+        os.fchmod(fd, mode)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_path, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    except BaseException:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        temporary_path.unlink(missing_ok=True)
+        raise
+
+
+def _terminate_process_gracefully(
+    proc: subprocess.Popen[str], *, grace_seconds: float = 5.0
+) -> None:
+    """Ask a child to exit cleanly, falling back to SIGKILL after a grace period."""
+    terminate = getattr(proc, "terminate", None)
+    if not callable(terminate):
+        proc.kill()
+        return
+    try:
+        terminate()
+    except OSError:
+        return
+    try:
+        proc.wait(timeout=grace_seconds)
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+        except OSError:
+            return
+        proc.wait()
+
 
 def _sigterm_handler(signum, frame):
     global _active_process
     if _active_process:
         try:
-            _active_process.kill()
+            _terminate_process_gracefully(_active_process)
         except OSError:
             pass
     sys.exit(128 + signum)
@@ -166,7 +216,7 @@ def _run_subprocess_with_active_tracking(
     except subprocess.TimeoutExpired:
         if proc:
             try:
-                proc.kill()
+                _terminate_process_gracefully(proc, grace_seconds=2.0)
             except OSError:
                 pass
             stdout, stderr = proc.communicate()
@@ -176,7 +226,7 @@ def _run_subprocess_with_active_tracking(
     except BaseException:
         if proc:
             try:
-                proc.kill()
+                _terminate_process_gracefully(proc, grace_seconds=2.0)
             except OSError:
                 pass
             proc.wait()
@@ -1953,30 +2003,84 @@ def main(argv: list[str] | None = None) -> int:
         log_file_path = Path("data") / "logs" / "agent" / f"{pid_file.stem}.log"
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        startup_read_fd, startup_write_fd = os.pipe()
         pid = os.fork()
         if pid > 0:
+            os.close(startup_write_fd)
+            startup_ok = False
+            try:
+                ready, _, _ = select.select(
+                    [startup_read_fd], [], [], _DAEMON_STARTUP_TIMEOUT
+                )
+                if ready:
+                    startup_ok = os.read(startup_read_fd, 1) == b"1"
+            finally:
+                os.close(startup_read_fd)
+
+            if not startup_ok:
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except OSError:
+                    pass
+                try:
+                    os.waitpid(pid, 0)
+                except ChildProcessError:
+                    pass
+                pid_file.unlink(missing_ok=True)
+                pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+                # The child removes any state it managed to create. Do not leave
+                # the schedule lock owned by a daemon that failed to start.
+                if args.schedule_id is not None and args.target is not None:
+                    _release_lock(args.schedule_id, args.target)
+                sys.stderr.write("Error: daemon failed to start\n")
+                return 1
+
             non_local_lock_release = True
             if args.schedule_id is not None and args.target is not None:
                 _update_lock_for_daemon_child(args.schedule_id, args.target, pid)
-            pid_file.write_text(str(pid), encoding="utf-8")
 
-            # Write metadata file as JSON
+            print(f"daemon started: pid={pid} pidfile={pid_file}")
+            return 0
+        os.close(startup_read_fd)
+        try:
+            # Daemon state and logs must not be readable by other local users.
+            os.umask(0o077)
+            os.setsid()
+
             metadata_file = pid_file.with_name(pid_file.name + ".json")
-            from datetime import datetime, timezone
             metadata = {
-                "pid": pid,
+                "pid": os.getpid(),
                 "schedule_id": args.schedule_id,
                 "target": args.target,
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "log_path": str(log_file_path.resolve()),
                 "manifest_path": str(manifest_path.resolve()),
             }
-            metadata_file.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            _atomic_write_text(pid_file, f"{os.getpid()}\n")
+            _atomic_write_text(
+                metadata_file,
+                json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
+            )
+            try:
+                os.write(startup_write_fd, b"1")
+            except OSError:
+                # The parent may have exited already (or a caller may be
+                # exercising the child branch with a mocked fork).
+                pass
+        except BaseException:
+            pid_file.unlink(missing_ok=True)
+            pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+            try:
+                os.write(startup_write_fd, b"0")
+            except OSError:
+                pass
+            raise
+        finally:
+            os.close(startup_write_fd)
 
-            print(f"daemon started: pid={pid} pidfile={pid_file}")
-            return 0
-        os.setsid()
         try:
+            sys.stdout.flush()
+            sys.stderr.flush()
             log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
             devnull = os.open(os.devnull, os.O_RDONLY)
             os.dup2(devnull, 0)

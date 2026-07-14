@@ -27,6 +27,10 @@ import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
 import { getAIEffectGroupOrder } from './AIEffects/AIEffectCard';
 import { ImmichAssetBrowserModal } from './Studio/ImmichAssetBrowserModal';
+import {
+  parseFirstSourceAssetId,
+  parseGenerationExif,
+} from '../utils/generationMetadata';
 
 type StudioSource =
   | { type: 'local'; file: File }
@@ -78,24 +82,12 @@ export function StudioPage() {
   }, [preview, source]);
 
   const dbExif = useMemo(() => {
-    if (!entryForLightbox?.config_json) return null;
-    try {
-      const config = JSON.parse(entryForLightbox.config_json);
-      return config.exif || null;
-    } catch {
-      return null;
-    }
-  }, [entryForLightbox]);
+    return parseGenerationExif(entryForLightbox?.config_json);
+  }, [entryForLightbox?.config_json]);
 
   const sourceAssetId = useMemo(() => {
-    if (!entryForLightbox?.source_asset_ids) return null;
-    try {
-      const ids = JSON.parse(entryForLightbox.source_asset_ids);
-      return Array.isArray(ids) && ids.length > 0 ? ids[0] : null;
-    } catch {
-      return null;
-    }
-  }, [entryForLightbox]);
+    return parseFirstSourceAssetId(entryForLightbox?.source_asset_ids);
+  }, [entryForLightbox?.source_asset_ids]);
 
   const fetchedExifQuery = useQuery({
     queryKey: ['immich-asset-exif', sourceAssetId],
