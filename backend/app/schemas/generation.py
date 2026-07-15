@@ -53,10 +53,6 @@ class GenerationHistoryBase(BaseModel):
     liked: bool | None = None
 
 
-class GenerationHistoryCreate(GenerationHistoryBase):
-    pass
-
-
 class GenerationHistoryResponse(GenerationHistoryBase):
     id: int
     created_at: datetime

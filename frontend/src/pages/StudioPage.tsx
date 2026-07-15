@@ -14,7 +14,6 @@ import {
   createStudioPreviewFromImmich,
   getStudioModules,
   getImmichAssetThumbnailUrl,
-  getImmichAssetExif,
   type GenerationModuleInfo,
   type StudioPreviewResponse,
   type GenerationHistoryEntry,

@@ -99,23 +99,6 @@ export function describeAutomationSchedule(
   return state.time ? `Runs on ${label} at ${state.time}` : `Runs on ${label}`;
 }
 
-export function formatAutomationStatus(status: string | null): string {
-  if (!status) return 'No runs yet';
-  return status
-    .split('_')
-    .filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(' ');
-}
-
-export function getAutomationStatusClass(status: string | null): string {
-  if (status === 'completed')
-    return 'border-emerald-200 bg-emerald-50 text-emerald-800';
-  if (status === 'error') return 'border-rose-200 bg-rose-50 text-rose-800';
-  if (!status) return 'border-stone-200 bg-white text-stone-700';
-  return 'border-amber-200 bg-amber-50 text-amber-800';
-}
-
 export function createDefaultModificationGroups(): ModificationGroupsConfig {
   return {
     collage: { enabled: true, weight: 5, config: { styles: ['random'] } },
@@ -229,10 +212,4 @@ export function parseModificationGroups(raw: string | null): {
       error: 'Effect settings JSON is invalid.',
     };
   }
-}
-
-export function serializeModificationGroups(
-  value: ModificationGroupsConfig,
-): string {
-  return JSON.stringify(value, null, 2);
 }

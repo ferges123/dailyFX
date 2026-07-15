@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { test, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -37,4 +36,3 @@ test('renders system page tab options', () => {
     expect(screen.getAllByText(/Generation Queue/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Audit Log/i)).toBeInTheDocument();
 });
-

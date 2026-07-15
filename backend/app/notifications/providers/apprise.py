@@ -5,16 +5,6 @@ import asyncio
 from app.notifications.base import NotificationTestResult
 
 
-async def test_apprise_notification(
-    notification_url: str,
-) -> NotificationTestResult:
-    return await send_apprise_notification(
-        notification_url=notification_url,
-        title="dailyFX",
-        message="dailyFX notification test",
-    )
-
-
 async def send_apprise_notification(
     notification_url: str,
     title: str,

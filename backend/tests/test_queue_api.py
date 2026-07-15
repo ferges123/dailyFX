@@ -35,3 +35,31 @@ def test_queue_endpoints():
     db_task = db.get(GenerationTaskModel, "api-task-1")
     assert db_task.status == "cancelled"
     db.close()
+
+
+def test_queue_endpoints_require_authentication(monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setenv("APP_ACCESS_TOKEN", "queue-test-token")
+    get_settings.cache_clear()
+
+    try:
+        client = TestClient(app)
+
+        # 1. Test list queue without auth -> 401
+        response = client.get("/api/queue")
+        assert response.status_code == 401
+
+        # 2. Test cancel without auth -> 401
+        response = client.post("/api/queue/some-task/cancel")
+        assert response.status_code == 401
+
+        # 3. Test retry without auth -> 401
+        response = client.post("/api/queue/some-task/retry")
+        assert response.status_code == 401
+
+        # 4. Test list queue with valid auth -> should not be 401
+        response = client.get("/api/queue", headers={"Authorization": "Bearer queue-test-token"})
+        assert response.status_code != 401
+    finally:
+        get_settings.cache_clear()
+

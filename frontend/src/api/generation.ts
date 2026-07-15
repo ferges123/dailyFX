@@ -33,14 +33,47 @@ export function getStudioModules() {
   return request<GenerationModuleInfo[]>('/api/studio/modules');
 }
 
+type StudioPreviewOptions = {
+  aiVisionEnabled?: boolean;
+  promptEnrichmentEnabled?: boolean;
+};
+
+async function requestStudioPreview(
+  path: string,
+  body: BodyInit,
+  headers: Record<string, string> = {},
+): Promise<StudioPreviewResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  try {
+    const response = await fetch(`${apiBase}${path}`, {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        ...getAuthHeader(),
+        ...headers,
+      },
+      body,
+    });
+    if (!response.ok) {
+      await handleResponseError(response);
+    }
+    return response.json() as Promise<StudioPreviewResponse>;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(408, 'Studio preview request timed out (60s limit)');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function createStudioPreview(
   file: File,
   effectId: string,
   config: Record<string, unknown>,
-  options: {
-    aiVisionEnabled?: boolean;
-    promptEnrichmentEnabled?: boolean;
-  } = {},
+  options: StudioPreviewOptions = {},
 ): Promise<StudioPreviewResponse> {
   const formData = new FormData();
   formData.append('file', file);
@@ -55,70 +88,26 @@ export async function createStudioPreview(
     options.promptEnrichmentEnabled ? 'true' : 'false',
   );
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for preview
-  try {
-    const response = await fetch(`${apiBase}/api/studio/preview`, {
-      signal: controller.signal,
-      method: 'POST',
-      headers: {
-        ...getAuthHeader(),
-      },
-      body: formData,
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      await handleResponseError(response);
-    }
-    return response.json() as Promise<StudioPreviewResponse>;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError(408, 'Studio preview request timed out (60s limit)');
-    }
-    throw error;
-  }
+  return requestStudioPreview('/api/studio/preview', formData);
 }
 
 export async function createStudioPreviewFromImmich(
   assetId: string,
   effectId: string,
   config: Record<string, unknown>,
-  options: {
-    aiVisionEnabled?: boolean;
-    promptEnrichmentEnabled?: boolean;
-  } = {},
+  options: StudioPreviewOptions = {},
 ): Promise<StudioPreviewResponse> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for preview
-  try {
-    const response = await fetch(`${apiBase}/api/studio/preview/immich`, {
-      signal: controller.signal,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify({
-        asset_id: assetId,
-        effect_id: effectId,
-        config,
-        ai_vision_enabled: options.aiVisionEnabled ?? false,
-        prompt_enrichment_enabled: options.promptEnrichmentEnabled ?? false,
-      }),
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      await handleResponseError(response);
-    }
-    return response.json() as Promise<StudioPreviewResponse>;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError(408, 'Studio preview request timed out (60s limit)');
-    }
-    throw error;
-  }
+  return requestStudioPreview(
+    '/api/studio/preview/immich',
+    JSON.stringify({
+      asset_id: assetId,
+      effect_id: effectId,
+      config,
+      ai_vision_enabled: options.aiVisionEnabled ?? false,
+      prompt_enrichment_enabled: options.promptEnrichmentEnabled ?? false,
+    }),
+    { 'Content-Type': 'application/json' },
+  );
 }
 
 export function getGenerationExamples() {
@@ -181,12 +170,6 @@ export function rejectGeneration(taskId: string) {
       method: 'POST',
     },
   );
-}
-
-export function clearRejectedCache() {
-  return request<void>('/api/generation/history/rejected', {
-    method: 'DELETE',
-  });
 }
 
 export function clearHistoryByStatus(

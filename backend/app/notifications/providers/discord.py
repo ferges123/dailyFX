@@ -5,16 +5,6 @@ import httpx
 from app.notifications.base import NotificationTestResult
 
 
-async def test_discord_notification(
-    webhook_url: str,
-) -> NotificationTestResult:
-    return await send_discord_notification(
-        webhook_url=webhook_url,
-        title="dailyFX",
-        message="dailyFX Discord notification test",
-    )
-
-
 async def send_discord_notification(
     webhook_url: str,
     title: str,

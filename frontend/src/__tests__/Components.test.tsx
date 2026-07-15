@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { StatusTile } from '../components/StatusTile';
 import { Field, SelectField } from '../components/Field';
 import { FilterRow, ModuleConfigEditor } from '../components/EffectsComponents';
-import React from 'react';
 import { type GenerationModuleInfo } from '../api/client';
 
 describe('StatusTile', () => {

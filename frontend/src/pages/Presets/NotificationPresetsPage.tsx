@@ -256,7 +256,7 @@ export function NotificationPresetsTab() {
 
   const testSubMutation = useMutation({
     mutationFn: (subId: number) => testPushSubscription(subId),
-    onSuccess: (data, subId) => {
+    onSuccess: (_data, subId) => {
       setTestSubResult({ id: subId, ok: true, msg: 'Test sent' });
       setTimeout(() => setTestSubResult(null), 5000);
     },

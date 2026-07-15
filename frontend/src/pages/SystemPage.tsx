@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QueuePage } from './QueuePage';
 import AuditLogPage from './AuditLog/AuditLogPage';
@@ -60,4 +59,3 @@ export function SystemPage() {
     </div>
   );
 }
-

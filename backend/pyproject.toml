@@ -21,7 +21,6 @@ dependencies = [
     "slowapi>=0.1.9",
     "apprise>=1.9.0",
     "python-multipart>=0.0.9",
-    "imageio>=2.35.0",
     "global-gender-predictor>=0.0.5",
 ]
 

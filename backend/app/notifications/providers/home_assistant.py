@@ -7,20 +7,6 @@ from app.notifications.base import NotificationTestResult
 from .base import _normalize_base_url
 
 
-async def test_homeassistant_notification(
-    notification_url: str,
-    token: str | None,
-    topic: str | None,
-) -> NotificationTestResult:
-    return await send_homeassistant_notification(
-        notification_url=notification_url,
-        token=token,
-        topic=topic,
-        title="dailyFX",
-        message="dailyFX notification test",
-    )
-
-
 async def send_homeassistant_notification(
     notification_url: str,
     token: str | None,

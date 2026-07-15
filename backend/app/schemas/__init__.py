@@ -10,7 +10,6 @@ from .ai_effects import (
 from .generation import (
     EffectStatsResponse,
     GenerationAcceptRequest,
-    GenerationHistoryCreate,
     GenerationHistoryResponse,
     TrendDataPoint,
     TrendsResponse,
@@ -30,7 +29,6 @@ from .schedules import (
 )
 from .settings import (
     ConnectionTestResponse,
-    NotificationTestResponse,
     SettingsResponse,
     SettingsUpdate,
 )
@@ -39,8 +37,6 @@ __all__ = [
     "SettingsUpdate",
     "SettingsResponse",
     "ConnectionTestResponse",
-    "NotificationTestResponse",
-    "GenerationHistoryCreate",
     "GenerationHistoryResponse",
     "GenerationAcceptRequest",
     "EffectStatsResponse",

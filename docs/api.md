@@ -30,7 +30,7 @@ Some read-only review endpoints remain public and are noted below.
 
 - Rate limit: `120/minute` per client IP by default.
 - Strict rate limits apply to sensitive endpoints:
-  - `POST /api/settings/test-*`: `10/minute`
+  - `POST /api/settings/test-immich` and `POST /api/settings/test-provider/{provider}`: `10/minute`
   - `PUT /api/settings`: `10/minute`
   - `POST /api/schedules/{schedule_id}/run-now`: `10/minute`
   - `POST /api/studio/preview`: `5/minute`
@@ -42,7 +42,7 @@ Some read-only review endpoints remain public and are noted below.
 | Area | Endpoints |
 |---|---|
 | Health | `GET /api/health`, `GET /api/health/detailed` |
-| Settings | `GET /api/settings`, `PUT /api/settings`, `POST /api/settings/test-immich`, `POST /api/settings/test-openai`, `POST /api/settings/test-gemini`, `POST /api/settings/test-openrouter`, `POST /api/settings/test-byteplus`, `POST /api/settings/test-xiaomi`, `POST /api/settings/test-local-ai`, `GET /api/settings/models/{provider}` |
+| Settings | `GET /api/settings`, `PUT /api/settings`, `POST /api/settings/test-immich`, `POST /api/settings/test-provider/{provider}`, `GET /api/settings/models/{provider}` |
 | Immich | `GET /api/immich/options`, `GET /api/immich/assets`, `GET /api/immich/assets/{asset_id}/thumbnail`, `GET /api/immich/assets/{asset_id}/exif` |
 | Presets | CRUD for `filters`, `effects`, `notifications` |
 | Schedules | CRUD plus `POST /api/schedules/{schedule_id}/run-now` |
@@ -124,12 +124,7 @@ Some image models expose a free tier or free trial quota there; check the model 
 Requires authentication:
 
 - `POST /api/settings/test-immich`
-- `POST /api/settings/test-openai`
-- `POST /api/settings/test-gemini`
-- `POST /api/settings/test-openrouter`
-- `POST /api/settings/test-byteplus`
-- `POST /api/settings/test-xiaomi`
-- `POST /api/settings/test-local-ai`
+- `POST /api/settings/test-provider/{provider}` (where provider is `openai`, `gemini`, `openrouter`, `byteplus`, `xiaomi`, or `local-ai`)
 
 ### `GET /api/settings/models/{provider}`
 

@@ -7,20 +7,6 @@ from app.notifications.base import NotificationTestResult
 from .base import _extract_json_response, _normalize_base_url
 
 
-async def test_ntfy_notification(
-    notification_url: str,
-    topic: str,
-    token: str | None,
-) -> NotificationTestResult:
-    return await send_ntfy_notification(
-        notification_url=notification_url,
-        topic=topic,
-        token=token,
-        title="dailyFX",
-        message="dailyFX notification test",
-    )
-
-
 async def send_ntfy_notification(
     notification_url: str,
     topic: str,

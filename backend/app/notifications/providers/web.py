@@ -3,15 +3,6 @@ from __future__ import annotations
 from app.notifications.base import NotificationTestResult
 
 
-async def test_web_notification() -> NotificationTestResult:
-    return NotificationTestResult(
-        ok=True,
-        provider="web",
-        message="Web notification test requires a selected device target",
-        detail="Use the single-device test button from the Web Push device list.",
-    )
-
-
 async def send_web_notification(
     title: str,
     message: str,

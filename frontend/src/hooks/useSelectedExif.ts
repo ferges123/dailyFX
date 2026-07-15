@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getImmichAssetExif, type ImmichAssetExif } from '../api/client';
+import { getImmichAssetExif } from '../api/client';
 import {
   parseGenerationExif,
   parseFirstSourceAssetId,

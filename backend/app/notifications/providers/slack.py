@@ -5,16 +5,6 @@ import httpx
 from app.notifications.base import NotificationTestResult
 
 
-async def test_slack_notification(
-    webhook_url: str,
-) -> NotificationTestResult:
-    return await send_slack_notification(
-        webhook_url=webhook_url,
-        title="dailyFX",
-        message="dailyFX Slack notification test",
-    )
-
-
 async def send_slack_notification(
     webhook_url: str,
     title: str,

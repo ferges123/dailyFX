@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Filter, ListTodo } from 'lucide-react';
 import { getQueueList, cancelQueueTask, retryQueueTask, QueueItem } from '../api/queue';
@@ -295,4 +295,3 @@ export function QueuePage() {
     </div>
   );
 }
-
