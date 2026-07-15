@@ -3,6 +3,7 @@ import logging
 
 import httpx
 
+from app.utils.safe_logging import redact_sensitive
 from .base import (
     XIAOMI_API_BASE_URL,
     XIAOMI_VISION_MODEL,
@@ -44,7 +45,7 @@ async def _analyze_images_with_xiaomi(
             raise AIVisionError(f"Xiaomi multi-image analysis failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
             logger.error("Xiaomi multi-image vision error", exc_info=True)
-            raise AIVisionError(f"Xiaomi multi-image analysis failed: {repr(exc)}") from exc
+            raise AIVisionError(f"Xiaomi multi-image analysis failed: {redact_sensitive(exc)}") from exc
 
 
 async def _analyze_with_xiaomi(
@@ -102,7 +103,7 @@ async def _analyze_with_xiaomi(
             raise AIVisionError(f"Xiaomi analysis failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
             logger.error("Xiaomi vision error", exc_info=True)
-            raise AIVisionError(f"Xiaomi analysis failed: {repr(exc)}") from exc
+            raise AIVisionError(f"Xiaomi analysis failed: {redact_sensitive(exc)}") from exc
 
 
 async def _get_text_desc_xiaomi(
@@ -147,7 +148,7 @@ async def _get_text_desc_xiaomi(
             raise AIVisionError(f"Xiaomi description failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
             logger.error("Xiaomi description error", exc_info=True)
-            raise AIVisionError(f"Xiaomi description failed: {repr(exc)}") from exc
+            raise AIVisionError(f"Xiaomi description failed: {redact_sensitive(exc)}") from exc
 
 
 async def _fuse_xiaomi(api_key: str, prompt: str, model: str) -> str:
@@ -175,4 +176,4 @@ async def _fuse_xiaomi(api_key: str, prompt: str, model: str) -> str:
             raise AIVisionError(f"Xiaomi prompt fusion failed: HTTP error {exc.response.status_code}") from exc
         except Exception as exc:
             logger.error("Xiaomi prompt fusion error", exc_info=True)
-            raise AIVisionError(f"Xiaomi prompt fusion failed: {repr(exc)}") from exc
+            raise AIVisionError(f"Xiaomi prompt fusion failed: {redact_sensitive(exc)}") from exc

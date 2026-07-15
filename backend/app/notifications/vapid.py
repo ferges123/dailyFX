@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models.push import PushSubscriptionModel, VapidKeyModel
+from app.utils.safe_logging import redact_url
 
 logger = logging.getLogger(__name__)
 
@@ -142,10 +143,10 @@ async def send_push_to_all(
             if status in (404, 410):
                 return s["id"]
             else:
-                logger.warning("Web push failed for %.40s: %s", s["endpoint"], exc)
+                logger.warning("Web push failed for %.40s: %s", redact_url(s["endpoint"]), exc)
                 return None
         except Exception as exc:
-            logger.warning("Web push failed with unexpected error for %.40s: %s", s["endpoint"], exc)
+            logger.warning("Web push failed with unexpected error for %.40s: %s", redact_url(s["endpoint"]), exc)
             return None
 
     tasks = [asyncio.to_thread(send_single, s) for s in sub_data]

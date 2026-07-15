@@ -171,7 +171,7 @@ def test_send_gotify_notification_posts_to_message_endpoint(monkeypatch):
     assert fake_client.requests[0]["url"] == "https://gotify.example.test/message?token=secret-token"
     assert fake_client.requests[0]["json"]["title"] == "Collage ready"
     assert "Holiday" in fake_client.requests[0]["json"]["message"]
-    assert result.detail == "https://gotify.example.test/message?token=secret-token (42)"
+    assert result.detail == "https://gotify.example.test/message?token=%5BREDACTED%5D (42)"
 
 
 def test_send_gotify_notification_requires_message_id(monkeypatch):

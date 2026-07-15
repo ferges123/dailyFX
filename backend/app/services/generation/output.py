@@ -15,6 +15,7 @@ from app.notifications.client import (
     send_web_notification,
 )
 from app.security import create_review_token, decrypt_secret
+from app.utils.safe_logging import redact_sensitive
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,7 @@ async def send_webhook(webhook_url: str | None, task_id: str, generation_type: s
         async with httpx.AsyncClient(timeout=10.0) as client:
             await client.post(webhook_url, json=payload)
     except Exception as e:
-        logger.warning("Webhook failed: %s", e)
+        logger.warning("Webhook failed: %s", redact_sensitive(e))
 
 
 async def dispatch_generation_outputs(

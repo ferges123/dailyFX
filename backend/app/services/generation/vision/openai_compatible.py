@@ -7,6 +7,7 @@ from typing import Any, NoReturn
 
 import httpx
 
+from app.utils.safe_logging import redact_sensitive
 from .base import AIVisionError, AIVisionResult, _chat_image_content, _vision_result_from_chat_json
 
 logger = logging.getLogger(__name__)
@@ -22,8 +23,9 @@ class OpenAICompatibleConfig:
 
 
 def _raise_operation_error(config: OpenAICompatibleConfig, operation: str, exc: Exception) -> NoReturn:
-    logger.error("%s %s error: %s", config.display_name, operation, exc)
-    raise AIVisionError(f"{config.display_name} {operation} failed: {exc}") from exc
+    safe_error = redact_sensitive(exc)
+    logger.error("%s %s error: %s", config.display_name, operation, safe_error)
+    raise AIVisionError(f"{config.display_name} {operation} failed: {safe_error}") from exc
 
 
 def _single_image_content(prompt: str, b64_image: str) -> list[dict[str, Any]]:

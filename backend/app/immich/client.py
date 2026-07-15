@@ -33,6 +33,7 @@ from app.immich.models import (
     ImmichUploadResult,
 )
 from app.utils.url_utils import normalize_api_url
+from app.utils.safe_logging import redact_sensitive
 
 logger = logging.getLogger(__name__)
 
@@ -485,7 +486,7 @@ class ImmichClient:
             payload = await self._post_json("/search/metadata", client, body)
             logger.info("get_assets: Immich returned 200 OK")
         except Exception as e:
-            logger.error("get_assets: error during POST /search/metadata: %s", str(e))
+            logger.error("get_assets: error during POST /search/metadata: %s", redact_sensitive(e))
             raise e
         if not isinstance(payload, dict):
             raise ImmichUnexpectedResponseError("Immich returned unexpected search metadata response")
@@ -913,7 +914,7 @@ class ImmichClient:
                         )
                         break
                 except Exception as exc:
-                    logger.warning("Error downloading from %s: %s", endpoint, exc)
+                    logger.warning("Error downloading from %s: %s", endpoint, redact_sensitive(exc))
                     if attempt < 2:
                         await asyncio.sleep(0.5 * (attempt + 1))
                         continue
@@ -926,7 +927,7 @@ class ImmichClient:
                 logger.info("Thumbnail fallback succeeded: %d bytes for %s", len(thumbnail_bytes), asset_id)
                 return thumbnail_bytes
         except Exception as exc:
-            logger.warning("Thumbnail fallback failed for asset %s: %s", asset_id, exc)
+            logger.warning("Thumbnail fallback failed for asset %s: %s", asset_id, redact_sensitive(exc))
 
         raise ImmichUnexpectedResponseError(
             f"Could not download original asset data for {asset_id} after trying multiple endpoints and thumbnail fallback"
@@ -979,7 +980,7 @@ class ImmichClient:
             self._handle_response_errors(response, f"Immich thumbnail endpoint ({path}) failed")
             return response.content, response.headers.get("content-type")
         except Exception as exc:
-            logger.debug("Immich thumbnail error for %s: %s", path, exc)
+            logger.debug("Immich thumbnail error for %s: %s", path, redact_sensitive(exc))
             last_error = exc
 
         if not allow_original_fallback:
@@ -1007,10 +1008,12 @@ class ImmichClient:
             img.save(out, format="JPEG", quality=80)
             return out.getvalue(), "image/jpeg"
         except Exception as fallback_exc:
-            logger.error("Thumbnail fallback to original failed for %s: %s", asset_id, fallback_exc)
+            logger.error("Thumbnail fallback to original failed for %s: %s", asset_id, redact_sensitive(fallback_exc))
             if last_error:
                 raise last_error
-            raise ImmichUnexpectedResponseError(f"Immich thumbnail not found and fallback failed: {fallback_exc}")
+            raise ImmichUnexpectedResponseError(
+                f"Immich thumbnail not found and fallback failed: {redact_sensitive(fallback_exc)}"
+            )
 
     async def get_asset_exif(self, asset_id: str) -> ImmichExifInfo:
         """Return the exifInfo dict from GET /assets/{id}, or {} on failure."""

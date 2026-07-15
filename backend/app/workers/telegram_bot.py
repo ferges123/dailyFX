@@ -10,6 +10,7 @@ from app.models.generation_history import GenerationHistoryModel
 from app.models.notification_preset import NotificationPresetModel
 from app.schemas.generation import GenerationAcceptRequest
 from app.security import decrypt_secret
+from app.utils.safe_logging import redact_sensitive
 
 logger = logging.getLogger(__name__)
 # Prevent Telegram Bot token leak by silencing httpx/httpcore info logs
@@ -58,13 +59,17 @@ async def start_telegram_bot_listener():
                         try:
                             active_polls[token].result()
                         except Exception as e:
-                            logger.error("Telegram polling task for token %s failed: %s", _get_token_id(token), e)
+                            logger.error(
+                                "Telegram polling task for token %s failed: %s",
+                                _get_token_id(token),
+                                redact_sensitive(e),
+                            )
 
                     logger.info("Starting Telegram Bot polling task for token %s", _get_token_id(token))
                     active_polls[token] = asyncio.create_task(_poll_bot_updates(token))
 
         except Exception as e:
-            logger.exception("Error in Telegram Bot listener manager: %s", e)
+            logger.error("Error in Telegram Bot listener manager: %s", redact_sensitive(e))
 
         await asyncio.sleep(15)  # Scan presets every 15 seconds
 
@@ -103,7 +108,7 @@ async def _poll_bot_updates(token: str):
                 logger.info("Telegram Bot polling loop cancelled for token %s", _get_token_id(token))
                 break
             except Exception as e:
-                logger.exception("Exception in Telegram Bot polling loop: %s", e)
+                logger.error("Exception in Telegram Bot polling loop: %s", redact_sensitive(e))
                 await asyncio.sleep(10)
 
 
@@ -177,7 +182,7 @@ async def _answer_callback(client: httpx.AsyncClient, token: str, callback_id: s
         url = f"https://api.telegram.org/bot{token}/answerCallbackQuery"
         await client.post(url, json={"callback_query_id": callback_id, "text": text})
     except Exception as e:
-        logger.warning("Failed to answer callback query: %s", e)
+        logger.warning("Failed to answer callback query: %s", redact_sensitive(e))
 
 
 async def _edit_message_status(
@@ -219,7 +224,7 @@ async def _edit_message_status(
 
         await client.post(url, json=payload)
     except Exception as e:
-        logger.warning("Failed to update Telegram message caption: %s", e)
+        logger.warning("Failed to update Telegram message caption: %s", redact_sensitive(e))
 
 
 async def _edit_markup_to_error(

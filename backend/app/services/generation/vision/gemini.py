@@ -3,6 +3,7 @@ import logging
 
 import httpx
 
+from app.utils.safe_logging import redact_sensitive
 from .base import GEMINI_VISION_MODEL, AIVisionError, AIVisionResult
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,9 @@ async def _analyze_images_with_gemini(
                 model=model,
             )
         except Exception as exc:
-            logger.error("Gemini multi-image vision error: %s", exc)
-            raise AIVisionError(f"Gemini multi-image analysis failed: {exc}") from exc
+            safe_error = redact_sensitive(exc)
+            logger.error("Gemini multi-image vision error: %s", safe_error)
+            raise AIVisionError(f"Gemini multi-image analysis failed: {safe_error}") from exc
 
 
 async def _analyze_with_gemini(
@@ -102,7 +104,7 @@ async def _analyze_with_gemini(
             message = error.get("message") or f"HTTP {status_code}"
             raise AIVisionError(f"Gemini analysis failed: {message}") from exc
         except Exception as exc:
-            logger.error("Gemini vision error: %s", exc)
+            logger.error("Gemini vision error: %s", redact_sensitive(exc))
             raise AIVisionError("Gemini analysis failed") from exc
 
 
@@ -127,8 +129,9 @@ async def _get_text_desc_gemini(
             data = response.json()
             return data["candidates"][0]["content"]["parts"][0]["text"].strip()
         except Exception as exc:
-            logger.error("Gemini description error: %s", exc)
-            raise AIVisionError(f"Gemini description failed: {exc}") from exc
+            safe_error = redact_sensitive(exc)
+            logger.error("Gemini description error: %s", safe_error)
+            raise AIVisionError(f"Gemini description failed: {safe_error}") from exc
 
 
 async def _fuse_gemini(api_key: str, prompt: str, model: str) -> str:
@@ -145,5 +148,6 @@ async def _fuse_gemini(api_key: str, prompt: str, model: str) -> str:
             data = response.json()
             return data["candidates"][0]["content"]["parts"][0]["text"].strip()
         except Exception as exc:
-            logger.error("Gemini prompt fusion error: %s", exc)
-            raise AIVisionError(f"Gemini prompt fusion failed: {exc}") from exc
+            safe_error = redact_sensitive(exc)
+            logger.error("Gemini prompt fusion error: %s", safe_error)
+            raise AIVisionError(f"Gemini prompt fusion failed: {safe_error}") from exc

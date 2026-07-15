@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 
 from app.notifications.base import NotificationTestResult
+from app.utils.safe_logging import redact_url
 
 from .base import _extract_json_response, _normalize_base_url
 
@@ -34,4 +35,9 @@ async def send_gotify_notification(
     if not message_id:
         raise ConnectionError("Gotify response did not include a message id")
 
-    return NotificationTestResult(ok=True, provider="gotify", message=message, detail=f"{target_url} ({message_id})")
+    return NotificationTestResult(
+        ok=True,
+        provider="gotify",
+        message=message,
+        detail=f"{redact_url(target_url)} ({message_id})",
+    )
