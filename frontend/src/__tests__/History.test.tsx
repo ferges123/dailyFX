@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -467,8 +473,10 @@ describe('HistoryPage', () => {
     expect(detailPanel?.className).not.toContain('hidden lg:flex');
 
     // Simulate clicking browser back to /history
-    window.history.pushState({}, '', '/history');
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    await act(async () => {
+      window.history.pushState({}, '', '/history');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
 
     // Check that we returned back to /history and detail panel is now hidden on mobile (has hidden lg:flex)
     await waitFor(() => {

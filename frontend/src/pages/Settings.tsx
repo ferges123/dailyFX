@@ -117,21 +117,64 @@ export function SettingsPage() {
       ...current,
       immich_url: settings.data.immich_url ?? '',
       local_ai_base_url: settings.data.local_ai_base_url ?? '',
-      ai_vision_hourly_limit: settings.data.ai_vision_hourly_limit,
-      ai_image_hourly_limit: settings.data.ai_image_hourly_limit,
-      debug_mode: settings.data.debug_mode,
-      favorite_albums_json: settings.data.favorite_albums_json,
-      ai_custom_prompt: settings.data.ai_custom_prompt,
-      retention_enabled: settings.data.retention_enabled,
-      retention_rejected_files_days: settings.data.retention_rejected_files_days,
-      retention_rejected_metadata_days: settings.data.retention_rejected_metadata_days,
-      retention_failed_files_days: settings.data.retention_failed_files_days,
-      retention_failed_metadata_days: settings.data.retention_failed_metadata_days,
-      retention_uploaded_files_days: settings.data.retention_uploaded_files_days,
-      retention_uploaded_metadata_days: settings.data.retention_uploaded_metadata_days,
-      retention_task_days: settings.data.retention_task_days,
-      retention_audit_days: settings.data.retention_audit_days,
-      retention_backup_count: settings.data.retention_backup_count,
+      ai_vision_hourly_limit:
+        settings.data.ai_vision_hourly_limit ??
+        current.ai_vision_hourly_limit ??
+        defaults.ai_vision_hourly_limit,
+      ai_image_hourly_limit:
+        settings.data.ai_image_hourly_limit ??
+        current.ai_image_hourly_limit ??
+        defaults.ai_image_hourly_limit,
+      debug_mode:
+        settings.data.debug_mode ?? current.debug_mode ?? defaults.debug_mode,
+      favorite_albums_json:
+        settings.data.favorite_albums_json ??
+        current.favorite_albums_json ??
+        defaults.favorite_albums_json,
+      ai_custom_prompt:
+        settings.data.ai_custom_prompt ??
+        current.ai_custom_prompt ??
+        defaults.ai_custom_prompt,
+      retention_enabled:
+        settings.data.retention_enabled ??
+        current.retention_enabled ??
+        defaults.retention_enabled,
+      retention_rejected_files_days:
+        settings.data.retention_rejected_files_days ??
+        current.retention_rejected_files_days ??
+        defaults.retention_rejected_files_days,
+      retention_rejected_metadata_days:
+        settings.data.retention_rejected_metadata_days ??
+        current.retention_rejected_metadata_days ??
+        defaults.retention_rejected_metadata_days,
+      retention_failed_files_days:
+        settings.data.retention_failed_files_days ??
+        current.retention_failed_files_days ??
+        defaults.retention_failed_files_days,
+      retention_failed_metadata_days:
+        settings.data.retention_failed_metadata_days ??
+        current.retention_failed_metadata_days ??
+        defaults.retention_failed_metadata_days,
+      retention_uploaded_files_days:
+        settings.data.retention_uploaded_files_days ??
+        current.retention_uploaded_files_days ??
+        defaults.retention_uploaded_files_days,
+      retention_uploaded_metadata_days:
+        settings.data.retention_uploaded_metadata_days ??
+        current.retention_uploaded_metadata_days ??
+        defaults.retention_uploaded_metadata_days,
+      retention_task_days:
+        settings.data.retention_task_days ??
+        current.retention_task_days ??
+        defaults.retention_task_days,
+      retention_audit_days:
+        settings.data.retention_audit_days ??
+        current.retention_audit_days ??
+        defaults.retention_audit_days,
+      retention_backup_count:
+        settings.data.retention_backup_count ??
+        current.retention_backup_count ??
+        defaults.retention_backup_count,
     }));
   }, [settings.data]);
 
@@ -206,7 +249,9 @@ export function SettingsPage() {
   const handleRetentionPreview = async () => {
     try {
       const result = await getRetentionPreview();
-      setRetentionMessage(`Preview: ${result.files} files, ${result.metadata} metadata records, ${Math.round(result.bytes / 1024)} KiB.`);
+      setRetentionMessage(
+        `Preview: ${result.files} files, ${result.metadata} metadata records, ${Math.round(result.bytes / 1024)} KiB.`,
+      );
     } catch {
       setRetentionMessage('Retention preview failed.');
     }
@@ -216,7 +261,9 @@ export function SettingsPage() {
     if (!window.confirm('Run retention cleanup now?')) return;
     try {
       const result = await runRetention(false);
-      setRetentionMessage(`Cleanup complete: ${result.files} files scheduled, ${result.metadata} metadata records.`);
+      setRetentionMessage(
+        `Cleanup complete: ${result.files} files scheduled, ${result.metadata} metadata records.`,
+      );
     } catch {
       setRetentionMessage('Retention cleanup failed.');
     }
@@ -299,34 +346,68 @@ export function SettingsPage() {
       <div className="app-panel p-3 md:p-4">
         <div className="flex items-center gap-2 mb-3">
           <Database size={16} className="text-emerald-700" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-stone-700">Data retention</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-stone-700">
+            Data retention
+          </h3>
         </div>
         <label className="flex items-center gap-2 text-xs font-medium">
-          <input type="checkbox" checked={form.retention_enabled} onChange={(e) => setValue('retention_enabled', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={form.retention_enabled}
+            onChange={(e) => setValue('retention_enabled', e.target.checked)}
+          />
           Enable automatic cleanup
         </label>
         <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-          {([
-            ['retention_rejected_files_days', 'Rejected files'],
-            ['retention_rejected_metadata_days', 'Rejected metadata'],
-            ['retention_failed_files_days', 'Failed files'],
-            ['retention_failed_metadata_days', 'Failed metadata'],
-            ['retention_uploaded_files_days', 'Uploaded files'],
-            ['retention_uploaded_metadata_days', 'Uploaded metadata'],
-            ['retention_task_days', 'Task metadata'],
-            ['retention_audit_days', 'Audit log'],
-            ['retention_backup_count', 'DB backups'],
-          ] as const).map(([key, label]) => (
+          {(
+            [
+              ['retention_rejected_files_days', 'Rejected files'],
+              ['retention_rejected_metadata_days', 'Rejected metadata'],
+              ['retention_failed_files_days', 'Failed files'],
+              ['retention_failed_metadata_days', 'Failed metadata'],
+              ['retention_uploaded_files_days', 'Uploaded files'],
+              ['retention_uploaded_metadata_days', 'Uploaded metadata'],
+              ['retention_task_days', 'Task metadata'],
+              ['retention_audit_days', 'Audit log'],
+              ['retention_backup_count', 'DB backups'],
+            ] as const
+          ).map(([key, label]) => (
             <label key={key} className="text-xs text-stone-600">
               {label} ({key === 'retention_backup_count' ? 'copies' : 'days'})
-              <input type="number" min={1} value={form[key] ?? ''} onChange={(e) => setValue(key, e.target.value === '' ? null : Number(e.target.value))} className="mt-1 h-8 w-full rounded-lg border border-stone-200 px-2" />
+              <input
+                type="number"
+                min={1}
+                value={form[key] ?? ''}
+                onChange={(e) =>
+                  setValue(
+                    key,
+                    e.target.value === '' ? null : Number(e.target.value),
+                  )
+                }
+                className="mt-1 h-8 w-full rounded-lg border border-stone-200 px-2"
+              />
             </label>
           ))}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={handleRetentionPreview} className="inline-flex h-8 items-center rounded-lg border border-stone-300 bg-white px-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50">Preview cleanup</button>
-          <button type="button" onClick={handleRetentionRun} disabled={!form.retention_enabled} className="inline-flex h-8 items-center rounded-lg border border-rose-300 bg-white px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50">Run cleanup now</button>
-          {retentionMessage && <span className="text-xs text-stone-500">{retentionMessage}</span>}
+          <button
+            type="button"
+            onClick={handleRetentionPreview}
+            className="inline-flex h-8 items-center rounded-lg border border-stone-300 bg-white px-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+          >
+            Preview cleanup
+          </button>
+          <button
+            type="button"
+            onClick={handleRetentionRun}
+            disabled={!form.retention_enabled}
+            className="inline-flex h-8 items-center rounded-lg border border-rose-300 bg-white px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+          >
+            Run cleanup now
+          </button>
+          {retentionMessage && (
+            <span className="text-xs text-stone-500">{retentionMessage}</span>
+          )}
         </div>
       </div>
 

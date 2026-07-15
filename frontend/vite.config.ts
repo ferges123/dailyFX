@@ -14,6 +14,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectManifest: {
         injectionPoint: 'self.__WB_MANIFEST',
+        // Build the worker as a classic bundle; this avoids Vite 8's
+        // deprecated inlineDynamicImports output path.
+        rollupFormat: 'iife',
       },
       manifest: {
         name: 'DailyFX for Immich',

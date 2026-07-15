@@ -1,17 +1,9 @@
 name: Build and Publish Docker Images
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Image tag/version (e.g. v1.0.0, latest)'
-        required: true
-        default: 'latest'
+  workflow_run:
+    workflows: [ 'CI' ]
+    types: [ completed ]
 
 env:
   REGISTRY: ghcr.io
@@ -19,6 +11,16 @@ env:
 
 jobs:
   build-and-push:
+    if: >-
+      ${{
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        (
+          github.event.workflow_run.head_branch == 'main' ||
+          startsWith(github.event.workflow_run.head_branch, 'v')
+        )
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,6 +29,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Downcase repository name
         run: |
@@ -45,13 +49,10 @@ jobs:
       - name: Determine tags
         id: tags
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            API_TAGS="${{ env.IMAGE_BASE }}-api:${VERSION}"
-            WEB_TAGS="${{ env.IMAGE_BASE }}-web:${VERSION}"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
-            API_TAGS="${{ env.IMAGE_BASE }}-api:${{ github.ref_name }},${{ env.IMAGE_BASE }}-api:latest"
-            WEB_TAGS="${{ env.IMAGE_BASE }}-web:${{ github.ref_name }},${{ env.IMAGE_BASE }}-web:latest"
+          if [[ "${{ github.event.workflow_run.head_branch }}" == v* ]]; then
+            RELEASE_TAG="${{ github.event.workflow_run.head_branch }}"
+            API_TAGS="${{ env.IMAGE_BASE }}-api:${RELEASE_TAG},${{ env.IMAGE_BASE }}-api:latest"
+            WEB_TAGS="${{ env.IMAGE_BASE }}-web:${RELEASE_TAG},${{ env.IMAGE_BASE }}-web:latest"
           else
             SHA_SHORT=$(git rev-parse --short HEAD)
             API_TAGS="${{ env.IMAGE_BASE }}-api:latest,${{ env.IMAGE_BASE }}-api:sha-${SHA_SHORT}"
