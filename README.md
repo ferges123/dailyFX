@@ -14,7 +14,7 @@
 
 Unlike generic photo filters that strip away metadata or require tedious manual work, DailyFX acts as an automated background curator. It connects directly to your Immich instance, retrieves assets based on your custom schedules, and applies any of its 40+ built-in creative modules. You can choose classic darkroom simulations like Cyanotype and Polaroid, high-dynamic-range enhancements, or leverage state-of-the-art Generative AI models to reimagine your photos in comic book, cyberpunk, or claymation styles.
 
-The entire process is designed with the self-hoster in mind. Running completely on your own hardware via Docker, it ensures your private memories never leave your control. It features a metadata pipeline that supports AI-powered caption and title generation (via OpenAI, Gemini, OpenRouter, or Xiaomi), automatically analyzing the final image so the stored title, summary, and tags match what you actually review. BytePlus and Xiaomi are used for AI image generation, while OpenAI, Gemini, and OpenRouter handle both image generation and vision analysis.
+The entire process is designed with the self-hoster in mind. Running completely on your own hardware via Docker, it ensures your private memories remain entirely under your control unless you explicitly enable external cloud-based AI features. It features a metadata pipeline that supports AI-powered caption and title generation, automatically analyzing the final image so the stored title, summary, and tags match what you actually review. For more information on data sharing, see the [Data Privacy & Cloud AI Providers](#data-privacy--cloud-ai-providers) section below.
 
 Once an effect is generated, you are notified through your preferred channel, whether that is an interactive Telegram message, a Home Assistant alert, a Gotify/ntfy notification, or a standard Web Push. With a single tap from the notification, you can compare the original and styled version, then choose to upload it back to Immich or discard it completely. For a concise run-through of the workflow, see [docs/how-it-works.md](docs/how-it-works.md).
 
@@ -463,6 +463,23 @@ frontend/         React 19 + Vite + Tailwind CSS
     version.ts    Single source of truth version metadata
 ```
 
+## Data Privacy & Cloud AI Providers
+
+DailyFX is designed to keep your private memories secure, running locally on your own hardware via Docker. 
+
+Depending on your configuration, certain features require sending images and metadata to external cloud-based AI providers:
+
+- **Local Processing:** If you only use built-in classic modules (e.g., Collage, Filmstrip, Polaroid, Cyanotype, Instafilter, Glitch, etc.) and do not configure any cloud API keys, all image processing and curation runs 100% locally on your machine. No data leaves your network.
+- **AI Image Generation:** If you enable AI-powered image generation effects:
+  - **OpenAI / Gemini / OpenRouter:** The selected source photo and prompts are transmitted to their respective servers to generate the styled image.
+  - **BytePlus:** Your source photo is sent to BytePlus (TikTok/ByteDance) APIs for image styling.
+  - **Xiaomi:** Your source photo is sent to Xiaomi Cloud APIs.
+- **AI Vision Analysis (Metadata Generation):** If you enable automated captioning, title, or tag generation:
+  - **OpenAI / Gemini / OpenRouter / Xiaomi:** The final styled image is uploaded to their respective APIs so that the vision model can analyze what actually appears in it and generate descriptive metadata.
+
+You are in full control of which providers are enabled. External API keys can be added, updated, or removed at any time in the **Settings** tab.
+
 ## License
 
 Source-available for non-commercial use under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).
+

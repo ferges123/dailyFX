@@ -59,7 +59,7 @@ This keeps JSON shape changes explicit and testable.
 
 ## Generation Flow
 
-The generation pipeline is decoupled into six explicit, testable stages defined in the [pipeline/](file:///opt/dailyFX/backend/app/services/generation/pipeline/) package, sharing state via the `GenerationPipelineContext` structure:
+The generation pipeline is decoupled into six explicit, testable stages defined in the [pipeline/](../backend/app/services/generation/pipeline/) package, sharing state via the `GenerationPipelineContext` structure:
 
 1. **Setup & Planning (`_pipeline_setup_and_planning`):** Resolves schedule settings, sets up debug logging, updates task status to running, and selects the generation module to run based on preset weights.
 2. **Asset Retrieval & Selection (`_pipeline_retrieve_and_select_assets`):** Connects to Immich to search for candidate assets matching the filter presets (requesting a random pool of 30 assets to prevent duplicates). It applies history-based deduplication by checking the last 25 unique source asset IDs from the generation history, sorting them to prefer unused or oldest-used images (bypassed if explicit assets are selected manually), and performs AI-driven selection/ranking if enabled.

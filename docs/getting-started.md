@@ -80,7 +80,7 @@ Enter the token from `APP_ACCESS_TOKEN` if your instance uses protected access.
 - Login does not work: make sure the browser token matches `APP_ACCESS_TOKEN` in `.env`.
 - No schedules run: check that the backend container is running.
 - Images do not load: confirm the backend is reachable and the browser is allowed to access it.
-- Files in `data/` owned by `root`: In [docker-compose.yml](file:///opt/dailyFX/docker-compose.yml), the `api` service is configured with `user: "${UID:-1000}:${GID:-1000}"` to match your host user permissions. If your shell does not export `UID`/`GID` automatically, you can define them in your `.env` file (e.g. `UID=1000` and `GID=1000`) and rebuild the stack.
+- Files in `data/` owned by `root`: In [docker-compose.yml](../docker-compose.yml), the `api` service is configured with `user: "${UID:-1000}:${GID:-1000}"` to match your host user permissions. If your shell does not export `UID`/`GID` automatically, you can define them in your `.env` file (e.g. `UID=1000` and `GID=1000`) and rebuild the stack.
 
 
 ## Where To Read More
