@@ -4,6 +4,7 @@ import logging
 import httpx
 
 from app.utils.safe_logging import redact_sensitive
+
 from .base import (
     XIAOMI_API_BASE_URL,
     XIAOMI_VISION_MODEL,

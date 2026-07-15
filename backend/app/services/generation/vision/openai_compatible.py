@@ -8,6 +8,7 @@ from typing import Any, NoReturn
 import httpx
 
 from app.utils.safe_logging import redact_sensitive
+
 from .base import AIVisionError, AIVisionResult, _chat_image_content, _vision_result_from_chat_json
 
 logger = logging.getLogger(__name__)

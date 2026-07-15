@@ -32,8 +32,8 @@ from app.immich.models import (
     ImmichUploadMetadata,
     ImmichUploadResult,
 )
-from app.utils.url_utils import normalize_api_url
 from app.utils.safe_logging import redact_sensitive
+from app.utils.url_utils import normalize_api_url
 
 logger = logging.getLogger(__name__)
 

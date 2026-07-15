@@ -4,6 +4,7 @@ import logging
 import httpx
 
 from app.utils.safe_logging import redact_sensitive
+
 from .base import GEMINI_VISION_MODEL, AIVisionError, AIVisionResult
 
 logger = logging.getLogger(__name__)
