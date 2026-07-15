@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -68,11 +69,13 @@ class GenerationHistoryResponse(GenerationHistoryBase):
     def append_cache_buster(self) -> "GenerationHistoryResponse":
         if self.image_url and self.updated_at:
             t = int(self.updated_at.timestamp())
-            if "t=" not in self.image_url:
-                if "?" in self.image_url:
-                    self.image_url = f"{self.image_url}&t={t}"
-                else:
-                    self.image_url = f"{self.image_url}?t={t}"
+            parts = urlsplit(self.image_url)
+            query = dict(parse_qsl(parts.query, keep_blank_values=True))
+            if "t" not in query:
+                query["t"] = str(t)
+                self.image_url = urlunsplit(
+                    (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+                )
         return self
 
 

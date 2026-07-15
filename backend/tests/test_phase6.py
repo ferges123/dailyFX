@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import sqlite3
 import time
 from io import BytesIO
 from pathlib import Path
@@ -139,7 +140,10 @@ def test_load_rgb_downscales_large_image():
 
 def test_backup_database_creates_file(tmp_path):
     src = tmp_path / "app.db"
-    src.write_bytes(b"fake db content")
+    with sqlite3.connect(src) as db:
+        db.execute("CREATE TABLE records (value TEXT NOT NULL)")
+        db.execute("INSERT INTO records VALUES ('restored')")
+        db.commit()
     backup_dir = tmp_path / "backups"
 
     mock_settings = MagicMock()
@@ -147,19 +151,22 @@ def test_backup_database_creates_file(tmp_path):
     with patch("app.config.get_settings", return_value=mock_settings):
         from app.workers.scheduler import _backup_database
 
-        _backup_database()
+        _backup_database(retention_count=7)
 
     backups = list(backup_dir.glob("app_*.db"))
     assert len(backups) == 1
-    assert backups[0].read_bytes() == b"fake db content"
+    with sqlite3.connect(backups[0]) as db:
+        assert db.execute("SELECT value FROM records").fetchone() == ("restored",)
 
 
-def test_backup_database_keeps_max_7(tmp_path):
+def test_backup_database_uses_configured_retention_count(tmp_path):
     src = tmp_path / "app.db"
-    src.write_bytes(b"db")
+    with sqlite3.connect(src) as db:
+        db.execute("CREATE TABLE records (value TEXT NOT NULL)")
+        db.commit()
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
-    for i in range(8):
+    for i in range(4):
         (backup_dir / f"app_2026010{i}.db").write_bytes(b"old")
 
     mock_settings = MagicMock()
@@ -167,10 +174,33 @@ def test_backup_database_keeps_max_7(tmp_path):
     with patch("app.config.get_settings", return_value=mock_settings):
         from app.workers.scheduler import _backup_database
 
-        _backup_database()
+        _backup_database(retention_count=3)
 
     backups = list(backup_dir.glob("app_*.db"))
-    assert len(backups) <= 7
+    assert len(backups) == 3
+
+
+def test_backup_database_restores_committed_wal_changes(tmp_path):
+    src = tmp_path / "app.db"
+    writer = sqlite3.connect(src)
+    try:
+        writer.execute("PRAGMA journal_mode=WAL")
+        writer.execute("CREATE TABLE records (value TEXT NOT NULL)")
+        writer.execute("INSERT INTO records VALUES ('in-wal')")
+        writer.commit()
+
+        mock_settings = MagicMock()
+        mock_settings.data_dir = tmp_path
+        with patch("app.config.get_settings", return_value=mock_settings):
+            from app.workers.scheduler import _backup_database
+
+            _backup_database(retention_count=1)
+    finally:
+        writer.close()
+
+    backup = next((tmp_path / "backups").glob("app_*.db"))
+    with sqlite3.connect(backup) as restored:
+        assert restored.execute("SELECT value FROM records").fetchone() == ("in-wal",)
 
 
 # ── Log rotation ─────────────────────────────────────────────────────────────

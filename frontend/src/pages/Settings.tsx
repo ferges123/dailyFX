@@ -318,7 +318,7 @@ export function SettingsPage() {
             ['retention_backup_count', 'DB backups'],
           ] as const).map(([key, label]) => (
             <label key={key} className="text-xs text-stone-600">
-              {label} (days)
+              {label} ({key === 'retention_backup_count' ? 'copies' : 'days'})
               <input type="number" min={1} value={form[key] ?? ''} onChange={(e) => setValue(key, e.target.value === '' ? null : Number(e.target.value))} className="mt-1 h-8 w-full rounded-lg border border-stone-200 px-2" />
             </label>
           ))}

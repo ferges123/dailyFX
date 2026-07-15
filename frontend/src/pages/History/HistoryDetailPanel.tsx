@@ -22,6 +22,7 @@ import {
   type TaskTraceItem,
 } from './AdditionalInfoDetails';
 import { parseFirstSourceAssetId } from '../../utils/generationMetadata';
+import { appendQueryParam } from '../../utils/url';
 
 interface HistoryDetailPanelProps {
   entry: GenerationHistoryEntry | null;
@@ -316,7 +317,7 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
           <div className="relative group max-w-full overflow-hidden rounded-xl md:rounded-2xl border border-stone-200 bg-stone-100 shadow-[0_12px_26px_rgba(36,29,16,0.06)]">
             {/* Base: Generated image */}
             <SecureImage
-              src={`${entry.image_url}?thumbnail=true`}
+              src={appendQueryParam(entry.image_url, 'thumbnail', 'true')}
               alt={entry.title}
               className="w-full max-h-[220px] md:max-h-[320px] cursor-zoom-in object-contain mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.015]"
               onClick={() => onOpenLightbox(entry.image_url ?? '')}

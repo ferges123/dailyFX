@@ -15,6 +15,7 @@ import { SecureImage } from '../components/SecureImage';
 import { LightboxModal } from './History/LightboxModal';
 import { useDebounce } from './History/useDebounce';
 import { useSelectedExif } from '../hooks/useSelectedExif';
+import { appendQueryParam } from '../utils/url';
 
 const PAGE_SIZE = 24;
 
@@ -66,7 +67,7 @@ function GalleryCard({
       className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200/60 bg-stone-100 shadow-xs transition-all hover:shadow-lg hover:shadow-stone-200/50 hover:scale-[1.02]"
     >
       <SecureImage
-        src={entry.image_url ? `${entry.image_url}?thumbnail=true` : ''}
+        src={entry.image_url ? appendQueryParam(entry.image_url, 'thumbnail', 'true') : ''}
         alt={entry.title}
         className="h-full w-full object-cover"
         loading="lazy"

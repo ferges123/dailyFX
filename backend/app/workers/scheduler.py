@@ -557,9 +557,10 @@ async def _async_main() -> None:
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
-def _backup_database() -> None:
+def _backup_database(retention_count: int | None = None) -> None:
     try:
-        import shutil
+        import os
+        import sqlite3
 
         from app.config import get_settings as _get_settings
 
@@ -570,12 +571,29 @@ def _backup_database() -> None:
         backup_dir = data_dir / "backups"
         backup_dir.mkdir(exist_ok=True)
         dst = backup_dir / f"app_{datetime.now().strftime('%Y%m%d')}.db"
-        shutil.copy2(src, dst)
-        # Keep last 7 backups
+        tmp_dst = backup_dir / f".{dst.name}.tmp"
+        tmp_dst.unlink(missing_ok=True)
+
+        # sqlite3.Connection.backup() produces a consistent snapshot and includes
+        # committed pages currently living in the WAL file.
+        with sqlite3.connect(src) as source, sqlite3.connect(tmp_dst) as destination:
+            source.backup(destination)
+        os.replace(tmp_dst, dst)
+
+        if retention_count is None:
+            session = SessionLocal()
+            try:
+                settings = get_or_create_settings(session)
+                retention_count = max(1, int(getattr(settings, "retention_backup_count", 7)))
+            finally:
+                session.close()
+        else:
+            retention_count = max(1, int(retention_count))
+
         backups = sorted(backup_dir.glob("app_*.db"))
-        for old in backups[:-7]:
+        for old in backups[:-retention_count]:
             old.unlink(missing_ok=True)
-        logger.info("DB backup created: %s", dst.name)
+        logger.info("DB backup created: %s (retaining %d copies)", dst.name, retention_count)
     except Exception:
         logger.exception("DB backup failed")
 

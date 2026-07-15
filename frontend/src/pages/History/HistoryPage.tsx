@@ -16,6 +16,7 @@ import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { logger } from '../../utils/logger';
+import { appendQueryParam } from '../../utils/url';
 
 import { UploadModal } from './UploadModal';
 import { LightboxModal } from './LightboxModal';
@@ -71,7 +72,7 @@ const HistoryItemCard = memo(function HistoryItemCard({
       {item.image_url ? (
         <div className="h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100">
           <SecureImage
-            src={`${item.image_url}?thumbnail=true`}
+            src={appendQueryParam(item.image_url, 'thumbnail', 'true')}
             alt={item.title}
             className="h-full w-full object-cover"
           />
