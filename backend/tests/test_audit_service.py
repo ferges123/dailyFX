@@ -212,10 +212,19 @@ def test_generation_api_auditing(db_session: Session):
     from fastapi.testclient import TestClient
 
     from app.main import app
+    from app.database import get_db_dependency
     from app.security import require_auth
 
     # Mock require_auth to bypass authentication
-    app.dependency_overrides[require_auth] = lambda: None
+    async def override_auth():
+        return None
+
+    app.dependency_overrides[require_auth] = override_auth
+
+    async def override_db():
+        yield db_session
+
+    app.dependency_overrides[get_db_dependency] = override_db
     try:
         # Create temp file so it exists on disk for accept
         temp_dir = tempfile.mkdtemp()

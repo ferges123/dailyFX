@@ -2,6 +2,12 @@ import os
 
 import pytest
 
+import fastapi.testclient
+
+from _asgi_test_client import TestClient as ASGITestClient
+
+fastapi.testclient.TestClient = ASGITestClient
+
 os.environ["APP_ACCESS_TOKEN"] = ""
 os.environ.setdefault("APP_SECRET_KEY", "test-api-secret")
 
@@ -62,3 +68,7 @@ def isolate_database(request):
     database.engine = None
     database._current_database_url = None
     database._initialized_databases.clear()
+
+    from app.database import init_db
+
+    init_db()

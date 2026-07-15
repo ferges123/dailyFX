@@ -100,6 +100,16 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+async def get_db_dependency():
+    """Async FastAPI adapter for the synchronous session generator."""
+    db_generator = get_db()
+    db = next(db_generator)
+    try:
+        yield db
+    finally:
+        db_generator.close()
+
+
 _initialized_databases: set[str] = set()
 
 

@@ -1,54 +1,41 @@
 from __future__ import annotations
 
-from app.services.generation.modules.aerochrome import AerochromeModule
-from app.services.generation.modules.apple_weather import AppleWeatherModule
-from app.services.generation.modules.bokeh_blur import BokehBlurModule
-from app.services.generation.modules.cartoon import CartoonModule
-from app.services.generation.modules.collage import CollageModule
-from app.services.generation.modules.cyanotype import CyanotypeModule
-from app.services.generation.modules.duotone import DuotoneModule
-from app.services.generation.modules.filmstrip import FilmstripModule
-from app.services.generation.modules.glitch import GlitchModule
-from app.services.generation.modules.halftone import HalftoneModule
-from app.services.generation.modules.hdr import HDRModule
-from app.services.generation.modules.huji import HujiModule
-from app.services.generation.modules.instafilter import InstafilterModule
-from app.services.generation.modules.instaweather import InstaWeatherModule
-from app.services.generation.modules.light_leak import LightLeakModule
-from app.services.generation.modules.museum_archive import MuseumArchiveModule
-from app.services.generation.modules.neon_bloom import NeonBloomModule
-from app.services.generation.modules.paper_cutout import PaperCutoutModule
-from app.services.generation.modules.pencil_sketch import PencilSketchModule
-from app.services.generation.modules.polaroid import PolaroidModule
-from app.services.generation.modules.popart import PopArtModule
-from app.services.generation.modules.prism_split import PrismSplitModule
-from app.services.generation.modules.vintage_film import VintageFilmModule
+from importlib import import_module
 
-LOCAL_MODULE_CLASSES = [
-    AppleWeatherModule,
-    InstaWeatherModule,
-    MuseumArchiveModule,
-    BokehBlurModule,
-    VintageFilmModule,
-    HujiModule,
-    CollageModule,
-    InstafilterModule,
-    FilmstripModule,
-    PopArtModule,
-    DuotoneModule,
-    HalftoneModule,
-    GlitchModule,
-    LightLeakModule,
-    NeonBloomModule,
-    CyanotypeModule,
-    PolaroidModule,
-    PrismSplitModule,
-    PaperCutoutModule,
-    PencilSketchModule,
-    CartoonModule,
-    HDRModule,
-    AerochromeModule,
-]
+
+_LOCAL_MODULE_SPECS = (
+    ("apple_weather", "AppleWeatherModule"),
+    ("instaweather", "InstaWeatherModule"),
+    ("museum_archive", "MuseumArchiveModule"),
+    ("bokeh_blur", "BokehBlurModule"),
+    ("vintage_film", "VintageFilmModule"),
+    ("huji", "HujiModule"),
+    ("collage", "CollageModule"),
+    ("instafilter", "InstafilterModule"),
+    ("filmstrip", "FilmstripModule"),
+    ("popart", "PopArtModule"),
+    ("duotone", "DuotoneModule"),
+    ("halftone", "HalftoneModule"),
+    ("glitch", "GlitchModule"),
+    ("light_leak", "LightLeakModule"),
+    ("neon_bloom", "NeonBloomModule"),
+    ("cyanotype", "CyanotypeModule"),
+    ("polaroid", "PolaroidModule"),
+    ("prism_split", "PrismSplitModule"),
+    ("paper_cutout", "PaperCutoutModule"),
+    ("pencil_sketch", "PencilSketchModule"),
+    ("cartoon", "CartoonModule"),
+    ("hdr", "HDRModule"),
+    ("aerochrome", "AerochromeModule"),
+)
+
+
+def _load_local_module_classes() -> list[type]:
+    """Load effect implementations only when the registry is first used."""
+    return [
+        getattr(import_module(f"{__name__}.{module_name}"), class_name)
+        for module_name, class_name in _LOCAL_MODULE_SPECS
+    ]
 
 LOCAL_MODULE_GROUPS = {
     "apple_weather": "Portrait",
@@ -82,7 +69,9 @@ class GenerationModuleRegistry:
         self._modules: dict[str, object] | None = None
 
     def _build(self) -> dict[str, object]:
-        modules: dict[str, object] = {module_class.name: module_class() for module_class in LOCAL_MODULE_CLASSES}
+        modules: dict[str, object] = {
+            module_class.name: module_class() for module_class in _load_local_module_classes()
+        }
         from sqlalchemy.exc import OperationalError, ProgrammingError
 
         from app.services.generation.ai_effects_builder import build_ai_module

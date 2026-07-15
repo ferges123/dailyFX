@@ -8,12 +8,18 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_db_dependency
 from app.immich.errors import ImmichError
 from app.models.generation_history import GenerationHistoryModel
 from app.models.settings import SettingsModel
 from app.schemas.generation import GenerationAcceptRequest, GenerationHistoryResponse
-from app.security import ActorContext, authorize_review_access, get_actor_context, require_auth, resolve_actor_context
+from app.security import (
+    ActorContext,
+    authorize_review_access,
+    get_actor_context_dependency,
+    require_auth,
+    resolve_actor_context,
+)
 from app.services.audit import record_audit_event
 from app.services.generation.stream import record_history_snapshot
 from app.services.generation.upload_metadata import build_immich_upload_metadata
@@ -104,9 +110,9 @@ async def _apply_uploaded_asset_caption_and_tags(*, client, upload_asset_id: str
 async def accept_generation(
     task_id: str,
     request: GenerationAcceptRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     """Accept and upload a generated image to Immich."""
@@ -216,9 +222,9 @@ async def accept_generation(
 @router.post("/history/{task_id}/retry", response_model=GenerationHistoryResponse)
 async def retry_acceptance(
     task_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     """Retry album/tag steps or the entire upload for a generation."""
@@ -338,9 +344,9 @@ async def retry_acceptance(
 @router.post("/history/{task_id}/reject", response_model=GenerationHistoryResponse)
 async def reject_generation(
     task_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     """Reject generated image and keep it in history as reviewed."""
@@ -470,9 +476,9 @@ def _delete_history_records_and_files(
 
 @router.delete("/history/rejected", status_code=204)
 async def delete_rejected_cache(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     """Delete all rejected generations (files + DB records)."""
     _delete_history_records_and_files(db, "REJECTED", actor_ctx)
@@ -482,9 +488,9 @@ async def delete_rejected_cache(
 @router.delete("/history/status/{status}", status_code=204)
 async def delete_history_by_status(
     status: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     """Delete all generations of a specific status (files + DB records)."""
     status_map = {
@@ -504,9 +510,9 @@ async def delete_history_by_status(
 
 @router.delete("/history/cache", status_code=204)
 async def clear_generation_cache(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     """Delete all generation history (files + DB records)."""
     _delete_history_records_and_files(db, None, actor_ctx)
@@ -517,9 +523,9 @@ async def clear_generation_cache(
 async def like_generation(
     task_id: str,
     review_token: str | None = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     authorize_review_access(task_id, review_token=review_token, credentials=credentials)
@@ -562,9 +568,9 @@ async def like_generation(
 async def dislike_generation(
     task_id: str,
     review_token: str | None = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_dependency),
     credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
-    actor_ctx: ActorContext = Depends(get_actor_context),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     authorize_review_access(task_id, review_token=review_token, credentials=credentials)

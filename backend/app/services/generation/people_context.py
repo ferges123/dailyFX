@@ -333,7 +333,17 @@ def infer_gender(name: str) -> str:
         "bonawentura",
         "mustafa",
     }
-    female_terms = {"mama", "babcia", "ciocia", "córka", "zona", "żona", "siostra"}
+    female_terms = {
+        "mama",
+        "babcia",
+        "ciocia",
+        "córka",
+        "zona",
+        "żona",
+        "siostra",
+        "alice",
+        "sarah",
+    }
 
     if first_name_lower in female_terms:
         return "female"

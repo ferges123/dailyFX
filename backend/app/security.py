@@ -227,3 +227,12 @@ def get_actor_context(request: Request) -> ActorContext:
         request_id=request_id,
         source_ip_hash=source_ip_hash,
     )
+
+
+async def get_actor_context_dependency(request: Request) -> ActorContext:
+    """Async FastAPI adapter for the synchronous actor-context parser.
+
+    Keeping the parser synchronous preserves its direct-call API, while the async
+    adapter avoids competing for the thread-pool slot held by generator dependencies.
+    """
+    return get_actor_context(request)
