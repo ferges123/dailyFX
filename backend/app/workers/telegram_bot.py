@@ -12,6 +12,9 @@ from app.schemas.generation import GenerationAcceptRequest
 from app.security import decrypt_secret
 
 logger = logging.getLogger(__name__)
+# Prevent Telegram Bot token leak by silencing httpx/httpcore info logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def _get_token_id(token: str) -> str:

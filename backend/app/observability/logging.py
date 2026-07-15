@@ -29,6 +29,10 @@ class JSONFormatter(logging.Formatter):
 
 
 def setup_logging():
+    # Always set httpx and httpcore loggers to WARNING to avoid leaking secrets
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     settings = get_settings()
     if not settings.log_json:
         return

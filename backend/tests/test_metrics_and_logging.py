@@ -167,3 +167,54 @@ def test_metrics_includes_database_counts(monkeypatch):
         raise
     finally:
         db.close()
+
+
+def test_setup_logging_silences_httpx_and_httpcore():
+    import logging
+    from app.observability.logging import setup_logging
+
+    # Set root logger to INFO
+    logging.getLogger().setLevel(logging.INFO)
+
+    # Run setup
+    setup_logging()
+
+    # Assert
+    assert logging.getLogger("httpx").getEffectiveLevel() == logging.WARNING
+    assert logging.getLogger("httpcore").getEffectiveLevel() == logging.WARNING
+
+
+def test_scheduler_main_silences_httpx_and_httpcore(monkeypatch):
+    import logging
+    from app.workers.scheduler import main
+
+    # Set root logger to INFO
+    logging.getLogger().setLevel(logging.INFO)
+
+    # Mock engine setup and asyncio run to prevent database initialization and infinite loop execution
+    monkeypatch.setattr("app.database._ensure_engine", lambda: None)
+    monkeypatch.setattr("asyncio.run", lambda coroutine: None)
+
+    # Run main
+    main()
+
+    # Assert
+    assert logging.getLogger("httpx").getEffectiveLevel() == logging.WARNING
+    assert logging.getLogger("httpcore").getEffectiveLevel() == logging.WARNING
+
+
+def test_telegram_bot_import_silences_httpx_and_httpcore():
+    import logging
+    # Set root logger to INFO
+    logging.getLogger().setLevel(logging.INFO)
+
+    # Reload or import telegram_bot to ensure the module-level configuration is evaluated
+    import importlib
+    import app.workers.telegram_bot
+    importlib.reload(app.workers.telegram_bot)
+
+    # Assert
+    assert logging.getLogger("httpx").getEffectiveLevel() == logging.WARNING
+    assert logging.getLogger("httpcore").getEffectiveLevel() == logging.WARNING
+
+

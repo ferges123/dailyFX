@@ -488,6 +488,8 @@ async def run_scheduler_tick_async(now: datetime | None = None) -> dict[str, obj
 
 def main() -> None:
     logging.basicConfig(level=os.environ.get("AUTOMATION_LOG_LEVEL", "INFO"))
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     logger.info("Automation scheduler started (poll interval: %ss)", POLL_INTERVAL_SECONDS)
     # Migrations are run by the api container; scheduler only needs the engine ready.
     from app.database import _ensure_engine
