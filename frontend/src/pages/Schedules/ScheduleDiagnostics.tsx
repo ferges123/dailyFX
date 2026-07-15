@@ -18,8 +18,8 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
     try {
       const res = await getScheduleDiagnostics(scheduleId);
       setData(res);
-    } catch (e: any) {
-      setError(e.message || 'Failed to fetch diagnostics');
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Failed to fetch diagnostics');
     } finally {
       setLoading(false);
     }

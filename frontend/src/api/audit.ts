@@ -1,5 +1,13 @@
 import { request, getAuthHeader, apiBase } from './base';
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 export interface AuditEvent {
   event_id: string;
   occurred_at: string;
@@ -14,8 +22,8 @@ export interface AuditEvent {
   task_id?: string;
   schedule_id?: number;
   summary: string;
-  changes?: Record<string, { from: any; to: any; changed?: boolean }>;
-  metadata?: Record<string, any>;
+  changes?: Record<string, { from: JsonValue; to: JsonValue; changed?: boolean }>;
+  metadata?: Record<string, JsonValue>;
   error_code?: string;
 }
 
