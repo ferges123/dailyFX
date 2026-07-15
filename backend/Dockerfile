@@ -6,9 +6,11 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml requirements.lock ./
 COPY app ./app
-RUN --mount=type=cache,target=/root/.cache/pip pip install .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --require-hashes --no-deps -r requirements.lock && \
+    pip install --no-deps .
 
 COPY alembic.ini ./
 COPY healthcheck.py ./
@@ -19,4 +21,3 @@ ENV HOME=/tmp
 USER nobody
 
 CMD ["./start.sh"]
-

@@ -246,7 +246,7 @@ def test_get_provider_models_success():
 
     route_require_auth = require_auth
     for route in app.routes:
-        if route.path == "/api/settings/models/{provider}":
+        if getattr(route, "path", None) == "/api/settings/models/{provider}":
             dependant = getattr(route, "dependant", None)
             if dependant:
                 for d in dependant.dependencies:
@@ -287,7 +287,7 @@ def test_get_provider_models_success():
             # Debug dependency identities
             print("require_auth in test:", require_auth)
             for route in app.routes:
-                if route.path == "/api/settings/models/{provider}":
+                if getattr(route, "path", None) == "/api/settings/models/{provider}":
                     print("Route dependencies:", [d.dependency for d in route.dependencies])
             print("app.dependency_overrides:", app.dependency_overrides)
 
@@ -326,7 +326,7 @@ def test_get_provider_models_byteplus_success():
 
     route_require_auth = require_auth
     for route in app.routes:
-        if route.path == "/api/settings/models/{provider}":
+        if getattr(route, "path", None) == "/api/settings/models/{provider}":
             dependant = getattr(route, "dependant", None)
             if dependant:
                 for d in dependant.dependencies:

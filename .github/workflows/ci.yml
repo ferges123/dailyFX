@@ -17,12 +17,16 @@ jobs:
         with:
           python-version: '3.13'
           cache: 'pip'
-          cache-dependency-path: backend/pyproject.toml
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/requirements.lock
+            backend/requirements-dev.lock
 
       - name: Install dependencies
         run: |
           cd backend
-          pip install -e ".[test,lint]"
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
           pip install pip-audit
 
       - name: Lint with Ruff
@@ -38,7 +42,7 @@ jobs:
       - name: Audit Python dependencies
         run: |
           cd backend
-          pip-audit || true
+          pip-audit --disable-pip --no-deps --requirement requirements.lock
 
       - name: Run pytest
         run: |

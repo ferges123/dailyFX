@@ -1,9 +1,7 @@
 import os
 
-import pytest
-
 import fastapi.testclient
-
+import pytest
 from _asgi_test_client import TestClient as ASGITestClient
 
 fastapi.testclient.TestClient = ASGITestClient

@@ -171,6 +171,7 @@ def test_metrics_includes_database_counts(monkeypatch):
 
 def test_setup_logging_silences_httpx_and_httpcore():
     import logging
+
     from app.observability.logging import setup_logging
 
     # Set root logger to INFO
@@ -186,6 +187,7 @@ def test_setup_logging_silences_httpx_and_httpcore():
 
 def test_scheduler_main_silences_httpx_and_httpcore(monkeypatch):
     import logging
+
     from app.workers.scheduler import main
 
     # Set root logger to INFO
@@ -210,6 +212,7 @@ def test_telegram_bot_import_silences_httpx_and_httpcore():
 
     # Reload or import telegram_bot to ensure the module-level configuration is evaluated
     import importlib
+
     import app.workers.telegram_bot
     importlib.reload(app.workers.telegram_bot)
 

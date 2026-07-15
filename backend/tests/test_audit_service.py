@@ -211,8 +211,8 @@ def test_generation_api_auditing(db_session: Session):
     from _contract_helpers import make_generation_history_row
     from fastapi.testclient import TestClient
 
-    from app.main import app
     from app.database import get_db_dependency
+    from app.main import app
     from app.security import require_auth
 
     # Mock require_auth to bypass authentication

@@ -1,10 +1,11 @@
 [project]
 name = "dailyfx-backend"
-version = "0.9.5"
+version = "0.9.6"
 description = "FastAPI backend for DailyFX for immich"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.115.0,<0.116.0",
+    "fastapi>=0.139.0,<0.140.0",
+    "starlette>=1.3.1,<1.4.0",
     "uvicorn[standard]>=0.30.0",
     "sqlalchemy>=2.0.0",
     "alembic>=1.13.0",

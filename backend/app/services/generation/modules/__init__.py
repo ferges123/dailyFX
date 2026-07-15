@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from importlib import import_module
 
-
 _LOCAL_MODULE_SPECS = (
     ("apple_weather", "AppleWeatherModule"),
     ("instaweather", "InstaWeatherModule"),
