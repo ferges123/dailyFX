@@ -1,8 +1,14 @@
+import { lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { QueuePage } from './QueuePage';
-import AuditLogPage from './AuditLog/AuditLogPage';
-import { StatisticsPage } from './Statistics';
 import { ListTodo, ClipboardList, BarChart3 } from 'lucide-react';
+
+const StatisticsPage = lazy(() =>
+  import('./Statistics').then((module) => ({ default: module.StatisticsPage })),
+);
+const QueuePage = lazy(() =>
+  import('./QueuePage').then((module) => ({ default: module.QueuePage })),
+);
+const AuditLogPage = lazy(() => import('./AuditLog/AuditLogPage'));
 
 export function SystemPage() {
   const { tab } = useParams<{ tab?: string }>();
@@ -52,9 +58,17 @@ export function SystemPage() {
 
       {/* Tab Content */}
       <div className="mt-2">
-        {activeTab === 'statistics' && <StatisticsPage />}
-        {activeTab === 'queue' && <QueuePage />}
-        {activeTab === 'audit' && <AuditLogPage />}
+        <Suspense
+          fallback={
+            <div className="flex min-h-32 items-center justify-center text-sm text-stone-500">
+              Loading…
+            </div>
+          }
+        >
+          {activeTab === 'statistics' && <StatisticsPage />}
+          {activeTab === 'queue' && <QueuePage />}
+          {activeTab === 'audit' && <AuditLogPage />}
+        </Suspense>
       </div>
     </div>
   );

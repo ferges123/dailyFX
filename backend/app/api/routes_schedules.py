@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
 from app.limiter import limiter
@@ -32,13 +32,29 @@ def build_schedule_diff(old_dict: dict, new_dict: dict) -> dict:
     return diff
 
 
-def _to_response(row: ScheduleModel, db: Session) -> ScheduleResponse:
-    fp = db.get(FilterPresetModel, row.filter_preset_id)
-    ep = db.get(EffectPresetModel, row.effect_preset_id)
+def _to_response(
+    row: ScheduleModel,
+    db: Session,
+    *,
+    filter_preset_names: dict[int, str] | None = None,
+    effect_preset_names: dict[int, str] | None = None,
+) -> ScheduleResponse:
+    if filter_preset_names is None:
+        fp = db.get(FilterPresetModel, row.filter_preset_id)
+        filter_preset_name = fp.name if fp else None
+    else:
+        filter_preset_name = filter_preset_names.get(row.filter_preset_id)
+
+    if effect_preset_names is None:
+        ep = db.get(EffectPresetModel, row.effect_preset_id)
+        effect_preset_name = ep.name if ep else None
+    else:
+        effect_preset_name = effect_preset_names.get(row.effect_preset_id)
+
     return ScheduleResponse.from_model(
         row,
-        filter_preset_name=fp.name if fp else None,
-        effect_preset_name=ep.name if ep else None,
+        filter_preset_name=filter_preset_name,
+        effect_preset_name=effect_preset_name,
     )
 
 
@@ -56,8 +72,33 @@ def _validate_presets(body: ScheduleCreate, db: Session) -> None:
 
 @router.get("", response_model=list[ScheduleResponse])
 def list_schedules(db: Session = Depends(get_db), _: None = Depends(require_auth)):
-    rows = db.query(ScheduleModel).order_by(ScheduleModel.name).all()
-    return [_to_response(r, db) for r in rows]
+    rows = (
+        db.query(ScheduleModel)
+        .options(selectinload(ScheduleModel.notification_presets))
+        .order_by(ScheduleModel.name)
+        .all()
+    )
+
+    filter_preset_ids = {row.filter_preset_id for row in rows}
+    effect_preset_ids = {row.effect_preset_id for row in rows}
+    filter_preset_names = {
+        preset.id: preset.name
+        for preset in db.query(FilterPresetModel).filter(FilterPresetModel.id.in_(filter_preset_ids)).all()
+    }
+    effect_preset_names = {
+        preset.id: preset.name
+        for preset in db.query(EffectPresetModel).filter(EffectPresetModel.id.in_(effect_preset_ids)).all()
+    }
+
+    return [
+        _to_response(
+            row,
+            db,
+            filter_preset_names=filter_preset_names,
+            effect_preset_names=effect_preset_names,
+        )
+        for row in rows
+    ]
 
 
 @router.post("", response_model=ScheduleResponse, status_code=201)

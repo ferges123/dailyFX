@@ -12,6 +12,7 @@ export function QueuePage() {
     queryKey: ['queue', statusFilter, sourceFilter],
     queryFn: () => getQueueList({ status: statusFilter, source: sourceFilter }),
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const cancelMutation = useMutation({
