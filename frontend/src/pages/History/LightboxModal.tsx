@@ -224,18 +224,18 @@ export const LightboxModal = memo(function LightboxModal({
   return (
     <div
       ref={trapRef}
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-stone-100/90 p-3 md:items-center md:p-4 backdrop-blur-xl animate-fade-in"
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-stone-100/90 p-0 md:items-center md:p-4 backdrop-blur-xl animate-fade-in"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="lightbox-modal-title"
-        className="relative flex w-full max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-2xl border border-stone-200/80 bg-white/95 shadow-2xl animate-scale-in md:max-h-[92vh] md:flex-row"
+        className="relative flex w-full h-full md:h-auto md:max-h-[92vh] max-w-full md:max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-stone-200/80 bg-white/95 shadow-2xl animate-scale-in md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Photo Canvas */}
-        <div className="relative flex max-h-[52vh] flex-1 items-center justify-center bg-stone-50 p-2 md:max-h-[85vh]">
+        <div className="relative flex h-[52vh] md:h-auto md:max-h-[85vh] flex-1 items-center justify-center bg-stone-50 p-2">
           <SecureImage
             src={imageUrl}
             alt="Preview"
@@ -271,8 +271,8 @@ export const LightboxModal = memo(function LightboxModal({
         </div>
 
         {/* Premium EXIF Details Overlay Panel */}
-        <div className="flex max-h-[48vh] min-h-0 w-full shrink-0 flex-col overflow-y-auto bg-stone-50 p-4 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:p-5 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
-          <div className="space-y-4">
+        <div className="flex h-[48vh] md:h-auto min-h-0 w-full shrink-0 flex-col bg-stone-50 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5 space-y-4">
             <div>
               <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">
                 Image Metadata
@@ -466,7 +466,7 @@ export const LightboxModal = memo(function LightboxModal({
           </div>
 
           {/* Lightbox Footer Actions */}
-          <div className="sticky bottom-0 mt-4 border-t border-stone-200 bg-stone-50 pt-4 md:mt-0">
+          <div className="border-t border-stone-200 bg-stone-50 p-4 md:p-5 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 type="button"
