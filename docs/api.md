@@ -44,7 +44,7 @@ Some read-only review endpoints remain public and are noted below.
 | Health | `GET /api/health`, `GET /api/health/detailed` |
 | Settings | `GET /api/settings`, `PUT /api/settings`, `POST /api/settings/test-immich`, `POST /api/settings/test-provider/{provider}`, `GET /api/settings/models/{provider}` |
 | Immich | `GET /api/immich/options`, `GET /api/immich/assets`, `GET /api/immich/assets/{asset_id}/thumbnail`, `GET /api/immich/assets/{asset_id}/exif` |
-| Presets | CRUD for `filters`, `effects`, `notifications` |
+| Presets | CRUD for `people`, `effects`, `notifications` |
 | Schedules | CRUD plus `POST /api/schedules/{schedule_id}/run-now` |
 | AI Effects | `GET /api/ai-effects`, `POST /api/ai-effects`, `PUT /api/ai-effects/{effect_id}`, `DELETE /api/ai-effects/{effect_id}`, `POST /api/ai-effects/{effect_id}/reset`, `POST /api/ai-effects/{effect_id}/duplicate`, `POST /api/ai-effects/import`, `GET /api/ai-effects/export` |
 | Generation | `GET /api/generation/stream`, `GET /api/generation/task/{task_id}/status`, `GET /api/generation/modules`, `GET /api/generation/examples`, `GET /api/generation/examples/{module_name}`, history/review/accept/reject |
@@ -184,12 +184,12 @@ The payload keeps the Immich field names used by the rest of the backend and fro
 
 All preset endpoints require authentication. Preset creation and updates undergo parameter configuration schema constraint validation.
 
-### Filter presets
+### People presets
 
-- `GET /api/presets/filters`
-- `POST /api/presets/filters`
-- `PUT /api/presets/filters/{preset_id}`
-- `DELETE /api/presets/filters/{preset_id}`
+- `GET /api/presets/people`
+- `POST /api/presets/people`
+- `PUT /api/presets/people/{preset_id}`
+- `DELETE /api/presets/people/{preset_id}`
 
 ### Effect presets
 
@@ -236,7 +236,7 @@ All schedule endpoints require authentication.
 - `POST /api/schedules/{schedule_id}/run-now`
 
 Schedules combine:
-- one filter preset
+- one people preset
 - one effect preset
 - one notification preset
 - album name

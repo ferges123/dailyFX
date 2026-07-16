@@ -17,10 +17,10 @@ from .generation import (
 from .presets import (
     EffectPresetCreate,
     EffectPresetResponse,
-    FilterPresetCreate,
-    FilterPresetResponse,
     NotificationPresetCreate,
     NotificationPresetResponse,
+    PeoplePresetCreate,
+    PeoplePresetResponse,
 )
 from .schedules import (
     ScheduleCreate,
@@ -47,8 +47,8 @@ __all__ = [
     "AIEffectImportRequest",
     "AIEffectImportResult",
     "AIEffectExportRequest",
-    "FilterPresetCreate",
-    "FilterPresetResponse",
+    "PeoplePresetCreate",
+    "PeoplePresetResponse",
     "EffectPresetCreate",
     "EffectPresetResponse",
     "NotificationPresetCreate",

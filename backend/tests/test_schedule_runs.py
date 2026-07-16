@@ -5,7 +5,7 @@ from _contract_helpers import make_notification_preset_row
 
 from app.immich.client import ImmichPersonFilter
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.services.generation.schedule_runs import build_scheduled_run_context
 
 os.environ["APP_ENV"] = "development"
@@ -16,7 +16,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
 
 
 def test_build_scheduled_run_context_parses_models():
-    filter_preset = FilterPresetModel(
+    people_preset = PeoplePresetModel(
         name="Filter",
         album_ids_json='["album-1"]',
         person_filters_json='[{"personId": "person-1", "mode": "exclude"}]',
@@ -34,7 +34,7 @@ def test_build_scheduled_run_context_parses_models():
     context = build_scheduled_run_context(
         schedule_id=42,
         album_name="Album",
-        filter_preset=filter_preset,
+        people_preset=people_preset,
         effect_preset=effect_preset,
         notification_presets=[notif_one, notif_two],
     )

@@ -186,9 +186,9 @@ export const ScheduleItemCard = memo(function ScheduleItemCard({
       </div>
 
       <div className="mt-1.5 flex flex-wrap gap-1 text-[10px] text-stone-500">
-        {schedule.filter_preset_name && (
+        {schedule.people_preset_name && (
           <span className="app-chip px-2 py-0.5">
-            Filter: {schedule.filter_preset_name}
+            People: {schedule.people_preset_name}
           </span>
         )}
         {schedule.effect_preset_name && (

@@ -297,8 +297,8 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
     import uuid
 
     from app.models.effect_preset import EffectPresetModel
-    from app.models.filter_preset import FilterPresetModel
     from app.models.generation_task import GenerationTaskModel
+    from app.models.people_preset import PeoplePresetModel
     from app.models.schedule import ScheduleModel
 
     current = now or _local_now()
@@ -342,7 +342,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
                 results.append({"schedule_id": schedule.id, "status": "not_due"})
                 continue
 
-            fp = session.get(FilterPresetModel, schedule.filter_preset_id)
+            fp = session.get(PeoplePresetModel, schedule.people_preset_id)
             ep = session.get(EffectPresetModel, schedule.effect_preset_id)
             if not fp or not ep:
                 logger.warning("[Sync Mode] Schedule %d missing presets, skipping", schedule.id)
@@ -352,7 +352,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
             run_context = build_scheduled_run_context(
                 schedule_id=schedule.id,
                 album_name=schedule.album_name,
-                filter_preset=fp,
+                people_preset=fp,
                 effect_preset=ep,
                 notification_presets=list(schedule.notification_presets),
             )
@@ -396,7 +396,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
             if not should_run_automation(schedule.schedule_expr, schedule.last_run_at, current):
                 continue
 
-            fp = session.get(FilterPresetModel, schedule.filter_preset_id)
+            fp = session.get(PeoplePresetModel, schedule.people_preset_id)
             ep = session.get(EffectPresetModel, schedule.effect_preset_id)
             if not fp or not ep:
                 logger.warning("Schedule %d missing presets, skipping auto-queue", schedule.id)
@@ -405,7 +405,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
             run_context = build_scheduled_run_context(
                 schedule_id=schedule.id,
                 album_name=schedule.album_name,
-                filter_preset=fp,
+                people_preset=fp,
                 effect_preset=ep,
                 notification_presets=list(schedule.notification_presets),
             )

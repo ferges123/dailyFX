@@ -47,9 +47,9 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 );
-const FilterPresetsPage = lazy(() =>
+const PeoplePresetsPage = lazy(() =>
   import('./pages/Presets').then((module) => ({
-    default: module.FilterPresetsPage,
+    default: module.PeoplePresetsPage,
   })),
 );
 const EffectPresetsPage = lazy(() =>
@@ -344,12 +344,12 @@ function AppShell() {
               }
             />
             <Route path="/presets" element={<PresetsLayout />}>
-              <Route index element={<Navigate to="filters" replace />} />
+              <Route index element={<Navigate to="people" replace />} />
               <Route
-                path="filters"
+                path="people"
                 element={
                   <RouteView>
-                    <FilterPresetsPage />
+                    <PeoplePresetsPage />
                   </RouteView>
                 }
               />
@@ -519,10 +519,10 @@ function PresetsLayout() {
     <div className="grid gap-3">
       <div className="app-surface p-1 flex gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <PresetSubnavLink
-          to="/presets/filters"
-          active={location.pathname === '/presets/filters'}
+          to="/presets/people"
+          active={location.pathname === '/presets/people'}
         >
-          Filters
+          People
         </PresetSubnavLink>
         <PresetSubnavLink
           to="/presets/effects"
@@ -599,7 +599,7 @@ function NotFoundPage() {
             Go to history
           </Link>
           <Link
-            to="/presets/filters"
+            to="/presets/people"
             className="app-button-secondary px-4 py-2 text-sm"
           >
             Browse presets

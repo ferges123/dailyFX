@@ -16,8 +16,8 @@ The frontend has been upgraded to the following modern technologies:
 
 ## Main Screens
 - `History`: review generated results, see queued and running schedule runs, search by title/summary/provider, inspect metadata, and accept, reject, retry, or download images. Supports dynamic **Before/After Image Comparison** toggles (switching between the original photo and the styled AI result) in both the details panel and the full-screen lightbox view.
-- `Schedules`: create and edit automated jobs by combining filter presets, effect presets, notification presets, and AI vision/image provider settings.
-- `Presets`: manage filter presets, effect presets, notification presets, and web push subscriptions.
+- `Schedules`: create and edit automated jobs by combining people presets, effect presets, notification presets, and AI vision/image provider settings.
+- `Presets`: manage people presets, effect presets, notification presets, and web push subscriptions.
 - `AI Effects`: manage built-in and custom AI effects — view, create, edit, duplicate, reset, import, and export prompt-based creative styles. Built-in effects come from seed data and can be hidden or reset to defaults.
 - `Studio`: upload a local photo, select a compatible single-source effect, configure parameters, view a live generation preview, and persist it to history. Features drag-and-drop file ingestion, a memory-safe source image thumbnail preview, and an integrated **Immich Asset Browser** supporting double-level navigation (browsing/sorting albums by name/count/created/modified date, and server-side pagination for both albums and photos).
 - `Statistics`: tracks effect performance and popularity. Displays high-level KPIs (total runs, rating coverage, best-rated effect, and effects needing attention) alongside a sortable quality dashboard. Categorizes effects into Standard and AI tabs.
@@ -37,7 +37,7 @@ The frontend has been upgraded to the following modern technologies:
 - Images are loaded through authenticated fetches via `SecureImage`, so protected instances still work without exposing raw image URLs.
 
 ## Browser State
-- `localStorage`: access token, cached Immich filter options, filter presets, and other UI cache entries.
+- `localStorage`: access token, cached Immich filter options, people presets, and other UI cache entries.
 - `sessionStorage`: last started generation task ID for the history view.
 - Cookie: app-level filter state used by the preset/filter UI.
 - Service worker: `frontend/src/sw.js` (compiled to `dist/sw.js` via `vite-plugin-pwa`) enables both PWA offline shell assets caching (precaching) and web push notifications.
@@ -46,7 +46,7 @@ The frontend has been upgraded to the following modern technologies:
 - `frontend/src/App.tsx`: shell layout, mobile navigation, route definition with lazy loading, and view switching.
 - `frontend/src/pages/`: page-level screens and helpers.
   - `History/`: contains `HistoryPage` and related details/lightbox controls.
-  - `Presets/`: modular split of tabs (`EffectPresetsPage.tsx`, `FilterPresetsPage.tsx`, `NotificationPresetsPage.tsx`) under a common `PresetHeader`.
+  - `Presets/`: modular split of tabs (`EffectPresetsPage.tsx`, `PeoplePresetsPage.tsx`, `NotificationPresetsPage.tsx`) under a common `PresetHeader`.
   - `AIEffects/`: contains `AIEffectCard.tsx` and manages the AI Effects page.
   - `AIEffects.tsx`: top-level AI Effects page with CRUD, import/export, and reset capabilities.
   - `Schedules/`: split of form details (`ScheduleForm.tsx`, `ScheduleSummaryCard.tsx`) to improve maintainability.

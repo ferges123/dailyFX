@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
-  FilterPresetsPage,
+  PeoplePresetsPage,
   EffectPresetsPage,
   NotificationPresetsPage,
 } from '../pages/Presets';
@@ -15,10 +15,10 @@ vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>();
   return {
     ...actual,
-    getFilterPresets: vi.fn(),
-    createFilterPreset: vi.fn(),
-    updateFilterPreset: vi.fn(),
-    deleteFilterPreset: vi.fn(),
+    getPeoplePresets: vi.fn(),
+    createPeoplePreset: vi.fn(),
+    updatePeoplePreset: vi.fn(),
+    deletePeoplePreset: vi.fn(),
     getImmichFilterOptions: vi.fn(),
     getEffectPresets: vi.fn(),
     createEffectPreset: vi.fn(),
@@ -64,46 +64,46 @@ describe('Presets pages', () => {
     vi.clearAllMocks();
   });
 
-  it('shows the filter presets empty state', async () => {
-    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+  it('shows the people presets empty state', async () => {
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([]);
     vi.mocked(client.getImmichFilterOptions).mockResolvedValue({
       albums: [],
       people: [],
     });
 
-    renderPage(<FilterPresetsPage />);
+    renderPage(<PeoplePresetsPage />);
 
     expect(
-      await screen.findByText('No filter presets yet'),
+      await screen.findByText('No people presets yet'),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'New preset' })).toHaveLength(
       2,
     );
   });
 
-  it('shows filter preset validation when creating a new preset', async () => {
-    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+  it('shows people preset validation when creating a new preset', async () => {
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([]);
     vi.mocked(client.getImmichFilterOptions).mockResolvedValue({
       albums: [],
       people: [],
     });
 
-    renderPage(<FilterPresetsPage />);
+    renderPage(<PeoplePresetsPage />);
 
     expect(
-      await screen.findByText('No filter presets yet'),
+      await screen.findByText('No people presets yet'),
     ).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'New preset' })[0]);
 
-    expect(screen.getByText('New filter preset')).toBeInTheDocument();
+    expect(screen.getByText('New people preset')).toBeInTheDocument();
     expect(screen.getByText('Preset name is required.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save/ })).toBeDisabled();
   });
 
-  it('uses a two-column list and scrolls to the filter preset edit form', async () => {
+  it('uses a two-column list and scrolls to the people preset edit form', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 1,
         name: 'Trip filters',
@@ -127,10 +127,10 @@ describe('Presets pages', () => {
       people: [],
     });
 
-    renderPage(<FilterPresetsPage />);
+    renderPage(<PeoplePresetsPage />);
 
     expect(await screen.findByText('Trip filters')).toBeInTheDocument();
-    expect(screen.getByLabelText('Filter presets list')).toHaveClass(
+    expect(screen.getByLabelText('People presets list')).toHaveClass(
       'lg:grid-cols-2',
     );
 

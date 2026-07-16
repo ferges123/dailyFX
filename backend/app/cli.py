@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, init_db
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.services.generation.engine import run_generation_cycle
 from app.services.generation.history import upsert_history_entry
@@ -139,16 +139,16 @@ def _load_schedule_context(db: Session, schedule_id: int):
     if schedule is None:
         raise CLIError(f"Schedule {schedule_id} not found")
 
-    filter_preset = db.get(FilterPresetModel, schedule.filter_preset_id)
+    people_preset = db.get(PeoplePresetModel, schedule.people_preset_id)
     effect_preset = db.get(EffectPresetModel, schedule.effect_preset_id)
-    if filter_preset is None or effect_preset is None:
+    if people_preset is None or effect_preset is None:
         raise CLIError(f"Schedule {schedule_id} has missing presets")
 
     notification_presets = list(schedule.notification_presets)
     run_context = build_scheduled_run_context(
         schedule_id=schedule_id,
         album_name=schedule.album_name,
-        filter_preset=filter_preset,
+        people_preset=people_preset,
         effect_preset=effect_preset,
         notification_presets=notification_presets,
     )

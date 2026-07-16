@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 from app.immich.models import ImmichSearchFilters
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.services.generation.run_now import (
     RunNowTaskPayload,
     build_run_now_search_filters,
@@ -37,17 +37,17 @@ def build_scheduled_run_context(
     *,
     schedule_id: int,
     album_name: str | None,
-    filter_preset: FilterPresetModel,
+    people_preset: PeoplePresetModel,
     effect_preset: EffectPresetModel,
     notification_presets: list[NotificationPresetModel] | None = None,
 ) -> ScheduledRunContext:
     return ScheduledRunContext(
         filters=build_run_now_search_filters(
-            album_ids=json.loads(filter_preset.album_ids_json or "[]") or None,
-            person_filters=json.loads(filter_preset.person_filters_json or "[]"),
-            start_date=filter_preset.start_date,
-            end_date=filter_preset.end_date,
-            media_type=filter_preset.media_type,
+            album_ids=json.loads(people_preset.album_ids_json or "[]") or None,
+            person_filters=json.loads(people_preset.person_filters_json or "[]"),
+            start_date=people_preset.start_date,
+            end_date=people_preset.end_date,
+            media_type=people_preset.media_type,
         ),
         effects_config=json.loads(effect_preset.groups_json or "{}"),
         notification_presets=list(notification_presets or []),

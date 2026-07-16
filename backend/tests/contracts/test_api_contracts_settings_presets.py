@@ -4,19 +4,19 @@ from _contract_helpers import configure_contract_test_db
 
 from app.api.routes_presets import (
     create_effect_preset,
-    create_filter_preset,
     create_notification_preset,
+    create_people_preset,
     list_effect_presets,
-    list_filter_presets,
     list_notification_presets,
+    list_people_presets,
 )
 from app.api.routes_settings import read_settings, update_settings
 from app.database import SessionLocal, init_db
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.settings import SettingsModel
-from app.schemas.presets import EffectPresetCreate, FilterPresetCreate, NotificationPresetCreate
+from app.schemas.presets import EffectPresetCreate, NotificationPresetCreate, PeoplePresetCreate
 from app.schemas.settings import SettingsUpdate
 
 test_db = configure_contract_test_db("api_contracts_settings_presets")
@@ -82,15 +82,15 @@ def test_settings_contract():
         db.close()
 
 
-def test_filter_presets_contract():
+def test_people_presets_contract():
     init_db()
     db = SessionLocal()
     try:
-        db.query(FilterPresetModel).delete()
+        db.query(PeoplePresetModel).delete()
         db.commit()
 
-        response = create_filter_preset(
-            FilterPresetCreate(
+        response = create_people_preset(
+            PeoplePresetCreate(
                 name="Contract Filter",
                 album_ids=["album-1", "album-2"],
                 person_filters=[
@@ -103,7 +103,7 @@ def test_filter_presets_contract():
             ),
             db,
         )
-        row = db.get(FilterPresetModel, response.id)
+        row = db.get(PeoplePresetModel, response.id)
         row.created_at = datetime(2026, 5, 12, 10, 15, tzinfo=timezone.utc)
         db.commit()
         db.refresh(row)
@@ -124,7 +124,7 @@ def test_filter_presets_contract():
             "created_at": "2026-05-12T10:15:00Z",
         }
 
-        listed = list_filter_presets(db)
+        listed = list_people_presets(db)
         assert [item.model_dump(mode="json") for item in listed] == [response_dict]
     finally:
         db.close()

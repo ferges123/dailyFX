@@ -1,7 +1,7 @@
 import { type RefObject, useState, useEffect } from 'react';
 import { HelpCircle, Check, X } from 'lucide-react';
 import {
-  type FilterPreset,
+  type PeoplePreset,
   type EffectPreset,
   type NotificationPreset,
   type Schedule,
@@ -28,7 +28,8 @@ export interface ScheduleFormProps {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   validationIssues: string[];
-  filterPresets: FilterPreset[];
+  filterPresets?: never;
+  peoplePresets: PeoplePreset[];
   effectPresets: EffectPreset[];
   notificationPresets: NotificationPreset[];
   canSave: boolean;
@@ -44,7 +45,7 @@ export function ScheduleForm({
   form,
   setForm,
   validationIssues,
-  filterPresets,
+  peoplePresets,
   effectPresets,
   notificationPresets,
   canSave,
@@ -271,21 +272,21 @@ export function ScheduleForm({
           >
             <div className="grid gap-1.5 md:gap-2 lg:grid-cols-3">
               <SelectField
-                label="Filter preset"
-                value={String(form.filter_preset_id)}
+                label="People preset"
+                value={String(form.people_preset_id)}
                 required
                 className="text-xs"
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    filter_preset_id: event.target.value
+                    people_preset_id: event.target.value
                       ? Number(event.target.value)
                       : '',
                   }))
                 }
               >
-                <option value="">Select a filter preset</option>
-                {filterPresets.map((preset) => (
+                <option value="">Select a people preset</option>
+                {peoplePresets.map((preset) => (
                   <option key={preset.id} value={preset.id}>
                     {preset.name}
                   </option>

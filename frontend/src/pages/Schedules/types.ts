@@ -6,7 +6,7 @@ export type FormState = {
   scheduleMode: AutomationScheduleMode;
   scheduleDays: number[];
   scheduleTime: string;
-  filter_preset_id: number | '';
+  people_preset_id: number | '';
   effect_preset_id: number | '';
   notification_preset_ids: number[];
   album_name: string;
@@ -24,7 +24,7 @@ export const emptyForm: FormState = {
   scheduleMode: 'daily',
   scheduleDays: [],
   scheduleTime: '08:00',
-  filter_preset_id: '',
+  people_preset_id: '',
   effect_preset_id: '',
   notification_preset_ids: [],
   album_name: 'AI Photos',

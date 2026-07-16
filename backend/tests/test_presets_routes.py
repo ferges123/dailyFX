@@ -8,7 +8,7 @@ from app.api.routes_presets import (
 )
 from app.database import SessionLocal, init_db
 from app.models.notification_preset import NotificationPresetModel
-from app.schemas.presets import FilterPresetCreate, NotificationPresetCreate, PersonFilterItem
+from app.schemas.presets import NotificationPresetCreate, PeoplePresetCreate, PersonFilterItem
 from app.security import decrypt_secret
 
 test_db = configure_contract_test_db("presets")
@@ -117,9 +117,9 @@ def test_notification_preset_rejects_non_http_urls():
         )
 
 
-def test_filter_preset_rejects_invalid_dates_and_long_names():
+def test_people_preset_rejects_invalid_dates_and_long_names():
     with pytest.raises(ValueError, match="String should have at most 255 characters"):
-        FilterPresetCreate(
+        PeoplePresetCreate(
             name="x" * 256,
             album_ids=[],
             person_filters=[],
@@ -129,7 +129,7 @@ def test_filter_preset_rejects_invalid_dates_and_long_names():
         )
 
     with pytest.raises(ValueError, match="must be a valid YYYY-MM-DD date"):
-        FilterPresetCreate(
+        PeoplePresetCreate(
             name="Valid name",
             album_ids=[],
             person_filters=[],
@@ -139,7 +139,7 @@ def test_filter_preset_rejects_invalid_dates_and_long_names():
         )
 
     with pytest.raises(ValueError, match="start_date must be on or before end_date"):
-        FilterPresetCreate(
+        PeoplePresetCreate(
             name="Valid name",
             album_ids=[],
             person_filters=[],
@@ -149,7 +149,7 @@ def test_filter_preset_rejects_invalid_dates_and_long_names():
         )
 
     with pytest.raises(ValueError, match="at most 100 items"):
-        FilterPresetCreate(
+        PeoplePresetCreate(
             name="Valid name",
             album_ids=[f"album-{index}" for index in range(101)],
             person_filters=[],
@@ -159,7 +159,7 @@ def test_filter_preset_rejects_invalid_dates_and_long_names():
         )
 
     with pytest.raises(ValueError, match="at most 100 items"):
-        FilterPresetCreate(
+        PeoplePresetCreate(
             name="Valid name",
             album_ids=[],
             person_filters=[PersonFilterItem(personId=f"person-{index}") for index in range(101)],

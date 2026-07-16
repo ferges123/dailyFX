@@ -20,7 +20,25 @@ from app.services.immich import get_or_create_settings
 test_db = configure_contract_test_db("settings")
 
 
+@pytest.fixture(autouse=True)
+def setup_db():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
+    os.environ["APP_SECRET_KEY"] = "test-api-secret"
+    import app.config
+
+    app.config.get_settings.cache_clear()
+    init_db()
+    db = SessionLocal()
+    try:
+        db.query(SettingsModel).delete()
+        db.commit()
+        yield db
+    finally:
+        db.close()
+
+
 def test_settings_are_saved_with_masked_secrets():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
     import app.config
 
@@ -62,6 +80,7 @@ def test_settings_are_saved_with_masked_secrets():
 
 
 def test_xiaomi_connection_uses_mimo_models_endpoint():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
     import app.config
 
@@ -112,6 +131,7 @@ def test_xiaomi_connection_uses_mimo_models_endpoint():
 
 
 def test_local_ai_connection_uses_configured_base_url_without_token():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
     import app.config
 
@@ -233,6 +253,7 @@ def test_get_or_create_settings_recovers_from_duplicate_insert():
 
 
 def test_get_provider_models_success():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
     from unittest.mock import MagicMock, patch
 
@@ -313,6 +334,7 @@ def test_get_provider_models_success():
 
 
 def test_get_provider_models_byteplus_success():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
     os.environ["APP_SECRET_KEY"] = "test-api-secret"
     from unittest.mock import MagicMock, patch
 

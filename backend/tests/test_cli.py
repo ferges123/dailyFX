@@ -11,9 +11,9 @@ from _contract_helpers import configure_contract_test_db, make_effect_preset_row
 
 from app.cli import _to_iso_timestamp, main
 from app.database import SessionLocal, init_db
-from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.services.generation.history import upsert_history_entry
 
@@ -26,14 +26,14 @@ def _setup_cli_db():
     db.query(GenerationHistoryModel).delete()
     db.query(NotificationPresetModel).delete()
     db.query(ScheduleModel).delete()
-    db.query(FilterPresetModel).delete()
+    db.query(PeoplePresetModel).delete()
     from app.models.effect_preset import EffectPresetModel
 
     db.execute(sa.text("DELETE FROM schedule_notification_presets"))
     db.query(EffectPresetModel).delete()
     db.commit()
 
-    filter_preset = FilterPresetModel(
+    people_preset = PeoplePresetModel(
         name="cli-filter",
         album_ids_json="[]",
         person_filters_json="[]",
@@ -44,14 +44,14 @@ def _setup_cli_db():
         groups_json='{"instafilter": {"enabled": true, "weight": 1, "config": {}}}',
     )
     notification_preset = NotificationPresetModel(name="cli-notif", provider="web")
-    db.add_all([filter_preset, effect_preset, notification_preset])
+    db.add_all([people_preset, effect_preset, notification_preset])
     db.commit()
 
     schedule = ScheduleModel(
         name="CLI Schedule",
         enabled=True,
         schedule_expr="daily",
-        filter_preset_id=filter_preset.id,
+        people_preset_id=people_preset.id,
         effect_preset_id=effect_preset.id,
         album_name="CLI Album",
     )
@@ -148,7 +148,7 @@ def test_dailyfx_cli_generate_missing_schedule_fails(monkeypatch, capsys):
         db.query(GenerationHistoryModel).delete()
         db.query(NotificationPresetModel).delete()
         db.query(ScheduleModel).delete()
-        db.query(FilterPresetModel).delete()
+        db.query(PeoplePresetModel).delete()
         from app.models.effect_preset import EffectPresetModel
 
         db.execute(sa.text("DELETE FROM schedule_notification_presets"))

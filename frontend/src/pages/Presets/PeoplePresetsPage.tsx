@@ -4,12 +4,12 @@ import { Plus, Trash2, Pencil } from 'lucide-react';
 import { InlineSpinner, ErrorBanner } from '../../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../../components/FormUI';
 import {
-  getFilterPresets,
-  createFilterPreset,
-  updateFilterPreset,
-  deleteFilterPreset,
+  getPeoplePresets,
+  createPeoplePreset,
+  updatePeoplePreset,
+  deletePeoplePreset,
   getImmichFilterOptions,
-  type FilterPreset,
+  type PeoplePreset,
   type ImmichPersonFilter,
   type ImmichFilterOptions,
 } from '../../api/client';
@@ -26,7 +26,7 @@ import {
   PresetActionRow,
 } from './PresetHeader';
 
-type FilterFormState = {
+type PeopleFormState = {
   name: string;
   album_ids: string[];
   person_filters: ImmichPersonFilter[];
@@ -35,17 +35,17 @@ type FilterFormState = {
   media_type: string;
 };
 
-function FilterPresetCard({
+function PeoplePresetCard({
   preset,
   albumNames,
   personNames,
   onEdit,
   onDelete,
 }: {
-  preset: FilterPreset;
+  preset: PeoplePreset;
   albumNames: Map<string, string>;
   personNames: Map<string, string>;
-  onEdit: (preset: FilterPreset) => void;
+  onEdit: (preset: PeoplePreset) => void;
   onDelete: (id: number, name: string) => void;
 }) {
   const albumsList = preset.album_ids
@@ -135,11 +135,11 @@ function FilterPresetCard({
   );
 }
 
-export function FilterPresetsTab() {
+export function PeoplePresetsTab() {
   const qc = useQueryClient();
   const presets = useQuery({
-    queryKey: ['filter-presets'],
-    queryFn: getFilterPresets,
+    queryKey: ['people-presets'],
+    queryFn: getPeoplePresets,
   });
   const options = useQuery<ImmichFilterOptions>({
     queryKey: ['immich-options'],
@@ -168,9 +168,9 @@ export function FilterPresetsTab() {
     }
   }, [options.data]);
 
-  const [editing, setEditing] = useState<FilterPreset | null>(null);
+  const [editing, setEditing] = useState<PeoplePreset | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [form, setForm] = useState<FilterFormState>({
+  const [form, setForm] = useState<PeopleFormState>({
     name: '',
     album_ids: [],
     person_filters: [],
@@ -194,18 +194,18 @@ export function FilterPresetsTab() {
   const saveMutation = useMutation({
     mutationFn: () =>
       editing && !isNew
-        ? updateFilterPreset(editing.id, form)
-        : createFilterPreset(form),
+        ? updatePeoplePreset(editing.id, form)
+        : createPeoplePreset(form),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['filter-presets'] });
+      qc.invalidateQueries({ queryKey: ['people-presets'] });
       closeForm();
     },
     onError: (e: Error) => setError(e.message),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteFilterPreset(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['filter-presets'] }),
+    mutationFn: (id: number) => deletePeoplePreset(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['people-presets'] }),
     onError: (e: Error) => setError(e.message),
   });
 
@@ -225,7 +225,7 @@ export function FilterPresetsTab() {
     setError(null);
   }
 
-  function openEdit(p: FilterPreset) {
+  function openEdit(p: PeoplePreset) {
     setForm({
       name: p.name,
       album_ids: p.album_ids,
@@ -284,7 +284,7 @@ export function FilterPresetsTab() {
     const errorMsg = presets.error;
     return (
       <ErrorBanner
-        title="Could not load filter presets"
+        title="Could not load people presets"
         error={errorMsg}
         onRetry={() => {
           presets.refetch();
@@ -307,7 +307,7 @@ export function FilterPresetsTab() {
       <PresetHeader count={presets.data?.length ?? 0} onCreate={openNew} />
 
       {error && (
-        <InlineError title="Could not save filter preset" message={error} />
+        <InlineError title="Could not save people preset" message={error} />
       )}
 
       {showForm && (
@@ -317,7 +317,7 @@ export function FilterPresetsTab() {
         >
           <div className="grid gap-0.5 md:gap-1">
             <div className="text-sm font-semibold text-stone-900">
-              {isNew ? 'New filter preset' : `Editing: ${editing?.name}`}
+              {isNew ? 'New people preset' : `Editing: ${editing?.name}`}
             </div>
             <div className="text-sm text-stone-500">
               Keep the core criteria visible while you fine-tune albums and
@@ -482,7 +482,7 @@ export function FilterPresetsTab() {
       )}
 
       <div
-        aria-label="Filter presets list"
+        aria-label="People presets list"
         className="grid gap-2 lg:grid-cols-2"
       >
         {(() => {
@@ -493,7 +493,7 @@ export function FilterPresetsTab() {
             (options.data?.people ?? []).map((p) => [p.id, p.name]),
           );
           return presets.data?.map((p) => (
-            <FilterPresetCard
+            <PeoplePresetCard
               key={p.id}
               preset={p}
               albumNames={albumNames}
@@ -502,7 +502,7 @@ export function FilterPresetsTab() {
               onDelete={(id, name) => {
                 setConfirmConfig({
                   isOpen: true,
-                  title: 'Delete Filter Preset',
+                  title: 'Delete People Preset',
                   description: `Are you sure you want to delete "${name}"?`,
                   confirmLabel: 'Delete',
                   variant: 'danger',
@@ -515,8 +515,8 @@ export function FilterPresetsTab() {
         {presets.data?.length === 0 && (
           <div className="xl:col-span-2">
             <EmptyState
-              title="No filter presets yet"
-              description="Create a filter preset to control which albums, people, and dates feed generation."
+              title="No people presets yet"
+              description="Create a people preset to control which albums, people, and dates feed generation."
               action={
                 <button
                   type="button"
@@ -549,11 +549,11 @@ export function FilterPresetsTab() {
   );
 }
 
-export function FilterPresetsPage() {
+export function PeoplePresetsPage() {
   return (
     <section className="grid gap-4">
       <div className="app-panel grid gap-4 p-4">
-        <FilterPresetsTab />
+        <PeoplePresetsTab />
       </div>
     </section>
   );

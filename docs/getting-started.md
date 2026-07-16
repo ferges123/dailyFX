@@ -35,13 +35,13 @@ docker compose up --build -d
 
 ## First Things To Do
 - Open **Settings** to enter your Immich connection details (URL & API Key) and test the connection.
-- Open **Filters**, **Effects**, and **Notifications** tabs (under **Presets** on mobile) to configure your choices.
+- Open **People**, **Effects**, and **Notifications** tabs (under **Presets** on mobile) to configure your choices.
 - Open **Schedules** if you want automatic generation.
 - Open **History** to review and accept/reject generated images. Manual **Run now** requests appear there immediately as `Queued`, then switch to `Running` when the worker starts them.
 
 ## First Day Checklist
 - Configure Immich in **Settings** and confirm the connection test succeeds.
-- Create one filter preset and one effect preset.
+- Create one people preset and one effect preset.
 - Create one schedule and run it once with **Run now**.
 - Open **History** and decide whether to accept or reject the result.
 - If you use notifications, confirm the result arrives in the channel you expect.

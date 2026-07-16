@@ -28,7 +28,7 @@ vi.mock('../api/client', async (importOriginal) => {
     getSettings: () => Promise.resolve({}),
     getGenerationHistory: () =>
       Promise.resolve({ items: [], total: 0, latest_event_id: 0 }),
-    getFilterPresets: () => Promise.resolve([]),
+    getPeoplePresets: () => Promise.resolve([]),
     getEffectPresets: () => Promise.resolve([]),
     getNotificationPresets: () => Promise.resolve([]),
     getSchedules: () => Promise.resolve([]),

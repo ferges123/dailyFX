@@ -20,16 +20,20 @@ def _setup_scheduler_db():
     app.config.get_settings.cache_clear()
     init_db()
     db = SessionLocal()
+    from app.models.asset_usage import AssetUsageModel
     from app.models.effect_preset import EffectPresetModel
-    from app.models.filter_preset import FilterPresetModel
+    from app.models.generation_history import GenerationHistoryModel
     from app.models.generation_task import GenerationTaskModel
     from app.models.notification_preset import NotificationPresetModel
+    from app.models.people_preset import PeoplePresetModel
     from app.models.schedule import ScheduleModel
 
     db.query(GenerationTaskModel).delete()
+    db.query(GenerationHistoryModel).delete()
+    db.query(AssetUsageModel).delete()
     db.query(NotificationPresetModel).delete()
     db.query(ScheduleModel).delete()
-    db.query(FilterPresetModel).delete()
+    db.query(PeoplePresetModel).delete()
     db.query(EffectPresetModel).delete()
     db.query(SettingsModel).delete()
     db.commit()
@@ -50,10 +54,10 @@ def _create_scheduler_schedule(
     album_name: str,
     media_type: str = "photo",
 ):
-    from app.models.filter_preset import FilterPresetModel
+    from app.models.people_preset import PeoplePresetModel
     from app.models.schedule import ScheduleModel
 
-    filter_preset = FilterPresetModel(
+    people_preset = PeoplePresetModel(
         name=filter_name,
         album_ids_json='["album1"]',
         person_filters_json="[]",
@@ -63,7 +67,7 @@ def _create_scheduler_schedule(
         name=effect_name,
         groups_json=groups_json,
     )
-    db.add(filter_preset)
+    db.add(people_preset)
     db.add(effect_preset)
     db.commit()
 
@@ -71,7 +75,7 @@ def _create_scheduler_schedule(
         name=name,
         enabled=True,
         schedule_expr=schedule_expr,
-        filter_preset_id=filter_preset.id,
+        people_preset_id=people_preset.id,
         effect_preset_id=effect_preset.id,
         album_name=album_name,
     )
@@ -305,7 +309,7 @@ def test_schedule_create_enforces_text_limits():
             name="x" * 256,
             enabled=False,
             schedule_expr="weekly",
-            filter_preset_id=1,
+            people_preset_id=1,
             effect_preset_id=1,
         )
 
@@ -314,7 +318,7 @@ def test_schedule_create_enforces_text_limits():
             name="Valid schedule",
             enabled=False,
             schedule_expr="weekly",
-            filter_preset_id=1,
+            people_preset_id=1,
             effect_preset_id=1,
             notification_preset_ids=list(range(21)),
         )
@@ -329,7 +333,7 @@ def test_schedule_create_rejects_invalid_provider_values():
             name="Valid schedule",
             enabled=False,
             schedule_expr="weekly",
-            filter_preset_id=1,
+            people_preset_id=1,
             effect_preset_id=1,
             ai_vision_provider="anthropic",
         )
@@ -342,7 +346,7 @@ def test_schedule_create_rejects_invalid_provider_values():
             name="Valid schedule",
             enabled=False,
             schedule_expr="weekly",
-            filter_preset_id=1,
+            people_preset_id=1,
             effect_preset_id=1,
             ai_image_provider="flux",
         )
@@ -352,7 +356,7 @@ def test_schedule_create_rejects_invalid_provider_values():
             name="Valid schedule",
             enabled=False,
             schedule_expr="x" * 101,
-            filter_preset_id=1,
+            people_preset_id=1,
             effect_preset_id=1,
         )
 

@@ -9,8 +9,8 @@ from _contract_helpers import configure_contract_test_db, make_effect_preset_row
 from app.database import SessionLocal
 from app.database import init_db as _init_db
 from app.immich.client import ImmichSearchFilters
-from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.services.generation.ai_vision import AIVisionResult
 from app.services.generation.engine import run_generation_cycle
@@ -23,10 +23,11 @@ from app.services.generation.pipeline.planning import _merge_module_defaults
 from app.services.immich import get_or_create_settings
 
 test_db = configure_contract_test_db("engine")
+_init_db()
 
 
 def init_db():
-    _init_db()
+    pass
 
 
 def _make_fake_asset(asset_id="asset-1", filename="photo.jpg"):
@@ -66,25 +67,26 @@ def _fake_image_bytes_color(color: tuple[int, int, int]) -> bytes:
 
 
 def _setup_db():
-    import os
+    db = SessionLocal()
+    from app.models.asset_usage import AssetUsageModel
+    from app.models.effect_preset import EffectPresetModel
+    from app.models.generation_history import GenerationHistoryModel
+    from app.models.generation_task import GenerationTaskModel
+    from app.models.notification_preset import NotificationPresetModel
+    from app.models.people_preset import PeoplePresetModel
+    from app.models.schedule import ScheduleModel
+    from app.models.settings import SettingsModel
 
-    import app.database as database
-    from app.config import get_settings
-
-    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
-    get_settings.cache_clear()
-
-    if database.engine is not None:
-        database.engine.dispose()
-    database.engine = None
-    database._current_database_url = None
-    database._initialized_databases.clear()
-    from pathlib import Path
-
-    for suffix in ["", "-wal", "-shm"]:
-        Path(str(test_db) + suffix).unlink(missing_ok=True)
-    init_db()
-    return SessionLocal()
+    db.query(GenerationTaskModel).delete()
+    db.query(GenerationHistoryModel).delete()
+    db.query(ScheduleModel).delete()
+    db.query(PeoplePresetModel).delete()
+    db.query(EffectPresetModel).delete()
+    db.query(NotificationPresetModel).delete()
+    db.query(AssetUsageModel).delete()
+    db.query(SettingsModel).delete()
+    db.commit()
+    return db
 
 
 def _get_test_filters():
@@ -98,7 +100,7 @@ def _create_ai_vision_schedule(
     groups_json: str,
     media_type: str = "photo",
 ) -> None:
-    filter_preset = FilterPresetModel(
+    people_preset = PeoplePresetModel(
         name=f"test-filter-preset-{suffix}",
         album_ids_json="[]",
         person_filters_json="[]",
@@ -108,14 +110,14 @@ def _create_ai_vision_schedule(
         name=f"test-effect-preset-{suffix}",
         groups_json=groups_json,
     )
-    db.add_all([filter_preset, effect_preset])
+    db.add_all([people_preset, effect_preset])
     db.commit()
 
     schedule = ScheduleModel(
         name=f"test-schedule-{suffix}",
         enabled=True,
         schedule_expr="weekly",
-        filter_preset_id=filter_preset.id,
+        people_preset_id=people_preset.id,
         effect_preset_id=effect_preset.id,
         album_name="AI Photos",
         ai_vision_provider="openai",

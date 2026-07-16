@@ -207,6 +207,7 @@ def test_scheduler_main_silences_httpx_and_httpcore(monkeypatch):
 
 def test_telegram_bot_import_silences_httpx_and_httpcore():
     import logging
+
     # Set root logger to INFO
     logging.getLogger().setLevel(logging.INFO)
 
@@ -214,10 +215,9 @@ def test_telegram_bot_import_silences_httpx_and_httpcore():
     import importlib
 
     import app.workers.telegram_bot
+
     importlib.reload(app.workers.telegram_bot)
 
     # Assert
     assert logging.getLogger("httpx").getEffectiveLevel() == logging.WARNING
     assert logging.getLogger("httpcore").getEffectiveLevel() == logging.WARNING
-
-

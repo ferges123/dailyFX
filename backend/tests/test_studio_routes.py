@@ -250,7 +250,7 @@ def test_studio_preview_ai_vision_resolves_provider_from_schedule(
     schedule = ScheduleModel(
         name="Test Vision Schedule",
         enabled=True,
-        filter_preset_id=1,
+        people_preset_id=1,
         effect_preset_id=1,
         ai_vision_provider="xiaomi",
         ai_vision_model="mimo-v2.5",

@@ -10,7 +10,7 @@ class ScheduleCreate(BaseModel):
     name: str = Field(max_length=255)
     enabled: bool = False
     schedule_expr: str = Field(default="weekly", max_length=100)
-    filter_preset_id: int
+    people_preset_id: int
     effect_preset_id: int
     notification_preset_ids: list[int] = Field(default_factory=list, max_length=20)
     album_name: str = Field(default="AI Photos", max_length=255)
@@ -31,7 +31,7 @@ class ScheduleResponse(BaseModel):
     name: str
     enabled: bool
     schedule_expr: str
-    filter_preset_id: int
+    people_preset_id: int
     effect_preset_id: int
     notification_preset_ids: list[int]
     album_name: str
@@ -48,7 +48,7 @@ class ScheduleResponse(BaseModel):
     last_task_id: str | None
     created_at: datetime
     # Preset names for UI display (populated manually in routes)
-    filter_preset_name: str | None = None
+    people_preset_name: str | None = None
     effect_preset_name: str | None = None
     notification_preset_names: list[str] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
@@ -58,7 +58,7 @@ class ScheduleResponse(BaseModel):
         cls,
         row: "ScheduleModel",
         *,
-        filter_preset_name: str | None = None,
+        people_preset_name: str | None = None,
         effect_preset_name: str | None = None,
         notification_preset_names: list[str] | None = None,
     ) -> "ScheduleResponse":
@@ -67,7 +67,7 @@ class ScheduleResponse(BaseModel):
             name=row.name,
             enabled=row.enabled,
             schedule_expr=row.schedule_expr,
-            filter_preset_id=row.filter_preset_id,
+            people_preset_id=row.people_preset_id,
             effect_preset_id=row.effect_preset_id,
             notification_preset_ids=[preset.id for preset in row.notification_presets],
             album_name=row.album_name,
@@ -83,7 +83,7 @@ class ScheduleResponse(BaseModel):
             last_tick_reason=row.last_tick_reason,
             last_task_id=row.last_task_id,
             created_at=row.created_at,
-            filter_preset_name=filter_preset_name,
+            people_preset_name=people_preset_name,
             effect_preset_name=effect_preset_name,
             notification_preset_names=notification_preset_names or [preset.name for preset in row.notification_presets],
         )

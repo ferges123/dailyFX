@@ -12,7 +12,7 @@ import {
   type GenerationHistoryPage,
   type GenerationHistoryEntry,
   type GenerationAcceptRequest,
-  type FilterPreset,
+  type PeoplePreset,
   type EffectPreset,
   type AIEffect,
   type AIEffectUpsert,
@@ -210,26 +210,26 @@ export function getStatsTrends() {
   return request<TrendsResponse>('/api/generation/stats/trends');
 }
 
-// Filter presets
-export const getFilterPresets = () =>
-  request<FilterPreset[]>('/api/presets/filters');
-export const createFilterPreset = (
-  body: Omit<FilterPreset, 'id' | 'created_at'>,
+// People presets
+export const getPeoplePresets = () =>
+  request<PeoplePreset[]>('/api/presets/people');
+export const createPeoplePreset = (
+  body: Omit<PeoplePreset, 'id' | 'created_at'>,
 ) =>
-  request<FilterPreset>('/api/presets/filters', {
+  request<PeoplePreset>('/api/presets/people', {
     method: 'POST',
     body: JSON.stringify(body),
   });
-export const updateFilterPreset = (
+export const updatePeoplePreset = (
   id: number,
-  body: Omit<FilterPreset, 'id' | 'created_at'>,
+  body: Omit<PeoplePreset, 'id' | 'created_at'>,
 ) =>
-  request<FilterPreset>(`/api/presets/filters/${id}`, {
+  request<PeoplePreset>(`/api/presets/people/${id}`, {
     method: 'PUT',
     body: JSON.stringify(body),
   });
-export const deleteFilterPreset = (id: number) =>
-  request<void>(`/api/presets/filters/${id}`, { method: 'DELETE' });
+export const deletePeoplePreset = (id: number) =>
+  request<void>(`/api/presets/people/${id}`, { method: 'DELETE' });
 
 // Effect presets
 export const getEffectPresets = () =>
@@ -311,7 +311,7 @@ export const createSchedule = (
     | 'last_tick_status'
     | 'last_tick_reason'
     | 'last_task_id'
-    | 'filter_preset_name'
+    | 'people_preset_name'
     | 'effect_preset_name'
     | 'notification_preset_names'
   >,
@@ -331,7 +331,7 @@ export const updateSchedule = (
     | 'last_tick_status'
     | 'last_tick_reason'
     | 'last_task_id'
-    | 'filter_preset_name'
+    | 'people_preset_name'
     | 'effect_preset_name'
     | 'notification_preset_names'
   >,

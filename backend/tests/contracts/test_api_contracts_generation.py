@@ -6,11 +6,11 @@ from _contract_helpers import configure_contract_test_db, make_generation_histor
 from app.api.routes_generation import get_generation_history, get_task_status
 from app.database import SessionLocal, init_db
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.generation_stream_event import GenerationStreamEventModel
 from app.models.generation_task import GenerationTaskModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.schemas.generation import GenerationHistoryPage
 
@@ -50,7 +50,7 @@ def test_generation_history_contract():
         db.query(GenerationStreamEventModel).delete()
         db.query(ScheduleModel).delete()
         db.query(NotificationPresetModel).delete()
-        db.query(FilterPresetModel).delete()
+        db.query(PeoplePresetModel).delete()
         db.query(EffectPresetModel).delete()
         db.commit()
 

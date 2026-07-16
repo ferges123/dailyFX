@@ -16,7 +16,7 @@ vi.mock('../api/client', async (importOriginal) => {
   return {
     ...actual,
     getSchedules: vi.fn(),
-    getFilterPresets: vi.fn(),
+    getPeoplePresets: vi.fn(),
     getEffectPresets: vi.fn(),
     getNotificationPresets: vi.fn(),
     createSchedule: vi.fn(),
@@ -57,7 +57,7 @@ describe('SchedulesPage', () => {
 
   it('shows an empty state when no schedules exist', async () => {
     vi.mocked(client.getSchedules).mockResolvedValue([]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([]);
     vi.mocked(client.getEffectPresets).mockResolvedValue([]);
     vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
 
@@ -76,7 +76,7 @@ describe('SchedulesPage', () => {
         name: 'Morning run',
         enabled: true,
         schedule_expr: 'daily@08:00',
-        filter_preset_id: 2,
+        people_preset_id: 2,
         effect_preset_id: 3,
         notification_preset_ids: [4],
         album_name: 'AI Photos',
@@ -92,12 +92,12 @@ describe('SchedulesPage', () => {
         last_tick_reason: 'timeout',
         last_task_id: 'task-1',
         created_at: '2026-05-30T04:00:00.000Z',
-        filter_preset_name: 'Default filter',
+        people_preset_name: 'Default filter',
         effect_preset_name: 'Default effect',
         notification_preset_names: ['Phone'],
       },
     ]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 2,
         name: 'Default filter',
@@ -154,7 +154,7 @@ describe('SchedulesPage', () => {
         name: 'Morning run',
         enabled: true,
         schedule_expr: 'daily@08:00',
-        filter_preset_id: 2,
+        people_preset_id: 2,
         effect_preset_id: 3,
         notification_preset_ids: [4],
         album_name: 'AI Photos',
@@ -170,12 +170,12 @@ describe('SchedulesPage', () => {
         last_tick_reason: null,
         last_task_id: null,
         created_at: '2026-06-10T04:00:00.000Z',
-        filter_preset_name: 'Default filter',
+        people_preset_name: 'Default filter',
         effect_preset_name: 'Default effect',
         notification_preset_names: ['Phone'],
       },
     ]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([]);
     vi.mocked(client.getEffectPresets).mockResolvedValue([]);
     vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
 
@@ -190,7 +190,7 @@ describe('SchedulesPage', () => {
   it('opens the create form when loaded on the new schedule route', async () => {
     window.history.pushState({}, '', '/schedules/new');
     vi.mocked(client.getSchedules).mockResolvedValue([]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([]);
     vi.mocked(client.getEffectPresets).mockResolvedValue([]);
     vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
 
@@ -210,7 +210,7 @@ describe('SchedulesPage', () => {
         name: 'Morning run',
         enabled: true,
         schedule_expr: 'daily@08:00',
-        filter_preset_id: 2,
+        people_preset_id: 2,
         effect_preset_id: 3,
         notification_preset_ids: [4],
         album_name: 'AI Photos',
@@ -226,12 +226,12 @@ describe('SchedulesPage', () => {
         last_tick_reason: null,
         last_task_id: null,
         created_at: '2026-05-30T04:00:00.000Z',
-        filter_preset_name: 'Default filter',
+        people_preset_name: 'Default filter',
         effect_preset_name: 'Default effect',
         notification_preset_names: ['Phone'],
       },
     ]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 2,
         name: 'Default filter',
@@ -295,7 +295,7 @@ describe('SchedulesPage', () => {
         name: 'Morning run',
         enabled: true,
         schedule_expr: 'daily@08:00',
-        filter_preset_id: 2,
+        people_preset_id: 2,
         effect_preset_id: 3,
         notification_preset_ids: [4],
         album_name: 'AI Photos',
@@ -311,12 +311,12 @@ describe('SchedulesPage', () => {
         last_tick_reason: null,
         last_task_id: null,
         created_at: '2026-05-30T04:00:00.000Z',
-        filter_preset_name: 'Default filter',
+        people_preset_name: 'Default filter',
         effect_preset_name: 'Default effect',
         notification_preset_names: ['Phone'],
       },
     ]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 2,
         name: 'Default filter',
@@ -375,7 +375,7 @@ describe('SchedulesPage', () => {
         name: 'Morning run',
         enabled: true,
         schedule_expr: 'daily@08:00',
-        filter_preset_id: 2,
+        people_preset_id: 2,
         effect_preset_id: 3,
         notification_preset_ids: [4],
         album_name: 'AI Photos',
@@ -391,12 +391,12 @@ describe('SchedulesPage', () => {
         last_tick_reason: null,
         last_task_id: null,
         created_at: '2026-05-30T04:00:00.000Z',
-        filter_preset_name: 'Default filter',
+        people_preset_name: 'Default filter',
         effect_preset_name: 'Default effect',
         notification_preset_names: ['Phone'],
       },
     ]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 2,
         name: 'Default filter',
@@ -448,7 +448,7 @@ describe('SchedulesPage', () => {
       name: 'Morning run',
       enabled: true,
       schedule_expr: 'daily@08:00',
-      filter_preset_id: 2,
+      people_preset_id: 2,
       effect_preset_id: 3,
       notification_preset_ids: [4],
       album_name: 'AI Photos',
@@ -464,12 +464,12 @@ describe('SchedulesPage', () => {
       last_tick_reason: null,
       last_task_id: null,
       created_at: '2026-05-30T04:00:00.000Z',
-      filter_preset_name: 'Default filter',
+      people_preset_name: 'Default filter',
       effect_preset_name: 'Default effect',
       notification_preset_names: ['Phone'],
     };
     vi.mocked(client.getSchedules).mockResolvedValue([schedule]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 2,
         name: 'Default filter',
@@ -521,7 +521,7 @@ describe('SchedulesPage', () => {
       name: 'Morning run',
       enabled: true,
       schedule_expr: 'daily@08:00',
-      filter_preset_id: 2,
+      people_preset_id: 2,
       effect_preset_id: 3,
       notification_preset_ids: [4],
       album_name: 'AI Photos',
@@ -537,12 +537,12 @@ describe('SchedulesPage', () => {
       last_tick_reason: null,
       last_task_id: null,
       created_at: '2026-05-30T04:00:00.000Z',
-      filter_preset_name: 'Default filter',
+      people_preset_name: 'Default filter',
       effect_preset_name: 'Default effect',
       notification_preset_names: ['Phone'],
     };
     vi.mocked(client.getSchedules).mockResolvedValue([schedule]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([
       {
         id: 2,
         name: 'Default filter',
@@ -599,7 +599,7 @@ describe('SchedulesPage', () => {
   it('disables AI photo selection when no vision provider is selected', async () => {
     window.history.pushState({}, '', '/schedules/new');
     vi.mocked(client.getSchedules).mockResolvedValue([]);
-    vi.mocked(client.getFilterPresets).mockResolvedValue([]);
+    vi.mocked(client.getPeoplePresets).mockResolvedValue([]);
     vi.mocked(client.getEffectPresets).mockResolvedValue([]);
     vi.mocked(client.getNotificationPresets).mockResolvedValue([]);
 

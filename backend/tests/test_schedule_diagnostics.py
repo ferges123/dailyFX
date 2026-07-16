@@ -10,7 +10,7 @@ from app.database import SessionLocal
 from app.database import init_db as _init_db
 from app.models.asset_usage import AssetUsageModel
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.services.immich import get_or_create_settings
 
@@ -28,7 +28,7 @@ def setup_db():
     try:
         db.query(AssetUsageModel).delete()
         db.query(ScheduleModel).delete()
-        db.query(FilterPresetModel).delete()
+        db.query(PeoplePresetModel).delete()
         db.query(EffectPresetModel).delete()
         db.commit()
         yield db
@@ -57,8 +57,8 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
     _ = get_or_create_settings(db)
     db.commit()
 
-    # Create filter preset
-    fp = FilterPresetModel(
+    # Create people preset
+    fp = PeoplePresetModel(
         name="test-filters",
         album_ids_json="[]",
         person_filters_json="[]",
@@ -77,7 +77,7 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
         name="test-schedule",
         enabled=True,
         schedule_expr="weekly",
-        filter_preset_id=fp.id,
+        people_preset_id=fp.id,
         effect_preset_id=ep.id,
         album_name="Test Album",
         ai_vision_provider="none",
@@ -120,6 +120,7 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
         _make_mock_asset("asset-2", created_at="2026-05-13T10:00:00Z"),
         _make_mock_asset("asset-3", created_at="2026-05-14T10:00:00Z"),
         _make_mock_asset("asset-4", created_at="2026-05-15T10:00:00Z"),
+        _make_mock_asset("asset-5", filename="my_photo_dailyFX.jpg", created_at="2026-05-16T10:00:00Z"),
     ]
     mock_client = AsyncMock()
     mock_client.get_assets.return_value = _make_mock_page(assets, total=10)

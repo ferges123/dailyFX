@@ -13,10 +13,10 @@ class PersonFilterItem(BaseModel):
     mode: Literal["optional", "obligatory", "exclude"] = "optional"
 
 
-# ── Filter Presets ────────────────────────────────────────────────────────────
+# ── People Presets ────────────────────────────────────────────────────────────
 
 
-class FilterPresetCreate(BaseModel):
+class PeoplePresetCreate(BaseModel):
     name: str = Field(max_length=255)
     album_ids: list[str] = Field(default_factory=list, max_length=100)
     person_filters: list[PersonFilterItem] = Field(default_factory=list, max_length=100)
@@ -34,13 +34,13 @@ class FilterPresetCreate(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_date_order(self) -> "FilterPresetCreate":
+    def validate_date_order(self) -> "PeoplePresetCreate":
         if self.start_date and self.end_date and parse_date(self.start_date) > parse_date(self.end_date):
             raise ValueError("start_date must be on or before end_date")
         return self
 
 
-class FilterPresetResponse(BaseModel):
+class PeoplePresetResponse(BaseModel):
     id: int
     name: str
     album_ids: list[str] = Field(default_factory=list)
@@ -52,7 +52,7 @@ class FilterPresetResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_model(cls, row: object) -> "FilterPresetResponse":
+    def from_model(cls, row: object) -> "PeoplePresetResponse":
         return cls(
             id=row.id,
             name=row.name,

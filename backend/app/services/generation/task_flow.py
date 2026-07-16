@@ -7,9 +7,9 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.generation_task import GenerationTaskModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.schemas.schedules import ScheduleRunNowResponse
 from app.services.generation.engine import run_generation_cycle
@@ -29,7 +29,7 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
-    fp = db.get(FilterPresetModel, row.filter_preset_id)
+    fp = db.get(PeoplePresetModel, row.people_preset_id)
     ep = db.get(EffectPresetModel, row.effect_preset_id)
     if not fp or not ep:
         raise HTTPException(status_code=400, detail="Schedule has missing presets")
@@ -38,7 +38,7 @@ async def trigger_schedule_run_now(db: Session, schedule_id: int) -> ScheduleRun
     run_context = build_scheduled_run_context(
         schedule_id=schedule_id,
         album_name=row.album_name,
-        filter_preset=fp,
+        people_preset=fp,
         effect_preset=ep,
         notification_presets=list(row.notification_presets),
     )

@@ -295,7 +295,7 @@ def test_config_api_auditing(db_session: Session):
 
     from app.main import app
     from app.models.effect_preset import EffectPresetModel
-    from app.models.filter_preset import FilterPresetModel
+    from app.models.people_preset import PeoplePresetModel
     from app.security import require_auth
 
     app.dependency_overrides[require_auth] = lambda: None
@@ -328,7 +328,7 @@ def test_config_api_auditing(db_session: Session):
         events_conn = db_session.query(AuditEventModel).filter_by(action="settings.connection_tested").all()
         assert len(events_conn) >= 1
 
-        # 3. Test Filter Preset CRUD Auditing
+        # 3. Test People Preset CRUD Auditing
         filter_payload = {
             "name": "test-filter-preset",
             "album_ids": ["123"],
@@ -337,24 +337,24 @@ def test_config_api_auditing(db_session: Session):
             "end_date": None,
             "media_type": "all",
         }
-        response = client.post("/api/presets/filters", json=filter_payload)
+        response = client.post("/api/presets/people", json=filter_payload)
         assert response.status_code == 201
         fp_id = response.json()["id"]
 
         events_fp = db_session.query(AuditEventModel).filter_by(action="preset.created").all()
-        assert any(e.metadata_json and "filter" in e.metadata_json for e in events_fp)
+        assert any(e.metadata_json and "people" in e.metadata_json for e in events_fp)
 
         # UPDATE
         filter_payload["name"] = "test-filter-preset-updated"
-        response = client.put(f"/api/presets/filters/{fp_id}", json=filter_payload)
+        response = client.put(f"/api/presets/people/{fp_id}", json=filter_payload)
         assert response.status_code == 200
 
         # DELETE
-        response = client.delete(f"/api/presets/filters/{fp_id}")
+        response = client.delete(f"/api/presets/people/{fp_id}")
         assert response.status_code == 204
 
         events_fp_del = db_session.query(AuditEventModel).filter_by(action="preset.deleted").all()
-        assert any(e.metadata_json and "filter" in e.metadata_json for e in events_fp_del)
+        assert any(e.metadata_json and "people" in e.metadata_json for e in events_fp_del)
 
         # 4. Test Effect Preset CRUD Auditing
         effect_payload = {"name": "test-effect-preset", "groups": {}}
@@ -366,7 +366,7 @@ def test_config_api_auditing(db_session: Session):
         assert any(e.metadata_json and "effect" in e.metadata_json for e in events_ep)
 
         # 5. Test Schedule CRUD Auditing
-        fp_preset = FilterPresetModel(name="sched-fp", album_ids_json="[]", media_type="all")
+        fp_preset = PeoplePresetModel(name="sched-fp", album_ids_json="[]", media_type="all")
         ep_preset = EffectPresetModel(name="sched-ep", groups_json="{}")
         db_session.add(fp_preset)
         db_session.add(ep_preset)
@@ -376,7 +376,7 @@ def test_config_api_auditing(db_session: Session):
             "name": "test-schedule",
             "enabled": True,
             "schedule_expr": "0 0 * * *",
-            "filter_preset_id": fp_preset.id,
+            "people_preset_id": fp_preset.id,
             "effect_preset_id": ep_preset.id,
             "album_name": "Test Album",
             "notification_preset_ids": [],

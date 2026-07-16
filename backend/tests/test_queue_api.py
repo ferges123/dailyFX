@@ -39,6 +39,7 @@ def test_queue_endpoints():
 
 def test_queue_endpoints_require_authentication(monkeypatch):
     from app.config import get_settings
+
     monkeypatch.setenv("APP_ACCESS_TOKEN", "queue-test-token")
     get_settings.cache_clear()
 
@@ -62,4 +63,3 @@ def test_queue_endpoints_require_authentication(monkeypatch):
         assert response.status_code != 401
     finally:
         get_settings.cache_clear()
-

@@ -26,7 +26,7 @@ class ScheduleModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     schedule_expr: Mapped[str] = mapped_column(String(100), nullable=False, default="weekly")
-    filter_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("filter_presets.id"), nullable=False)
+    people_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("people_presets.id"), nullable=False)
     effect_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("effect_presets.id"), nullable=False)
 
     notification_presets: Mapped[list["NotificationPresetModel"]] = relationship(

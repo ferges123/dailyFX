@@ -5,18 +5,18 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.push import PushSubscriptionModel
 from app.models.schedule import ScheduleModel
 from app.schemas.presets import (
     EffectPresetCreate,
     EffectPresetResponse,
-    FilterPresetCreate,
-    FilterPresetResponse,
     NotificationPresetCreate,
     NotificationPresetResponse,
     NotificationPresetTestResponse,
+    PeoplePresetCreate,
+    PeoplePresetResponse,
 )
 from app.security import (
     ActorContext,
@@ -62,26 +62,26 @@ def _preset_in_use(db: Session, preset_id: int, fk_field: str) -> bool:
     return db.query(ScheduleModel).filter(getattr(ScheduleModel, fk_field) == preset_id).first() is not None
 
 
-# Filter Presets
+# People Presets
 
 
-@router.get("/filters", response_model=list[FilterPresetResponse])
-def list_filter_presets(db: Session = Depends(get_db), _: None = Depends(require_auth)):
-    rows = db.query(FilterPresetModel).order_by(FilterPresetModel.name).all()
-    return [FilterPresetResponse.from_model(row) for row in rows]
+@router.get("/people", response_model=list[PeoplePresetResponse])
+def list_people_presets(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+    rows = db.query(PeoplePresetModel).order_by(PeoplePresetModel.name).all()
+    return [PeoplePresetResponse.from_model(row) for row in rows]
 
 
-@router.post("/filters", response_model=FilterPresetResponse, status_code=201)
-def create_filter_preset(
-    body: FilterPresetCreate,
+@router.post("/people", response_model=PeoplePresetResponse, status_code=201)
+def create_people_preset(
+    body: PeoplePresetCreate,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
-    if db.query(FilterPresetModel).filter_by(name=body.name).first():
-        raise HTTPException(status_code=409, detail="Filter preset with this name already exists")
-    row = FilterPresetModel(
+    if db.query(PeoplePresetModel).filter_by(name=body.name).first():
+        raise HTTPException(status_code=409, detail="People preset with this name already exists")
+    row = PeoplePresetModel(
         name=body.name,
         album_ids_json=json.dumps(body.album_ids),
         person_filters_json=json.dumps([p.model_dump() for p in body.person_filters]),
@@ -103,32 +103,32 @@ def create_filter_preset(
         source_ip_hash=actor_ctx.source_ip_hash,
         target_type="preset",
         target_id=row.id,
-        summary=f"Filter preset '{row.name}' created",
-        metadata={"type": "filter", "name": row.name},
+        summary=f"People preset '{row.name}' created",
+        metadata={"type": "people", "name": row.name},
     )
 
-    return FilterPresetResponse.from_model(row)
+    return PeoplePresetResponse.from_model(row)
 
 
-@router.put("/filters/{preset_id}", response_model=FilterPresetResponse)
-def update_filter_preset(
+@router.put("/people/{preset_id}", response_model=PeoplePresetResponse)
+def update_people_preset(
     preset_id: int,
-    body: FilterPresetCreate,
+    body: PeoplePresetCreate,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
-    row = db.query(FilterPresetModel).filter_by(id=preset_id).first()
+    row = db.query(PeoplePresetModel).filter_by(id=preset_id).first()
     if not row:
-        raise HTTPException(status_code=404, detail="Filter preset not found")
+        raise HTTPException(status_code=404, detail="People preset not found")
     existing = (
-        db.query(FilterPresetModel)
-        .filter(FilterPresetModel.name == body.name, FilterPresetModel.id != preset_id)
+        db.query(PeoplePresetModel)
+        .filter(PeoplePresetModel.name == body.name, PeoplePresetModel.id != preset_id)
         .first()
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Filter preset with this name already exists")
+        raise HTTPException(status_code=409, detail="People preset with this name already exists")
 
     old_dict = {
         "name": row.name,
@@ -169,26 +169,26 @@ def update_filter_preset(
             source_ip_hash=actor_ctx.source_ip_hash,
             target_type="preset",
             target_id=preset_id,
-            summary=f"Filter preset '{row.name}' updated",
+            summary=f"People preset '{row.name}' updated",
             changes=diff,
-            metadata={"type": "filter", "name": row.name},
+            metadata={"type": "people", "name": row.name},
         )
 
-    return FilterPresetResponse.from_model(row)
+    return PeoplePresetResponse.from_model(row)
 
 
-@router.delete("/filters/{preset_id}", status_code=204)
-def delete_filter_preset(
+@router.delete("/people/{preset_id}", status_code=204)
+def delete_people_preset(
     preset_id: int,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
-    row = db.query(FilterPresetModel).filter_by(id=preset_id).first()
+    row = db.query(PeoplePresetModel).filter_by(id=preset_id).first()
     if not row:
-        raise HTTPException(status_code=404, detail="Filter preset not found")
-    if _preset_in_use(db, preset_id, "filter_preset_id"):
+        raise HTTPException(status_code=404, detail="People preset not found")
+    if _preset_in_use(db, preset_id, "people_preset_id"):
         raise HTTPException(status_code=409, detail="Preset is used by one or more schedules")
 
     preset_name = row.name
@@ -205,8 +205,8 @@ def delete_filter_preset(
         source_ip_hash=actor_ctx.source_ip_hash,
         target_type="preset",
         target_id=preset_id,
-        summary=f"Filter preset '{preset_name}' deleted",
-        metadata={"type": "filter", "name": preset_name},
+        summary=f"People preset '{preset_name}' deleted",
+        metadata={"type": "people", "name": preset_name},
     )
 
 

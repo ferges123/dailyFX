@@ -6,8 +6,16 @@ import re
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 _SENSITIVE_QUERY_KEYS = {
-    "access_token", "api_key", "apikey", "auth", "authorization", "key",
-    "password", "secret", "token", "review_token",
+    "access_token",
+    "api_key",
+    "apikey",
+    "auth",
+    "authorization",
+    "key",
+    "password",
+    "secret",
+    "token",
+    "review_token",
 }
 _TELEGRAM_BOT_PATH = re.compile(r"(/bot)[^/\s]+", re.IGNORECASE)
 _BEARER_TOKEN = re.compile(r"(Bearer\s+)[^\s,;]+", re.IGNORECASE)

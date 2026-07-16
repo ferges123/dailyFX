@@ -4,7 +4,7 @@ import type {
 
 export type PersonFilterMode = ImmichPersonFilter['mode'];
 
-export type FilterPreset = {
+export type PeoplePreset = {
   id: string;
   name: string;
   filters: import('../api/client').ImmichAssetSearchFilters;

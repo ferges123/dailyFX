@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.limiter import limiter
 from app.models.effect_preset import EffectPresetModel
-from app.models.filter_preset import FilterPresetModel
 from app.models.notification_preset import NotificationPresetModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 from app.schemas.schedules import (
     ScheduleCreate,
@@ -36,14 +36,14 @@ def _to_response(
     row: ScheduleModel,
     db: Session,
     *,
-    filter_preset_names: dict[int, str] | None = None,
+    people_preset_names: dict[int, str] | None = None,
     effect_preset_names: dict[int, str] | None = None,
 ) -> ScheduleResponse:
-    if filter_preset_names is None:
-        fp = db.get(FilterPresetModel, row.filter_preset_id)
-        filter_preset_name = fp.name if fp else None
+    if people_preset_names is None:
+        fp = db.get(PeoplePresetModel, row.people_preset_id)
+        people_preset_name = fp.name if fp else None
     else:
-        filter_preset_name = filter_preset_names.get(row.filter_preset_id)
+        people_preset_name = people_preset_names.get(row.people_preset_id)
 
     if effect_preset_names is None:
         ep = db.get(EffectPresetModel, row.effect_preset_id)
@@ -53,14 +53,14 @@ def _to_response(
 
     return ScheduleResponse.from_model(
         row,
-        filter_preset_name=filter_preset_name,
+        people_preset_name=people_preset_name,
         effect_preset_name=effect_preset_name,
     )
 
 
 def _validate_presets(body: ScheduleCreate, db: Session) -> None:
-    if not db.get(FilterPresetModel, body.filter_preset_id):
-        raise HTTPException(status_code=404, detail="Filter preset not found")
+    if not db.get(PeoplePresetModel, body.people_preset_id):
+        raise HTTPException(status_code=404, detail="People preset not found")
     if not db.get(EffectPresetModel, body.effect_preset_id):
         raise HTTPException(status_code=404, detail="Effect preset not found")
     if body.ai_photo_selection_enabled and body.ai_vision_provider == "none":
@@ -79,11 +79,11 @@ def list_schedules(db: Session = Depends(get_db), _: None = Depends(require_auth
         .all()
     )
 
-    filter_preset_ids = {row.filter_preset_id for row in rows}
+    people_preset_ids = {row.people_preset_id for row in rows}
     effect_preset_ids = {row.effect_preset_id for row in rows}
-    filter_preset_names = {
+    people_preset_names = {
         preset.id: preset.name
-        for preset in db.query(FilterPresetModel).filter(FilterPresetModel.id.in_(filter_preset_ids)).all()
+        for preset in db.query(PeoplePresetModel).filter(PeoplePresetModel.id.in_(people_preset_ids)).all()
     }
     effect_preset_names = {
         preset.id: preset.name
@@ -94,7 +94,7 @@ def list_schedules(db: Session = Depends(get_db), _: None = Depends(require_auth
         _to_response(
             row,
             db,
-            filter_preset_names=filter_preset_names,
+            people_preset_names=people_preset_names,
             effect_preset_names=effect_preset_names,
         )
         for row in rows
@@ -124,7 +124,7 @@ def create_schedule(
         name=body.name,
         enabled=body.enabled,
         schedule_expr=body.schedule_expr,
-        filter_preset_id=body.filter_preset_id,
+        people_preset_id=body.people_preset_id,
         effect_preset_id=body.effect_preset_id,
         notification_presets=notifs,
         album_name=body.album_name,
@@ -185,7 +185,7 @@ def update_schedule(
         "name": row.name,
         "enabled": row.enabled,
         "schedule_expr": row.schedule_expr,
-        "filter_preset_id": row.filter_preset_id,
+        "people_preset_id": row.people_preset_id,
         "effect_preset_id": row.effect_preset_id,
         "album_name": row.album_name,
         "ai_vision_provider": row.ai_vision_provider,
@@ -200,7 +200,7 @@ def update_schedule(
     row.name = body.name
     row.enabled = body.enabled
     row.schedule_expr = body.schedule_expr
-    row.filter_preset_id = body.filter_preset_id
+    row.people_preset_id = body.people_preset_id
     row.effect_preset_id = body.effect_preset_id
     row.notification_presets = notifs
     row.album_name = body.album_name
@@ -218,7 +218,7 @@ def update_schedule(
         "name": body.name,
         "enabled": body.enabled,
         "schedule_expr": body.schedule_expr,
-        "filter_preset_id": body.filter_preset_id,
+        "people_preset_id": body.people_preset_id,
         "effect_preset_id": body.effect_preset_id,
         "album_name": body.album_name,
         "ai_vision_provider": body.ai_vision_provider,
@@ -329,7 +329,7 @@ async def get_schedule_diagnostics(
     from datetime import datetime, timezone
 
     from app.models.effect_preset import EffectPresetModel
-    from app.models.filter_preset import FilterPresetModel
+    from app.models.people_preset import PeoplePresetModel
     from app.schemas.schedules import DiagnosticAssetDetail, ScheduleDiagnosticsResponse
     from app.services.generation.asset_usage import get_assets_usage_status
     from app.services.generation.schedule_runs import build_scheduled_run_context
@@ -339,7 +339,7 @@ async def get_schedule_diagnostics(
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
-    fp = db.get(FilterPresetModel, schedule.filter_preset_id)
+    fp = db.get(PeoplePresetModel, schedule.people_preset_id)
     ep = db.get(EffectPresetModel, schedule.effect_preset_id)
     if not fp or not ep:
         raise HTTPException(status_code=400, detail="Schedule has missing presets")
@@ -347,7 +347,7 @@ async def get_schedule_diagnostics(
     run_context = build_scheduled_run_context(
         schedule_id=schedule_id,
         album_name=schedule.album_name,
-        filter_preset=fp,
+        people_preset=fp,
         effect_preset=ep,
     )
 
@@ -360,7 +360,13 @@ async def get_schedule_diagnostics(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to query Immich assets: {exc}")
 
-    collected_items = page.items
+    collected_items = [
+        item
+        for item in page.items
+        if not (
+            getattr(item, "original_file_name", None) and "dailyfx" in getattr(item, "original_file_name", "").lower()
+        )
+    ]
     collected_ids = [item.id for item in collected_items]
 
     usage_statuses = get_assets_usage_status(db, collected_ids)

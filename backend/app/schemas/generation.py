@@ -73,9 +73,7 @@ class GenerationHistoryResponse(GenerationHistoryBase):
             query = dict(parse_qsl(parts.query, keep_blank_values=True))
             if "t" not in query:
                 query["t"] = str(t)
-                self.image_url = urlunsplit(
-                    (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
-                )
+                self.image_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
         return self
 
 

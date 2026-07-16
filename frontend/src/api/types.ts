@@ -295,7 +295,7 @@ export type PushSubscriptionInfo = {
   created_at: string;
 };
 
-export type FilterPreset = {
+export type PeoplePreset = {
   id: number;
   name: string;
   album_ids: string[];
@@ -386,7 +386,7 @@ export type Schedule = {
   name: string;
   enabled: boolean;
   schedule_expr: string;
-  filter_preset_id: number;
+  people_preset_id: number;
   effect_preset_id: number;
   notification_preset_ids: number[];
   album_name: string;
@@ -402,7 +402,7 @@ export type Schedule = {
   last_tick_reason: string | null;
   last_task_id: string | null;
   created_at: string;
-  filter_preset_name: string | null;
+  people_preset_name: string | null;
   effect_preset_name: string | null;
   notification_preset_names: string[];
 };

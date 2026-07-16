@@ -6,9 +6,9 @@ from fastapi import BackgroundTasks
 
 from app.api.routes_schedules import trigger_schedule_now
 from app.database import SessionLocal, init_db
-from app.models.filter_preset import FilterPresetModel
 from app.models.generation_history import GenerationHistoryModel
 from app.models.generation_task import GenerationTaskModel
+from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
 
 test_db = configure_contract_test_db("run_now")
@@ -18,7 +18,7 @@ def _setup_run_now_db():
     init_db()
     db = SessionLocal()
     db.query(ScheduleModel).delete()
-    db.query(FilterPresetModel).delete()
+    db.query(PeoplePresetModel).delete()
     db.query(GenerationHistoryModel).delete()
     db.query(GenerationTaskModel).delete()
     from app.models.effect_preset import EffectPresetModel
@@ -26,7 +26,7 @@ def _setup_run_now_db():
     db.query(EffectPresetModel).delete()
     db.commit()
 
-    fp = FilterPresetModel(name="test-fp", album_ids_json="[]", person_filters_json="[]", media_type="photo")
+    fp = PeoplePresetModel(name="test-fp", album_ids_json="[]", person_filters_json="[]", media_type="photo")
     db.add(fp)
     ep = make_effect_preset_row(name="test-ep", groups_json="{}")
     db.add(ep)
@@ -36,7 +36,7 @@ def _setup_run_now_db():
         name="Test Schedule",
         enabled=True,
         schedule_expr="daily",
-        filter_preset_id=fp.id,
+        people_preset_id=fp.id,
         effect_preset_id=ep.id,
     )
     db.add(schedule)

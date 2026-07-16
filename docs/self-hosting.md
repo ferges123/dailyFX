@@ -69,7 +69,7 @@ The frontend nginx container proxies `/api/*` to the backend, so the browser tal
 - If `APP_ACCESS_TOKEN` is set in `.env`, enter that token on the login screen to authenticate.
 - Go to the **Settings** tab to configure your Immich URL, Immich API Key, and optional AI API keys (OpenAI, Gemini, OpenRouter, BytePlus for image generation, Xiaomi).
 - Per-schedule AI provider/model selection lives in the **Schedules** tab, not in global settings.
-- Go to **Filters**, **Effects**, and **Notifications** tabs to configure presets.
+- Go to **People**, **Effects**, and **Notifications** tabs to configure presets.
 - Go to the **Schedules** tab to schedule automatic generations.
 - For a concise explanation of how a run moves from schedule to review, see [How It Works](how-it-works.md).
 

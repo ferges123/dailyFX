@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react';
 import { Field } from './Field';
 import type { ImmichPersonFilter } from '../api/client';
-import type { PersonFilterMode } from '../pages/filters.types';
+import type { PersonFilterMode } from '../pages/people.types';
 
 export function MultiSelectPanel({
   label,

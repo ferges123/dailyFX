@@ -59,4 +59,3 @@ def retry_task(task_id: str, db: Session = Depends(get_db), _: None = Depends(re
         return {"message": "Task retried", "task_id": new_task.task_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-

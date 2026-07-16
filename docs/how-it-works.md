@@ -16,7 +16,7 @@ flowchart LR
 ## From Schedule To Review
 
 1. A schedule decides when DailyFX should run and which preset combination to use.
-2. The backend picks matching Immich assets based on the schedule filters.
+2. The backend picks matching Immich assets based on the schedule's people preset.
 3. DailyFX applies the selected effect or AI module.
 4. The generated image is stored in the history database and shown in the review UI.
 5. You review the result in the History page or from a notification.
@@ -38,12 +38,12 @@ To protect user privacy, DailyFX automatically anonymizes people's real names in
   - optional AI provider keys
   - app access token and notification-related system settings
 - `Presets`
-  - Filters: which Immich assets can be used
+  - People: which Immich assets can be used
   - Effects: which module can be selected and how likely it is
   - Notifications: how DailyFX tells you a result is ready
 - `Schedules`
   - when DailyFX runs
-  - which filter/effect/notification presets it uses
+  - which people/effect/notification presets it uses
   - which AI provider/model settings the schedule should use
 
 ## What Happens During A Run
@@ -62,7 +62,7 @@ To protect user privacy, DailyFX automatically anonymizes people's real names in
 - No schedule runs:
   - confirm the backend container is running,
   - confirm the schedule is enabled,
-  - confirm the filter preset still matches assets in Immich.
+  - confirm the people preset still matches assets in Immich.
 - A result looks wrong:
   - open History,
   - check the trace,

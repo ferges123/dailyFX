@@ -36,6 +36,7 @@ def _load_local_module_classes() -> list[type]:
         for module_name, class_name in _LOCAL_MODULE_SPECS
     ]
 
+
 LOCAL_MODULE_GROUPS = {
     "apple_weather": "Portrait",
     "instaweather": "Portrait",

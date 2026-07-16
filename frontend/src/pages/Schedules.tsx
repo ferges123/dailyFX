@@ -8,7 +8,7 @@ import {
   updateSchedule,
   deleteSchedule,
   triggerScheduleNow,
-  getFilterPresets,
+  getPeoplePresets,
   getEffectPresets,
   getNotificationPresets,
   type Schedule,
@@ -42,7 +42,7 @@ function scheduleToForm(schedule: Schedule): FormState {
     scheduleMode: parsed.mode,
     scheduleDays: parsed.days,
     scheduleTime: parsed.time,
-    filter_preset_id: schedule.filter_preset_id,
+    people_preset_id: schedule.people_preset_id,
     effect_preset_id: schedule.effect_preset_id,
     notification_preset_ids: schedule.notification_preset_ids ?? [],
     album_name: schedule.album_name,
@@ -88,9 +88,9 @@ export function SchedulesPage() {
     queryKey: ['schedules'],
     queryFn: getSchedules,
   });
-  const filterPresets = useQuery({
-    queryKey: ['filter-presets'],
-    queryFn: getFilterPresets,
+  const peoplePresets = useQuery({
+    queryKey: ['people-presets'],
+    queryFn: getPeoplePresets,
   });
   const effectPresets = useQuery({
     queryKey: ['effect-presets'],
@@ -129,7 +129,7 @@ export function SchedulesPage() {
         name: form.name,
         enabled: form.enabled,
         schedule_expr,
-        filter_preset_id: Number(form.filter_preset_id),
+        people_preset_id: Number(form.people_preset_id),
         effect_preset_id: Number(form.effect_preset_id),
         notification_preset_ids: form.notification_preset_ids,
         album_name: form.album_name,
@@ -163,7 +163,7 @@ export function SchedulesPage() {
         name: schedule.name,
         enabled: !schedule.enabled,
         schedule_expr: schedule.schedule_expr,
-        filter_preset_id: schedule.filter_preset_id,
+        people_preset_id: schedule.people_preset_id,
         effect_preset_id: schedule.effect_preset_id,
         notification_preset_ids: schedule.notification_preset_ids ?? [],
         album_name: schedule.album_name,
@@ -253,8 +253,8 @@ export function SchedulesPage() {
 
   const validationIssues: string[] = [];
   if (!form.name.trim()) validationIssues.push('Schedule name is required.');
-  if (form.filter_preset_id === '')
-    validationIssues.push('Choose a filter preset.');
+  if (form.people_preset_id === '')
+    validationIssues.push('Choose a people preset.');
   if (form.effect_preset_id === '')
     validationIssues.push('Choose an effect preset.');
   if (form.scheduleMode === 'custom' && form.scheduleDays.length === 0) {
@@ -264,12 +264,12 @@ export function SchedulesPage() {
 
   const anyLoading =
     schedules.isLoading ||
-    filterPresets.isLoading ||
+    peoplePresets.isLoading ||
     effectPresets.isLoading ||
     notifPresets.isLoading;
   const anyError =
     schedules.error ||
-    filterPresets.error ||
+    peoplePresets.error ||
     effectPresets.error ||
     notifPresets.error;
 
@@ -282,7 +282,7 @@ export function SchedulesPage() {
         [
           schedule.name,
           schedule.album_name,
-          schedule.filter_preset_name ?? '',
+          schedule.people_preset_name ?? '',
           schedule.effect_preset_name ?? '',
           schedule.notification_preset_names?.join(' ') ?? '',
         ]
@@ -340,7 +340,7 @@ export function SchedulesPage() {
   if (anyError) {
     const errorMsg =
       schedules.error ||
-      filterPresets.error ||
+      peoplePresets.error ||
       effectPresets.error ||
       notifPresets.error;
     return (
@@ -348,7 +348,7 @@ export function SchedulesPage() {
         error={errorMsg}
         onRetry={() => {
           schedules.refetch();
-          filterPresets.refetch();
+          peoplePresets.refetch();
           effectPresets.refetch();
           notifPresets.refetch();
         }}
@@ -484,7 +484,7 @@ export function SchedulesPage() {
               form={form}
               setForm={setForm}
               validationIssues={validationIssues}
-              filterPresets={filterPresets.data ?? []}
+              peoplePresets={peoplePresets.data ?? []}
               effectPresets={effectPresets.data ?? []}
               notificationPresets={notifPresets.data ?? []}
               canSave={canSave}
