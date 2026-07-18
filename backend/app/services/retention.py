@@ -55,6 +55,34 @@ def _safe_path(value: str | None, data_dir: Path) -> Path | None:
     return path
 
 
+def _known_output_paths(db: Session, data_dir: Path) -> set[Path]:
+    known: set[Path] = set()
+    output_paths = (
+        db.query(GenerationHistoryModel.output_path)
+        .filter(GenerationHistoryModel.output_path.isnot(None))
+        .all()
+    )
+    for (value,) in output_paths:
+        path = _safe_path(value, data_dir)
+        if path:
+            known.add(path)
+            known.add(path.with_suffix(path.suffix + ".thumb_400.jpg"))
+    return known
+
+
+def _find_orphan_paths(db: Session, data_dir: Path, now: datetime) -> list[Path]:
+    results_dir = data_dir / "results"
+    if not results_dir.exists():
+        return []
+    known_paths = _known_output_paths(db, data_dir)
+    cutoff = (now - timedelta(days=7)).timestamp()
+    return [
+        path
+        for path in results_dir.iterdir()
+        if path.is_file() and path not in known_paths and path.stat().st_mtime < cutoff
+    ]
+
+
 def _file_cutoff(row_status: str, settings: SettingsModel, now: datetime) -> datetime | None:
     if row_status == "REJECTED":
         return _cutoff(getattr(settings, "retention_rejected_files_days", 7), now)
@@ -97,7 +125,7 @@ def plan_retention(
     data_dir = (data_dir or get_app_settings().data_dir).resolve()
     files = metadata = tasks = total_bytes = missing = audits = 0
     warnings: list[str] = []
-    known_paths: set[Path] = set()
+    known_paths = _known_output_paths(db, data_dir)
 
     rows = _query_retention_candidates(db, settings, now)
     for row in rows:
@@ -137,14 +165,8 @@ def plan_retention(
         audits = db.query(AuditEventModel).filter(AuditEventModel.created_at < audit_cutoff).count()
 
     results_dir = data_dir / "results"
-    if results_dir.exists():
-        for path in results_dir.iterdir():
-            if (
-                path.is_file()
-                and path not in known_paths
-                and path.stat().st_mtime < (now - timedelta(days=7)).timestamp()
-            ):
-                warnings.append(f"orphan:{path.name}")
+    for path in _find_orphan_paths(db, data_dir, now):
+        warnings.append(f"orphan:{path.name}")
     return RetentionPreview(files, metadata, tasks, total_bytes, missing, len(warnings), audits, tuple(warnings))
 
 
@@ -167,6 +189,8 @@ def execute_retention(
 
     files = total_bytes = missing = 0
     metadata_cutoffs: list[GenerationHistoryModel] = []
+    queued_file_jobs = 0
+    orphan_paths = _find_orphan_paths(db, data_dir, now)
     for row in rows:
         path = _safe_path(row.output_path, data_dir)
         if path:
@@ -174,22 +198,27 @@ def execute_retention(
                 row.local_file_status = "missing"
                 missing += 1
             cutoff = _file_cutoff(row.status, settings, now)
-            if cutoff and row.created_at and row.created_at < cutoff and path.exists():
-                try:
-                    file_size = path.stat().st_size
-                    path.unlink(missing_ok=True)
-                    thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
+            if cutoff and row.created_at and row.created_at < cutoff:
+                from app.services.file_deletion import queue_file_deletion
+
+                thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
+                if path.exists():
+                    total_bytes += path.stat().st_size
                     if thumb.exists():
                         total_bytes += thumb.stat().st_size
-                        thumb.unlink(missing_ok=True)
-                    total_bytes += file_size
                     files += 1
-                    row.local_file_status = "deleted_by_retention"
-                    row.local_file_deleted_at = now
-                    row.local_file_delete_reason = "retention"
-                    row.output_path = None
-                except OSError:
-                    logger.exception("Retention failed to delete %s", path)
+                queue_file_deletion(
+                    db,
+                    path=path,
+                    thumbnail_path=thumb,
+                    task_id=row.task_id,
+                    reason="retention",
+                )
+                queued_file_jobs += 1
+                row.local_file_status = "deleted_by_retention"
+                row.local_file_deleted_at = now
+                row.local_file_delete_reason = "retention"
+                row.output_path = None
         meta_cutoff = _metadata_cutoff(row.status, settings, now)
         if meta_cutoff and row.created_at and row.created_at < meta_cutoff:
             metadata_cutoffs.append(row)
@@ -223,20 +252,29 @@ def execute_retention(
 
         db.query(AuditEventModel).filter(AuditEventModel.created_at < audit_cutoff).delete(synchronize_session=False)
 
+    from app.services.file_deletion import queue_file_deletion
+
+    for path in orphan_paths:
+        queue_file_deletion(db, path=path, reason="orphan_cleanup")
+        queued_file_jobs += 1
+        if path.exists():
+            total_bytes += path.stat().st_size
+        files += 1
+
     db.commit()
 
+    from app.services.file_deletion import process_file_deletion_jobs
+
+    deleted_jobs, failed_jobs = process_file_deletion_jobs(db, data_dir=data_dir, now=now)
+    if failed_jobs:
+        logger.warning(
+            "Retention queued %d file deletion jobs; %d failed and will retry",
+            queued_file_jobs,
+            failed_jobs,
+        )
+
     # Count orphans for preview
-    orphan_count = 0
-    known_paths = {_safe_path(r.output_path, data_dir) for r in rows if r.output_path}
-    results_dir = data_dir / "results"
-    if results_dir.exists():
-        for path in results_dir.iterdir():
-            if (
-                path.is_file()
-                and path not in known_paths
-                and path.stat().st_mtime < (now - timedelta(days=7)).timestamp()
-            ):
-                orphan_count += 1
+    orphan_count = len(orphan_paths)
 
     try:
         from app.services.audit import record_audit_event
@@ -253,9 +291,12 @@ def execute_retention(
             actor_type=actor_type,
             request_id=request_id,
             source_ip_hash=source_ip_hash,
-            summary=f"Retention executed: deleted {files} files, {len(metadata_cutoffs)} metadata rows, tasks and audit logs",
+            summary=(
+                f"Retention executed: deleted {deleted_jobs} files, "
+                f"{len(metadata_cutoffs)} metadata rows, tasks and audit logs"
+            ),
             metadata={
-                "deleted_files": files,
+                "deleted_files": deleted_jobs,
                 "deleted_metadata_rows": len(metadata_cutoffs),
                 "released_bytes": total_bytes,
             },

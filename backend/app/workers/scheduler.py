@@ -558,6 +558,7 @@ async def _async_main() -> None:
 
 
 def _backup_database(retention_count: int | None = None) -> None:
+    tmp_dst = None
     try:
         import os
         import sqlite3
@@ -578,6 +579,9 @@ def _backup_database(retention_count: int | None = None) -> None:
         # committed pages currently living in the WAL file.
         with sqlite3.connect(src) as source, sqlite3.connect(tmp_dst) as destination:
             source.backup(destination)
+            integrity = destination.execute("PRAGMA integrity_check").fetchone()
+            if not integrity or integrity[0].lower() != "ok":
+                raise RuntimeError(f"SQLite backup integrity check failed: {integrity!r}")
         os.replace(tmp_dst, dst)
 
         if retention_count is None:
@@ -596,6 +600,9 @@ def _backup_database(retention_count: int | None = None) -> None:
         logger.info("DB backup created: %s (retaining %d copies)", dst.name, retention_count)
     except Exception:
         logger.exception("DB backup failed")
+    finally:
+        if tmp_dst is not None:
+            tmp_dst.unlink(missing_ok=True)
 
 
 def _cleanup_old_results(results_dir) -> None:

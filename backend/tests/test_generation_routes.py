@@ -76,6 +76,16 @@ def test_generation_history_empty():
         db.close()
 
 
+def test_generation_history_pagination_bounds():
+    from app.main import app
+
+    parameters = app.openapi()["paths"]["/api/generation/history"]["get"]["parameters"]
+    pagination = {parameter["name"]: parameter["schema"] for parameter in parameters}
+    assert pagination["offset"]["minimum"] == 0
+    assert pagination["limit"]["minimum"] == 1
+    assert pagination["limit"]["maximum"] == 100
+
+
 def test_history_and_task_updates_append_stream_events():
     db = _setup_generation_routes_db()
     try:

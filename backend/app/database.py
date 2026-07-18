@@ -106,6 +106,9 @@ async def get_db_dependency():
     db = next(db_generator)
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db_generator.close()
 

@@ -425,6 +425,8 @@ def _delete_history_records_and_files(
     count = len(rows)
     task_ids = [row.task_id for row in rows]
 
+    from app.services.file_deletion import queue_file_deletion
+
     data_dir = get_settings().data_dir.resolve()
     for row in rows:
         if row.output_path:
@@ -432,11 +434,14 @@ def _delete_history_records_and_files(
             if not path.is_relative_to(data_dir):
                 logger.warning("Attempted to delete file outside data_dir: %s", path)
                 continue
-            if path.exists():
-                path.unlink(missing_ok=True)
             thumb = path.with_suffix(path.suffix + ".thumb_400.jpg")
-            if thumb.exists():
-                thumb.unlink(missing_ok=True)
+            queue_file_deletion(
+                db,
+                path=path,
+                thumbnail_path=thumb,
+                task_id=row.task_id,
+                reason="history_delete",
+            )
 
     if task_ids:
         try:
@@ -483,6 +488,9 @@ async def delete_rejected_cache(
     """Delete all rejected generations (files + DB records)."""
     _delete_history_records_and_files(db, "REJECTED", actor_ctx)
     db.commit()
+    from app.services.file_deletion import process_file_deletion_jobs
+
+    process_file_deletion_jobs(db, data_dir=get_settings().data_dir)
 
 
 @router.delete("/history/status/{status}", status_code=204)
@@ -506,6 +514,9 @@ async def delete_history_by_status(
 
     _delete_history_records_and_files(db, db_status, actor_ctx)
     db.commit()
+    from app.services.file_deletion import process_file_deletion_jobs
+
+    process_file_deletion_jobs(db, data_dir=get_settings().data_dir)
 
 
 @router.delete("/history/cache", status_code=204)
@@ -517,6 +528,9 @@ async def clear_generation_cache(
     """Delete all generation history (files + DB records)."""
     _delete_history_records_and_files(db, None, actor_ctx)
     db.commit()
+    from app.services.file_deletion import process_file_deletion_jobs
+
+    process_file_deletion_jobs(db, data_dir=get_settings().data_dir)
 
 
 @router.post("/history/{task_id}/like", response_model=GenerationHistoryResponse)

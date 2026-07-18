@@ -156,6 +156,7 @@ def test_backup_database_creates_file(tmp_path):
     backups = list(backup_dir.glob("app_*.db"))
     assert len(backups) == 1
     with sqlite3.connect(backups[0]) as db:
+        assert db.execute("PRAGMA integrity_check").fetchone() == ("ok",)
         assert db.execute("SELECT value FROM records").fetchone() == ("restored",)
 
 
@@ -200,6 +201,7 @@ def test_backup_database_restores_committed_wal_changes(tmp_path):
 
     backup = next((tmp_path / "backups").glob("app_*.db"))
     with sqlite3.connect(backup) as restored:
+        assert restored.execute("PRAGMA integrity_check").fetchone() == ("ok",)
         assert restored.execute("SELECT value FROM records").fetchone() == ("in-wal",)
 
 

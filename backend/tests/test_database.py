@@ -1,8 +1,9 @@
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.database import get_db
+from app.database import get_db, get_db_dependency
 
 
 def test_get_db_rollback_on_exception():
@@ -42,6 +43,22 @@ def test_get_db_no_exception_closes_session():
         # Verify that rollback was NOT called, but close was
         mock_session.rollback.assert_not_called()
         mock_session.close.assert_called_once()
+
+
+def test_get_db_dependency_rolls_back_on_exception():
+    mock_session = MagicMock()
+
+    async def exercise():
+        with patch("app.database.SessionLocal", return_value=mock_session), patch("app.database._ensure_engine"):
+            db_gen = get_db_dependency()
+            db = await db_gen.__anext__()
+            assert db == mock_session
+            with pytest.raises(ValueError, match="async database error"):
+                await db_gen.athrow(ValueError("async database error"))
+
+    asyncio.run(exercise())
+    mock_session.rollback.assert_called_once()
+    mock_session.close.assert_called_once()
 
 
 def test_init_db_fallback_path_resolution(monkeypatch):

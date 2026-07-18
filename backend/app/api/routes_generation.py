@@ -4,8 +4,9 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Security
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -227,8 +228,8 @@ async def get_generation_history(
     effect: str | None = None,
     liked: bool | None = None,
     sort: str = "newest",
-    offset: int = 0,
-    limit: int = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ):
     """Get history of all generations with optional filters and pagination."""
     return build_generation_history_page(

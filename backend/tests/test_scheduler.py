@@ -521,6 +521,11 @@ def test_cleanup_old_results_retention(tmp_path):
         # Create dummy result files in tmp_path
         results_dir = tmp_path / "results"
         results_dir.mkdir()
+        orphan = results_dir / "orphan.png"
+        orphan.write_bytes(b"orphan")
+        os.utime(orphan, (now.timestamp() - 8 * 86400, now.timestamp() - 8 * 86400))
+        recent_orphan = results_dir / "recent-orphan.png"
+        recent_orphan.write_bytes(b"keep")
         for suffix in [".png", ".png.thumb_400.jpg"]:
             (results_dir / f"recent-non-rejected{suffix}").touch()
             (results_dir / f"old-non-rejected{suffix}").touch()
@@ -549,5 +554,7 @@ def test_cleanup_old_results_retention(tmp_path):
         assert not (results_dir / "old-non-rejected.png").exists()
         # Old REJECTED deletes output_path:
         assert not (results_dir / "old-rejected.png").exists()
+        assert not orphan.exists()
+        assert recent_orphan.exists()
     finally:
         db.close()
