@@ -164,7 +164,6 @@ def plan_retention(
 
         audits = db.query(AuditEventModel).filter(AuditEventModel.created_at < audit_cutoff).count()
 
-    results_dir = data_dir / "results"
     for path in _find_orphan_paths(db, data_dir, now):
         warnings.append(f"orphan:{path.name}")
     return RetentionPreview(files, metadata, tasks, total_bytes, missing, len(warnings), audits, tuple(warnings))

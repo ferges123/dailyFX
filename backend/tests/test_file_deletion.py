@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-
 from _contract_helpers import configure_contract_test_db
 
 configure_contract_test_db("file_deletion")
