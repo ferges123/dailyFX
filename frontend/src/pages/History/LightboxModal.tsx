@@ -13,6 +13,8 @@ import {
   Check,
   ThumbsUp,
   ThumbsDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -83,6 +85,10 @@ interface LightboxModalProps {
   imageUrl: string;
   entry: GenerationHistoryEntry;
   exif: ExifData | null;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 export const LightboxModal = memo(function LightboxModal({
@@ -91,6 +97,10 @@ export const LightboxModal = memo(function LightboxModal({
   imageUrl,
   entry,
   exif,
+  onPrev,
+  onNext,
+  hasPrev = false,
+  hasNext = false,
 }: LightboxModalProps) {
   const tags = useMemo(() => {
     if (!entry?.tags_json) return [];
@@ -146,17 +156,21 @@ export const LightboxModal = memo(function LightboxModal({
     ? `/api/immich/assets/${sourceAssetId}/thumbnail?size=preview`
     : null;
 
-  // Handle Escape key to close lightbox
+  // Handle Escape key and arrow keys for navigation
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         onClose();
+      } else if (event.key === 'ArrowLeft' && onPrev && hasPrev) {
+        onPrev();
+      } else if (event.key === 'ArrowRight' && onNext && hasNext) {
+        onNext();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, onPrev, onNext, hasPrev, hasNext]);
 
   async function handleShare() {
     if (isSharing) return;
@@ -236,6 +250,26 @@ export const LightboxModal = memo(function LightboxModal({
       >
         {/* Photo Canvas */}
         <div className="relative flex h-[52vh] md:h-auto md:max-h-[85vh] flex-1 items-center justify-center bg-stone-50 p-2">
+          {hasPrev && onPrev && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onPrev(); }}
+              className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-white/80 backdrop-blur-sm transition hover:bg-black/25 hover:text-white active:scale-90"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          {hasNext && onNext && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onNext(); }}
+              className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-white/80 backdrop-blur-sm transition hover:bg-black/25 hover:text-white active:scale-90"
+              aria-label="Next photo"
+            >
+              <ChevronRight size={22} />
+            </button>
+          )}
           <SecureImage
             src={imageUrl}
             alt="Preview"

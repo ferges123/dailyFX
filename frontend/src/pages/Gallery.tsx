@@ -398,15 +398,24 @@ export function GalleryPage() {
         </div>
       )}
 
-      {lightboxEntry && (
-        <LightboxModal
-          isOpen={true}
-          entry={lightboxEntry}
-          imageUrl={lightboxEntry.image_url || ''}
-          exif={selectedExif}
-          onClose={() => setLightboxEntry(null)}
-        />
-      )}
+      {lightboxEntry && (() => {
+        const currentIdx = entries.findIndex((e) => e.task_id === lightboxEntry.task_id);
+        const hasPrev = currentIdx > 0;
+        const hasNext = currentIdx < entries.length - 1;
+        return (
+          <LightboxModal
+            isOpen={true}
+            entry={lightboxEntry}
+            imageUrl={lightboxEntry.image_url || ''}
+            exif={selectedExif}
+            onClose={() => setLightboxEntry(null)}
+            onPrev={hasPrev ? () => setLightboxEntry(entries[currentIdx - 1]) : undefined}
+            onNext={hasNext ? () => setLightboxEntry(entries[currentIdx + 1]) : undefined}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+          />
+        );
+      })()}
     </div>
   );
 }
