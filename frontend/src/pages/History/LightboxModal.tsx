@@ -270,24 +270,26 @@ export const LightboxModal = memo(function LightboxModal({
               <ChevronRight size={22} />
             </button>
           )}
-          <SecureImage
-            src={imageUrl}
-            alt="Preview"
-            className="max-h-full max-w-full rounded-lg object-contain"
-          />
-          {originalImageUrl && (
-            <div
-              className={`absolute inset-0 flex items-center justify-center bg-stone-50 transition-opacity duration-200 pointer-events-none ${
-                showOriginal ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
-              <SecureImage
-                src={originalImageUrl}
-                alt="Original Preview"
-                className="max-h-full max-w-full rounded-lg object-contain"
-              />
-            </div>
-          )}
+          <div className="relative flex items-center justify-center max-h-full max-w-full">
+            <SecureImage
+              src={imageUrl}
+              alt="Preview"
+              className="max-h-full max-w-full rounded-lg object-contain"
+            />
+            {originalImageUrl && (
+              <div
+                className={`absolute inset-0 bg-stone-50 rounded-lg transition-opacity duration-200 pointer-events-none ${
+                  showOriginal ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <SecureImage
+                  src={originalImageUrl}
+                  alt="Original Preview"
+                  className="w-full h-full rounded-lg object-cover"
+                />
+              </div>
+            )}
+          </div>
           {originalImageUrl && (
             <button
               type="button"
