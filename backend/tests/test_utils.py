@@ -79,9 +79,10 @@ class TestDebugLogger:
         from app.utils import debug_logger
 
         with (
-            patch("app.utils.debug_logger.Path", return_value=tmp_path),
+            patch("app.utils.debug_logger.get_settings") as mock_get_settings,
             patch("app.utils.debug_logger.logger") as mock_logger,
         ):
+            mock_get_settings.return_value.data_dir = tmp_path
             debug_logger.set_debug_mode(True)
             mock_logger.reset_mock()
             try:
