@@ -44,3 +44,11 @@ backend/data/
 .DS_Store
 Thumbs.db
 .worktrees/
+
+# Database backups and temporary SQLite files
+*.bak
+data/*.bak
+
+# E2E test reports and results
+frontend/playwright-report/
+frontend/test-results/
