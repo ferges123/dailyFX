@@ -15,6 +15,10 @@ class AppSettings(BaseSettings):
     data_dir: Path = Field(default=Path("./data"), alias="DATA_DIR")
     database_url: str = Field(default="sqlite:///./data/app.db", alias="DATABASE_URL")
     app_secret_key: str = Field(alias="APP_SECRET_KEY")
+    immich_thumbnail_cache_ttl_seconds: int = Field(default=604800, alias="IMMICH_THUMBNAIL_CACHE_TTL_SECONDS", ge=0)
+    immich_thumbnail_cache_retention_seconds: int = Field(
+        default=2592000, alias="IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS", ge=0
+    )
     example_asset_id: str = Field(default="", alias="EXAMPLE_ASSET_ID")
     cors_origins: str = Field(default="", alias="CORS_ORIGINS")
     app_access_token: str | None = Field(default=None, alias="APP_ACCESS_TOKEN")

@@ -78,16 +78,30 @@ def test_list_filter_options_returns_albums_and_people(monkeypatch):
 
 
 def test_thumbnail_proxy_returns_bytes(monkeypatch):
+    from app.services.immich_thumbnail_cache import CachedThumbnail
+
     monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
+
+    async def mock_get_cached_immich_thumbnail(settings, asset_id, size):
+        return CachedThumbnail(
+            path=None,
+            content=b"thumb-bytes",
+            content_type="image/webp",
+            etag='"mock-etag"',
+            cache_hit=False,
+        )
+
     monkeypatch.setattr(
-        "app.api.routes_immich._get_asset_thumbnail",
-        lambda row, asset_id, size="preview": asyncio.sleep(0, result=(b"thumb-bytes", "image/webp")),
+        "app.api.routes_immich.get_cached_immich_thumbnail",
+        mock_get_cached_immich_thumbnail,
     )
 
     response = asyncio.run(get_asset_thumbnail("asset-1", db=None))
 
     assert response.body == b"thumb-bytes"
     assert response.media_type == "image/webp"
+    assert response.headers["ETag"] == '"mock-etag"'
+    assert response.headers["Cache-Control"] == "private, max-age=86400, stale-while-revalidate=604800"
 
 
 def test_get_asset_exif_returns_typed_payload(monkeypatch):
@@ -103,3 +117,45 @@ def test_get_asset_exif_returns_typed_payload(monkeypatch):
     assert payload["lensModel"] == "RF 24-70mm F2.8"
     assert payload["iso"] == 400
     assert payload["dateTimeOriginal"] == "2026-05-12T10:00:00Z"
+
+
+def test_thumbnail_proxy_returns_304_on_etag_match(monkeypatch):
+    from app.services.immich_thumbnail_cache import CachedThumbnail
+
+    monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
+
+    async def mock_get_cached_immich_thumbnail(settings, asset_id, size):
+        return CachedThumbnail(
+            path=None,
+            content=b"thumb-bytes",
+            content_type="image/webp",
+            etag='"mock-etag"',
+            cache_hit=True,
+        )
+
+    monkeypatch.setattr(
+        "app.api.routes_immich.get_cached_immich_thumbnail",
+        mock_get_cached_immich_thumbnail,
+    )
+
+    fake_request = FakeRequest()
+    fake_request.headers = {"if-none-match": '"mock-etag"'}
+
+    response = asyncio.run(get_asset_thumbnail("asset-1", request=fake_request, db=None))
+
+    assert response.status_code == 304
+    assert response.body == b""
+    assert response.headers["ETag"] == '"mock-etag"'
+
+
+def test_thumbnail_proxy_validates_asset_id_format(monkeypatch):
+    import pytest
+    from fastapi import HTTPException
+
+    monkeypatch.setattr("app.api.routes_immich._get_or_create_settings", lambda db: FakeSettingsRow())
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(get_asset_thumbnail("../invalid-id", db=None))
+
+    assert exc_info.value.status_code == 400
+    assert "Invalid asset_id format" in exc_info.value.detail

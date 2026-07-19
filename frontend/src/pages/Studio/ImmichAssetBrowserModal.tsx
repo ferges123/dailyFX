@@ -363,6 +363,7 @@ export function ImmichAssetBrowserModal({
                                   alt={album.album_name}
                                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                   loading="lazy"
+                                  decoding="async"
                                 />
                               ) : (
                                 <div className="h-full w-full flex items-center justify-center bg-stone-50 text-stone-400">
@@ -456,6 +457,7 @@ export function ImmichAssetBrowserModal({
                             alt={asset.original_file_name || 'Immich photo'}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
                             loading="lazy"
+                            decoding="async"
                           />
 
                           {/* Gradient details overlay */}

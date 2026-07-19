@@ -58,9 +58,7 @@ def _safe_path(value: str | None, data_dir: Path) -> Path | None:
 def _known_output_paths(db: Session, data_dir: Path) -> set[Path]:
     known: set[Path] = set()
     output_paths = (
-        db.query(GenerationHistoryModel.output_path)
-        .filter(GenerationHistoryModel.output_path.isnot(None))
-        .all()
+        db.query(GenerationHistoryModel.output_path).filter(GenerationHistoryModel.output_path.isnot(None)).all()
     )
     for (value,) in output_paths:
         path = _safe_path(value, data_dir)

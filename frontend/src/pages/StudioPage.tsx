@@ -245,6 +245,8 @@ export function StudioPage() {
                   src={getImmichAssetThumbnailUrl(source.asset.id, 'preview')}
                   alt="Source preview"
                   className="max-h-32 rounded-lg object-contain shadow-sm border border-stone-200"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <span className="font-semibold text-stone-900 text-sm">
                   {source.asset.original_file_name || 'Immich Photo'}
@@ -401,6 +403,7 @@ export function StudioPage() {
                 alt={preview.title}
                 className="max-h-[70vh] w-full rounded-xl border border-stone-200 object-contain cursor-zoom-in"
                 onClick={() => setIsLightboxOpen(true)}
+                decoding="async"
               />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">

@@ -275,6 +275,7 @@ export const LightboxModal = memo(function LightboxModal({
               src={imageUrl}
               alt="Preview"
               className="max-h-full max-w-full rounded-lg object-contain"
+              decoding="async"
             />
             {originalImageUrl && (
               <div
@@ -286,6 +287,7 @@ export const LightboxModal = memo(function LightboxModal({
                   src={originalImageUrl}
                   alt="Original Preview"
                   className="w-full h-full rounded-lg object-cover"
+                  decoding="async"
                 />
               </div>
             )}

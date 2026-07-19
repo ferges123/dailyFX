@@ -1,8 +1,9 @@
 import logging
-from typing import Any
+import re
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -16,9 +17,9 @@ from app.schemas.immich import (
 )
 from app.security import require_auth
 from app.services.immich import build_immich_client as _build_immich_client
-from app.services.immich import get_asset_thumbnail as _get_asset_thumbnail
 from app.services.immich import get_or_create_settings as _get_or_create_settings
 from app.services.immich import list_filter_options as _list_filter_options
+from app.services.immich_thumbnail_cache import get_cached_immich_thumbnail
 from app.utils.query_params import query_date
 
 logger = logging.getLogger(__name__)
@@ -134,18 +135,56 @@ async def list_assets(
     return ImmichAssetPageResponse.from_domain(result)
 
 
+def _match_etag(if_none_match: str | None, etag: str) -> bool:
+    if not if_none_match:
+        return False
+    cleaned_client = if_none_match.replace("W/", "").strip('"')
+    cleaned_server = etag.replace("W/", "").strip('"')
+    return cleaned_client == cleaned_server
+
+
 @router.get("/assets/{asset_id}/thumbnail")
 async def get_asset_thumbnail(
     asset_id: str,
-    size: str = "preview",
+    size: Literal["preview", "thumbnail"] = "preview",
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
+    request: Request = None,
 ) -> Response:
+    if not re.match(r"^[a-zA-Z0-9\-]+$", asset_id):
+        raise HTTPException(status_code=400, detail="Invalid asset_id format")
+
     row = _get_or_create_settings(db)
     with handle_immich_errors():
-        content, content_type = await _get_asset_thumbnail(row, asset_id, size=size)
+        cached = await get_cached_immich_thumbnail(row, asset_id, size=size)
 
-    return Response(content=content, media_type=content_type or "image/jpeg")
+    if_none_match = request.headers.get("if-none-match") if request else None
+    if _match_etag(if_none_match, cached.etag):
+        return Response(
+            status_code=304,
+            headers={
+                "Cache-Control": "private, max-age=86400, stale-while-revalidate=604800",
+                "ETag": cached.etag,
+            },
+        )
+
+    headers = {
+        "Cache-Control": "private, max-age=86400, stale-while-revalidate=604800",
+        "ETag": cached.etag,
+    }
+
+    if cached.path:
+        return FileResponse(
+            path=str(cached.path),
+            media_type=cached.content_type,
+            headers=headers,
+        )
+    else:
+        return Response(
+            content=cached.content,
+            media_type=cached.content_type,
+            headers=headers,
+        )
 
 
 @router.get("/assets/{asset_id}/exif", response_model=ImmichExifResponse)
@@ -154,6 +193,9 @@ async def get_asset_exif(
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
 ) -> ImmichExifResponse:
+    if not re.match(r"^[a-zA-Z0-9\-]+$", asset_id):
+        raise HTTPException(status_code=400, detail="Invalid asset_id format")
+
     row = _get_or_create_settings(db)
     with handle_immich_errors():
         client = _build_immich_client(row)

@@ -27,7 +27,7 @@ def queue_file_deletion(
         db.query(FileDeletionJobModel)
         .filter(
             FileDeletionJobModel.path == normalized_path,
-            FileDeletionJobModel.status.in_(('pending', 'processing', 'failed')),
+            FileDeletionJobModel.status.in_(("pending", "processing", "failed")),
         )
         .order_by(FileDeletionJobModel.id.desc())
         .first()
@@ -70,10 +70,7 @@ def process_file_deletion_jobs(
         .filter(
             (
                 (FileDeletionJobModel.status == "pending")
-                | (
-                    (FileDeletionJobModel.status == "failed")
-                    & (FileDeletionJobModel.attempts < _MAX_ATTEMPTS)
-                )
+                | ((FileDeletionJobModel.status == "failed") & (FileDeletionJobModel.attempts < _MAX_ATTEMPTS))
             ),
             FileDeletionJobModel.next_attempt_at <= now,
         )

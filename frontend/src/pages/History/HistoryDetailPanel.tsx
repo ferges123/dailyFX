@@ -321,6 +321,8 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
               alt={entry.title}
               className="w-full max-h-[220px] md:max-h-[320px] cursor-zoom-in object-contain mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.015]"
               onClick={() => onOpenLightbox(entry.image_url ?? '')}
+              loading="lazy"
+              decoding="async"
             />
             {/* Overlay: Original image */}
             {sourceAssetId && (
@@ -333,6 +335,8 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
                   src={`/api/immich/assets/${sourceAssetId}/thumbnail?size=preview`}
                   alt="Original"
                   className="w-full h-full object-contain mx-auto"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             )}
