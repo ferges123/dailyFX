@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
@@ -126,20 +126,27 @@ def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) ->
     # Convert back to PIL for color processing
     result = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
 
-    # Split channels and apply color shifts
-    r, g, b = result.split()
-    r = ImageEnhance.Brightness(r).enhance(preset["red_boost"])
-    g = ImageEnhance.Brightness(g).enhance(preset["green_boost"])
-    b = ImageEnhance.Brightness(b).enhance(preset["blue_boost"])
-    result = Image.merge("RGB", (r, g, b))
+    # Split channels and apply per-channel boosts as a multiplicative scale
+    # applied above mid-gray (so shadows stay intact rather than getting
+    # uniformly brightened). This mimics per-layer film dye response.
+    r_arr = np.asarray(result, dtype=np.uint8).copy()
+    r_arr[..., 0] = _channel_gain_apply(r_arr[..., 0], preset["red_boost"])
+    r_arr[..., 1] = _channel_gain_apply(r_arr[..., 1], preset["green_boost"])
+    r_arr[..., 2] = _channel_gain_apply(r_arr[..., 2], preset["blue_boost"])
+    result = Image.fromarray(r_arr, "RGB")
 
     # Film characteristics
     result = ImageEnhance.Contrast(result).enhance(preset["contrast"])
     result = ImageEnhance.Color(result).enhance(preset["saturation"])
 
-    # Fade effect (lift blacks)
-    result = ImageEnhance.Brightness(result).enhance(1.0 + fade * 0.15)
-    result = ImageOps.autocontrast(result, cutoff=int(fade * 3))
+    # Fade effect: lift shadows only (not a global brightness lift).
+    # A global brightness lift would also raise highlights toward clipping,
+    # which works against the shoulder we just built. Instead, apply a
+    # soft shadow lift via a toe-shaped curve.
+    arr = np.asarray(result, dtype=np.uint8).copy()
+    shadow_lut = _shadow_lift_lut(fade * 0.18)
+    arr = shadow_lut[arr]
+    result = Image.fromarray(arr, "RGB")
 
     # Color cast overlay
     warmth = Image.new("RGB", img.size, preset["warmth"])
@@ -152,6 +159,31 @@ def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) ->
     return result
 
 
+def _channel_gain_lut(gain: float) -> np.ndarray:
+    """Per-channel gain that preserves shadows (256-entry LUT).
+
+    Multiplies channel values by `gain` only above mid-gray, so shadow
+    detail stays intact instead of being uniformly lifted.
+    """
+    x = np.arange(256, dtype=np.float32) / 255.0
+    blend = np.clip((x - 0.2) / 0.5, 0.0, 1.0) ** 1.5
+    boosted = x * (1.0 + (gain - 1.0) * blend)
+    return np.clip(boosted * 255.0, 0.0, 255.0).astype(np.uint8)
+
+
+def _channel_gain_apply(channel: np.ndarray, gain: float) -> np.ndarray:
+    """Apply per-channel gain using a precomputed LUT."""
+    return _channel_gain_lut(gain)[channel]
+
+
+def _shadow_lift_lut(lift: float) -> np.ndarray:
+    """Lift shadows without touching highlights (sigmoidal toe) — 256-entry LUT."""
+    x = np.arange(256, dtype=np.float32) / 255.0
+    shadow_mask = np.clip(1.0 - x * 2.0, 0.0, 1.0) ** 1.4
+    lifted = x + lift * shadow_mask * (1.0 - x) * 3.0
+    return np.clip(lifted * 255.0, 0.0, 255.0).astype(np.uint8)
+
+
 def _build_characteristic_lut(gamma: float, toe_falloff: float, shoulder_falloff: float) -> np.ndarray:
     """Build a film H&D characteristic curve LUT.
 
@@ -162,34 +194,40 @@ def _build_characteristic_lut(gamma: float, toe_falloff: float, shoulder_falloff
 
     The curve is built as a smooth blend of a power-law (gamma) and a
     logistic sigmoid that creates the toe and shoulder.
+
+    IMPORTANT: the output range is deliberately NOT normalized back to
+    [0, 1]. The whole point of a film characteristic curve is that blacks
+    don't reach pure black (shadow detail is preserved via the toe) and
+    highlights don't reach pure white (gentle shoulder rolloff). Normalizing
+    the LUT would undo exactly the film-look we're trying to produce.
     """
     x = np.linspace(0.0, 1.0, 256, dtype=np.float64)
 
     # Power-law base (gamma encodes film speed / overall contrast)
     base = np.power(x, gamma)
 
-    # Logistic sigmoid for smooth toe/shoulder rolloff
-    # Midpoint at x=0.5, steepness controls transition width
+    # Logistic sigmoid for smooth toe/shoulder rolloff.
+    # Midpoint at x=0.5, steepness controls transition width.
     steepness = 8.0
     sigmoid = 1.0 / (1.0 + np.exp(-steepness * (x - 0.5)))
 
-    # Blend: mostly power-law in midtones, sigmoid dominates at extremes
-    # The blend factor is shaped by x so toe/shoulder regions get more sigmoid
+    # Blend: mostly power-law in midtones, sigmoid dominates at extremes.
+    # The blend factor is shaped by x so toe/shoulder regions get more sigmoid.
     blend = np.where(x < 0.5, toe_falloff, shoulder_falloff)
     # Modulate blend: stronger at extremes, weaker in midtones
     blend_curve = blend * (4.0 * (x - 0.5) ** 2)
     y = base * (1.0 - blend_curve) + sigmoid * blend_curve
 
-    # Normalize so black stays black and white stays white
-    y = np.clip(y, 0.0, 1.0)
-    # Remap output range to preserve full dynamic range
-    y_min, y_max = y.min(), y.max()
-    if y_max - y_min > 1e-6:
-        y = (y - y_min) / (y_max - y_min)
-    else:
-        y = x  # degenerate: keep linear
+    # Apply toe lift (shadow detail) and shoulder compression (highlight rolloff)
+    # WITHOUT renormalizing — preserving the film's black-point/white-point.
+    # Map the curve into a slightly compressed output range:
+    #   toe_lift   -> lowest output > 0  (shadows don't reach pure black)
+    #   shoulder   -> highest output < 1 (highlights don't clip to white)
+    output_min = toe_falloff * 0.5
+    output_max = 1.0 - shoulder_falloff * 0.5
+    y = output_min + y * (output_max - output_min)
 
-    return (y * 255.0 + 0.5).astype(np.uint8)
+    return (np.clip(y, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
 
 def _apply_film_curve(img: np.ndarray, preset: dict) -> np.ndarray:

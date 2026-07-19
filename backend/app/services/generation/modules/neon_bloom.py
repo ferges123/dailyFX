@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
@@ -50,20 +51,32 @@ class NeonBloomModule:
         base = ImageEnhance.Contrast(base).enhance(1.3)
         base = ImageEnhance.Sharpness(base).enhance(1.25)
 
-        # Multi-layer bloom for richness
-        glow1 = base.filter(ImageFilter.GaussianBlur(radius=bloom_radius))
-        glow1 = ImageEnhance.Brightness(glow1).enhance(1.4)
+        # Bright-pass bloom: isolate the highlights (>threshold), then blur them.
+        # Blurring the full image (the previous approach) muddies the result
+        # because the shadows and midtones also get smeared across the scene.
+        # Bright-pass keeps the glow where it should be: on highlights.
+        arr = np.asarray(base, dtype=np.float32)
+        luma = arr @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+        # Threshold ~70% of max brightness; soft-knee via gamma so the
+        # transition into bloom is gradual rather than a hard cutoff.
+        bright_mask = np.clip((luma - 180.0) / 75.0, 0.0, 1.0)
+        bright_mask = bright_mask**1.3  # gentle contrast on the mask
+        bright_pass = (arr * bright_mask[:, :, None]).clip(0.0, 255.0).astype(np.uint8)
+        bright_img = Image.fromarray(bright_pass, "RGB")
 
-        glow2 = base.filter(ImageFilter.GaussianBlur(radius=bloom_radius // 2))
-        glow2 = ImageEnhance.Brightness(glow2).enhance(1.2)
+        # Two-layer bloom for richness: a wide soft glow + a tighter core
+        glow1 = bright_img.filter(ImageFilter.GaussianBlur(radius=bloom_radius))
+        glow1 = ImageEnhance.Brightness(glow1).enhance(1.5)
+        glow2 = bright_img.filter(ImageFilter.GaussianBlur(radius=max(2, bloom_radius // 2)))
+        glow2 = ImageEnhance.Brightness(glow2).enhance(1.25)
 
-        # Combine blooms
+        # Layer the blooms onto the base with screen blend
         bloom = apply_screen(base, glow1)
         bloom = apply_screen(bloom, glow2)
 
-        # Subtle color tint
+        # Subtle color tint drawn from the palette
         tint = ImageOps.colorize(ImageOps.grayscale(bloom), black=dark, white=light)
-        result = Image.blend(bloom, tint, 0.15)
+        result = Image.blend(bloom, tint, 0.12)
 
         # Final polish
         result = ImageEnhance.Contrast(result).enhance(1.1)
@@ -75,7 +88,7 @@ class NeonBloomModule:
             image_bytes=save_png(result),
             generation_type="neon_bloom",
             provider="local",
-            model="pil",
+            model="pil+numpy",
             config={"bloom_radius": bloom_radius, "intensity": intensity, "palette": [list(dark), list(light)]},
             source_asset_ids=[asset.id],
         )

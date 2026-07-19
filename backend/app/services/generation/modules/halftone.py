@@ -85,32 +85,39 @@ class HalftoneModule:
                 offsets_x = np.zeros_like(radii)
                 offsets_y = np.zeros_like(radii)
 
-            # Precompute mid_color
-            mid_color = tuple(int(dark[i] * 0.7 + light[i] * 0.3) for i in range(3))
-
-            # Build all ellipses as lists for batch draw
-            mid_ellipses = []
-            main_ellipses = []
             cy_base = np.arange(rows) * cell_size + cell_size // 2
             cx_base = np.arange(cols) * cell_size + cell_size // 2
 
+            # Two-layer dots: a darker mid-color ring gives the dots a softer
+            # transition into the background (dot gain) instead of hard disks.
+            mid_color = tuple(int(dark[i] * 0.7 + light[i] * 0.3) for i in range(3))
+
+            # Collect ellipse boxes for batched drawing (much faster than one-by-one).
+            # Mid-layer (slightly larger) for the dot-gain halo around dense dots.
+            mid_ellipses = []
+            # Main dots are fully opaque dark — they sit on top of the light canvas
+            # so the underlying color isn't blended away.
+            main_ellipses = []
             for ri in range(rows):
                 for ci in range(cols):
                     r = int(radii[ri, ci])
                     cx = int(cx_base[ci] + offsets_x[ri, ci])
                     cy = int(cy_base[ri] + offsets_y[ri, ci])
-                    if style == "varied" and ratios[ri, ci] > 0.5:
+                    if ratios[ri, ci] > 0.5:
+                        # Halo slightly larger than the dot for a soft surround
                         mid_ellipses.append((cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1))
                     main_ellipses.append((cx - r, cy - r, cx + r, cy + r))
 
-            # Batch draw: all mid-layer first, then all main dots
+            # Batch draw: all halos first, then all main dots (fully opaque)
             for box in mid_ellipses:
                 draw.ellipse(box, fill=mid_color)
             for box in main_ellipses:
                 draw.ellipse(box, fill=dark)
 
-            overlay = ImageOps.colorize(gray, black=dark, white=light)
-            mixed = Image.blend(canvas, overlay, 0.25)
+            # Light color-tint of the original image stays underneath as a hint
+            # of local color, kept very low so the dots still dominate.
+            tinted = ImageOps.colorize(gray, black=dark, white=light)
+            mixed = Image.blend(canvas, tinted, 0.08)
 
         mixed = ImageEnhance.Contrast(mixed).enhance(1.2)
         mixed = ImageEnhance.Color(mixed).enhance(1.1)

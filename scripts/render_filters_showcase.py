@@ -228,6 +228,9 @@ async def main() -> None:
         ("polaroid", MODULES["polaroid"], {}),
         ("prism_split", MODULES["prism_split"], {}),
         ("paper_cutout", MODULES["paper_cutout"], {}),
+        ("huji", MODULES["huji"], {}),
+        ("vintage_film", MODULES["vintage_film"], {}),
+        ("bokeh_blur", MODULES["bokeh_blur"], {}),
         ("apple_weather", MODULES["apple_weather"], {}),
         ("instaweather", MODULES["instaweather"], {}),
     ]

@@ -7,7 +7,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
+import numpy as np
+from PIL import Image, ImageChops, ImageFilter, ImageFont, ImageOps
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
@@ -62,24 +63,66 @@ def select_palette(config: dict[str, Any] | None = None) -> tuple[tuple[int, int
 
 
 def add_grain(image: Image.Image, *, strength: float = 0.12, blur: float = 0.0) -> Image.Image:
-    noise = Image.effect_noise(image.size, 24).convert("L")
-    noise = ImageOps.autocontrast(noise)
-    noise_rgb = Image.merge("RGB", (noise, noise, noise))
-    blended = Image.blend(image, noise_rgb, strength)
+    """Film-like grain: Gaussian luminance noise + subtle chroma noise.
+
+    Unlike flat uniform noise, this mimics real film grain which has a
+    roughly Gaussian distribution and a small color component.
+    """
+    width, height = image.size
+    arr = np.asarray(image, dtype=np.float32)
+
+    # Luminance grain: Gaussian, centered at 0 (additive deviation)
+    sigma = 18.0 * (strength * 4.0)  # scale strength -> perceptible sigma
+    luma_noise = np.random.normal(0.0, sigma, size=(height, width)).astype(np.float32)
+
+    # Apply luminance noise with perceptual weighting (Rec. 709 luma weights),
+    # so highlights get slightly more grain (film response curve).
+    weights = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    luma_dev = arr @ weights  # H x W
+    gain = 0.7 + 0.6 * (luma_dev / 255.0)  # shadows ~0.7, highlights ~1.3
+    luma_noise = luma_noise * gain
+
+    # Chroma noise: much weaker, independent per channel (gives subtle color shimmer)
+    chroma_sigma = sigma * 0.18
+    chroma_noise = np.random.normal(0.0, chroma_sigma, size=arr.shape).astype(np.float32)
+
+    noisy = arr + luma_noise[:, :, None] + chroma_noise
+    noisy = np.clip(noisy, 0.0, 255.0).astype(np.uint8)
+    grain_img = Image.fromarray(noisy, "RGB")
+
     if blur > 0:
-        blended = blended.filter(ImageFilter.GaussianBlur(radius=blur))
-    return blended
+        # Slight blur mimics the diffuse quality of real film grain
+        grain_img = grain_img.filter(ImageFilter.GaussianBlur(radius=blur))
+    return grain_img
 
 
 def apply_vignette(image: Image.Image, *, strength: float = 0.45) -> Image.Image:
+    """Smooth radial vignette using a cosine-based falloff.
+
+    Produces a natural darkening towards the edges/corners (cosine curve)
+    rather than a hard elliptical mask. `strength` is the maximum darkening
+    at the corners (0..1).
+    """
+    strength = max(0.0, min(1.0, strength))
+    if strength <= 0.0:
+        return image
+
     width, height = image.size
-    mask = Image.new("L", (width, height), 0)
-    draw = ImageDraw.Draw(mask)
-    inset = int(min(width, height) * 0.08)
-    draw.ellipse((-inset, -inset, width + inset, height + inset), fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=min(width, height) * 0.18))
-    dark = Image.new("RGB", (width, height), (0, 0, 0))
-    return Image.composite(image, dark, mask.point(lambda value: int(value * (1.0 - strength / 2))))
+    # Normalized coordinates centered at image center
+    y_idx, x_idx = np.ogrid[:height, :width]
+    nx = (x_idx - width * 0.5) / (width * 0.5)
+    ny = (y_idx - height * 0.5) / (height * 0.5)
+    # Radial distance from center, normalized so corners reach ~1.0
+    radius = np.sqrt(nx * nx + ny * ny)
+    radius = np.clip(radius, 0.0, 1.0)
+    # Cosine falloff: 1.0 at center, ~0.0 at corners
+    falloff = np.cos(radius * (np.pi / 2.0))
+    # Darkening factor: at center -> 1.0 (no change), at corners -> (1 - strength)
+    factor = 1.0 - strength * (1.0 - falloff)
+
+    arr = np.asarray(image, dtype=np.float32)
+    darkened = (arr * factor[:, :, None]).clip(0.0, 255.0).astype(np.uint8)
+    return Image.fromarray(darkened, "RGB")
 
 
 def apply_screen(base: Image.Image, overlay: Image.Image) -> Image.Image:

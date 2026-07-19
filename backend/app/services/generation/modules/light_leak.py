@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 
 import numpy as np
-from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
@@ -131,7 +131,10 @@ class LightLeakModule:
         combined = Image.blend(faded, leak, intensity)
         combined = add_grain(combined, strength=0.07, blur=0.12)
         combined = apply_vignette(combined, strength=0.3)
-        combined = ImageOps.autocontrast(combined, cutoff=1)
+        # Subtle shadow lift (lifts blacks toward the warm/cool tone) to keep
+        # the dreamy faded look. A full autocontrast here would clip the leak
+        # colors and re-raise contrast we deliberately reduced above.
+        combined = ImageEnhance.Brightness(combined).enhance(1.02)
 
         return GenerationResult(
             title=f"Light Leak: {asset.original_file_name or asset.id}",

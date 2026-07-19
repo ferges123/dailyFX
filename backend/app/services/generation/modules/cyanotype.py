@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
@@ -91,23 +91,37 @@ def _apply_cyanotype(img: Image.Image, tone: str, texture: float) -> Image.Image
 
 
 def _add_paper_texture(img: Image.Image, strength: float) -> Image.Image:
-    """Add subtle paper fiber texture."""
+    """Add subtle paper fiber texture.
+
+    Fibers are short line segments in 4 directions (0/45/90/135 degrees) to
+    mimic the random weave of paper. We render onto an "L" mask and modulate
+    the image's luminance subtly, so it acts as relief rather than tint.
+    """
+    import math
+    import random
+
     w, h = img.size
     texture = Image.new("L", (w, h), 128)
     draw = ImageDraw.Draw(texture)
 
-    # Random fiber lines
-    import random
-
-    for _ in range(int(w * h * 0.0002)):
+    # Density tuned to image area, capped to avoid huge draws on big images
+    num_fibers = min(int(w * h * 0.0004), 20000)
+    directions = (0.0, 45.0, 90.0, 135.0)
+    for _ in range(num_fibers):
         x = random.randint(0, w - 1)
         y = random.randint(0, h - 1)
         length = random.randint(2, 8)
-        angle = random.choice([0, 45, 90, 135])
-        if angle == 0:
-            draw.line([(x, y), (x + length, y)], fill=random.randint(120, 136), width=1)
-        elif angle == 90:
-            draw.line([(x, y), (x, y + length)], fill=random.randint(120, 136), width=1)
+        angle = random.choice(directions)
+        rad = math.radians(angle)
+        x2 = x + int(length * math.cos(rad))
+        y2 = y + int(length * math.sin(rad))
+        # Slightly varying lightness (115..140) creates gentle relief
+        fill = random.randint(115, 140)
+        draw.line([(x, y), (x2, y2)], fill=fill, width=1)
 
+    # Soften so fibers read as paper grain, not as visible strokes
     texture = texture.filter(ImageFilter.GaussianBlur(0.5))
-    return Image.blend(img, Image.merge("RGB", [texture] * 3), strength)
+    # Combine: convert texture to a luminance offset around mid-gray
+    texture_rgb = Image.merge("RGB", (texture, texture, texture))
+    # Screen with mid-gray keeps mid-tones unchanged, lifts/lowers based on fiber
+    return Image.blend(img, ImageChops.screen(img, texture_rgb), strength)

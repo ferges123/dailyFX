@@ -146,14 +146,21 @@ def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, s
             anchor="lt",
         )
 
-    # 6. Final Texture (Subtle paper fiber) - stronger for vintage
+    # 6. Final Texture (Subtle paper fiber) — applied only to the paper
+    # area (border + bottom caption), NOT to the photo itself. The previous
+    # implementation blended the texture over the entire canvas, which
+    # visibly degraded the photo's contrast and clarity.
     texture = Image.effect_noise((canvas_w, canvas_h), 10).convert("L")
     if style == "vintage":
         texture = ImageOps.colorize(texture, black=(235, 230, 215), white=(255, 255, 250))
-        canvas = Image.blend(canvas, texture, 0.25)
     else:
         texture = ImageOps.colorize(texture, black=(242, 240, 235), white=(255, 255, 255))
-        canvas = Image.blend(canvas, texture, 0.15)
+
+    # Mask: paper area = 255, photo area = 0
+    paper_mask = Image.new("L", (canvas_w, canvas_h), 255)
+    paper_mask.paste(0, (photo_x, photo_y, photo_x + photo_w, photo_y + photo_h))
+    paper_mask = paper_mask.filter(ImageFilter.GaussianBlur(radius=4))  # soften the seam
+    canvas = Image.composite(canvas, texture, paper_mask)
 
     out = BytesIO()
     canvas.save(out, format="PNG", optimize=True)
@@ -161,10 +168,21 @@ def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, s
 
 
 def _draw_shadow(canvas: Image.Image, offset: tuple[int, int], size: tuple[int, int]) -> None:
+    """Soft, multi-pass drop shadow for natural depth.
+
+    A single Gaussian-blurred rectangle produces a fairly tight, symmetric
+    halo. Building the shadow from a slightly larger rectangle + a softer,
+    wider blur gives the impression of a real photo lifting off the paper
+    (more diffuse at the edges, denser near the offset).
+    """
     shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    layer = Image.new("RGBA", size, (10, 10, 10, 80))  # Lighter, larger blur
-    shadow.paste(layer, offset)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=40))
+    # Outer halo (wider, softer)
+    halo = Image.new("RGBA", (size[0] + 30, size[1] + 30), (10, 10, 10, 50))
+    shadow.paste(halo, (offset[0] - 15, offset[1] - 15))
+    # Inner dense core (smaller, darker)
+    core = Image.new("RGBA", size, (10, 10, 10, 90))
+    shadow.paste(core, offset)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=45))
     canvas.paste(shadow.convert("RGB"), (0, 0), shadow.split()[-1])
 
 

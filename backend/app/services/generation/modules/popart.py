@@ -1,6 +1,7 @@
 import random
 from io import BytesIO
 
+import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
@@ -64,7 +65,7 @@ class PopArtModule:
             image_bytes=result_bytes,
             generation_type="popart",
             provider="local",
-            model="pil",
+            model="pil+numpy",
             config={"contrast": contrast, "border": border},
             source_asset_ids=[asset.id],
         )
@@ -100,15 +101,41 @@ def _build_popart(image_bytes: bytes, base_contrast: float, border: int) -> byte
 
 
 def _popart_tile(img: Image.Image, dark: tuple, light: tuple, contrast: float) -> Image.Image:
+    """Warhol-style tile with 3-band colorization.
+
+    Real Warhol serigraphs use a small number of discrete colors — one per
+    tonal band (shadows, midtones, highlights) — rather than a smooth 2-color
+    gradient. We posterize to 3 levels and map each band to a distinct color
+    derived from the dark/light palette (shadow -> dark, mid -> accent blend,
+    highlight -> light). This produces the bold, graphic look that
+    ``ImageOps.colorize`` (which does a linear 2-color interpolation) cannot.
+    """
     gray = ImageOps.grayscale(img)
     gray = ImageOps.autocontrast(gray, cutoff=3)
     gray = ImageEnhance.Contrast(gray).enhance(contrast)
-    gray = ImageEnhance.Sharpness(gray).enhance(2.0)
+    gray = ImageEnhance.Sharpness(gray).enhance(1.6)
 
-    # Posterize for bold graphic look
-    gray = ImageOps.posterize(gray, 4)
+    # Posterize to 3 discrete levels (shadows / midtones / highlights)
+    posterized = ImageOps.posterize(gray, 2)  # 4 levels: 0, 64, 128, 192
+    arr = np.asarray(posterized, dtype=np.uint8)
 
-    toned = ImageOps.colorize(gray, black=dark, white=light)
+    # Derive an accent color for the midtones (mix of dark and light)
+    accent = tuple(int(dark[i] * 0.45 + light[i] * 0.55) for i in range(3))
+
+    # Build a 256-entry LUT that maps each posterized band to a distinct color:
+    #   0..63   (shadows)     -> dark
+    #   64..127 (low-mid)     -> dark (keeps shadows bold)
+    #   128..191 (mid)        -> accent
+    #   192..255 (highlights) -> light
+    # Indexing directly with a 4-entry LUT would fail because posterize
+    # produces values 0/64/128/192, not 0/1/2/3.
+    lut = np.zeros((256, 3), dtype=np.uint8)
+    lut[0:128] = dark
+    lut[128:192] = accent
+    lut[192:256] = light
+    toned_arr = lut[arr]
+    toned = Image.fromarray(toned_arr, "RGB")
+
     toned = ImageEnhance.Color(toned).enhance(1.2)
     toned = add_grain(toned, strength=0.03, blur=0.0)
 

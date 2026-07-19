@@ -90,6 +90,24 @@
   },
   {
     "type": "module",
+    "name": "huji",
+    "path": "modules/huji.png",
+    "config": {}
+  },
+  {
+    "type": "module",
+    "name": "vintage_film",
+    "path": "modules/vintage_film.png",
+    "config": {}
+  },
+  {
+    "type": "module",
+    "name": "bokeh_blur",
+    "path": "modules/bokeh_blur.png",
+    "config": {}
+  },
+  {
+    "type": "module",
     "name": "apple_weather",
     "path": "modules/apple_weather.png",
     "config": {}

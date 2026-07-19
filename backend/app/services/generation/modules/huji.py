@@ -3,11 +3,22 @@ from __future__ import annotations
 import random
 from datetime import datetime
 
+import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.modules.common import add_grain, apply_vignette, get_font, load_rgb, save_png
+
+# Random leak positions like a real disposable camera — every shot is different.
+_LEAK_ORIGINS = [
+    (0.85, 0.10),  # top-right
+    (0.12, 0.85),  # bottom-left
+    (0.90, 0.85),  # bottom-right
+    (0.10, 0.15),  # top-left
+    (0.50, 0.05),  # top-center
+    (0.92, 0.50),  # right edge
+]
 
 
 class HujiModule:
@@ -56,24 +67,26 @@ def _apply_huji(source: Image.Image, created_at: str | None, date_stamp: bool) -
     warm = Image.new("RGB", (w, h), (255, 200, 120))
     img = Image.blend(img, warm, 0.12)
 
-    # Slightly fade blacks (lift shadows like expired film)
-    img = _lift_shadows(img, lift=18)
+    # Lift shadows with a sigmoidal curve instead of a linear offset.
+    # A linear `+lift` pushes whites toward clipping and raises midtones
+    # uniformly; a sigmoidal curve lifts only the shadows and keeps
+    # midtones/highlights intact, which is what expired film actually does.
+    arr = np.asarray(img, dtype=np.uint8).copy()
+    shadow_lut = _shadow_lift_lut(0.10)
+    arr = shadow_lut[arr]
+    img = Image.fromarray(arr, "RGB")
 
-    # 2. Light leak — top-right corner, warm orange/red
-    leak_layer = Image.new("RGB", (w, h), (0, 0, 0))
-    leak_draw = ImageDraw.Draw(leak_layer)
-    # Primary leak: top-right
-    leak_draw.ellipse(
-        (int(w * 0.55), -int(h * 0.1), w + int(w * 0.1), int(h * 0.45)),
-        fill=(255, 120, 40),
-    )
-    # Secondary leak: bottom-left edge
-    leak_draw.ellipse(
-        (-int(w * 0.1), int(h * 0.7), int(w * 0.35), h + int(h * 0.1)),
-        fill=(255, 80, 20),
-    )
-    leak_layer = leak_layer.filter(ImageFilter.GaussianBlur(radius=int(min(w, h) * 0.18)))
-    img = ImageChops.screen(img, leak_layer)
+    # 2. Light leak — random origin each run, built from a smooth radial
+    # gradient (numpy) rather than a blurred ellipse, for a more organic look.
+    ox_frac, oy_frac = random.choice(_LEAK_ORIGINS)
+    ox = ox_frac * w + random.randint(-w // 12, w // 12)
+    oy = oy_frac * h + random.randint(-h // 12, h // 12)
+    ox = max(0, min(w - 1, int(ox)))
+    oy = max(0, min(h - 1, int(oy)))
+    primary = (255, 120, 40)
+    secondary = (255, 80, 20)
+    leak = _build_leak_layer(w, h, ox, oy, primary, secondary)
+    img = ImageChops.screen(img, leak)
 
     # 3. Vignette
     img = apply_vignette(img, strength=0.38)
@@ -85,7 +98,7 @@ def _apply_huji(source: Image.Image, created_at: str | None, date_stamp: bool) -
     soft = img.filter(ImageFilter.GaussianBlur(radius=0.6))
     img = Image.blend(img, soft, 0.25)
 
-    # 6. Date stamp — bottom right, red LCD-style font
+    # 6. Date stamp — bottom right, orange/red LCD-style font (Huji app look)
     if date_stamp:
         date_str = _format_date(created_at)
         if date_str:
@@ -94,14 +107,36 @@ def _apply_huji(source: Image.Image, created_at: str | None, date_stamp: bool) -
     return save_png(img)
 
 
-def _lift_shadows(img: Image.Image, lift: int = 18) -> Image.Image:
-    """Lift shadow values to simulate faded/expired film."""
-    lut = [min(255, i + lift) for i in range(256)]
-    r, g, b = img.split()
-    r = r.point(lut)
-    g = g.point([min(255, i + lift - 4) for i in range(256)])  # slightly less green lift
-    b = b.point([min(255, i + lift - 8) for i in range(256)])  # even less blue lift
-    return Image.merge("RGB", (r, g, b))
+def _build_leak_layer(w: int, h: int, cx: int, cy: int, primary: tuple, secondary: tuple) -> Image.Image:
+    """Build a soft, organic light leak from two radial gradients.
+
+    Uses a normalized radial distance with a gamma curve so the falloff is
+    smoother than a single blurred ellipse (which produces a hard blob).
+    """
+    y_idx, x_idx = np.ogrid[:h, :w]
+    dx = (x_idx - cx) / w
+    dy = (y_idx - cy) / h
+    dist = np.sqrt(dx * dx + dy * dy)
+    # Soft falloff: stronger near origin, long tail into the frame
+    primary_alpha = np.clip(1.0 - dist / 0.55, 0.0, 1.0) ** 1.8
+    # Tighter, brighter accent near the leak origin
+    accent_alpha = np.clip(1.0 - dist / 0.30, 0.0, 1.0) ** 2.5
+
+    arr = np.zeros((h, w, 3), dtype=np.float32)
+    for i in range(3):
+        arr[..., i] = primary[i] * primary_alpha + secondary[i] * accent_alpha * 0.6
+    arr = arr.clip(0.0, 255.0).astype(np.uint8)
+    leak = Image.fromarray(arr, "RGB")
+    # Slight blur to blend edges smoothly with the underlying image
+    return leak.filter(ImageFilter.GaussianBlur(radius=max(w, h) * 0.04))
+
+
+def _shadow_lift_lut(lift: float) -> np.ndarray:
+    """Lift shadows via a sigmoidal curve that leaves highlights untouched."""
+    x = np.arange(256, dtype=np.float32) / 255.0
+    shadow_mask = np.clip(1.0 - x * 2.0, 0.0, 1.0) ** 1.4
+    lifted = x + lift * shadow_mask * (1.0 - x) * 3.0
+    return np.clip(lifted * 255.0, 0.0, 255.0).astype(np.uint8)
 
 
 def _draw_date_stamp(img: Image.Image, date_str: str) -> Image.Image:
@@ -113,7 +148,8 @@ def _draw_date_stamp(img: Image.Image, date_str: str) -> Image.Image:
     # Draw on separate layer then blur slightly — simulates ink bleed on film
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
-    draw.text((w - margin, h - margin), date_str, fill=(255, 245, 220, 210), font=font, anchor="rb")
+    # Classic Huji app: bright orange-red date stamp, semi-transparent
+    draw.text((w - margin, h - margin), date_str, fill=(255, 80, 50, 220), font=font, anchor="rb")
     layer = layer.filter(ImageFilter.GaussianBlur(radius=0.8))
 
     img = img.convert("RGBA")
