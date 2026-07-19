@@ -55,12 +55,14 @@ Here is the complete list of 70 AI-powered styles supported by DailyFX, grouped 
 | **AI Museum Diorama** | Turns a photo into a curated museum diorama display. |
 | **AI Paper Diorama** | Turns a photo into a layered handmade paper diorama. |
 | **AI Papercut Shadowbox** | Builds the scene as a layered handcrafted paper-cut shadowbox. |
+| **AI Sand Sculpture** | Transforms subjects and environment into a detailed sand sculpture on a beach. |
 | **AI Voxel 3D** | Transforms the photo into a 3D isometric voxel art block model. |
 
 ### Artistic
 | Effect | Description |
 |---|---|
 | **AI Ancient Statue** | Reimagines a photo as a museum-quality marble or bronze statue. |
+| **AI Art Nouveau** | Transforms portraits into Alphonse Mucha style Art Nouveau posters. |
 | **AI Cubist Portrait** | Reimagines a photo as a geometric cubist portrait while retaining identity cues. |
 | **AI Expressionist Portrait** | Creates an emotionally charged expressionist painted portrait. |
 | **AI Linocut Print** | Renders a photo as a hand-carved high-contrast linocut print. |
@@ -70,6 +72,7 @@ Here is the complete list of 70 AI-powered styles supported by DailyFX, grouped 
 | **AI Pop Art** | Transforms a photo into a bold mid-century pop-art screen print. |
 | **AI Renaissance Oil** | Transforms the photo into a classic Renaissance oil painting on canvas. |
 | **AI Stained Glass** | Turns the photo into a colorful medieval gothic stained glass window. |
+| **AI Street Art Stencil** | Renders the photo as a two-tone spray-paint stencil on a textured brick wall. |
 | **AI Ukiyo-e Print** | Woodblock-print inspired artwork in the style of traditional Japanese prints. |
 | **AI Underwater Dream** | Turns a photo into a surreal underwater dream portrait. |
 | **AI Vaporwave Nostalgia** | Applies a nostalgic 80s/90s vaporwave aesthetic with neon grid and VHS scanlines. |
@@ -153,6 +156,8 @@ Here is the complete list of 70 AI-powered styles supported by DailyFX, grouped 
 ### Sci-Fi
 | Effect | Description |
 |---|---|
+| **AI Cybernetic Upgrade** | Subtly modifies characters with panel seams, glowing circuit lines, and robotic optics. |
+| **AI Retro-Futurism** | Reimagines the photo as a 1950s atompunk illustration of the future. |
 | **AI Solarpunk** | Reimagines a photo as a bright optimistic ecological future scene. |
 | **AI Space Explorer** | Reimagines subjects as astronaut space explorers. |
 

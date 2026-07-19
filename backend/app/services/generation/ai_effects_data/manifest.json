@@ -350,6 +350,31 @@
       "id": "ai_anime_chibi",
       "display_group": "Illustration",
       "hidden": false
+    },
+    {
+      "id": "ai_retro_futurism",
+      "display_group": "Sci-Fi",
+      "hidden": false
+    },
+    {
+      "id": "ai_art_nouveau",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_street_art_stencil",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_cybernetic_upgrade",
+      "display_group": "Sci-Fi",
+      "hidden": false
+    },
+    {
+      "id": "ai_sand_sculpture",
+      "display_group": "3D / Toy",
+      "hidden": false
     }
   ]
 }
