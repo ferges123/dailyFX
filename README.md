@@ -270,6 +270,8 @@ All connections (Immich, AI keys) and preferences are configured directly via th
 | `EXAMPLE_ASSET_ID` | no | Any asset ID from your library — enables effect preview images in the Effects tab. |
 | `CORS_ORIGINS` | no | Comma-separated allowed origins (default: localhost and frontend ports). |
 | `LOG_JSON` | no | If set to `true`, use structured JSON logging instead of plain text (default: `false`). |
+| `IMMICH_THUMBNAIL_CACHE_TTL` | no | TTL for cached Immich asset thumbnails (default: `7d`). Supports time units: `d` (days), `h` (hours), `m` (minutes), `s` (seconds), `w` (weeks). |
+| `IMMICH_THUMBNAIL_CACHE_RETENTION` | no | Retention period for local thumbnail cleanup (default: `30d`). Supports time units: `d` (days), `h` (hours), `m` (minutes), `s` (seconds), `w` (weeks). |
 
 > [!NOTE]
 > Immich connection details (`IMMICH_URL` and `IMMICH_API_KEY`), AI API keys, and notification integrations are managed dynamically in the web UI settings/presets instead of the `.env` file.
