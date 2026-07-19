@@ -224,3 +224,58 @@ async def test_cleanup_removes_old_files_only(mock_settings, monkeypatch):
 
     assert not old_file.exists()
     assert new_file.exists()
+
+
+def test_duration_parsing():
+    from app.utils.duration import parse_duration_to_seconds
+
+    assert parse_duration_to_seconds("30m") == 1800
+    assert parse_duration_to_seconds("12h") == 43200
+    assert parse_duration_to_seconds("7d") == 604800
+    assert parse_duration_to_seconds("1w") == 604800
+    assert parse_duration_to_seconds("60s") == 60
+    assert parse_duration_to_seconds(60) == 60
+    assert parse_duration_to_seconds("60") == 60
+    assert parse_duration_to_seconds("") == 0
+
+    with pytest.raises(ValueError, match="Invalid duration format"):
+        parse_duration_to_seconds("invalid")
+
+
+def test_settings_duration_parsing(monkeypatch):
+    # Test setting values as duration strings
+    settings = AppSettings(
+        app_secret_key="fake-secret",
+        IMMICH_THUMBNAIL_CACHE_TTL="12h",
+        IMMICH_THUMBNAIL_CACHE_RETENTION="7d",
+    )
+    assert settings.immich_thumbnail_cache_ttl_seconds == 43200
+    assert settings.immich_thumbnail_cache_retention_seconds == 604800
+
+    # Test deprecated/fallback fields in constructor
+    settings_fallback = AppSettings(
+        app_secret_key="fake-secret",
+        immich_thumbnail_cache_ttl_seconds=3600,
+        immich_thumbnail_cache_retention_seconds=86400,
+    )
+    assert settings_fallback.immich_thumbnail_cache_ttl_seconds == 3600
+    assert settings_fallback.immich_thumbnail_cache_retention_seconds == 86400
+
+    # Test fallback via environment variables
+    monkeypatch.setenv("IMMICH_THUMBNAIL_CACHE_TTL_SECONDS", "1800")
+    monkeypatch.setenv("IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS", "7200")
+
+    settings_env = AppSettings(app_secret_key="fake-secret")
+    assert settings_env.immich_thumbnail_cache_ttl_seconds == 1800
+    assert settings_env.immich_thumbnail_cache_retention_seconds == 7200
+
+    # Clean up env
+    monkeypatch.delenv("IMMICH_THUMBNAIL_CACHE_TTL_SECONDS")
+    monkeypatch.delenv("IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS")
+
+    # Test invalid duration format
+    with pytest.raises(ValueError):
+        AppSettings(
+            app_secret_key="fake-secret",
+            IMMICH_THUMBNAIL_CACHE_TTL="invalid_format",
+        )

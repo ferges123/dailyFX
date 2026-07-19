@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.utils.url_utils import validate_http_url
@@ -15,9 +15,11 @@ class AppSettings(BaseSettings):
     data_dir: Path = Field(default=Path("./data"), alias="DATA_DIR")
     database_url: str = Field(default="sqlite:///./data/app.db", alias="DATABASE_URL")
     app_secret_key: str = Field(alias="APP_SECRET_KEY")
-    immich_thumbnail_cache_ttl_seconds: int = Field(default=604800, alias="IMMICH_THUMBNAIL_CACHE_TTL_SECONDS", ge=0)
+    immich_thumbnail_cache_ttl: str | int = Field(default="7d", alias="IMMICH_THUMBNAIL_CACHE_TTL")
+    immich_thumbnail_cache_ttl_seconds: int = Field(default=604800, alias="IMMICH_THUMBNAIL_CACHE_TTL_SECONDS")
+    immich_thumbnail_cache_retention: str | int = Field(default="30d", alias="IMMICH_THUMBNAIL_CACHE_RETENTION")
     immich_thumbnail_cache_retention_seconds: int = Field(
-        default=2592000, alias="IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS", ge=0
+        default=2592000, alias="IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS"
     )
     example_asset_id: str = Field(default="", alias="EXAMPLE_ASSET_ID")
     cors_origins: str = Field(default="", alias="CORS_ORIGINS")
@@ -28,7 +30,68 @@ class AppSettings(BaseSettings):
     log_json: bool = Field(default=False, alias="LOG_JSON")
     require_auth_for_review: bool = Field(default=False, alias="REQUIRE_AUTH_FOR_REVIEW")
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def load_deprecated_cache_settings(cls, data: dict) -> dict:
+        import os
+
+        # Support backward compatibility by mapping deprecated _SECONDS settings
+        ttl_sec = (
+            data.get("immich_thumbnail_cache_ttl_seconds")
+            or data.get("IMMICH_THUMBNAIL_CACHE_TTL_SECONDS")
+            or os.environ.get("IMMICH_THUMBNAIL_CACHE_TTL_SECONDS")
+        )
+        if ttl_sec is not None:
+            data["immich_thumbnail_cache_ttl"] = ttl_sec
+
+        ret_sec = (
+            data.get("immich_thumbnail_cache_retention_seconds")
+            or data.get("IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS")
+            or os.environ.get("IMMICH_THUMBNAIL_CACHE_RETENTION_SECONDS")
+        )
+        if ret_sec is not None:
+            data["immich_thumbnail_cache_retention"] = ret_sec
+
+        return data
+
+    @field_validator("immich_thumbnail_cache_ttl", "immich_thumbnail_cache_retention", mode="after")
+    @classmethod
+    def validate_duration(cls, value: str | int) -> str | int:
+        from app.utils.duration import parse_duration_to_seconds
+
+        try:
+            parse_duration_to_seconds(value)
+        except ValueError as e:
+            raise ValueError(str(e))
+        return value
+
+    @model_validator(mode="after")
+    def resolve_cache_settings(self) -> "AppSettings":
+        from app.utils.duration import parse_duration_to_seconds
+
+        # Resolve TTL
+        if "immich_thumbnail_cache_ttl" in self.model_fields_set:
+            self.immich_thumbnail_cache_ttl_seconds = parse_duration_to_seconds(self.immich_thumbnail_cache_ttl)
+        elif "immich_thumbnail_cache_ttl_seconds" in self.model_fields_set:
+            self.immich_thumbnail_cache_ttl = self.immich_thumbnail_cache_ttl_seconds
+        else:
+            self.immich_thumbnail_cache_ttl_seconds = parse_duration_to_seconds(self.immich_thumbnail_cache_ttl)
+
+        # Resolve Retention
+        if "immich_thumbnail_cache_retention" in self.model_fields_set:
+            self.immich_thumbnail_cache_retention_seconds = parse_duration_to_seconds(
+                self.immich_thumbnail_cache_retention
+            )
+        elif "immich_thumbnail_cache_retention_seconds" in self.model_fields_set:
+            self.immich_thumbnail_cache_retention = self.immich_thumbnail_cache_retention_seconds
+        else:
+            self.immich_thumbnail_cache_retention_seconds = parse_duration_to_seconds(
+                self.immich_thumbnail_cache_retention
+            )
+
+        return self
 
     @property
     def secret_key_material(self) -> str:
