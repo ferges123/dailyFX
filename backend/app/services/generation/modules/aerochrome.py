@@ -80,38 +80,55 @@ class AerochromeModule:
         hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV).astype(np.float32)
         h, s, v = cv2.split(hsv)
 
-        # Foliage detection (greens and yellow-greens)
+        # Foliage detection with a smooth Gaussian-weighted falloff.
+        # A linear weight (1 - dist/sensitivity) creates a hard cut at the
+        # sensitivity boundary, which produces visible banding. A Gaussian
+        # falloff produces a smooth transition where the foliage blend
+        # gradually fades at the edges.
         # Center of foliage Hue in OpenCV HSV space is around 50 (greenish-yellow)
-        lower_green = 50.0 - foliage_sensitivity
-        upper_green = 50.0 + foliage_sensitivity
-
-        # Calculate a smooth weight (feathering) based on distance to the foliage hue center
         dist = np.abs(h - 50.0)
-        weight = 1.0 - (dist / foliage_sensitivity)
-        weight = np.clip(weight, 0.0, 1.0)
+        # Gaussian: weight = exp(-(dist/sigma)^2), sigma chosen so the
+        # sensitivity range corresponds to ~2 sigma (covers ~95% of mass).
+        sigma = foliage_sensitivity / 2.0
+        weight = np.exp(-(dist * dist) / (2.0 * sigma * sigma))
+        # Hard zero outside the sensitivity range (so unrelated hues are
+        # not affected at all by the long Gaussian tail).
+        weight = np.where(dist > foliage_sensitivity, 0.0, weight)
 
-        # Create foliage mask (where weight > 0)
-        green_mask = (h >= lower_green) & (h <= upper_green)
-        weight[~green_mask] = 0.0
-
-        # Shift foliage Hue to target red_hue
-        h = h * (1.0 - weight) + red_hue * weight
+        # Shift foliage Hue to target red_hue. Hue is circular in HSV
+        # (wraps at 180 in OpenCV's 0-180 range), so we use a circular
+        # interpolation rather than a linear blend. Without this, shifting
+        # green (50) to deep red (170) via linear interpolation passes through
+        # yellow/orange — producing a sickly transitional tint in the
+        # feathered edge instead of a clean red.
+        # Circular: rotate h toward red_hue along the shorter arc.
+        diff = red_hue - h
+        # Wrap to [-90, 90]
+        diff = ((diff + 90.0) % 180.0) - 90.0
+        h_new = (h + diff * weight) % 180.0
 
         # Boost saturation of shifted foliage
-        s = s * (1.0 - weight) + (s * saturation_boost) * weight
-        s = np.clip(s, 0.0, 255.0)
+        s_new = s * (1.0 - weight) + (s * saturation_boost) * weight
+        s_new = np.clip(s_new, 0.0, 255.0)
 
-        # Apply sky shift if enabled
+        # Apply sky shift if enabled — also with a smooth Gaussian mask
+        # so the transition is gradual rather than a hard hue step.
         if sky_cyan_shift:
             # Blue skies are around Hue 100 to 125 in OpenCV
-            sky_mask = (h >= 100.0) & (h <= 125.0)
-            # Shift sky hue towards cyan/teal (OpenCV Hue 90)
-            h[sky_mask] = np.clip(h[sky_mask] - 10.0, 85.0, 120.0)
+            sky_center = 112.5
+            sky_dist = np.abs(h_new - sky_center)
+            sky_sigma = 12.5
+            sky_weight = np.exp(-(sky_dist * sky_dist) / (2.0 * sky_sigma * sky_sigma))
+            sky_weight = np.where(sky_dist > 25.0, 0.0, sky_weight)
+            # Shift sky hue toward cyan/teal (OpenCV Hue ~90)
+            sky_diff = 90.0 - h_new
+            sky_diff = ((sky_diff + 90.0) % 180.0) - 90.0
+            h_new = (h_new + sky_diff * sky_weight * 0.8) % 180.0
             # Slightly desaturate sky to emulate old film chemistry
-            s[sky_mask] = np.clip(s[sky_mask] * 0.9, 0.0, 255.0)
+            s_new = s_new * (1.0 - sky_weight * 0.1)
 
         # Merge channels and convert back to PIL Image
-        hsv_new = cv2.merge([h, s, v]).astype(np.uint8)
+        hsv_new = cv2.merge([h_new, s_new, v]).astype(np.uint8)
         result_cv = cv2.cvtColor(hsv_new, cv2.COLOR_HSV2RGB)
         result = Image.fromarray(result_cv)
 

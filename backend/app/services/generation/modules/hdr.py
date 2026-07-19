@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
@@ -62,9 +62,26 @@ class HDRModule:
 
         ldr = tonemap.process(hdr)
         ldr = np.nan_to_num(ldr, nan=0.0, posinf=1.0, neginf=0.0)
-        ldr = (np.clip(ldr, 0.0, 1.0) * 255).astype(np.uint8)
+        ldr = np.clip(ldr, 0.0, 1.0)
 
-        result = Image.fromarray(cv2.cvtColor(ldr, cv2.COLOR_BGR2RGB))
+        # Local contrast enhancement (CLAHE on L channel of LAB). The global
+        # tonemapper above compresses dynamic range, which can make the image
+        # look flat. CLAHE restores local punch — the "HDR look" — by
+        # enhancing contrast in small neighborhoods without changing global
+        # brightness. This is what gives real HDR photos their characteristic
+        # texture/detail pop.
+        ldr_uint8 = (ldr * 255.0).astype(np.uint8)
+        lab = cv2.cvtColor(ldr_uint8, cv2.COLOR_BGR2LAB)
+        l_chan, a_chan, b_chan = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+        l_chan = clahe.apply(l_chan)
+        lab = cv2.merge([l_chan, a_chan, b_chan])
+        ldr_uint8 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+        result = Image.fromarray(cv2.cvtColor(ldr_uint8, cv2.COLOR_BGR2RGB))
+
+        # Final saturation boost — HDR photography is typically vivid.
+        result = ImageEnhance.Color(result).enhance(1.12)
 
         return GenerationResult(
             title=f"HDR: {asset.original_file_name or asset.id}",

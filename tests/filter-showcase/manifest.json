@@ -108,6 +108,30 @@
   },
   {
     "type": "module",
+    "name": "pencil_sketch",
+    "path": "modules/pencil_sketch.png",
+    "config": {}
+  },
+  {
+    "type": "module",
+    "name": "cartoon",
+    "path": "modules/cartoon.png",
+    "config": {}
+  },
+  {
+    "type": "module",
+    "name": "hdr",
+    "path": "modules/hdr.png",
+    "config": {}
+  },
+  {
+    "type": "module",
+    "name": "aerochrome",
+    "path": "modules/aerochrome.png",
+    "config": {}
+  },
+  {
+    "type": "module",
     "name": "apple_weather",
     "path": "modules/apple_weather.png",
     "config": {}

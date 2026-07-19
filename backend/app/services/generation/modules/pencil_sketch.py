@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageChops, ImageEnhance
 
 from app.models.settings import SettingsModel
 from app.services.generation.modules.base import GenerationResult
-from app.services.generation.modules.common import load_rgb, save_png
+from app.services.generation.modules.common import add_grain, load_rgb, save_png
 
 
 class PencilSketchModule:
@@ -52,7 +52,24 @@ class PencilSketchModule:
         if style == "color":
             result = Image.fromarray(cv2.cvtColor(color_sketch, cv2.COLOR_BGR2RGB))
         else:
+            # Boost contrast of the grayscale sketch — pencilSketch tends to
+            # produce a flat, washed-out look. A contrast + sharpness lift
+            # brings back the graphite texture.
             result = Image.fromarray(gray_sketch).convert("RGB")
+            result = ImageEnhance.Contrast(result).enhance(1.25)
+            result = ImageEnhance.Sharpness(result).enhance(1.2)
+
+        # Composite the sketch onto a paper-tone background instead of pure
+        # white — real pencil sketches are on cream/off-white paper. A pure
+        # white background reads as digital, not hand-drawn.
+        paper_color = (248, 244, 235)  # warm off-white
+        w, h = result.size
+        paper_bg = Image.new("RGB", (w, h), paper_color)
+        # Multiply blend: dark strokes stay dark, white paper -> paper color
+        result = ImageChops.multiply(paper_bg, result)
+
+        # Subtle paper grain — gives the graphite something to "sit on"
+        result = add_grain(result, strength=0.04, blur=0.2)
 
         return GenerationResult(
             title=f"Pencil Sketch: {asset.original_file_name or asset.id}",
@@ -60,7 +77,7 @@ class PencilSketchModule:
             image_bytes=save_png(result),
             generation_type="pencil_sketch",
             provider="local",
-            model="opencv",
+            model="opencv+pil",
             config={"style": style, "shade_factor": shade},
             source_asset_ids=[asset.id],
         )

@@ -231,6 +231,10 @@ async def main() -> None:
         ("huji", MODULES["huji"], {}),
         ("vintage_film", MODULES["vintage_film"], {}),
         ("bokeh_blur", MODULES["bokeh_blur"], {}),
+        ("pencil_sketch", MODULES["pencil_sketch"], {}),
+        ("cartoon", MODULES["cartoon"], {}),
+        ("hdr", MODULES["hdr"], {}),
+        ("aerochrome", MODULES["aerochrome"], {}),
         ("apple_weather", MODULES["apple_weather"], {}),
         ("instaweather", MODULES["instaweather"], {}),
     ]
