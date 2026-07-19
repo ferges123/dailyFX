@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, HelpCircle, Plus, Search } from 'lucide-react';
+import { CalendarDays, HelpCircle, Plus } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   getSchedules,
@@ -15,6 +15,7 @@ import {
 } from '../api/client';
 import { EmptyState } from '../components/FormUI';
 import { InlineSpinner, ErrorBanner } from '../components/ErrorUI';
+import { SearchInput } from '../components/SearchInput';
 import {
   parseAutomationSchedule,
   serializeAutomationSchedule,
@@ -396,20 +397,15 @@ export function SchedulesPage() {
               nextRunItem={nextRunItem}
             />
 
-            <div className="grid gap-2 rounded-2xl border border-stone-200/70 bg-white/70 p-2 md:flex md:flex-wrap md:items-center md:gap-2 md:p-2.5">
-              <div className="relative min-w-0 w-full md:flex-1">
-                <Search
-                  size={13}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
-                />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search schedules..."
-                  className="app-control app-control-muted h-9 pl-8 pr-3 text-xs"
-                />
-              </div>
+            <div className="app-panel grid gap-2 p-2 md:flex md:flex-wrap md:items-center md:gap-2 md:p-2.5">
+              <SearchInput
+                value={search}
+                onSearch={setSearch}
+                onClear={() => setSearch('')}
+                placeholder="Search schedules..."
+                aria-label="Search schedules"
+                inputClassName="app-control app-control-muted h-9 pl-8 pr-7 text-xs"
+              />
             </div>
           </>
         )}

@@ -23,6 +23,8 @@ import { ErrorBanner, InlineSpinner } from '../components/ErrorUI';
 import { EmptyState, InlineError, SectionCard } from '../components/FormUI';
 import { Field } from '../components/Field';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { SearchInput } from '../components/SearchInput';
+import { useDebounce } from './History/useDebounce';
 
 type AIEffectFormState = AIEffectUpsert;
 
@@ -39,6 +41,8 @@ export function AIEffectsPage() {
   const [importResult, setImportResult] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [groupFilter, setGroupFilter] = useState('all');
+  const [effectSearch, setEffectSearch] = useState('');
+  const debouncedEffectSearch = useDebounce(effectSearch, 250);
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -155,10 +159,22 @@ export function AIEffectsPage() {
   }, [effects.data]);
 
   const groupedEffects = useMemo(() => {
+    const query = debouncedEffectSearch.trim().toLowerCase();
     const visibleEffects = (effects.data ?? []).filter((effect) => {
-      if (groupFilter === 'all') return true;
-      const group = effect.display_group?.trim() || 'Ungrouped';
-      return group === groupFilter;
+      if (groupFilter === 'all') {
+        // keep
+      } else {
+        const group = effect.display_group?.trim() || 'Ungrouped';
+        if (group !== groupFilter) return false;
+      }
+      if (!query) return true;
+      return (
+        effect.title.toLowerCase().includes(query) ||
+        effect.id.toLowerCase().includes(query) ||
+        (effect.description ?? '').toLowerCase().includes(query) ||
+        (effect.display_group ?? '').toLowerCase().includes(query) ||
+        effect.positive_prompt.toLowerCase().includes(query)
+      );
     });
 
     const groups = new Map<string, AIEffect[]>();
@@ -178,12 +194,21 @@ export function AIEffectsPage() {
       if (aOrder !== bOrder) return aOrder - bOrder;
       return a.localeCompare(b);
     });
-  }, [effects.data, groupFilter]);
+  }, [effects.data, groupFilter, debouncedEffectSearch]);
 
   const visibleEffectCount = useMemo(() => {
-    if (groupFilter === 'all') return effects.data?.length ?? 0;
+    if (groupFilter === 'all' && !debouncedEffectSearch.trim())
+      return effects.data?.length ?? 0;
     return groupedEffects.reduce((count, [, items]) => count + items.length, 0);
-  }, [effects.data, groupFilter, groupedEffects]);
+  }, [effects.data, groupFilter, debouncedEffectSearch, groupedEffects]);
+
+  const activeFilterCount =
+    (groupFilter !== 'all' ? 1 : 0) + (effectSearch.trim() ? 1 : 0);
+
+  const handleClearFilters = () => {
+    setGroupFilter('all');
+    setEffectSearch('');
+  };
 
   function openNew() {
     setEditing(null);
@@ -265,19 +290,27 @@ export function AIEffectsPage() {
 
   return (
     <div className="grid gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-stone-500">
+      <div className="app-panel grid gap-2 p-2 md:flex md:flex-wrap md:items-center md:gap-1.5">
+        <span className="inline-flex h-9 items-center rounded-xl bg-stone-100 px-2.5 text-xs font-semibold text-stone-600 md:shrink-0">
           {effects.data?.length ?? 0} preset(s)
         </span>
-        <div
-          aria-label="AI effects header actions"
-          className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
-        >
+        <div className="w-full md:w-64 md:shrink-0">
+          <SearchInput
+            value={effectSearch}
+            onSearch={setEffectSearch}
+            onClear={() => setEffectSearch('')}
+            placeholder="Search effects..."
+            aria-label="Search AI effects"
+            inputClassName="app-control app-control-muted h-9 pl-9 pr-8 text-sm"
+            iconSize={14}
+          />
+        </div>
+        <div className="w-full md:w-48 md:shrink-0">
           <select
             aria-label="AI effects group filter"
             value={groupFilter}
             onChange={(e) => setGroupFilter(e.target.value)}
-            className="app-control h-9 w-full px-3 py-1.5 text-sm sm:w-48"
+            className="app-control app-control-muted h-9 cursor-pointer px-3 text-sm"
           >
             <option value="all">All groups</option>
             {groupOptions.map((group) => (
@@ -286,6 +319,20 @@ export function AIEffectsPage() {
               </option>
             ))}
           </select>
+        </div>
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="app-button-ghost h-9 px-3 text-xs"
+          >
+            Reset
+          </button>
+        )}
+        <div
+          aria-label="AI effects header actions"
+          className="order-first flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end md:order-none md:ml-auto md:w-auto md:flex-nowrap"
+        >
           <button
             type="button"
             onClick={openNew}
@@ -467,8 +514,16 @@ export function AIEffectsPage() {
       <div className="grid gap-2">
         {visibleEffectCount === 0 && (
           <EmptyState
-            title="No AI effects in this group"
-            description="Try another group filter or create a new effect."
+            title={
+              debouncedEffectSearch.trim()
+                ? 'No AI effects match your search'
+                : 'No AI effects in this group'
+            }
+            description={
+              debouncedEffectSearch.trim()
+                ? 'Try a different keyword or clear the filters.'
+                : 'Try another group filter or create a new effect.'
+            }
             action={
               <button
                 type="button"

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Search, Layers } from 'lucide-react';
+import { RefreshCw, Layers } from 'lucide-react';
 import {
   acceptGeneration,
   getImmichAssetDetailUrl,
@@ -12,6 +12,7 @@ import {
 } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { ErrorBanner } from '../../components/ErrorUI';
+import { SearchInput } from '../../components/SearchInput';
 import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -535,20 +536,15 @@ export function HistoryPage() {
 
       {/* Search, Filters and Refresh Bar */}
       <div className="app-panel grid gap-2 p-2 md:flex md:flex-wrap md:items-center md:gap-1.5 md:p-2">
-        <div className="relative w-full min-w-0 md:flex-1">
-          <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-stone-400">
-            <Search size={13} />
-          </span>
-          <input
-            type="text"
-            value={historySearch}
-            onChange={(event) => setHistorySearch(event.target.value)}
-            placeholder="Search history..."
-            aria-label="Search history"
-            className="app-control app-control-muted h-8 pl-8 pr-2.5 text-xs"
-          />
-        </div>
-        <div className="w-full md:w-[150px] md:shrink-0">
+        <SearchInput
+          value={historySearch}
+          onSearch={setHistorySearch}
+          onClear={() => setHistorySearch('')}
+          placeholder="Search history..."
+          aria-label="Search history"
+          inputClassName="app-control app-control-muted h-8 pl-8 pr-7 text-xs"
+        />
+        <div className="w-full md:w-[180px] md:shrink-0">
           <select
             value={historyStatus}
             onChange={(event) =>

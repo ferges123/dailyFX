@@ -1,7 +1,28 @@
-import { Search } from 'lucide-react';
+import { Search, Inbox } from 'lucide-react';
 import { Field } from './Field';
+import { InlineSpinner } from './ErrorUI';
 import type { ImmichPersonFilter } from '../api/client';
 import type { PersonFilterMode } from '../pages/people.types';
+
+const PERSON_MODE_META: Record<
+  PersonFilterMode,
+  { label: string; activeClass: string }
+> = {
+  optional: {
+    label: 'Optional',
+    activeClass:
+      'border-stone-300 bg-stone-100 text-stone-700 hover:border-stone-400',
+  },
+  obligatory: {
+    label: 'Required',
+    activeClass:
+      'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-400',
+  },
+  exclude: {
+    label: 'Exclude',
+    activeClass: 'border-rose-300 bg-rose-50 text-rose-700 hover:border-rose-400',
+  },
+};
 
 export function MultiSelectPanel({
   label,
@@ -11,6 +32,9 @@ export function MultiSelectPanel({
   selectedIds,
   onToggle,
   loading,
+  searchLabel,
+  searchPlaceholder,
+  emptyLabel = 'No options',
 }: {
   label: string;
   searchValue: string;
@@ -19,7 +43,12 @@ export function MultiSelectPanel({
   selectedIds: string[];
   onToggle: (v: string) => void;
   loading?: boolean;
+  searchLabel?: string;
+  searchPlaceholder?: string;
+  emptyLabel?: string;
 }) {
+  const searchLabelText = searchLabel ?? `Search ${label.toLowerCase()}`;
+  const placeholderText = searchPlaceholder ?? searchLabelText;
   // Always show selected items even if they don't match the search query
   const selectedNotInOptions = selectedIds
     .filter((id) => !options.some((o) => o.id === id))
@@ -29,45 +58,50 @@ export function MultiSelectPanel({
   return (
     <div className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-medium text-stone-800">{label}</div>
+        <div className="text-sm font-semibold text-stone-800">{label}</div>
         <div className="text-xs text-stone-500">
           {options.length} items
           {selectedIds.length > 0 ? ` · ${selectedIds.length} selected` : ''}
         </div>
       </div>
       <Field
-        label="Search albums"
+        label={searchLabelText}
         value={searchValue}
         onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search albums"
+        placeholder={placeholderText}
         icon={<Search size={16} />}
       />
-      <div className="flex-1 min-h-0 rounded-lg border border-stone-200 bg-stone-50 p-2">
+      <div className="app-panel-soft flex-1 min-h-0 p-2">
         <div className="grid h-full max-h-80 gap-1 overflow-y-auto">
           {loading ? (
-            <div className="flex h-full items-center justify-center py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-emerald-700" />
-              <span className="ml-2 text-sm text-stone-500">
-                Loading albums...
-              </span>
-            </div>
+            <InlineSpinner />
           ) : visibleOptions.length > 0 ? (
-            visibleOptions.map((o) => (
-              <label
-                key={o.id}
-                className="flex cursor-pointer items-start gap-2 rounded-md border border-transparent bg-white px-2 py-1.5 text-sm text-stone-800 hover:border-stone-200 hover:bg-stone-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(o.id)}
-                  onChange={() => onToggle(o.id)}
-                  className="mt-0.5 h-4 w-4 accent-emerald-700"
-                />
-                <span className="min-w-0 truncate">{o.label}</span>
-              </label>
-            ))
+            visibleOptions.map((o) => {
+              const isSelected = selectedIds.includes(o.id);
+              return (
+                <label
+                  key={o.id}
+                  className={`flex cursor-pointer items-start gap-2 rounded-md border px-2 py-1.5 text-sm transition ${
+                    isSelected
+                      ? 'border-emerald-200 bg-emerald-50/60 text-stone-900'
+                      : 'border-transparent bg-white text-stone-800 hover:border-stone-200 hover:bg-stone-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggle(o.id)}
+                    className="mt-0.5 h-4 w-4 accent-emerald-700"
+                  />
+                  <span className="min-w-0 truncate">{o.label}</span>
+                </label>
+              );
+            })
           ) : (
-            <div className="px-2 py-1 text-sm text-stone-500">No options</div>
+            <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-center">
+              <Inbox size={18} className="text-stone-300" />
+              <span className="text-xs text-stone-500">{emptyLabel}</span>
+            </div>
           )}
         </div>
       </div>
@@ -84,6 +118,9 @@ export function PersonSelectPanel({
   onToggle,
   onModeChange,
   loading,
+  searchLabel,
+  searchPlaceholder,
+  emptyLabel = 'No people available',
 }: {
   label: string;
   searchValue: string;
@@ -93,7 +130,12 @@ export function PersonSelectPanel({
   onToggle: (v: string) => void;
   onModeChange: (v: string, mode: PersonFilterMode) => void;
   loading?: boolean;
+  searchLabel?: string;
+  searchPlaceholder?: string;
+  emptyLabel?: string;
 }) {
+  const searchLabelText = searchLabel ?? `Search ${label.toLowerCase()}`;
+  const placeholderText = searchPlaceholder ?? searchLabelText;
   const selectedModes = new Map(
     selectedFilters.map((e) => [e.personId, e.mode]),
   );
@@ -105,7 +147,7 @@ export function PersonSelectPanel({
   return (
     <div className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-medium text-stone-800">{label}</div>
+        <div className="text-sm font-semibold text-stone-800">{label}</div>
         <div className="text-xs text-stone-500">
           {options.length} items
           {selectedFilters.length > 0
@@ -114,21 +156,16 @@ export function PersonSelectPanel({
         </div>
       </div>
       <Field
-        label="Search people"
+        label={searchLabelText}
         value={searchValue}
         onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search people"
+        placeholder={placeholderText}
         icon={<Search size={16} />}
       />
-      <div className="flex-1 min-h-0 rounded-lg border border-stone-200 bg-stone-50 p-2">
+      <div className="app-panel-soft flex-1 min-h-0 p-2">
         <div className="grid h-full max-h-80 gap-1 overflow-y-auto">
           {loading ? (
-            <div className="flex h-full items-center justify-center py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-emerald-700" />
-              <span className="ml-2 text-sm text-stone-500">
-                Loading people...
-              </span>
-            </div>
+            <InlineSpinner />
           ) : visibleOptions.length > 0 ? (
             visibleOptions.map((o) => {
               const isSelected = selectedModes.has(o.id);
@@ -136,33 +173,62 @@ export function PersonSelectPanel({
               return (
                 <div
                   key={o.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_120px] items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1.5 text-sm text-stone-800 hover:border-stone-200 hover:bg-stone-50"
+                  className={`rounded-md border px-2 py-1.5 text-sm transition ${
+                    isSelected
+                      ? 'border-emerald-200 bg-emerald-50/40'
+                      : 'border-transparent bg-white hover:border-stone-200 hover:bg-stone-50'
+                  }`}
                 >
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => onToggle(o.id)}
-                      className="h-4 w-4 accent-emerald-700"
-                    />
-                  </label>
-                  <span className="min-w-0 truncate">{o.label}</span>
-                  <select
-                    value={mode}
-                    onChange={(e) =>
-                      onModeChange(o.id, e.target.value as PersonFilterMode)
-                    }
-                    className="h-7 rounded-md border border-stone-300 bg-white px-2 text-xs outline-hidden focus:border-emerald-700"
-                  >
-                    <option value="optional">optional</option>
-                    <option value="obligatory">obligatory</option>
-                    <option value="exclude">exclude</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggle(o.id)}
+                        className="h-4 w-4 shrink-0 accent-emerald-700"
+                      />
+                      <span className="min-w-0 truncate text-stone-800">
+                        {o.label}
+                      </span>
+                    </label>
+                    {isSelected ? (
+                      <div
+                        role="group"
+                        aria-label={`Filter mode for ${o.label}`}
+                        className="flex shrink-0 gap-1"
+                      >
+                        {(Object.keys(PERSON_MODE_META) as PersonFilterMode[]).map(
+                          (m) => {
+                            const meta = PERSON_MODE_META[m];
+                            const active = mode === m;
+                            return (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => onModeChange(o.id, m)}
+                                aria-pressed={active}
+                                className={`inline-flex h-6 items-center rounded-md border px-1.5 text-[10px] font-bold uppercase tracking-wide transition ${
+                                  active
+                                    ? meta.activeClass
+                                    : 'border-transparent bg-transparent text-stone-400 hover:bg-stone-100 hover:text-stone-600'
+                                }`}
+                              >
+                                {meta.label}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               );
             })
           ) : (
-            <div className="px-2 py-1 text-sm text-stone-500">No options</div>
+            <div className="flex flex-col items-center justify-center gap-1.5 py-8 text-center">
+              <Inbox size={18} className="text-stone-300" />
+              <span className="text-xs text-stone-500">{emptyLabel}</span>
+            </div>
           )}
         </div>
       </div>

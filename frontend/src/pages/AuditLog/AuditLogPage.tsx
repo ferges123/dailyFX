@@ -4,14 +4,14 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
-  Filter,
-  X,
   ClipboardList,
   Eye,
   Info,
+  X,
 } from 'lucide-react';
 import { getAuditLogs, downloadAuditExport, type AuditEvent } from '../../api/client';
 import { formatDateTime } from '../datetime.utils';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function AuditLogPage() {
   const [page, setPage] = useState(1);
@@ -65,6 +65,15 @@ export default function AuditLogPage() {
     setPage(1);
   };
 
+  const activeFilterCount = [
+    actionFilter,
+    categoryFilter,
+    outcomeFilter,
+    actorTypeFilter,
+    dateFrom,
+    dateTo,
+  ].filter(Boolean).length;
+
   const handleExport = async (format: 'csv' | 'json') => {
     if (format === 'csv') setIsExportingCsv(true);
     else setIsExportingJson(true);
@@ -116,7 +125,7 @@ export default function AuditLogPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-stone-200/60 bg-white/70 p-4 shadow-2xs backdrop-blur-md">
+      <div className="app-panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
             <ClipboardList size={22} />
@@ -134,7 +143,7 @@ export default function AuditLogPage() {
             type="button"
             disabled={isExportingCsv}
             onClick={() => handleExport('csv')}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 hover:text-stone-950 disabled:opacity-50"
+            className="app-button-secondary h-9 px-3.5 text-xs disabled:opacity-50"
           >
             <Download size={13} />
             {isExportingCsv ? 'Exporting CSV...' : 'Export CSV'}
@@ -143,7 +152,7 @@ export default function AuditLogPage() {
             type="button"
             disabled={isExportingJson}
             onClick={() => handleExport('json')}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 hover:text-stone-950 disabled:opacity-50"
+            className="app-button-secondary h-9 px-3.5 text-xs disabled:opacity-50"
           >
             <Download size={13} />
             {isExportingJson ? 'Exporting JSON...' : 'Export JSON'}
@@ -152,127 +161,113 @@ export default function AuditLogPage() {
       </div>
 
       {/* Filter panel */}
-      <div className="rounded-2xl border border-stone-200/60 bg-white/70 p-4 shadow-2xs backdrop-blur-md">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800 uppercase tracking-wider mb-3">
-          <Filter size={13} />
-          <span>Filters</span>
+      <FilterBar
+        activeCount={activeFilterCount}
+        onClear={handleClearFilters}
+        clearLabel="Clear filters"
+        bodyClassName="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+      >
+        {/* Action */}
+        <div>
+          <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Action</label>
+          <input
+            type="text"
+            placeholder="e.g. settings.updated"
+            value={actionFilter}
+            onChange={(e) => {
+              setActionFilter(e.target.value);
+              setPage(1);
+            }}
+            className="app-control app-control-muted h-9 px-2.5 text-xs"
+          />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {/* Action */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Action</label>
-            <input
-              type="text"
-              placeholder="e.g. settings.updated"
-              value={actionFilter}
-              onChange={(e) => {
-                setActionFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded-lg border border-stone-200 bg-white/80 px-2.5 text-xs text-stone-800 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded-lg border border-stone-200 bg-white/80 px-2 text-xs text-stone-800 focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="">All Categories</option>
-              <option value="auth">auth</option>
-              <option value="settings">settings</option>
-              <option value="preset">preset</option>
-              <option value="schedule">schedule</option>
-              <option value="generation">generation</option>
-              <option value="retention">retention</option>
-            </select>
-          </div>
-
-          {/* Outcome */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Outcome</label>
-            <select
-              value={outcomeFilter}
-              onChange={(e) => {
-                setOutcomeFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded-lg border border-stone-200 bg-white/80 px-2 text-xs text-stone-800 focus:border-emerald-500 focus:outline-none"
-            >
-              <option value="">All Outcomes</option>
-              <option value="success">Success</option>
-              <option value="failure">Failure</option>
-            </select>
-          </div>
-
-          {/* Actor Type */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Actor Type</label>
-            <input
-              type="text"
-              placeholder="e.g. admin, scheduler"
-              value={actorTypeFilter}
-              onChange={(e) => {
-                setActorTypeFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded-lg border border-stone-200 bg-white/80 px-2.5 text-xs text-stone-800 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Date From */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Date From</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded-lg border border-stone-200 bg-white/80 px-2.5 text-xs text-stone-800 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Date To */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Date To</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-9 rounded-lg border border-stone-200 bg-white/80 px-2.5 text-xs text-stone-800 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          {/* Clear Button */}
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 text-xs font-semibold text-stone-600 transition hover:bg-stone-100 hover:text-stone-900"
-            >
-              <X size={13} />
-              Clear Filters
-            </button>
-          </div>
+        {/* Category */}
+        <div>
+          <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Category</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setPage(1);
+            }}
+            className="app-control app-control-muted h-9 cursor-pointer px-2 text-xs"
+          >
+            <option value="">All Categories</option>
+            <option value="auth">auth</option>
+            <option value="settings">settings</option>
+            <option value="preset">preset</option>
+            <option value="schedule">schedule</option>
+            <option value="generation">generation</option>
+            <option value="retention">retention</option>
+          </select>
         </div>
-      </div>
+
+        {/* Outcome */}
+        <div>
+          <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Outcome</label>
+          <select
+            value={outcomeFilter}
+            onChange={(e) => {
+              setOutcomeFilter(e.target.value);
+              setPage(1);
+            }}
+            className="app-control app-control-muted h-9 cursor-pointer px-2 text-xs"
+          >
+            <option value="">All Outcomes</option>
+            <option value="success">Success</option>
+            <option value="failure">Failure</option>
+          </select>
+        </div>
+
+        {/* Actor Type */}
+        <div>
+          <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Actor Type</label>
+          <input
+            type="text"
+            placeholder="e.g. admin, scheduler"
+            value={actorTypeFilter}
+            onChange={(e) => {
+              setActorTypeFilter(e.target.value);
+              setPage(1);
+            }}
+            className="app-control app-control-muted h-9 px-2.5 text-xs"
+          />
+        </div>
+
+        {/* Date From */}
+        <div>
+          <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Date From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="app-control app-control-muted h-9 px-2.5 text-xs"
+          />
+        </div>
+
+        {/* Date To */}
+        <div>
+          <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">Date To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="app-control app-control-muted h-9 px-2.5 text-xs"
+          />
+        </div>
+      </FilterBar>
 
       {/* Audit Log Content Container */}
       <div className="flex flex-col gap-3">
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-2xl border border-stone-200/60 bg-white/70 shadow-2xs backdrop-blur-md">
+        <div className="app-panel hidden overflow-hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -361,7 +356,7 @@ export default function AuditLogPage() {
                   type="button"
                   disabled={page === 1 || isFetching}
                   onClick={() => setPage((p) => p - 1)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                  className="app-button-secondary h-8 w-8 p-0 disabled:opacity-50"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -372,7 +367,7 @@ export default function AuditLogPage() {
                   type="button"
                   disabled={page === totalPages || isFetching}
                   onClick={() => setPage((p) => p + 1)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                  className="app-button-secondary h-8 w-8 p-0 disabled:opacity-50"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -420,7 +415,7 @@ export default function AuditLogPage() {
                         e.stopPropagation();
                         setSelectedEvent(event);
                       }}
-                      className="inline-flex h-7 px-3.5 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-emerald-700 hover:border-emerald-200 shadow-2xs transition"
+                      className="app-button-secondary h-7 px-3.5 text-xs"
                     >
                       Details
                     </button>
@@ -432,7 +427,7 @@ export default function AuditLogPage() {
 
           {/* Pagination footer - Mobile */}
           {!isLoading && totalPages > 1 && (
-            <div className="flex flex-col gap-3.5 items-center justify-center app-surface p-4 text-center">
+            <div className="app-surface flex flex-col gap-3.5 items-center justify-center p-4 text-center">
               <span className="text-xs font-medium text-stone-500">
                 Showing <span className="font-semibold text-stone-900">{offset + 1}</span> to{' '}
                 <span className="font-semibold text-stone-900">{Math.min(offset + limit, total)}</span> of{' '}
@@ -444,7 +439,7 @@ export default function AuditLogPage() {
                   type="button"
                   disabled={page === 1 || isFetching}
                   onClick={() => setPage((p) => p - 1)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                  className="app-button-secondary h-9 w-9 p-0 disabled:opacity-50"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -455,7 +450,7 @@ export default function AuditLogPage() {
                   type="button"
                   disabled={page === totalPages || isFetching}
                   onClick={() => setPage((p) => p + 1)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 disabled:opacity-50 transition"
+                  className="app-button-secondary h-9 w-9 p-0 disabled:opacity-50"
                 >
                   <ChevronRight size={16} />
                 </button>

@@ -5,13 +5,12 @@ import {
   Grid3X3,
   Heart,
   RefreshCw,
-  Search,
   SlidersHorizontal,
-  X,
 } from 'lucide-react';
 import { getGenerationHistory } from '../api/client';
 import { type GenerationHistoryEntry } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
+import { SearchInput } from '../components/SearchInput';
 import { LightboxModal } from './History/LightboxModal';
 import { useDebounce } from './History/useDebounce';
 import { useSelectedExif } from '../hooks/useSelectedExif';
@@ -180,9 +179,6 @@ export function GalleryPage() {
   const hasMore = offset + PAGE_SIZE < total;
   const activeFilterCount =
     Number(Boolean(effectFilter)) + Number(likedFilter === true);
-  const activeEffectLabel = effectFilter
-    ? uniqueEffects.find((effect) => effect.value === effectFilter)?.label
-    : null;
 
   return (
     <div className="grid gap-4">
@@ -203,49 +199,36 @@ export function GalleryPage() {
             aria-label="Sort gallery"
             value={sort}
             onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')}
-            className="h-9 rounded-xl border border-stone-200 bg-white/80 px-3 text-xs font-medium text-stone-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+            className="app-control app-control-muted h-9 w-auto px-3 text-xs font-medium"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
           </select>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
-            />
-            <input
-              type="text"
-              placeholder="Search..."
+          <div className="w-40">
+            <SearchInput
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-              }}
-              className="h-9 w-40 rounded-xl border border-stone-200 bg-white/80 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+              onSearch={setSearch}
+              onClear={() => setSearch('')}
+              placeholder="Search..."
+              aria-label="Search gallery"
+              iconSize={14}
+              inputClassName="app-control app-control-muted h-9 pl-9 pr-8 text-sm"
             />
-            {search && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition ${
+            aria-pressed={showFilters}
+            className={`app-button-secondary h-9 px-3 text-xs ${
               showFilters || activeFilterCount > 0
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                : 'border-stone-200 bg-white/80 text-stone-600 hover:border-stone-300'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100'
+                : ''
             }`}
           >
             <SlidersHorizontal size={14} />
             Filter
             {activeFilterCount > 0 && (
-              <span className="ml-1 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">
+              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 {activeFilterCount}
               </span>
             )}
@@ -254,17 +237,18 @@ export function GalleryPage() {
       </div>
 
       {showFilters && (
-        <div className="app-surface grid gap-3 p-3">
+        <div className="app-panel grid gap-3 p-3">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 setEffectFilter(null);
               }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              aria-pressed={!effectFilter}
+              className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold transition ${
                 !effectFilter
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                  : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
               }`}
             >
               All effects
@@ -274,10 +258,11 @@ export function GalleryPage() {
               onClick={() =>
                 setLikedFilter((current) => (current === true ? null : true))
               }
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              aria-pressed={likedFilter === true}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition ${
                 likedFilter === true
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                  : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
               }`}
             >
               <Heart
@@ -294,36 +279,34 @@ export function GalleryPage() {
                   setLikedFilter(null);
                   setSearch('');
                 }}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
+                className="app-button-ghost h-8 px-3 text-xs"
               >
                 Reset
               </button>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {uniqueEffects.map((ef) => (
-              <button
-                key={ef.value}
-                type="button"
-                onClick={() => {
-                  setEffectFilter(ef.value);
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  effectFilter === ef.value
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {ef.label}
-              </button>
-            ))}
+            {uniqueEffects.map((ef) => {
+              const active = effectFilter === ef.value;
+              return (
+                <button
+                  key={ef.value}
+                  type="button"
+                  onClick={() => {
+                    setEffectFilter(ef.value);
+                  }}
+                  aria-pressed={active}
+                  className={`inline-flex h-7 items-center rounded-full px-3 text-[11px] font-semibold transition ${
+                    active
+                      ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                      : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+                  }`}
+                >
+                  {ef.label}
+                </button>
+              );
+            })}
           </div>
-          {(activeEffectLabel || likedFilter === true) && (
-            <div className="flex flex-wrap gap-2 text-xs text-stone-500">
-              {activeEffectLabel && <span>Effect: {activeEffectLabel}</span>}
-              {likedFilter === true && <span>Favorites only</span>}
-            </div>
-          )}
         </div>
       )}
 
@@ -351,7 +334,7 @@ export function GalleryPage() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 transition hover:border-stone-300"
+              className="app-button-secondary mt-3 px-3 py-2 text-xs"
             >
               <RefreshCw size={13} />
               Retry
@@ -366,7 +349,7 @@ export function GalleryPage() {
             </p>
             <p className="mt-1 text-xs text-stone-400">
               {search || effectFilter || likedFilter === true
-                ? 'Try a different search term'
+                ? 'Try a different search term or filter'
                 : 'Generate some images in Studio or Schedules'}
             </p>
           </div>
@@ -390,7 +373,7 @@ export function GalleryPage() {
               type="button"
               disabled={isFetching}
               onClick={() => setOffset(offset + PAGE_SIZE)}
-              className="rounded-xl border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="app-button-secondary h-9 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isFetching ? 'Loading...' : 'Load more'}
             </button>
