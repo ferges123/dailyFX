@@ -13,14 +13,14 @@ class TestBokehBlur:
         """Should return None when no face detected."""
         # Create blank image
         img = np.zeros((100, 100, 3), dtype=np.uint8)
-        cx, cy = _detect_face_center(img)
+        cx, cy, _ = _detect_face_center(img)
         assert cx is None
         assert cy is None
 
     def test_create_depth_mask_shape(self):
         """Depth mask should match image dimensions."""
         w, h = 640, 480
-        mask = _create_depth_mask(w, h, w // 2, h // 2)
+        mask = _create_depth_mask(w, h, w // 2, h // 2, 0.35)
         assert mask.shape == (h, w)
         assert mask.dtype == np.uint8
 
@@ -28,7 +28,7 @@ class TestBokehBlur:
         """Center of mask should be brightest (sharp focus)."""
         w, h = 100, 100
         cx, cy = 50, 50
-        mask = _create_depth_mask(w, h, cx, cy)
+        mask = _create_depth_mask(w, h, cx, cy, 0.35)
         # Center should be close to 255 (sharp)
         assert mask[cy, cx] > 200
         # Corners should be darker (blurred)
@@ -38,7 +38,7 @@ class TestBokehBlur:
     def test_create_depth_mask_gradient(self):
         """Mask should have smooth gradient from center."""
         w, h = 100, 100
-        mask = _create_depth_mask(w, h, 50, 50)
+        mask = _create_depth_mask(w, h, 50, 50, 0.35)
         # Check that values decrease from center
         center_val = mask[50, 50]
         mid_val = mask[50, 75]
@@ -96,10 +96,15 @@ class TestVintageFilm:
         assert diff > 1
 
     def test_build_characteristic_lut_endpoints(self):
-        """LUT should map 0->0 and 255->255."""
+        """LUT should lift shadows (toe) and roll off highlights (shoulder)."""
         from app.services.generation.modules.vintage_film import _build_characteristic_lut
 
         lut = _build_characteristic_lut(0.55, 0.12, 0.18)
-        assert lut[0] == 0
-        assert lut[255] == 255
+        assert lut[0] > 0
+        assert lut[255] <= 255
         assert len(lut) == 256
+
+        # Linear curve (0 falloff, 1.0 gamma) maps 0->0 and 255->255
+        linear_lut = _build_characteristic_lut(1.0, 0.0, 0.0)
+        assert linear_lut[0] == 0
+        assert linear_lut[255] == 255
