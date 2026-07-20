@@ -90,6 +90,23 @@ def test_new_art_modules_generate_png():
         _assert_png(result)
 
 
+def test_polaroid_module_preserves_photo_content():
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
+    settings = MagicMock()
+    asset = _fake_asset()
+
+    result = asyncio.run(PolaroidModule().run([asset], {"style": "modern"}, client, settings))
+    img = Image.open(BytesIO(result.image_bytes))
+
+    # Photo region center pixel (around x=700, y=500 for a 1400 wide canvas)
+    center_pixel = img.getpixel((700, 500))
+    # Original fake image is (128, 64, 32). After modern enhancements, R should still be dominant and far from white (>200)
+    assert center_pixel[0] > 100
+    assert center_pixel[0] > center_pixel[2] + 40  # Red significantly higher than Blue
+    assert center_pixel[0] < 240  # Not overwritten by white paper texture (242+)
+
+
 def test_collage_module_uses_four_distinct_assets_when_available():
     assets = [_fake_asset(f"asset-{index}", f"photo-{index}.jpg") for index in range(1, 5)]
     client = AsyncMock()
