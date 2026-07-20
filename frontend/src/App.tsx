@@ -395,6 +395,14 @@ function AppShell() {
               }
             />
             <Route
+              path="/gallery/:taskId"
+              element={
+                <RouteView>
+                  <GalleryPage />
+                </RouteView>
+              }
+            />
+            <Route
               path="/audit"
               element={<Navigate to="/system/audit" replace />}
             />

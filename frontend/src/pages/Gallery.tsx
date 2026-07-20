@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Grid3X3,
@@ -93,23 +94,63 @@ function GalleryCard({
 }
 
 export function GalleryPage() {
-  const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
-  const [effectFilter, setEffectFilter] = useState<string | null>(null);
-  const [likedFilter, setLikedFilter] = useState<boolean | null>(null);
-  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
-  const [showFilters, setShowFilters] = useState(false);
-  const [lightboxEntry, setLightboxEntry] =
-    useState<GenerationHistoryEntry | null>(null);
+  const navigate = useNavigate();
+  const { taskId } = useParams<{ taskId?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const { selectedExif } = useSelectedExif(
-    lightboxEntry?.config_json,
-    lightboxEntry?.source_asset_ids,
+  const searchParam = searchParams.get('search') || '';
+  const effectFilter = searchParams.get('effect') || null;
+  const likedFilter = searchParams.get('liked') === 'true' ? true : null;
+  const sort = (searchParams.get('sort') as 'newest' | 'oldest') || 'newest';
+
+  const [search, setSearch] = useState(searchParam);
+  const debouncedSearch = useDebounce(search, 300);
+
+  const [showFilters, setShowFilters] = useState(() =>
+    Boolean(effectFilter || likedFilter),
   );
+
   const [offset, setOffset] = useState(0);
   const [loadedEntries, setLoadedEntries] = useState<GenerationHistoryEntry[]>(
     [],
   );
+
+  useEffect(() => {
+    setSearch(searchParam);
+  }, [searchParam]);
+
+  const updateFilters = (updates: {
+    search?: string | null;
+    effect?: string | null;
+    liked?: boolean | null;
+    sort?: 'newest' | 'oldest' | null;
+  }) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (updates.search !== undefined) {
+      if (updates.search) newParams.set('search', updates.search);
+      else newParams.delete('search');
+    }
+    if (updates.effect !== undefined) {
+      if (updates.effect) newParams.set('effect', updates.effect);
+      else newParams.delete('effect');
+    }
+    if (updates.liked !== undefined) {
+      if (updates.liked === true) newParams.set('liked', 'true');
+      else newParams.delete('liked');
+    }
+    if (updates.sort !== undefined) {
+      if (updates.sort && updates.sort !== 'newest')
+        newParams.set('sort', updates.sort);
+      else newParams.delete('sort');
+    }
+    setSearchParams(newParams, { replace: true });
+  };
+
+  useEffect(() => {
+    if (debouncedSearch !== searchParam) {
+      updateFilters({ search: debouncedSearch });
+    }
+  }, [debouncedSearch]);
 
   const filters = useMemo(
     () => ({
@@ -130,7 +171,13 @@ export function GalleryPage() {
       filters,
     ],
     queryFn: () =>
-      getGenerationHistory('UPLOADED', offset, debouncedSearch, PAGE_SIZE, filters),
+      getGenerationHistory(
+        'UPLOADED',
+        offset,
+        debouncedSearch,
+        PAGE_SIZE,
+        filters,
+      ),
   });
 
   useEffect(() => {
@@ -151,6 +198,30 @@ export function GalleryPage() {
   }, [data?.items, offset]);
 
   const entries = loadedEntries;
+
+  const lightboxEntry = useMemo(() => {
+    if (!taskId) return null;
+    return entries.find((e) => e.task_id === taskId) || null;
+  }, [taskId, entries]);
+
+  const { selectedExif } = useSelectedExif(
+    lightboxEntry?.config_json,
+    lightboxEntry?.source_asset_ids,
+  );
+
+  const getGalleryUrl = (newTaskId?: string) => {
+    const qs = searchParams.toString();
+    const basePath = newTaskId ? `/gallery/${newTaskId}` : '/gallery';
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
+
+  const handleCardClick = (entry: GenerationHistoryEntry) => {
+    navigate(getGalleryUrl(entry.task_id));
+  };
+
+  const handleCloseLightbox = () => {
+    navigate(getGalleryUrl());
+  };
 
   const uniqueEffects = useMemo(() => {
     const known = Object.entries(EFFECT_LABELS).map(([value, label]) => ({
@@ -198,7 +269,9 @@ export function GalleryPage() {
             id="gallery-sort"
             aria-label="Sort gallery"
             value={sort}
-            onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')}
+            onChange={(e) =>
+              updateFilters({ sort: e.target.value as 'newest' | 'oldest' })
+            }
             className="app-control app-control-muted h-9 w-auto px-3 text-xs font-medium"
           >
             <option value="newest">Newest first</option>
@@ -208,7 +281,10 @@ export function GalleryPage() {
             <SearchInput
               value={search}
               onSearch={setSearch}
-              onClear={() => setSearch('')}
+              onClear={() => {
+                setSearch('');
+                updateFilters({ search: null });
+              }}
               placeholder="Search..."
               aria-label="Search gallery"
               iconSize={14}
@@ -242,7 +318,7 @@ export function GalleryPage() {
             <button
               type="button"
               onClick={() => {
-                setEffectFilter(null);
+                updateFilters({ effect: null });
               }}
               aria-pressed={!effectFilter}
               className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold transition ${
@@ -256,7 +332,9 @@ export function GalleryPage() {
             <button
               type="button"
               onClick={() =>
-                setLikedFilter((current) => (current === true ? null : true))
+                updateFilters({
+                  liked: likedFilter === true ? null : true,
+                })
               }
               aria-pressed={likedFilter === true}
               className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition ${
@@ -275,9 +353,12 @@ export function GalleryPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setEffectFilter(null);
-                  setLikedFilter(null);
                   setSearch('');
+                  updateFilters({
+                    effect: null,
+                    liked: null,
+                    search: null,
+                  });
                 }}
                 className="app-button-ghost h-8 px-3 text-xs"
               >
@@ -293,7 +374,7 @@ export function GalleryPage() {
                   key={ef.value}
                   type="button"
                   onClick={() => {
-                    setEffectFilter(ef.value);
+                    updateFilters({ effect: ef.value });
                   }}
                   aria-pressed={active}
                   className={`inline-flex h-7 items-center rounded-full px-3 text-[11px] font-semibold transition ${
@@ -360,7 +441,7 @@ export function GalleryPage() {
             <GalleryCard
               key={entry.task_id}
               entry={entry}
-              onClick={() => setLightboxEntry(entry)}
+              onClick={() => handleCardClick(entry)}
             />
           ))}
         </div>
@@ -382,7 +463,9 @@ export function GalleryPage() {
       )}
 
       {lightboxEntry && (() => {
-        const currentIdx = entries.findIndex((e) => e.task_id === lightboxEntry.task_id);
+        const currentIdx = entries.findIndex(
+          (e) => e.task_id === lightboxEntry.task_id,
+        );
         const hasPrev = currentIdx > 0;
         const hasNext = currentIdx < entries.length - 1;
         return (
@@ -391,9 +474,17 @@ export function GalleryPage() {
             entry={lightboxEntry}
             imageUrl={lightboxEntry.image_url || ''}
             exif={selectedExif}
-            onClose={() => setLightboxEntry(null)}
-            onPrev={hasPrev ? () => setLightboxEntry(entries[currentIdx - 1]) : undefined}
-            onNext={hasNext ? () => setLightboxEntry(entries[currentIdx + 1]) : undefined}
+            onClose={handleCloseLightbox}
+            onPrev={
+              hasPrev
+                ? () => navigate(getGalleryUrl(entries[currentIdx - 1].task_id))
+                : undefined
+            }
+            onNext={
+              hasNext
+                ? () => navigate(getGalleryUrl(entries[currentIdx + 1].task_id))
+                : undefined
+            }
             hasPrev={hasPrev}
             hasNext={hasNext}
           />

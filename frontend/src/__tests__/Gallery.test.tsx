@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { GalleryPage } from '../pages/Gallery';
 import * as client from '../api/client';
 
@@ -80,7 +81,7 @@ const secondPageEntry = {
   created_at: '2026-01-03T12:00:00.000Z',
 };
 
-function renderGallery() {
+function renderGallery(initialEntries = ['/gallery']) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -90,7 +91,12 @@ function renderGallery() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <GalleryPage />
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path="/gallery" element={<GalleryPage />} />
+          <Route path="/gallery/:taskId" element={<GalleryPage />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -259,5 +265,47 @@ describe('GalleryPage', () => {
         },
       );
     });
+  });
+
+  it('parses URL search parameters on mount', async () => {
+    vi.mocked(client.getGenerationHistory).mockResolvedValue({
+      items: [animeEntry],
+      total: 1,
+      latest_event_id: 1,
+    });
+
+    renderGallery([
+      '/gallery?search=portrait&effect=ai_anime&liked=true&sort=oldest',
+    ]);
+
+    await waitFor(() => {
+      expect(client.getGenerationHistory).toHaveBeenLastCalledWith(
+        'UPLOADED',
+        0,
+        'portrait',
+        24,
+        {
+          effect: 'ai_anime',
+          liked: true,
+          sort: 'oldest',
+        },
+      );
+    });
+  });
+
+  it('supports deep-linking to a specific image via /gallery/:taskId', async () => {
+    vi.mocked(client.getGenerationHistory).mockResolvedValue({
+      items: [animeEntry, comicEntry],
+      total: 2,
+      latest_event_id: 1,
+    });
+
+    renderGallery(['/gallery/task-anime']);
+
+    // Lightbox modal should open automatically for task-anime
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Anime Portrait' }),
+    ).toBeInTheDocument();
   });
 });
