@@ -25,7 +25,7 @@ from dailyfx_agent.cli import (
     _target_prefix,
     _validate_command_templates,
 )
-from dailyfx_agent.config import _DAEMON_STARTUP_TIMEOUT
+from dailyfx_agent.config import _DAEMON_STARTUP_TIMEOUT, _LIST_SCHEDULES_TIMEOUT
 from dailyfx_agent.daemon import _handle_status, _handle_stop
 from dailyfx_agent.doctor import _handle_clean_manifests, _handle_doctor
 from dailyfx_agent.locks import _acquire_lock, _release_lock, _update_lock_for_daemon_child
@@ -333,13 +333,18 @@ def main(argv: list[str] | None = None) -> int:
     backend_command = _build_backend_command(args)
 
     if args.list_schedules:
-        backend_run = sub.run(
-            backend_command,
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            backend_run = sub.run(
+                backend_command,
+                cwd=project_dir,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=_LIST_SCHEDULES_TIMEOUT,
+            )
+        except sub.TimeoutExpired:
+            sys.stderr.write(f"Error: --list-schedules timed out after {_LIST_SCHEDULES_TIMEOUT}s\n")
+            return 124
         if backend_run.returncode != 0:
             if backend_run.stderr:
                 sys.stderr.write(backend_run.stderr)
@@ -564,6 +569,7 @@ def main(argv: list[str] | None = None) -> int:
                     text=True,
                     capture_output=True,
                     check=False,
+                    timeout=args.timeout,
                 )
                 if backend_run.returncode != 0:
                     err_msg = (backend_run.stderr or backend_run.stdout or f"exit code {backend_run.returncode}").strip()
@@ -857,6 +863,7 @@ def main(argv: list[str] | None = None) -> int:
                     check=False,
                     text=True,
                     capture_output=True,
+                    timeout=args.timeout,
                 )
                 if finalize_run.returncode != 0:
                     err_msg = (finalize_run.stderr or finalize_run.stdout or f"exit code {finalize_run.returncode}").strip()

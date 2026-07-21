@@ -7,6 +7,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from dailyfx_agent.config import (
+    _DOCKER_COMPOSE_CONFIG_TIMEOUT,
+    _DOCKER_COMPOSE_HEALTH_TIMEOUT,
+    _DOCKER_COMPOSE_SCHEDULES_TIMEOUT,
+    _DOCTOR_HTTP_PROBE_TIMEOUT,
+)
 from dailyfx_agent.models import _get_agy_models, _get_codex_models
 
 
@@ -46,6 +52,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
             capture_output=True,
             text=True,
             check=False,
+            timeout=_DOCKER_COMPOSE_CONFIG_TIMEOUT,
         )
         if run.returncode == 0:
             add_check("docker_compose_config", "OK", "valid configuration")
@@ -60,10 +67,11 @@ def _handle_doctor(args: argparse.Namespace) -> int:
     if not has_errors:
         try:
             run = sub.run(
-                ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8438/api/health')"],
+                ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "python", "-c", f"import urllib.request; urllib.request.urlopen('http://localhost:8438/api/health', timeout={_DOCTOR_HTTP_PROBE_TIMEOUT})"],
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=_DOCKER_COMPOSE_HEALTH_TIMEOUT,
             )
             if run.returncode == 0:
                 add_check("api_service_reachability", "OK", "service is reachable")
@@ -84,6 +92,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=_DOCKER_COMPOSE_SCHEDULES_TIMEOUT,
             )
             if run.returncode == 0:
                 add_check("dailyfx_schedules", "OK", "schedules retrieved successfully")
