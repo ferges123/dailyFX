@@ -314,9 +314,9 @@ def test_host_render_paths_resolves_correctly():
 def test_dailyfx_cli_fail_host_marks_task_and_history_failed(capsys):
     db, schedule = _setup_cli_db()
     try:
+        from app.cli import main as cli_main
         from app.services.generation.history import upsert_history_entry
         from app.services.generation.tasks import ensure_task
-        from app.cli import main as cli_main
 
         task_id = "cli-s1-fail-host"
         ensure_task(db, task_id, status="running", step="host_render_ready", schedule_id=schedule.id)
