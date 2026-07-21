@@ -129,3 +129,24 @@ def update_owner_pid(target: str, pid: int) -> None:
 def queue_depth(target: str) -> int:
     root = AGENT_QUEUE_DIR / target / "pending"
     return len(list(root.glob("*.json"))) if root.exists() else 0
+
+
+def queue_runs(target: str) -> int:
+    """Return the number of repeat executions represented by pending jobs."""
+    root = AGENT_QUEUE_DIR / target / "pending"
+    total = 0
+    if not root.exists():
+        return 0
+    for path in root.glob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            argv = [str(item) for item in payload.get("argv", [])]
+            repeat = 1
+            for index, item in enumerate(argv):
+                if item in {"--repeat", "-x"} and index + 1 < len(argv):
+                    repeat = max(1, int(argv[index + 1]))
+                    break
+            total += repeat
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            total += 1
+    return total

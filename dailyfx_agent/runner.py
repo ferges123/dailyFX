@@ -588,6 +588,7 @@ def main(argv: list[str] | None = None) -> int:
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "log_path": str(log_file_path.resolve()),
                 "manifest_path": str(manifest_path.resolve()),
+                "repeat": repeat,
             }
             _atomic_write_text(pid_file, f"{os.getpid()}\n")
             _atomic_write_text(
