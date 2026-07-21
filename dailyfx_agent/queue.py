@@ -47,6 +47,16 @@ def _read_owner(root: Path) -> dict | None:
     return None
 
 
+def _recover_running(root: Path) -> None:
+    running = root / "running"
+    pending = root / "pending"
+    if not running.exists():
+        return
+    pending.mkdir(exist_ok=True)
+    for path in sorted(running.glob("*.json")):
+        os.replace(path, pending / path.name)
+
+
 def enqueue_or_claim(target: str, argv: list[str]) -> tuple[str, bool, int, int | None]:
     """Persist a job and claim the target worker if no live owner exists."""
     job_id = uuid.uuid4().hex
@@ -66,6 +76,8 @@ def enqueue_or_claim(target: str, argv: list[str]) -> tuple[str, bool, int, int 
         if owner:
             position = len(list(pending.glob("*.json")))
             return job_id, False, position, int(owner["pid"])
+
+        _recover_running(root)
 
         owner = {"pid": os.getpid(), "target": target, "job_id": job_id, "started_at": time.time()}
         owner_path = root / "owner.json"

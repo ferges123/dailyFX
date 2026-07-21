@@ -38,3 +38,15 @@ def test_stale_owner_is_replaced(tmp_path, monkeypatch):
 
     _, owner, _, _ = agent_queue.enqueue_or_claim("codex", ["--target", "codex"])
     assert owner is True
+
+
+def test_stale_running_job_is_requeued(tmp_path, monkeypatch):
+    monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
+    root = tmp_path / "queues" / "agy"
+    (root / "running").mkdir(parents=True)
+    stale = root / "running" / "1-stale.json"
+    stale.write_text(json.dumps({"job_id": "stale", "argv": []}), encoding="utf-8")
+
+    _, owner, _, _ = agent_queue.enqueue_or_claim("agy", ["--target", "agy"])
+    assert owner is True
+    assert (root / "pending" / stale.name).exists()
