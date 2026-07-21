@@ -1164,12 +1164,23 @@ def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
 def test_manifest_schema_validation(tmp_path):
     manifest_file = tmp_path / "invalid-manifest.json"
     manifest_file.write_text(
-        json.dumps({"task_id": "test", "task_trace": "invalid_string_instead_of_list"}), encoding="utf-8"
+        json.dumps(
+            {
+                "task_id": "test",
+                "output_path": "/tmp/output.png",
+                "task_trace": "invalid_string_instead_of_list",
+            }
+        ),
+        encoding="utf-8",
     )
 
     import pytest
 
     with pytest.raises(ValueError, match="field 'task_trace' must be a array"):
+        dailyfx_agent._load_manifest(manifest_file)
+
+    manifest_file.write_text(json.dumps({"output_path": "/tmp/output.png"}), encoding="utf-8")
+    with pytest.raises(ValueError, match="required field 'task_id'"):
         dailyfx_agent._load_manifest(manifest_file)
 
 
@@ -1890,6 +1901,7 @@ def test_schedule_target_execution_short_circuits(monkeypatch):
         "task_id": "test-task",
         "status": "COMPLETED",
         "image_path": "/data/test_output.png",
+        "output_path": "/data/test_output.png",
         "prompt": "some prompt",
         "handoff_prompt": "some handoff prompt",
     }

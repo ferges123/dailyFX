@@ -871,7 +871,15 @@ def main(argv: list[str] | None = None) -> int:
                     if isinstance(target_manifest, dict):
                         manifest = {**manifest, **target_manifest}
                 except Exception:
-                    pass
+                    # Host agents may intentionally write metadata-only updates.
+                    # Merge that partial JSON over the validated backend manifest;
+                    # schema validation still applies to the final merged payload.
+                    try:
+                        partial_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                        if isinstance(partial_manifest, dict):
+                            manifest = {**manifest, **partial_manifest}
+                    except (OSError, json.JSONDecodeError):
+                        pass
                 manifest = _recover_target_output(
                     target=args.target,
                     target_start_time=target_start_time,

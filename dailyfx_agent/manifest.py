@@ -94,6 +94,11 @@ def _validate_manifest_schema(manifest: object) -> None:
     if not isinstance(manifest, dict):
         raise ValueError("Manifest is not a JSON object")
 
+    for field in ("task_id", "output_path"):
+        value = manifest.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Manifest validation error: required field '{field}' is missing or empty")
+
     type_checks = {
         "task_id": (str, "string"),
         "status": (str, "string"),
