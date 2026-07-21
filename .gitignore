@@ -29,6 +29,9 @@ data/*.log
 data/backups/*
 data/scheduler.health
 data/*.pid
+data/*.pid.json
+data/agent-queues/
+data/locks/
 data/dailyfx-run*.json
 !data/results/.gitkeep
 cache/
@@ -52,3 +55,6 @@ data/*.bak
 # E2E test reports and results
 frontend/playwright-report/
 frontend/test-results/
+
+# Locally generated filter showcase fixtures
+tests/filter-showcase/
