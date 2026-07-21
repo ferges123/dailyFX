@@ -3,6 +3,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from dailyfx_agent.config import (
+    _RECOVERY_DIR_BUFFER_SECONDS,
+    _RECOVERY_FILE_BUFFER_SECONDS,
+)
 from dailyfx_agent.utils import _get_pkg_attr, _print_note
 
 
@@ -22,7 +26,7 @@ def _find_latest_image(
             if path.is_dir():
                 try:
                     name_matches = task_id.lower() in path.name.lower()
-                    is_recent = path.stat().st_mtime >= start_time - 10.0
+                    is_recent = path.stat().st_mtime >= start_time - _RECOVERY_DIR_BUFFER_SECONDS
                     if name_matches or is_recent:
                         search_dirs.append(path)
                 except OSError:
@@ -31,7 +35,8 @@ def _find_latest_image(
         return None
 
     candidates: list[Path] = []
-    buffer_time = start_time - 300.0  # 5-minute safety window
+    dir_cutoff = start_time - _RECOVERY_DIR_BUFFER_SECONDS
+    file_cutoff = start_time - _RECOVERY_FILE_BUFFER_SECONDS
 
     for search_dir in search_dirs:
         try:
@@ -42,19 +47,19 @@ def _find_latest_image(
                         if "input" in name_lower or "original" in name_lower:
                             continue
                         if path.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
-                            if path.stat().st_mtime >= start_time - 10.0:
+                            if path.stat().st_mtime >= file_cutoff:
                                 candidates.append(path)
                     elif path.is_dir():
                         dir_mtime = path.stat().st_mtime
                         name_matches = task_id.lower() in path.name.lower()
-                        if dir_mtime >= buffer_time or name_matches:
+                        if dir_mtime >= dir_cutoff or name_matches:
                             for subpath in path.iterdir():
                                 if subpath.is_file():
                                     subname_lower = subpath.name.lower()
                                     if "input" in subname_lower or "original" in subname_lower:
                                         continue
                                     if subpath.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg"}:
-                                        if subpath.stat().st_mtime >= start_time - 10.0:
+                                        if subpath.stat().st_mtime >= file_cutoff:
                                             candidates.append(subpath)
                 except OSError:
                     continue

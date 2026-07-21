@@ -28,6 +28,8 @@ from dailyfx_agent.config import (
     AGENT_QUEUE_DIR,
     IS_TESTING,
     LOCKS_DIR,
+    _RECOVERY_DIR_BUFFER_SECONDS,
+    _RECOVERY_FILE_BUFFER_SECONDS,
     _DAEMON_STARTUP_TIMEOUT,
 )
 from dailyfx_agent.daemon import (
@@ -116,6 +118,8 @@ __all__ = [
     "Path",
     "LOCKS_DIR",
     "AGENT_QUEUE_DIR",
+    "_RECOVERY_DIR_BUFFER_SECONDS",
+    "_RECOVERY_FILE_BUFFER_SECONDS",
     "_DAEMON_STARTUP_TIMEOUT",
     "IS_TESTING",
     "HOST_METADATA_SOURCE",

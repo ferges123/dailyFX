@@ -236,5 +236,5 @@ def _get_agent_version() -> str:
     except Exception:
         pass
 
-    # 4. Fallback default
-    return "0.5.0"
+    # 4. Fallback default: keep this aligned with backend/pyproject.toml.
+    return "0.10.1"

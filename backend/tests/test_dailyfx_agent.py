@@ -1264,6 +1264,27 @@ def test_find_latest_image_prioritizes_task_id(tmp_path, capsys):
     assert "another_task" in captured.err
 
 
+def test_find_latest_image_accepts_nested_directory_with_five_minute_buffer(tmp_path):
+    generated_root = tmp_path / "gen"
+    session_dir = generated_root / "session-1"
+    nested_dir = session_dir / "render-run"
+    nested_dir.mkdir(parents=True)
+    now = time.time()
+    os.utime(session_dir, (now, now))
+    os.utime(nested_dir, (now - 60, now - 60))
+    image_path = nested_dir / "render-output.png"
+    image_path.write_bytes(b"generated")
+    os.utime(image_path, (now, now))
+
+    recovered = dailyfx_agent._find_latest_image(
+        start_time=now,
+        generated_root=generated_root,
+        task_id="missing-task",
+    )
+
+    assert recovered == image_path
+
+
 def test_daemon_status_and_stop(tmp_path, capsys):
     pid_file = tmp_path / "test.pid"
     metadata_file = tmp_path / "test.pid.json"

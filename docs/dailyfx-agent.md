@@ -130,7 +130,7 @@ Depending on the selected target, the script checks:
 1. The script lists files in the directory.
 2. It filters out files that contain words like `"input"` or `"original"`.
 3. It filters for image extensions: `.png`, `.webp`, `.jpg`, `.jpeg`.
-4. It only considers files created/modified after the target tool's launch timestamp (with a 10-second safety buffer).
+4. It considers image files created/modified after the target tool's launch timestamp with a 10-second safety buffer. Directory discovery uses a separate 5-minute buffer so slow agents can finish inside older session folders.
 5. It prefers candidates whose filename or parent directory contains the current `task_id`.
 6. If no task-specific candidate exists, it falls back to the **most recently modified** image and prints a warning.
 7. The script copies this recovered image to the final `output_path`, records the source path as `recovered_from` in the JSON status payload and manifest `config_json`, then proceeds to finalize. If no candidate is found, it reports a missing output file error.
@@ -198,7 +198,7 @@ You can manage the running daemon process using these flags:
 The `dailyfx-agent` resolves its version dynamically to stay aligned with the backend application:
 1. It tries to dynamically import the backend package version (`app.version.APP_VERSION`).
 2. If the import fails, it parses the `pyproject.toml` configuration file under the `backend/` directory.
-3. In case both fail, it falls back to using `importlib.metadata` or a default version identifier (e.g. `"0.4.1"`).
+3. In case both fail, it falls back to using `importlib.metadata` or the backend-aligned default version identifier (`"0.10.1"`).
 
 This resolved version is used during Codex MCP initialization as the client version (under `clientInfo.version`).
 
