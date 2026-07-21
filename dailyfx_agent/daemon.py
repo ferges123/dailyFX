@@ -7,15 +7,14 @@ import signal
 import time
 from pathlib import Path
 
+from dailyfx_agent.config import AGENT_QUEUE_DIR
+
 
 def _get_pid_file_path(args: argparse.Namespace) -> Path:
     if args.pid_file:
         return Path(args.pid_file)
     target_str = args.target if args.target else "default"
-    sched_str = (
-        f"s{args.schedule_id}" if args.schedule_id is not None else "default"
-    )
-    return Path("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
+    return Path("data") / f"dailyfx-agent-{target_str}.pid"
 
 
 def _show_single_status(pid_file: Path) -> int:
@@ -62,6 +61,10 @@ def _show_single_status(pid_file: Path) -> int:
         print(f"log_path: {metadata['log_path']}")
     if "manifest_path" in metadata:
         print(f"manifest_path: {metadata['manifest_path']}")
+    target = str(metadata.get("target") or "")
+    if target in {"agy", "codex"}:
+        pending_dir = AGENT_QUEUE_DIR / target / "pending"
+        print(f"queue_depth: {len(list(pending_dir.glob('*.json'))) if pending_dir.exists() else 0}")
 
     return 0
 

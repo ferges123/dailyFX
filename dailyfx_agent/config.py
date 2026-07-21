@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 LOCKS_DIR = Path("data") / "locks"
+AGENT_QUEUE_DIR = Path("data") / "agent-queues"
 _DAEMON_STARTUP_TIMEOUT = 10.0
 IS_TESTING = "pytest" in sys.modules or "py.test" in sys.modules
 

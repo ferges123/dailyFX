@@ -29,6 +29,7 @@ from dailyfx_agent.config import _DAEMON_STARTUP_TIMEOUT, _LIST_SCHEDULES_TIMEOU
 from dailyfx_agent.daemon import _handle_status, _handle_stop
 from dailyfx_agent.doctor import _handle_clean_manifests, _handle_doctor
 from dailyfx_agent.locks import _acquire_lock, _release_lock, _update_lock_for_daemon_child
+from dailyfx_agent.queue import claim_job, enqueue_or_claim, finish_job, next_job, release_owner, update_owner_pid
 from dailyfx_agent.manifest import (
     _augment_host_prompt,
     _load_manifest,
@@ -458,6 +459,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.stop:
         return _handle_stop(args)
 
+    queue_target = args.target if args.target in {"agy", "codex"} else None
+    queue_owner = False
+    queue_job_id = None
+    if queue_target and not args._queue_worker and not args.dry_run:
+        queue_job_id, queue_owner, position, owner_pid = enqueue_or_claim(
+            queue_target, list(effective_argv)
+        )
+        if not queue_owner:
+            print(
+                f"queued: target={queue_target} job={queue_job_id} "
+                f"position={position} worker_pid={owner_pid}"
+            )
+            return 0
+        claim_job(queue_target, queue_job_id)
+
     if args.dry_run:
         target_preview = _target_prefix(args.target, args.model)
         _print_command("backend", backend_command)
@@ -503,7 +519,7 @@ def main(argv: list[str] | None = None) -> int:
     last_exit = 0
     pid_file = None
 
-    if args.schedule_id is not None and args.target is not None:
+    if args.schedule_id is not None and args.target == "schedule":
         try:
             fn_acquire_lock(args.schedule_id, args.target)
         except RuntimeError as exc:
@@ -515,10 +531,7 @@ def main(argv: list[str] | None = None) -> int:
             pid_file = path_cls(args.pid_file)
         else:
             target_str = args.target if args.target else "default"
-            sched_str = (
-                f"s{args.schedule_id}" if args.schedule_id is not None else "default"
-            )
-            pid_file = path_cls("data") / f"dailyfx-agent-{sched_str}-{target_str}.pid"
+            pid_file = path_cls("data") / f"dailyfx-agent-{target_str}.pid"
         pid_file.parent.mkdir(parents=True, exist_ok=True)
 
         log_file_path = path_cls("data") / "logs" / "agent" / f"{pid_file.stem}.log"
@@ -549,14 +562,16 @@ def main(argv: list[str] | None = None) -> int:
                     pass
                 pid_file.unlink(missing_ok=True)
                 pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
-                if args.schedule_id is not None and args.target is not None:
+                if args.schedule_id is not None and args.target == "schedule":
                     fn_release_lock(args.schedule_id, args.target)
                 sys.stderr.write("Error: daemon failed to start\n")
                 return 1
 
             non_local_lock_release = True
-            if args.schedule_id is not None and args.target is not None:
+            if args.schedule_id is not None and args.target == "schedule":
                 fn_update_lock_daemon(args.schedule_id, args.target, pid)
+            if queue_owner and queue_target:
+                update_owner_pid(queue_target, pid)
 
             print(f"daemon started: pid={pid} pidfile={pid_file}")
             return 0
@@ -965,12 +980,32 @@ def main(argv: list[str] | None = None) -> int:
         if args.daemon and pid_file:
             pid_file.unlink(missing_ok=True)
             pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
-        if args.schedule_id is not None and args.target is not None:
+        if queue_owner and queue_target and queue_job_id:
+            running_dir = path_cls("data") / "agent-queues" / queue_target / "running"
+            for path in running_dir.glob(f"*-{queue_job_id}.json"):
+                finish_job(path)
+        if args.schedule_id is not None and args.target == "schedule":
             if not locals().get("non_local_lock_release", False):
                 fn_release_lock(args.schedule_id, args.target)
         if status_data.get("task_id"):
             _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
         if "args" in locals() and getattr(args, "json_status", False):
             print(json.dumps(status_data, ensure_ascii=False, indent=2))
+
+    if queue_owner and queue_target:
+        while True:
+            pending = next_job(queue_target)
+            if pending is None:
+                release_owner(queue_target)
+                break
+            payload, running_path = pending
+            try:
+                job_argv = [
+                    item for item in payload.get("argv", [])
+                    if item not in {"--daemon", "-d", "--_queue-worker"}
+                ]
+                main(job_argv + ["--_queue-worker"])
+            finally:
+                finish_job(running_path)
 
     return last_exit

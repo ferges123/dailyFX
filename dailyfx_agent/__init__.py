@@ -25,6 +25,7 @@ from dailyfx_agent.cli import (
     _validate_command_templates,
 )
 from dailyfx_agent.config import (
+    AGENT_QUEUE_DIR,
     IS_TESTING,
     LOCKS_DIR,
     _DAEMON_STARTUP_TIMEOUT,
@@ -114,6 +115,7 @@ __all__ = [
     "uuid",
     "Path",
     "LOCKS_DIR",
+    "AGENT_QUEUE_DIR",
     "_DAEMON_STARTUP_TIMEOUT",
     "IS_TESTING",
     "HOST_METADATA_SOURCE",

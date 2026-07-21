@@ -66,7 +66,7 @@ Execute the agent from the project root:
 | `--timeout` | `int` | `600` | Timeout in seconds for the target tool execution. |
 | `-x, --repeat` | `int` | `1` | Number of times to repeat the execution task. |
 | `-d, --daemon` | `flag` | `False` | Run in background (detached daemon mode). Writes PID and exits immediately. |
-| `--pid-file` | `str` | `None` | Path to write the daemon PID file. Defaults to `data/dailyfx-agent-{sched_str}-{target_str}.pid`. |
+| `--pid-file` | `str` | `None` | Path to write the daemon PID file. Defaults to `data/dailyfx-agent-{target}.pid`. |
 | `--status` | `flag` | `False` | Check the status of the daemon process. |
 | `--stop` | `flag` | `False` | Stop the running daemon process. |
 | `--doctor` | `flag` | `False` | Run environment diagnostics and verify dailyfx-agent setup. |
@@ -181,11 +181,12 @@ If validation fails, finalization is skipped and the run stops at the `output va
 For background execution, specify the `-d` or `--daemon` flag.
 - The process forks using `os.fork()`.
 - The parent log of the daemon process is redirected to a dedicated log file under `data/logs/agent/` instead of `/dev/null`.
-- The child process's PID is printed to the shell and saved to a PID file (e.g. `data/dailyfx-agent-{sched_str}-{target_str}.pid`).
+- The child process's PID is printed to the shell and saved to a target PID file (e.g. `data/dailyfx-agent-agy.pid`).
 - A JSON metadata file is created alongside it at `{pid_file}.json`, recording: `pid`, `schedule_id`, `target`, `started_at`, `log_path`, and `manifest_path`.
 - The run lock records `parent_pid`, `child_pid`, and `owner_role` so daemon runs are associated with the child process rather than the short-lived parent.
 - The spinner is automatically bypassed in daemon mode.
 - The PID and metadata files are cleaned up when execution finishes.
+- There is at most one worker per host target (`agy` and `codex`). A second invocation for an active target is persisted in `data/agent-queues/<target>/pending/` and returns `queued` without starting another target process. The worker drains pending jobs in FIFO order. Target PID files therefore use `data/dailyfx-agent-agy.pid` and `data/dailyfx-agent-codex.pid`.
 
 ### Process Status and Stopping
 You can manage the running daemon process using these flags:

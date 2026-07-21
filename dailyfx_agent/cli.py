@@ -113,7 +113,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pid-file",
         default=None,
-        help="Path to write the daemon PID file (default: data/dailyfx-agent.pid)",
+        help="Path to write the daemon PID file (default: data/dailyfx-agent-{target}.pid)",
     )
     parser.add_argument(
         "--status",
@@ -145,6 +145,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Output execution diagnostics and status formatted as JSON on exit",
     )
+    parser.add_argument("--_queue-worker", action="store_true", help=argparse.SUPPRESS)
     return parser
 
 
