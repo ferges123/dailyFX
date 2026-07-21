@@ -74,7 +74,20 @@ def _task_stage_label(stage: str) -> str:
         return "[done]"
     if normalized in {"failed", "error"}:
         return "[fail]"
-    return f"[{normalized[:5] or 'task'}]"
+    return f"[{normalized[:20] or 'task'}]"
+
+
+def _cleanup_manifest_files(args: object, *manifest_paths: object) -> None:
+    if getattr(args, "keep_manifest", False):
+        return
+    explicit_path = getattr(args, "manifest_path", None)
+    seen: set[Path] = set()
+    for candidate in manifest_paths:
+        if not isinstance(candidate, Path) or candidate in seen:
+            continue
+        seen.add(candidate)
+        if not explicit_path or candidate.name.startswith("dailyfx-run-"):
+            candidate.unlink(missing_ok=True)
 
 
 def _task_trace_labels(task_trace: object, limit: int = 5) -> list[str]:
@@ -538,7 +551,13 @@ def main(argv: list[str] | None = None) -> int:
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         startup_read_fd, startup_write_fd = os.pipe()
-        pid = os.fork()
+        try:
+            pid = os.fork()
+        except BaseException:
+            os.close(startup_read_fd)
+            os.close(startup_write_fd)
+            _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+            raise
         if pid > 0:
             os.close(startup_write_fd)
             startup_ok = False
@@ -562,6 +581,7 @@ def main(argv: list[str] | None = None) -> int:
                     pass
                 pid_file.unlink(missing_ok=True)
                 pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+                _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
                 if args.schedule_id is not None and args.target == "schedule":
                     fn_release_lock(args.schedule_id, args.target)
                 sys.stderr.write("Error: daemon failed to start\n")
@@ -602,6 +622,7 @@ def main(argv: list[str] | None = None) -> int:
         except BaseException:
             pid_file.unlink(missing_ok=True)
             pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+            _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
             try:
                 os.write(startup_write_fd, b"0")
             except OSError:
@@ -969,15 +990,11 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"log: {target_log_path}")
 
     finally:
-        if not args.keep_manifest:
-            if "manifest_path" in locals() and manifest_path:
-                if not args.manifest_path or manifest_path.name.startswith("dailyfx-run-"):
-                    manifest_path.unlink(missing_ok=True)
-            if (
-                "shared_manifest_path" in locals()
-                and shared_manifest_path != manifest_path
-            ):
-                shared_manifest_path.unlink(missing_ok=True)
+        _cleanup_manifest_files(
+            args,
+            locals().get("manifest_path"),
+            locals().get("shared_manifest_path"),
+        )
         if args.daemon and pid_file:
             pid_file.unlink(missing_ok=True)
             pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)

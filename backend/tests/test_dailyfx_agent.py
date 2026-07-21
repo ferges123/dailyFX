@@ -928,6 +928,20 @@ def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
     temp_files = list(tmp_path.glob("dailyfx-run-*.json"))
     assert len(temp_files) == 0
 
+
+def test_daemon_fork_failure_cleans_generated_manifest(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
+    monkeypatch.setattr(dailyfx_agent, "_acquire_lock", lambda *args: None)
+    monkeypatch.setattr(dailyfx_agent.os, "fork", lambda: (_ for _ in ()).throw(RuntimeError("fork failed")))
+
+    try:
+        dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "schedule"])
+    except RuntimeError as exc:
+        assert str(exc) == "fork failed"
+
+    assert list((tmp_path / "data").glob("dailyfx-run-*.json")) == []
+
     shared_temp_files = list(Path("data").glob("dailyfx-run-*.json"))
     assert len(shared_temp_files) == 0
 
