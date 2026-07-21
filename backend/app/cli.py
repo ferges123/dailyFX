@@ -131,6 +131,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     host_finalize.add_argument("--manifest-path", type=str, required=True, help="Path to the host render manifest")
 
+    host_fail = subparsers.add_parser(
+        "fail-host",
+        help="Mark a host-run generation as failed after the host agent cannot finish it",
+    )
+    host_fail.add_argument("--task-id", type=str, required=True, help="Host generation task ID")
+    host_fail.add_argument("--error", type=str, required=True, help="Failure reason")
+
     return parser.parse_args(argv)
 
 
@@ -602,6 +609,28 @@ async def _finalize_host_render(manifest_path: Path) -> int:
         db.close()
 
 
+def _fail_host_render(task_id: str, error: str) -> int:
+    task_id = task_id.strip()
+    error = error.strip() or "Host agent failed"
+    if not task_id:
+        raise CLIError("Host failure did not include task_id")
+
+    init_db()
+    db = SessionLocal()
+    try:
+        update_task(db, task_id, status="failed", step="failed", progress=0.0, error=error)
+        upsert_history_entry(
+            db,
+            task_id,
+            status="FAILED",
+            task_step="failed",
+            summary=f"Host generation failed: {error}",
+        )
+        return 0
+    finally:
+        db.close()
+
+
 async def _generate(schedule_id: int, task_id: str | None) -> HandoffManifest:
     from app.models.generation_task import GenerationTaskModel
 
@@ -722,6 +751,9 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "finalize-host":
             return asyncio.run(_finalize_host_render(Path(args.manifest_path)))
+
+        if args.command == "fail-host":
+            return _fail_host_render(args.task_id, args.error)
 
         if args.command == "generate":
             manifest = asyncio.run(_generate(args.schedule_id, args.task_id))

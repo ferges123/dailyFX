@@ -198,6 +198,77 @@ def _copy_task_artifact(task_id: str, source: Path, name: str) -> Path | None:
         return None
 
 
+def _recover_target_output(
+    *,
+    target: str,
+    target_start_time: float,
+    task_id: str,
+    output_file: Path,
+    manifest: dict[str, object],
+    status_data: dict[str, object],
+    notes_to_stderr: bool,
+) -> dict[str, object]:
+    if output_file.exists():
+        return manifest
+
+    status_data["stage"] = "recovery"
+    status_data["recovery_attempted"] = True
+    if target == "codex":
+        find_image = _get_pkg_attr("_find_latest_codex_image", _find_latest_codex_image)
+        generated_image = find_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
+        missing_message = (
+            f"codex finished without creating {output_file} or a new image under ~/.codex/generated_images"
+        )
+    else:
+        find_image = _get_pkg_attr("_find_latest_agy_image", _find_latest_agy_image)
+        generated_image = find_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
+        missing_message = (
+            f"agy finished without creating {output_file} or a new image under ~/.gemini/antigravity-cli/brain"
+        )
+
+    if generated_image is None:
+        raise RuntimeError(missing_message)
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_bytes(generated_image.read_bytes())
+    recovered_from = str(generated_image.resolve())
+    status_data["recovered_from"] = recovered_from
+    config_json = manifest.get("config_json")
+    if not isinstance(config_json, dict):
+        config_json = {}
+    manifest["config_json"] = {**config_json, "recovered_from": recovered_from}
+    return manifest
+
+
+def _mark_host_task_failed(subprocess_module, args, task_id: str, error: str) -> None:
+    command = [
+        "docker",
+        "compose",
+        "-f",
+        args.compose_file,
+        "exec",
+        "-T",
+        args.service,
+        "dailyfx",
+        "fail-host",
+        "--task-id",
+        task_id,
+        "--error",
+        error[:2000],
+    ]
+    try:
+        subprocess_module.run(
+            command,
+            cwd=args.project_dir,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=min(args.timeout, 30),
+        )
+    except Exception:
+        pass
+
+
 def _run_target_with_spinner(
     command: list[str],
     *,
@@ -616,15 +687,22 @@ def main(argv: list[str] | None = None) -> int:
                 _print_manifest(manifest)
 
             task_id = str(manifest.get("task_id") or "").strip() or "target"
+            original_manifest = dict(manifest)
             status_data["task_id"] = task_id
             artifact_dir = _task_artifact_dir(task_id)
             status_data["artifact_dir"] = str(artifact_dir.resolve())
+
+            def mark_host_failed(error: str) -> None:
+                if task_id != "target" and args.target in {"agy", "codex"}:
+                    _mark_host_task_failed(sub, args, task_id, error)
+
             _write_task_json_artifact(task_id, "manifest.before.json", manifest)
             prompt = str(
                 manifest.get("prompt") or manifest.get("handoff_prompt") or ""
             ).strip()
             if not prompt:
                 status_data["error"] = "Backend manifest did not include prompt"
+                mark_host_failed(status_data["error"])
                 last_exit = 1
                 sys.stderr.write("Backend manifest did not include prompt\n")
                 continue
@@ -652,12 +730,14 @@ def main(argv: list[str] | None = None) -> int:
                     image_path = _container_to_host_image_path(image_path)
             except ValueError as exc:
                 status_data["error"] = str(exc)
+                mark_host_failed(str(exc))
                 sys.stderr.write(f"{exc}\n")
                 last_exit = 1
                 continue
 
             if not image_path:
                 status_data["error"] = "Backend manifest did not include source_image_path"
+                mark_host_failed(status_data["error"])
                 sys.stderr.write("Backend manifest did not include source_image_path\n")
                 last_exit = 1
                 continue
@@ -672,12 +752,14 @@ def main(argv: list[str] | None = None) -> int:
                     output_path = _container_to_host_image_path(output_path)
                 except ValueError as exc:
                     status_data["error"] = str(exc)
+                    mark_host_failed(str(exc))
                     sys.stderr.write(f"{exc}\n")
                     last_exit = 1
                     continue
 
             if not output_path:
                 status_data["error"] = "Backend manifest did not include output_path"
+                mark_host_failed(status_data["error"])
                 sys.stderr.write("Backend manifest did not include output_path\n")
                 last_exit = 1
                 continue
@@ -728,8 +810,12 @@ def main(argv: list[str] | None = None) -> int:
                 if target_run.returncode != 0:
                     err_msg = (target_run.stderr or target_run.stdout or f"exit code {target_run.returncode}").strip()
                     raise RuntimeError(f"Target tool '{args.target}' failed: {err_msg}")
+                target_text = f"{target_run.stdout or ''}\n{target_run.stderr or ''}"
+                if re.search(r"soft-denying|auto-denied|command permission", target_text, re.IGNORECASE):
+                    raise RuntimeError(f"Target tool '{args.target}' denied a command permission: {target_text.strip()}")
             except Exception as e:
                 status_data["error"] = str(e)
+                mark_host_failed(str(e))
                 last_exit = 1
                 if args.debug:
                     import traceback
@@ -739,10 +825,45 @@ def main(argv: list[str] | None = None) -> int:
                 continue
 
             # 4. METADATA VALIDATION STAGE
+            output_file = path_cls(output_path)
+            if not output_file.is_absolute():
+                output_file = project_dir / output_file
+            try:
+                try:
+                    target_manifest = fn_load_manifest(manifest_path)
+                    if isinstance(target_manifest, dict):
+                        manifest = {**manifest, **target_manifest}
+                except Exception:
+                    pass
+                manifest = _recover_target_output(
+                    target=args.target,
+                    target_start_time=target_start_time,
+                    task_id=task_id,
+                    output_file=output_file,
+                    manifest=manifest,
+                    status_data=status_data,
+                    notes_to_stderr=args.json_status,
+                )
+                if status_data.get("recovered_from"):
+                    manifest_path.write_text(
+                        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+            except Exception as e:
+                status_data["error"] = str(e)
+                mark_host_failed(str(e))
+                last_exit = 1
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    sys.stderr.write(f"Image recovery failed: {e}\n")
+                continue
+
             status_data["stage"] = "metadata validation"
             try:
                 updated_manifest = fn_normalize_manifest(
-                    fn_load_manifest(manifest_path), manifest
+                    fn_load_manifest(manifest_path), original_manifest
                 )
                 manifest_path.write_text(
                     json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
@@ -751,6 +872,7 @@ def main(argv: list[str] | None = None) -> int:
                 _write_task_json_artifact(task_id, "manifest.after.json", updated_manifest)
             except Exception as e:
                 status_data["error"] = str(e)
+                mark_host_failed(str(e))
                 last_exit = 1
                 if args.debug:
                     import traceback
@@ -759,68 +881,13 @@ def main(argv: list[str] | None = None) -> int:
                     sys.stderr.write(f"Metadata validation failed: {e}\n")
                 continue
 
-            output_file = path_cls(output_path)
-            if not output_file.is_absolute():
-                output_file = project_dir / output_file
-            if not output_file.exists():
-                # 5. RECOVERY STAGE
-                status_data["stage"] = "recovery"
-                status_data["recovery_attempted"] = True
-                try:
-                    generated_image = None
-                    missing_message = None
-                    if args.target == "codex":
-                        find_codex = _get_pkg_attr("_find_latest_codex_image", _find_latest_codex_image)
-                        generated_image = find_codex(
-                            target_start_time,
-                            task_id=task_id,
-                            notes_to_stderr=args.json_status,
-                        )
-                        missing_message = f"codex finished without creating {output_path} or a new image under ~/.codex/generated_images"
-                    elif args.target == "agy":
-                        find_agy = _get_pkg_attr("_find_latest_agy_image", _find_latest_agy_image)
-                        generated_image = find_agy(
-                            target_start_time,
-                            task_id=task_id,
-                            notes_to_stderr=args.json_status,
-                        )
-                        missing_message = f"agy finished without creating {output_path} or a new image under ~/.gemini/antigravity-cli/brain"
-
-                    if generated_image is not None:
-                        output_file.parent.mkdir(parents=True, exist_ok=True)
-                        output_file.write_bytes(generated_image.read_bytes())
-                        recovered_from = str(generated_image.resolve())
-                        status_data["recovered_from"] = recovered_from
-                        updated_manifest_config = updated_manifest.get("config_json")
-                        if not isinstance(updated_manifest_config, dict):
-                            updated_manifest_config = {}
-                        updated_manifest["config_json"] = {
-                            **updated_manifest_config,
-                            "recovered_from": recovered_from,
-                        }
-                        manifest_path.write_text(
-                            json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
-                            encoding="utf-8",
-                        )
-                        _write_task_json_artifact(task_id, "manifest.after.json", updated_manifest)
-                    else:
-                        raise RuntimeError(missing_message)
-                except Exception as e:
-                    status_data["error"] = str(e)
-                    last_exit = 1
-                    if args.debug:
-                        import traceback
-                        traceback.print_exc()
-                    else:
-                        sys.stderr.write(f"Image recovery failed: {e}\n")
-                    continue
-
             try:
                 output_details = _validate_output_image(output_file)
                 status_data["output_image"] = output_details
             except Exception as e:
                 status_data["stage"] = "output validation"
                 status_data["error"] = str(e)
+                mark_host_failed(str(e))
                 last_exit = 1
                 if args.debug:
                     import traceback
@@ -870,6 +937,7 @@ def main(argv: list[str] | None = None) -> int:
                     raise RuntimeError(f"Finalize command failed: {err_msg}")
             except Exception as e:
                 status_data["error"] = str(e)
+                mark_host_failed(str(e))
                 last_exit = 1
                 if args.debug:
                     import traceback

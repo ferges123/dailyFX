@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.services.generation.engine import run_generation_cycle
+from app.services.generation.history import upsert_history_entry
 from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.generation.schedule_runs import build_scheduled_run_context
 from app.services.generation.task_flow import run_queued_generation_task
-from app.services.generation.tasks import ensure_task
+from app.services.generation.tasks import ensure_task, update_task
 from app.services.immich import get_or_create_settings
 
 _running_task_ids: set[str] = set()
@@ -265,10 +266,18 @@ def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
         )
         if stuck_history:
             for task in stuck_history:
-                task.status = "FAILED"
-                task.error = "Task timed out (stuck in RUNNING for more than 15 minutes)"
+                error = "Task timed out (stuck in RUNNING for more than 15 minutes)"
+                upsert_history_entry(
+                    session,
+                    task.task_id,
+                    status="FAILED",
+                    task_step="failed",
+                    summary=error,
+                )
+                # Keep the legacy in-memory error attribute for callers that inspect
+                # the queried row directly; the persisted diagnostic is in summary.
+                task.error = error
                 logger.warning("Reset stuck RUNNING task %s to FAILED (timed out)", task.task_id)
-            session.commit()
     except Exception as exc:
         logger.exception("Failed to reset stuck RUNNING history tasks: %s", exc)
         session.rollback()
@@ -283,10 +292,16 @@ def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
         )
         if stuck_tasks:
             for task in stuck_tasks:
-                task.status = "failed"
-                task.error = "Task timed out (stuck in running for more than 15 minutes)"
+                error = "Task timed out (stuck in running for more than 15 minutes)"
+                update_task(
+                    session,
+                    task.task_id,
+                    status="failed",
+                    step="failed",
+                    progress=0.0,
+                    error=error,
+                )
                 logger.warning("Reset stuck running queued task %s to failed (timed out)", task.task_id)
-            session.commit()
     except Exception as exc:
         logger.exception("Failed to reset stuck running queued tasks: %s", exc)
         session.rollback()

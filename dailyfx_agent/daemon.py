@@ -21,6 +21,7 @@ def _get_pid_file_path(args: argparse.Namespace) -> Path:
 def _show_single_status(pid_file: Path) -> int:
     if not pid_file.exists():
         print("status: stopped (no PID file)")
+        print("note: PID status covers only the host daemon; backend task status is separate")
         return 0
 
     try:
@@ -78,6 +79,7 @@ def _handle_status(args: argparse.Namespace) -> int:
     data_dir = Path("data")
     if not data_dir.is_dir():
         print("status: stopped (no PID file)")
+        print("note: PID status covers only the host daemon; backend task status is separate")
         return 0
 
     pid_files = [
@@ -87,6 +89,7 @@ def _handle_status(args: argparse.Namespace) -> int:
 
     if not pid_files:
         print("status: stopped (no PID file)")
+        print("note: PID status covers only the host daemon; backend task status is separate")
         return 0
 
     pid_files.sort()

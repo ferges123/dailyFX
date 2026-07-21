@@ -12,6 +12,7 @@ from _contract_helpers import configure_contract_test_db, make_effect_preset_row
 from app.cli import _to_iso_timestamp, main
 from app.database import SessionLocal, init_db
 from app.models.generation_history import GenerationHistoryModel
+from app.models.generation_task import GenerationTaskModel
 from app.models.notification_preset import NotificationPresetModel
 from app.models.people_preset import PeoplePresetModel
 from app.models.schedule import ScheduleModel
@@ -308,6 +309,46 @@ def test_host_render_paths_resolves_correctly():
     source_path, output_path = _host_render_paths("test-task-123")
     assert source_path.name == "test-task-123.input.png"
     assert output_path.name == "test-task-123.png"
+
+
+def test_dailyfx_cli_fail_host_marks_task_and_history_failed(capsys):
+    db, schedule = _setup_cli_db()
+    try:
+        from app.services.generation.history import upsert_history_entry
+        from app.services.generation.tasks import ensure_task
+        from app.cli import main as cli_main
+
+        task_id = "cli-s1-fail-host"
+        ensure_task(db, task_id, status="running", step="host_render_ready", schedule_id=schedule.id)
+        upsert_history_entry(
+            db,
+            task_id,
+            generation_type="ai_claymation",
+            status="RUNNING",
+            title="Host render",
+            summary="Generation is in progress",
+            source_asset_ids="[]",
+            task_step="host_render_ready",
+            schedule_id=schedule.id,
+        )
+
+        exit_code = cli_main(["fail-host", "--task-id", task_id, "--error", "command(cp) was denied"])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert captured.err == ""
+
+        db.expire_all()
+        task = db.get(GenerationTaskModel, task_id)
+        history = db.query(GenerationHistoryModel).filter_by(task_id=task_id).one()
+        assert task.status == "failed"
+        assert task.step == "failed"
+        assert task.error == "command(cp) was denied"
+        assert history.status == "FAILED"
+        assert history.task_step == "failed"
+        assert "command(cp) was denied" in history.summary
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
 
 
 def test_prepare_host_render_sets_failed_status_on_exception(monkeypatch):
