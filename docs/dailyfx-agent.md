@@ -198,7 +198,7 @@ You can manage the running daemon process using these flags:
 The `dailyfx-agent` resolves its version dynamically to stay aligned with the backend application:
 1. It tries to dynamically import the backend package version (`app.version.APP_VERSION`).
 2. If the import fails, it parses the `pyproject.toml` configuration file under the `backend/` directory.
-3. In case both fail, it falls back to using `importlib.metadata` or the backend-aligned default version identifier (`"0.10.1"`).
+3. In case both fail, it falls back to using `importlib.metadata` or the backend-aligned default version identifier (`"0.14.1"`).
 
 This resolved version is used during Codex MCP initialization as the client version (under `clientInfo.version`).
 
