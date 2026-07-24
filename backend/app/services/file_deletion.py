@@ -44,6 +44,7 @@ def queue_file_deletion(
         path=normalized_path,
         thumbnail_path=str(thumbnail_path.resolve()) if thumbnail_path else None,
         reason=reason,
+        next_attempt_at=datetime.now(timezone.utc),
     )
     db.add(job)
     return job

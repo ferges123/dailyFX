@@ -262,7 +262,7 @@ def execute_retention(
 
     from app.services.file_deletion import process_file_deletion_jobs
 
-    deleted_jobs, failed_jobs = process_file_deletion_jobs(db, data_dir=data_dir, now=now)
+    deleted_jobs, failed_jobs = process_file_deletion_jobs(db, data_dir=data_dir, now=None)
     if failed_jobs:
         logger.warning(
             "Retention queued %d file deletion jobs; %d failed and will retry",
