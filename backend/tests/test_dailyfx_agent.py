@@ -2198,3 +2198,42 @@ def test_pid_is_dailyfx_agent_multiprocessing_child(monkeypatch):
 
     assert _pid_is_dailyfx_agent(999999) is True
 
+
+def test_enqueue_or_claim_accumulates_repeats(tmp_path, monkeypatch):
+    from dailyfx_agent.queue import claim_job, enqueue_or_claim, queue_runs
+
+    monkeypatch.setattr("dailyfx_agent.queue.AGENT_QUEUE_DIR", tmp_path / "queues")
+
+    job_id1, is_owner1, pos1, pid1 = enqueue_or_claim("agy", ["-s", "10", "-x", "1"])
+    assert is_owner1 is True
+    claim_job("agy", job_id1)
+
+    job_id2, is_owner2, pos2, pid2 = enqueue_or_claim("agy", ["-s", "10", "-x", "2"])
+    assert is_owner2 is False
+
+    job_id3, is_owner3, pos3, pid3 = enqueue_or_claim("agy", ["-s", "10", "-x", "2"])
+    assert is_owner3 is False
+    assert job_id3 == job_id2
+    assert queue_runs("agy") == 5
+
+
+def test_queue_runs_tracks_running_job_remaining_iterations(tmp_path, monkeypatch):
+    from dailyfx_agent.queue import claim_job, enqueue_or_claim, queue_runs, update_running_job_progress
+
+    monkeypatch.setattr("dailyfx_agent.queue.AGENT_QUEUE_DIR", tmp_path / "queues")
+
+    job_id, is_owner, pos, pid = enqueue_or_claim("agy", ["-s", "10", "-x", "4"])
+    claim_job("agy", job_id)
+
+    assert queue_runs("agy") == 4
+
+    update_running_job_progress("agy", job_id, 1)
+    assert queue_runs("agy") == 3
+
+    update_running_job_progress("agy", job_id, 3)
+    assert queue_runs("agy") == 1
+
+    update_running_job_progress("agy", job_id, 4)
+    assert queue_runs("agy") == 0
+
+

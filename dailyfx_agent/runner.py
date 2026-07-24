@@ -27,7 +27,7 @@ from dailyfx_agent.config import _DAEMON_STARTUP_TIMEOUT, _LIST_SCHEDULES_TIMEOU
 from dailyfx_agent.daemon import _handle_status, _handle_stop, _process_start_time
 from dailyfx_agent.doctor import _handle_clean_manifests, _handle_doctor
 from dailyfx_agent.locks import _acquire_lock, _release_lock, _update_lock_for_daemon_child
-from dailyfx_agent.queue import claim_job, enqueue_or_claim, finish_job, next_job, release_owner, update_owner_pid
+from dailyfx_agent.queue import claim_job, enqueue_or_claim, finish_job, next_job, release_owner, update_owner_pid, update_running_job_progress
 from dailyfx_agent.manifest import (
     _augment_host_prompt,
     _load_manifest,
@@ -848,6 +848,8 @@ def _daemon_child_main_impl(
             args, backend_command, project_dir,
             manifest_path, shared_manifest_path, status_data,
         )
+        if queue_target and queue_job_id:
+            update_running_job_progress(queue_target, queue_job_id, run_index)
 
     if queue_owner and queue_target and queue_job_id:
         running_dir = Path("data") / "agent-queues" / queue_target / "running"
@@ -1040,6 +1042,8 @@ def main(argv: list[str] | None = None) -> int:
                 args, backend_command, project_dir,
                 manifest_path, shared_manifest_path, status_data,
             )
+            if queue_target and queue_job_id:
+                update_running_job_progress(queue_target, queue_job_id, run_index)
             if run_exit != 0:
                 last_exit = run_exit
     finally:

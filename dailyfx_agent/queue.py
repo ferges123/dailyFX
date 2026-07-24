@@ -102,6 +102,36 @@ def _schedule_id_from_argv(argv: list[object]) -> int | None:
     return None
 
 
+def _repeat_from_argv(argv: list[object]) -> int:
+    str_argv = [str(item) for item in argv]
+    for index, item in enumerate(str_argv):
+        if item in {"--repeat", "-x"} and index + 1 < len(str_argv):
+            try:
+                return max(1, int(str_argv[index + 1]))
+            except (TypeError, ValueError):
+                pass
+    return 1
+
+
+def _set_repeat_in_argv(argv: list[object], new_repeat: int) -> list[str]:
+    str_argv = [str(item) for item in argv]
+    found = False
+    new_argv = []
+    index = 0
+    while index < len(str_argv):
+        item = str_argv[index]
+        if item in {"--repeat", "-x"} and index + 1 < len(str_argv):
+            new_argv.extend([item, str(new_repeat)])
+            index += 2
+            found = True
+        else:
+            new_argv.append(item)
+            index += 1
+    if not found:
+        new_argv.extend(["-x", str(new_repeat)])
+    return new_argv
+
+
 def _deduplicate_pending(root: Path) -> None:
     """Keep the oldest pending job for each schedule to prevent retry storms."""
     pending = root / "pending"
@@ -144,6 +174,19 @@ def enqueue_or_claim(target: str, argv: list[str]) -> tuple[str, bool, int, int 
                     existing_job_id = str(
                         payload.get("job_id") or existing.stem.rsplit("-", 1)[-1]
                     )
+                    existing_repeat = _repeat_from_argv(existing_argv)
+                    new_repeat = _repeat_from_argv(argv)
+                    updated_repeat = existing_repeat + new_repeat
+                    payload["argv"] = _set_repeat_in_argv(existing_argv, updated_repeat)
+
+                    tmp_existing = existing.with_suffix(".tmp")
+                    tmp_existing.write_text(
+                        json.dumps(payload, ensure_ascii=False) + "\n",
+                        encoding="utf-8",
+                    )
+                    os.chmod(tmp_existing, 0o600)
+                    os.replace(tmp_existing, existing)
+
                     if owner:
                         return (
                             existing_job_id,
@@ -235,6 +278,20 @@ def update_owner_pid(target: str, pid: int) -> None:
             return
 
 
+def update_running_job_progress(target: str, job_id: str, completed_runs: int) -> None:
+    with _queue_lock(target) as root:
+        running = root / "running"
+        if not running.exists():
+            return
+        for path in running.glob(f"*-{job_id}.json"):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload["completed_runs"] = completed_runs
+                path.write_text(json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8")
+            except (OSError, ValueError, json.JSONDecodeError):
+                pass
+
+
 def queue_depth(target: str) -> int:
     with _queue_lock(target) as root:
         pending = root / "pending"
@@ -242,22 +299,28 @@ def queue_depth(target: str) -> int:
 
 
 def queue_runs(target: str) -> int:
-    """Return the number of repeat executions represented by pending jobs."""
+    """Return the number of repeat executions represented by pending and running jobs."""
     with _queue_lock(target) as root:
         pending = root / "pending"
+        running = root / "running"
         total = 0
-        if not pending.exists():
-            return 0
-        for path in pending.glob("*.json"):
-            try:
-                payload = json.loads(path.read_text(encoding="utf-8"))
-                argv = [str(item) for item in payload.get("argv", [])]
-                repeat = 1
-                for index, item in enumerate(argv):
-                    if item in {"--repeat", "-x"} and index + 1 < len(argv):
-                        repeat = max(1, int(argv[index + 1]))
-                        break
-                total += repeat
-            except (OSError, ValueError, TypeError, json.JSONDecodeError):
-                total += 1
+        if pending.exists():
+            for path in pending.glob("*.json"):
+                try:
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    argv = payload.get("argv", [])
+                    total += _repeat_from_argv(argv if isinstance(argv, list) else [])
+                except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                    total += 1
+        if running.exists():
+            for path in running.glob("*.json"):
+                try:
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    argv = payload.get("argv", [])
+                    total_repeat = _repeat_from_argv(argv if isinstance(argv, list) else [])
+                    completed = int(payload.get("completed_runs", 0))
+                    remaining = max(0, total_repeat - completed)
+                    total += remaining
+                except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                    pass
         return total
