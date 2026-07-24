@@ -894,6 +894,33 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch, tmp_path):
     assert 0 in fds
     assert 1 in fds
     assert 2 in fds
+    import stat
+    assert stat.S_IMODE(log_file.stat().st_mode) == 0o600
+
+
+def test_daemon_child_releases_lock_when_workflow_raises(monkeypatch):
+    import pytest
+
+    args = dailyfx_agent._build_parser().parse_args(
+        ["--schedule-id", "1", "--target", "agy"]
+    )
+    released = []
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("workflow failed")
+
+    monkeypatch.setattr("dailyfx_agent.runner._daemon_child_main_impl", fail)
+    monkeypatch.setattr(
+        "dailyfx_agent.runner._release_lock",
+        lambda schedule_id, target: released.append((schedule_id, target)),
+    )
+
+    from dailyfx_agent.runner import _daemon_child_main
+
+    with pytest.raises(RuntimeError, match="workflow failed"):
+        _daemon_child_main(args)
+
+    assert released == [(1, "agy")]
 
 
 def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
@@ -958,6 +985,41 @@ def test_daemon_fork_failure_cleans_generated_manifest(monkeypatch, tmp_path):
     assert len(shared_temp_files) == 0
 
 
+def test_daemon_startup_timeout_is_bounded(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("dailyfx_agent.runner._build_backend_command", lambda args: ["true"])
+    monkeypatch.setattr("dailyfx_agent.runner._acquire_lock", lambda *args: None)
+    monkeypatch.setattr("dailyfx_agent.runner._DAEMON_STARTUP_TIMEOUT", 0.01)
+
+    class FakeProcess:
+        pid = 123
+
+        def start(self):
+            return None
+
+        def terminate(self):
+            return None
+
+        def join(self, timeout=None):
+            return None
+
+    class FakeCtx:
+        @staticmethod
+        def Event():
+            return type("evt", (), {"wait": lambda self, timeout=None: False})()
+
+        @staticmethod
+        def Process(*args, **kwargs):
+            return FakeProcess()
+
+    monkeypatch.setattr("dailyfx_agent.runner.multiprocessing.get_context", lambda name: FakeCtx())
+    monkeypatch.setattr("dailyfx_agent.runner._release_lock", lambda *args: None)
+
+    assert dailyfx_agent.main(
+        ["--daemon", "--schedule-id", "1", "--target", "schedule"]
+    ) == 1
+
+
 def test_read_jsonrpc_message_without_queue_raises_runtime_error():
     import pytest
 
@@ -966,6 +1028,112 @@ def test_read_jsonrpc_message_without_queue_raises_runtime_error():
 
     with pytest.raises(RuntimeError, match="Stream does not have a response queue attached"):
         dailyfx_agent._read_jsonrpc_message(FakeStream())
+
+
+def test_jsonrpc_reader_and_request_round_trip():
+    import io
+    from types import SimpleNamespace
+
+    from dailyfx_agent.models import _JsonRpcReader, _mcp_request
+
+    reader = _JsonRpcReader()
+    reader.put(json.dumps({"id": 7, "result": {"models": []}}))
+    proc = SimpleNamespace(stdin=io.StringIO(), stdout=io.StringIO())
+
+    result = _mcp_request(proc, 7, "model/list", reader=reader)
+
+    assert result == {"models": []}
+    assert '"id": 7' in proc.stdin.getvalue()
+
+
+def test_mcp_request_without_deadline_has_a_finite_default():
+    import io
+    from types import SimpleNamespace
+
+    import pytest
+    from dailyfx_agent.models import _JsonRpcReader, _mcp_request
+
+    with pytest.raises(TimeoutError, match="timed out"):
+        _mcp_request(
+            SimpleNamespace(stdin=io.StringIO(), stdout=io.StringIO()),
+            1,
+            "model/list",
+            deadline=time.time() - 1,
+            reader=_JsonRpcReader(),
+        )
+
+
+def test_terminate_process_gracefully_kills_after_timeout():
+    import subprocess
+
+    from dailyfx_agent.utils import _terminate_process_gracefully
+
+    class FakeProcess:
+        def __init__(self):
+            self.terminated = False
+            self.killed = False
+            self.waits = 0
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1:
+                raise subprocess.TimeoutExpired("fake", timeout)
+
+        def kill(self):
+            self.killed = True
+
+    process = FakeProcess()
+    _terminate_process_gracefully(process, grace_seconds=0.01)
+
+    assert process.terminated is True
+    assert process.killed is True
+    assert process.waits == 2
+
+
+def test_validate_output_image_reports_missing_small_and_invalid_dimensions(tmp_path, monkeypatch):
+    import pytest
+    from dailyfx_agent.recovery import _validate_output_image
+
+    with pytest.raises(ValueError, match="does not exist"):
+        _validate_output_image(tmp_path / "missing.png")
+
+    small = tmp_path / "small.png"
+    small.write_bytes(b"x")
+    with pytest.raises(ValueError, match="too small"):
+        _validate_output_image(small, min_bytes=2)
+
+    invalid_dimensions = tmp_path / "invalid.png"
+    invalid_dimensions.write_bytes(b"image")
+
+    class FakeImage:
+        size = (0, 0)
+        format = "PNG"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def verify(self):
+            return None
+
+    monkeypatch.setattr("PIL.Image.open", lambda path: FakeImage())
+    with pytest.raises(ValueError, match="invalid dimensions"):
+        _validate_output_image(invalid_dimensions)
+
+
+def test_safe_task_id_preserves_uniqueness_after_truncation():
+    from dailyfx_agent.runner import _safe_task_id
+
+    first = _safe_task_id("x" * 121 + "a")
+    second = _safe_task_id("x" * 121 + "b")
+
+    assert len(first) == len(second) == 120
+    assert first != second
 
 
 def test_run_target_with_spinner_skips_spinner_in_daemon_mode(monkeypatch):
@@ -1324,6 +1492,8 @@ def test_find_latest_image_accepts_nested_directory_with_five_minute_buffer(tmp_
 
 
 def test_daemon_status_and_stop(tmp_path, capsys):
+    from dailyfx_agent.daemon import _process_start_time
+
     pid_file = tmp_path / "test.pid"
     metadata_file = tmp_path / "test.pid.json"
 
@@ -1368,6 +1538,7 @@ def test_daemon_status_and_stop(tmp_path, capsys):
         json.dumps(
             {
                 "pid": pid,
+                "process_start_time": _process_start_time(pid),
                 "schedule_id": 42,
                 "target": "agy",
                 "started_at": "2026-07-09T13:00:00Z",
@@ -1401,6 +1572,8 @@ def test_daemon_status_and_stop(tmp_path, capsys):
 
 
 def test_multiple_daemons_status_and_stop(tmp_path, monkeypatch, capsys):
+    from dailyfx_agent.daemon import _process_start_time
+
     # Change working directory to tmp_path to isolate data/ folder
     monkeypatch.chdir(tmp_path)
     data_dir = tmp_path / "data"
@@ -1418,6 +1591,7 @@ def test_multiple_daemons_status_and_stop(tmp_path, monkeypatch, capsys):
         json.dumps(
             {
                 "pid": pid,
+                "process_start_time": _process_start_time(pid),
                 "schedule_id": 3,
                 "target": "agy",
                 "started_at": "2026-07-10T23:34:00Z",

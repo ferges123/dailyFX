@@ -26,8 +26,14 @@ def _parse_agy_model_line(line: str) -> dict[str, str] | None:
     name = text
     if text.endswith(")") and "(" in text:
         open_index = text.rfind("(")
-        reasoning = text[open_index + 1 : -1].strip() or "-"
-        name = text[:open_index].strip()
+        candidate_reasoning = text[open_index + 1 : -1].strip()
+        known_reasoning = {"low", "medium", "high", "xhigh", "minimal", "standard"}
+        if candidate_reasoning and all(
+            token.strip().lower() in known_reasoning
+            for token in candidate_reasoning.split(",")
+        ):
+            reasoning = candidate_reasoning
+            name = text[:open_index].strip()
 
     if not name:
         return None
@@ -115,10 +121,13 @@ def _mcp_request(
         payload["params"] = params
     proc.stdin.write(json.dumps(payload) + "\n")
     proc.stdin.flush()
+    effective_deadline = deadline if deadline is not None else time.time() + 30.0
     while True:
-        if deadline is not None and time.time() >= deadline:
+        if time.time() >= effective_deadline:
             raise TimeoutError(f"MCP request {method!r} timed out")
-        message = reader.read_message()
+        message = reader.read_message(
+            timeout_seconds=max(0.01, min(10.0, effective_deadline - time.time()))
+        )
         if message.get("id") == request_id:
             if "error" in message:
                 raise RuntimeError(str(message["error"]))

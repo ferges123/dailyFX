@@ -7,8 +7,18 @@ import signal
 import time
 from pathlib import Path
 
-from dailyfx_agent.config import AGENT_QUEUE_DIR
-from dailyfx_agent.queue import queue_runs
+from dailyfx_agent.queue import queue_depth, queue_runs
+
+
+def _process_start_time(pid: int) -> int | None:
+    """Return Linux process start ticks, used to detect PID reuse."""
+    stat_path = Path(f"/proc/{pid}/stat")
+    try:
+        raw = stat_path.read_text(encoding="utf-8")
+        after_comm = raw.rsplit(")", 1)[1].split()
+        return int(after_comm[19])
+    except (FileNotFoundError, OSError, IndexError, ValueError):
+        return None
 
 
 def _get_pid_file_path(args: argparse.Namespace) -> Path:
@@ -66,8 +76,7 @@ def _show_single_status(pid_file: Path) -> int:
         print(f"repeat: {metadata['repeat']}")
     target = str(metadata.get("target") or "")
     if target in {"agy", "codex"}:
-        pending_dir = AGENT_QUEUE_DIR / target / "pending"
-        print(f"queue_depth: {len(list(pending_dir.glob('*.json'))) if pending_dir.exists() else 0}")
+        print(f"queue_depth: {queue_depth(target)}")
         print(f"queued_runs: {queue_runs(target)}")
 
     return 0
@@ -121,6 +130,24 @@ def _stop_single_daemon(pid_file: Path) -> int:
         print("status: stopped (invalid PID file)")
         return 0
 
+    metadata_file = pid_file.with_name(pid_file.name + ".json")
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        pid_file.unlink(missing_ok=True)
+        metadata_file.unlink(missing_ok=True)
+        print(f"daemon stopped: pid={pid}")
+        return 0
+    try:
+        metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        metadata = {}
+    expected_start = metadata.get("process_start_time")
+    actual_start = _process_start_time(pid)
+    if expected_start is None or actual_start is not None and int(expected_start) != actual_start:
+        print(f"warning: refusing to stop PID {pid}; daemon ownership could not be verified")
+        return 1
+
     killed = False
     try:
         os.kill(pid, signal.SIGTERM)
@@ -138,7 +165,6 @@ def _stop_single_daemon(pid_file: Path) -> int:
         killed = True
 
     pid_file.unlink(missing_ok=True)
-    metadata_file = pid_file.with_name(pid_file.name + ".json")
     metadata_file.unlink(missing_ok=True)
 
     print(f"daemon stopped: pid={pid}")

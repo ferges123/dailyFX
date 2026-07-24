@@ -16,10 +16,12 @@ def _atomic_write_text(path: Path, content: str, *, mode: int = 0o600) -> None:
     """Replace a small state file atomically, keeping it private."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    fd_owned = True
     temporary_path = Path(temporary_name)
     try:
         os.fchmod(fd, mode)
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            fd_owned = False
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
@@ -30,10 +32,11 @@ def _atomic_write_text(path: Path, content: str, *, mode: int = 0o600) -> None:
         finally:
             os.close(directory_fd)
     except BaseException:
-        try:
-            os.close(fd)
-        except OSError:
-            pass
+        if fd_owned:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
         temporary_path.unlink(missing_ok=True)
         raise
 
@@ -197,18 +200,8 @@ def _print_table(rows: list[dict[str, str]], columns: list[tuple[str, str]]) -> 
 
 
 def _get_agent_version() -> str:
-    # 1. Try dynamic import from backend app.version
-    try:
-        project_dir = Path(__file__).resolve().parents[1]
-        backend_dir = project_dir / "backend"
-        if backend_dir.is_dir() and str(backend_dir) not in sys.path:
-            sys.path.insert(0, str(backend_dir))
-        from app.version import APP_VERSION
-        return APP_VERSION
-    except Exception:
-        pass
-
-    # 2. Try parsing pyproject.toml directly
+    # Read the repository's backend version without importing an ``app`` package
+    # from an arbitrary sys.path entry.
     try:
         import tomllib
         pyproject_path = Path(__file__).resolve().parents[1] / "backend" / "pyproject.toml"
@@ -219,12 +212,11 @@ def _get_agent_version() -> str:
     except Exception:
         pass
 
-    # 3. Try importlib.metadata
+    # Fall back to an installed distribution when running outside the checkout.
     try:
         import importlib.metadata
         return importlib.metadata.version("dailyfx-backend")
     except Exception:
         pass
 
-    # 4. Fallback default: keep this aligned with backend/pyproject.toml.
-    return "0.15.0"
+    return "unknown"

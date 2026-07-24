@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,3 +57,41 @@ def test_stale_running_job_is_requeued(tmp_path, monkeypatch):
     _, owner, _, _ = agent_queue.enqueue_or_claim("agy", ["--target", "agy"])
     assert owner is True
     assert (root / "pending" / stale.name).exists()
+
+
+def test_owner_older_than_max_age_is_replaced(tmp_path, monkeypatch):
+    monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
+    root = tmp_path / "queues" / "agy"
+    root.mkdir(parents=True)
+    (root / "owner.json").write_text(
+        json.dumps(
+            {
+                "pid": agent_queue.os.getpid(),
+                "target": "agy",
+                "started_at": time.time() - agent_queue._OWNER_MAX_AGE_SECONDS - 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _, owner, _, _ = agent_queue.enqueue_or_claim("agy", ["--target", "agy"])
+
+    assert owner is True
+
+
+def test_owner_with_reused_non_agent_pid_is_replaced(tmp_path, monkeypatch):
+    monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
+    monkeypatch.setattr(agent_queue, "_pid_alive", lambda pid: True)
+    monkeypatch.setattr(agent_queue, "_pid_is_dailyfx_agent", lambda pid: False)
+    root = tmp_path / "queues" / "codex"
+    root.mkdir(parents=True)
+    (root / "owner.json").write_text(
+        json.dumps(
+            {"pid": 1234, "target": "codex", "started_at": time.time()}
+        ),
+        encoding="utf-8",
+    )
+
+    _, owner, _, _ = agent_queue.enqueue_or_claim("codex", ["--target", "codex"])
+
+    assert owner is True

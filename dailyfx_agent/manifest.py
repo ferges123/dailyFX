@@ -1,19 +1,32 @@
 from __future__ import annotations
 
 import json
+import importlib
+import importlib.util
 import sys
 from pathlib import Path
 
 _script_dir = Path(__file__).resolve().parents[1]
 _backend_dir = _script_dir / "backend"
-if _backend_dir.is_dir() and str(_backend_dir) not in sys.path:
-    sys.path.insert(0, str(_backend_dir))
+_host_manifest_path = _backend_dir / "app" / "services" / "generation" / "host_manifest.py"
+_host_manifest_module = sys.modules.get("app.services.generation.host_manifest")
+if _host_manifest_module is None and not _host_manifest_path.exists():
+    _host_manifest_module = importlib.import_module(
+        "app.services.generation.host_manifest"
+    )
+if _host_manifest_module is None:
+    _host_manifest_spec = importlib.util.spec_from_file_location(
+        "app.services.generation.host_manifest", _host_manifest_path
+    )
+    if _host_manifest_spec is None or _host_manifest_spec.loader is None:
+        raise ImportError(f"Unable to load host manifest validator: {_host_manifest_path}")
+    _host_manifest_module = importlib.util.module_from_spec(_host_manifest_spec)
+    sys.modules["app.services.generation.host_manifest"] = _host_manifest_module
+    _host_manifest_spec.loader.exec_module(_host_manifest_module)
 
-from app.services.generation.host_manifest import (
-    HOST_METADATA_SOURCE,
-    validate_and_normalize_host_manifest,
-    ManifestValidationError,
-)
+HOST_METADATA_SOURCE = _host_manifest_module.HOST_METADATA_SOURCE
+validate_and_normalize_host_manifest = _host_manifest_module.validate_and_normalize_host_manifest
+ManifestValidationError = _host_manifest_module.ManifestValidationError
 
 
 def _validate_manifest_schema(manifest: object) -> None:

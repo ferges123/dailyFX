@@ -42,6 +42,12 @@ def _handle_doctor(args: argparse.Namespace) -> int:
     def add_check(name: str, status: str, detail: str):
         checks.append((name, status, detail))
 
+    def replace_check(name: str, status: str, detail: str) -> None:
+        for index, (check_name, _, _) in enumerate(checks):
+            if check_name == name:
+                checks[index] = (name, status, detail)
+                return
+
     # 1. Docker Compose Config
     try:
         run = subprocess.run(
@@ -143,9 +149,8 @@ def _handle_doctor(args: argparse.Namespace) -> int:
 
     if not agy_path and not codex_path:
         has_errors = True
-        if len(checks) >= 2:
-            checks[-2] = ("target_agy_executable", "FAIL", "not found in PATH")
-            checks[-1] = ("target_codex_executable", "FAIL", "not found in PATH")
+        replace_check("target_agy_executable", "FAIL", "not found in PATH")
+        replace_check("target_codex_executable", "FAIL", "not found in PATH")
 
     # 6. Target models
     if agy_path:

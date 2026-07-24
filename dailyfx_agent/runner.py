@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import itertools
 import json
 import multiprocessing
@@ -23,7 +24,7 @@ from dailyfx_agent.cli import (
     _validate_command_templates,
 )
 from dailyfx_agent.config import _DAEMON_STARTUP_TIMEOUT, _LIST_SCHEDULES_TIMEOUT
-from dailyfx_agent.daemon import _handle_status, _handle_stop
+from dailyfx_agent.daemon import _handle_status, _handle_stop, _process_start_time
 from dailyfx_agent.doctor import _handle_clean_manifests, _handle_doctor
 from dailyfx_agent.locks import _acquire_lock, _release_lock, _update_lock_for_daemon_child
 from dailyfx_agent.queue import claim_job, enqueue_or_claim, finish_job, next_job, release_owner, update_owner_pid
@@ -162,12 +163,18 @@ def _write_target_log(
         ),
         encoding="utf-8",
     )
+    log_path.chmod(0o600)
     _rotate_target_logs(log_dir, keep=5)
     return log_path
 
 
 def _safe_task_id(task_id: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_.-]+", "_", task_id.strip() or "target")[:120]
+    original = task_id.strip() or "target"
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", original)
+    if len(safe) <= 120:
+        return safe
+    digest = hashlib.sha256(original.encode("utf-8")).hexdigest()[:12]
+    return f"{safe[:107]}-{digest}"
 
 
 def _task_artifact_dir(task_id: str) -> Path:
@@ -180,6 +187,7 @@ def _write_task_text_artifact(task_id: str, name: str, content: str) -> Path | N
         artifact_dir.mkdir(parents=True, exist_ok=True)
         path = artifact_dir / name
         path.write_text(content, encoding="utf-8")
+        path.chmod(0o600)
         return path
     except OSError:
         return None
@@ -191,6 +199,7 @@ def _write_task_json_artifact(task_id: str, name: str, payload: object) -> Path 
         artifact_dir.mkdir(parents=True, exist_ok=True)
         path = artifact_dir / name
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        path.chmod(0o600)
         return path
     except (OSError, TypeError):
         return None
@@ -273,7 +282,7 @@ def _mark_host_task_failed(subprocess_module, args, task_id: str, error: str) ->
         error[:2000],
     ]
     try:
-        subprocess_module.run(
+        result = subprocess_module.run(
             command,
             cwd=args.project_dir,
             check=False,
@@ -281,8 +290,13 @@ def _mark_host_task_failed(subprocess_module, args, task_id: str, error: str) ->
             capture_output=True,
             timeout=min(args.timeout, 30),
         )
-    except Exception:
-        pass
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "no output").strip()
+            sys.stderr.write(
+                f"warning: fail-host returned exit code {result.returncode} for task {task_id}: {detail}\n"
+            )
+    except Exception as exc:
+        sys.stderr.write(f"warning: fail-host reporting failed for task {task_id}: {exc}\n")
 
 
 def _run_target_with_spinner(
@@ -337,6 +351,8 @@ def _run_target_with_spinner(
     finally:
         stop_event.set()
         thread.join(timeout=1.0)
+        if thread.is_alive():
+            sys.stderr.write("warning: spinner thread did not stop within 1 second\n")
 
     log_path = fn_write_log(
         log_dir=log_dir,
@@ -757,7 +773,7 @@ def _run_workflow_iteration(
     return 0
 
 
-def _daemon_child_main(
+def _daemon_child_main_impl(
     args: argparse.Namespace,
     backend_command: list[str],
     project_dir_str: str,
@@ -784,7 +800,8 @@ def _daemon_child_main(
         os.umask(0o077)
         metadata_file = pid_file.with_name(pid_file.name + ".json")
         metadata = {
-            "pid": os.getpid(), "schedule_id": args.schedule_id,
+            "pid": os.getpid(), "process_start_time": _process_start_time(os.getpid()),
+            "schedule_id": args.schedule_id,
             "target": args.target, "started_at": datetime.now(timezone.utc).isoformat(),
             "log_path": str(log_file_path.resolve()),
             "manifest_path": str(manifest_path.resolve()), "repeat": repeat,
@@ -801,7 +818,8 @@ def _daemon_child_main(
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-        log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+        log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        os.fchmod(log_fd, 0o600)
         devnull = os.open(os.devnull, os.O_RDONLY)
         try:
             os.dup2(devnull, 0)
@@ -810,8 +828,12 @@ def _daemon_child_main(
         finally:
             os.close(devnull)
             os.close(log_fd)
-    except OSError:
-        pass
+    except OSError as exc:
+        sys.stderr.write(f"Error: daemon log redirection failed: {exc}\n")
+        pid_file.unlink(missing_ok=True)
+        pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+        _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+        return
 
     ready_event.set()
 
@@ -834,12 +856,20 @@ def _daemon_child_main(
         running_dir = Path("data") / "agent-queues" / queue_target / "running"
         for path in running_dir.glob(f"*-{queue_job_id}.json"):
             finish_job(path)
-    if args.schedule_id is not None:
-        _release_lock(args.schedule_id, args.target)
+        release_owner(queue_target, os.getpid())
     if status_data.get("task_id"):
         _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
     if getattr(args, "json_status", False):
         print(json.dumps(status_data, ensure_ascii=False, indent=2))
+
+
+def _daemon_child_main(*args, **kwargs) -> None:
+    daemon_args = args[0] if args else kwargs["args"]
+    try:
+        _daemon_child_main_impl(*args, **kwargs)
+    finally:
+        if daemon_args.schedule_id is not None:
+            _release_lock(daemon_args.schedule_id, daemon_args.target)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -992,16 +1022,28 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(status_data, ensure_ascii=False, indent=2))
 
     if queue_owner and queue_target:
-        while True:
-            pending = next_job(queue_target)
-            if pending is None:
-                release_owner(queue_target)
-                break
-            payload, running_path = pending
-            try:
-                job_argv = [item for item in payload.get("argv", []) if item not in {"--daemon", "-d", "--_queue-worker"}]
-                main(job_argv + ["--_queue-worker"])
-            finally:
-                finish_job(running_path)
+        try:
+            while True:
+                pending = next_job(queue_target)
+                if pending is None:
+                    break
+                payload, running_path = pending
+                try:
+                    if not isinstance(payload, dict):
+                        raise ValueError("queue payload must be an object")
+                    raw_argv = payload.get("argv", [])
+                    if not isinstance(raw_argv, list):
+                        raise ValueError("queue payload argv must be a list")
+                    job_argv = [
+                        str(item) for item in raw_argv
+                        if item not in {"--daemon", "-d", "--_queue-worker"}
+                    ]
+                    main(job_argv + ["--_queue-worker"])
+                except Exception as exc:
+                    sys.stderr.write(f"Error processing queued job {running_path.name}: {exc}\n")
+                finally:
+                    finish_job(running_path)
+        finally:
+            release_owner(queue_target, os.getpid())
 
     return last_exit
