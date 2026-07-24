@@ -849,14 +849,39 @@ def _daemon_child_main_impl(
             manifest_path, shared_manifest_path, status_data,
         )
 
-    _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
-    pid_file.unlink(missing_ok=True)
-    pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
     if queue_owner and queue_target and queue_job_id:
         running_dir = Path("data") / "agent-queues" / queue_target / "running"
         for path in running_dir.glob(f"*-{queue_job_id}.json"):
             finish_job(path)
-        release_owner(queue_target, os.getpid())
+
+    if queue_owner and queue_target:
+        try:
+            while True:
+                pending = next_job(queue_target)
+                if pending is None:
+                    break
+                payload, running_path = pending
+                try:
+                    if not isinstance(payload, dict):
+                        raise ValueError("queue payload must be an object")
+                    raw_argv = payload.get("argv", [])
+                    if not isinstance(raw_argv, list):
+                        raise ValueError("queue payload argv must be a list")
+                    job_argv = [
+                        str(item) for item in raw_argv
+                        if item not in {"--daemon", "-d", "--_queue-worker"}
+                    ]
+                    main(job_argv + ["--_queue-worker"])
+                except Exception as exc:
+                    sys.stderr.write(f"Error processing queued job {running_path.name}: {exc}\n")
+                finally:
+                    finish_job(running_path)
+        finally:
+            release_owner(queue_target, os.getpid())
+
+    _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+    pid_file.unlink(missing_ok=True)
+    pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
     if status_data.get("task_id"):
         _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
     if getattr(args, "json_status", False):

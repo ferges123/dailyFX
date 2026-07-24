@@ -2167,3 +2167,33 @@ def test_build_target_command_handles_prompts_and_paths_with_quotes_and_newlines
         codex_template="exec --image {image_path} -",
     )
     assert cmd_codex == ["codex", "exec", "--image", image_path, "-"]
+
+
+def test_pid_is_dailyfx_agent_multiprocessing_child(monkeypatch):
+    from dailyfx_agent.queue import _pid_is_dailyfx_agent
+
+    assert _pid_is_dailyfx_agent(os.getpid()) is True
+
+    original_exists = Path.exists
+
+    def fake_exists(self):
+        if "999999" in str(self):
+            return True
+        return original_exists(self)
+
+    def fake_read_text(self, encoding="utf-8"):
+        if "999999/stat" in str(self):
+            return f"999999 (python3) S {os.getpid()} 12345 12345 0 -1 4194304 0 0 0 0 0 0 0 0 20 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+        return ""
+
+    def fake_read_bytes(self):
+        if "999999/cmdline" in str(self):
+            return b"python3\x00-c\x00from multiprocessing.spawn import spawn_main\x00"
+        return b""
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    monkeypatch.setattr(Path, "read_bytes", fake_read_bytes)
+
+    assert _pid_is_dailyfx_agent(999999) is True
+

@@ -49,7 +49,20 @@ def _pid_is_dailyfx_agent(pid: int) -> bool:
         command = cmdline_path.read_bytes().replace(b"\0", b" ").decode(errors="replace")
     except OSError:
         return False
-    return "dailyfx-agent" in command or "dailyfx_agent" in command
+    if "dailyfx-agent" in command or "dailyfx_agent" in command:
+        return True
+    if "multiprocessing" in command or "python" in command:
+        stat_path = Path(f"/proc/{pid}/stat")
+        if stat_path.exists():
+            try:
+                raw = stat_path.read_text(encoding="utf-8")
+                fields = raw.rsplit(")", 1)[1].split()
+                ppid = int(fields[1])
+                if ppid > 0 and _pid_is_dailyfx_agent(ppid):
+                    return True
+            except (IndexError, ValueError, OSError):
+                pass
+    return False
 
 
 def _read_owner(root: Path) -> dict | None:
