@@ -204,3 +204,14 @@ def test_review_token_rejects_expired_token(monkeypatch):
     token = app.security.create_review_token("task-review-1", now=now, ttl_seconds=300)
 
     assert app.security.verify_review_token(token, "task-review-1", now=now + timedelta(seconds=301)) is False
+
+
+def test_openapi_security_schema():
+    from app.main import app
+
+    schema = app.openapi()
+    assert "components" in schema
+    assert "securitySchemes" in schema["components"]
+    assert "HTTPBearer" in schema["components"]["securitySchemes"]
+    assert schema["components"]["securitySchemes"]["HTTPBearer"]["type"] == "http"
+
