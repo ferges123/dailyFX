@@ -95,3 +95,18 @@ def test_owner_with_reused_non_agent_pid_is_replaced(tmp_path, monkeypatch):
     _, owner, _, _ = agent_queue.enqueue_or_claim("codex", ["--target", "codex"])
 
     assert owner is True
+
+
+def test_same_schedule_retry_is_deduplicated(tmp_path, monkeypatch):
+    monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
+    first_id, first_owner, _, _ = agent_queue.enqueue_or_claim(
+        "agy", ["--schedule-id", "3", "--target", "agy"]
+    )
+    second_id, second_owner, _, _ = agent_queue.enqueue_or_claim(
+        "agy", ["--schedule-id", "3", "--target", "agy"]
+    )
+
+    assert first_owner is True
+    assert second_owner is False
+    assert second_id == first_id
+    assert len(list((tmp_path / "queues" / "agy" / "pending").glob("*.json"))) == 1

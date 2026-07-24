@@ -82,12 +82,77 @@ def _recover_running(root: Path) -> None:
         os.replace(path, pending / path.name)
 
 
+def _schedule_id_from_argv(argv: list[object]) -> int | None:
+    for index, item in enumerate(argv):
+        if item in {"--schedule-id", "-s"} and index + 1 < len(argv):
+            try:
+                return int(argv[index + 1])
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _deduplicate_pending(root: Path) -> None:
+    """Keep the oldest pending job for each schedule to prevent retry storms."""
+    pending = root / "pending"
+    seen: set[int] = set()
+    for path in sorted(pending.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            argv = payload.get("argv", [])
+            schedule_id = _schedule_id_from_argv(argv) if isinstance(argv, list) else None
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            continue
+        if schedule_id is not None:
+            if schedule_id in seen:
+                path.unlink(missing_ok=True)
+            else:
+                seen.add(schedule_id)
+
+
 def enqueue_or_claim(target: str, argv: list[str]) -> tuple[str, bool, int, int | None]:
     """Persist a job and claim the target worker if no live owner exists."""
-    job_id = uuid.uuid4().hex
     with _queue_lock(target) as root:
         pending = root / "pending"
         pending.mkdir(exist_ok=True)
+        owner = _read_owner(root)
+        if not owner:
+            _recover_running(root)
+        _deduplicate_pending(root)
+
+        requested_schedule_id = _schedule_id_from_argv(argv)
+        if requested_schedule_id is not None:
+            for existing in sorted(pending.glob("*.json")):
+                try:
+                    payload = json.loads(existing.read_text(encoding="utf-8"))
+                    existing_argv = payload.get("argv", [])
+                    if (
+                        not isinstance(existing_argv, list)
+                        or _schedule_id_from_argv(existing_argv) != requested_schedule_id
+                    ):
+                        continue
+                    existing_job_id = str(
+                        payload.get("job_id") or existing.stem.rsplit("-", 1)[-1]
+                    )
+                    if owner:
+                        return (
+                            existing_job_id,
+                            False,
+                            len(list(pending.glob("*.json"))),
+                            int(owner["pid"]),
+                        )
+                    owner = {
+                        "pid": os.getpid(), "target": target,
+                        "job_id": existing_job_id, "started_at": time.time(),
+                    }
+                    owner_path = root / "owner.json"
+                    owner_path.write_text(json.dumps(owner, indent=2) + "\n", encoding="utf-8")
+                    os.chmod(owner_path, 0o600)
+                    return existing_job_id, True, 1, os.getpid()
+                except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                    continue
+
+        job_id = uuid.uuid4().hex
         job_path = pending / f"{time.time_ns()}-{job_id}.json"
         tmp_path = job_path.with_suffix(".tmp")
         tmp_path.write_text(
@@ -97,12 +162,9 @@ def enqueue_or_claim(target: str, argv: list[str]) -> tuple[str, bool, int, int 
         os.chmod(tmp_path, 0o600)
         os.replace(tmp_path, job_path)
 
-        owner = _read_owner(root)
         if owner:
             position = len(list(pending.glob("*.json")))
             return job_id, False, position, int(owner["pid"])
-
-        _recover_running(root)
 
         owner = {"pid": os.getpid(), "target": target, "job_id": job_id, "started_at": time.time()}
         owner_path = root / "owner.json"
