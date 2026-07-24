@@ -20,6 +20,13 @@ def test_database_indexes():
     assert history_indexes["ix_generation_history_status"] == ["status"]
     assert "ix_generation_history_schedule_id" in history_indexes
     assert history_indexes["ix_generation_history_schedule_id"] == ["schedule_id"]
+    assert "ix_generation_history_created_at" in history_indexes
+    assert history_indexes["ix_generation_history_created_at"] == ["created_at"]
+
+    # Check indexes on schedules
+    schedule_indexes = {idx["name"]: idx["column_names"] for idx in inspector.get_indexes("schedules")}
+    assert "ix_schedules_enabled" in schedule_indexes
+    assert schedule_indexes["ix_schedules_enabled"] == ["enabled"]
 
     # Check indexes on generation_tasks
     task_indexes = {idx["name"]: idx["column_names"] for idx in inspector.get_indexes("generation_tasks")}

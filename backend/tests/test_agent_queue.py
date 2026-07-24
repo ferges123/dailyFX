@@ -15,9 +15,7 @@ from dailyfx_agent import queue as agent_queue
 def test_same_target_is_queued_without_second_owner(tmp_path, monkeypatch):
     monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
 
-    first_id, first_owner, _, first_pid = agent_queue.enqueue_or_claim(
-        "agy", ["--schedule-id", "1", "--target", "agy"]
-    )
+    first_id, first_owner, _, first_pid = agent_queue.enqueue_or_claim("agy", ["--schedule-id", "1", "--target", "agy"])
     second_id, second_owner, position, owner_pid = agent_queue.enqueue_or_claim(
         "agy", ["--schedule-id", "2", "--target", "agy"]
     )
@@ -39,9 +37,7 @@ def test_stale_owner_is_replaced(tmp_path, monkeypatch):
     monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
     root = tmp_path / "queues" / "codex"
     root.mkdir(parents=True)
-    (root / "owner.json").write_text(
-        json.dumps({"pid": 999999, "target": "codex"}), encoding="utf-8"
-    )
+    (root / "owner.json").write_text(json.dumps({"pid": 999999, "target": "codex"}), encoding="utf-8")
 
     _, owner, _, _ = agent_queue.enqueue_or_claim("codex", ["--target", "codex"])
     assert owner is True
@@ -86,9 +82,7 @@ def test_owner_with_reused_non_agent_pid_is_replaced(tmp_path, monkeypatch):
     root = tmp_path / "queues" / "codex"
     root.mkdir(parents=True)
     (root / "owner.json").write_text(
-        json.dumps(
-            {"pid": 1234, "target": "codex", "started_at": time.time()}
-        ),
+        json.dumps({"pid": 1234, "target": "codex", "started_at": time.time()}),
         encoding="utf-8",
     )
 
@@ -99,12 +93,8 @@ def test_owner_with_reused_non_agent_pid_is_replaced(tmp_path, monkeypatch):
 
 def test_same_schedule_retry_is_deduplicated(tmp_path, monkeypatch):
     monkeypatch.setattr(agent_queue, "AGENT_QUEUE_DIR", tmp_path / "queues")
-    first_id, first_owner, _, _ = agent_queue.enqueue_or_claim(
-        "agy", ["--schedule-id", "3", "--target", "agy"]
-    )
-    second_id, second_owner, _, _ = agent_queue.enqueue_or_claim(
-        "agy", ["--schedule-id", "3", "--target", "agy"]
-    )
+    first_id, first_owner, _, _ = agent_queue.enqueue_or_claim("agy", ["--schedule-id", "3", "--target", "agy"])
+    second_id, second_owner, _, _ = agent_queue.enqueue_or_claim("agy", ["--schedule-id", "3", "--target", "agy"])
 
     assert first_owner is True
     assert second_owner is False

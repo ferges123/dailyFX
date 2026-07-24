@@ -30,14 +30,17 @@ def _unlink_if_same_file(stream: TextIO, path: Path) -> None:
 @contextmanager
 def _locked_file(path: Path) -> Iterator[TextIO]:
     fd = os.open(path, os.O_RDWR)
+    stream = None
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
-        with os.fdopen(fd, "r+", encoding="utf-8") as stream:
-            fd = -1
-            yield stream
+        stream = os.fdopen(fd, "r+", encoding="utf-8")
+        yield stream
     finally:
-        if fd >= 0:
+        if stream is not None:
+            stream.close()
+        else:
             os.close(fd)
+
 
 
 def _acquire_lock(schedule_id: int, target: str) -> None:

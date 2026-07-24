@@ -24,7 +24,7 @@ class ScheduleModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     schedule_expr: Mapped[str] = mapped_column(String(100), nullable=False, default="weekly")
     people_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("people_presets.id"), nullable=False)
     effect_preset_id: Mapped[int] = mapped_column(Integer, ForeignKey("effect_presets.id"), nullable=False)

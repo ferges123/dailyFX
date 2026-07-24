@@ -909,10 +909,21 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch, tmp_path):
     ready_event = multiprocessing.Event()
 
     from dailyfx_agent.runner import _daemon_child_main
+
     _daemon_child_main(
-        args, [], str(tmp_path), str(tmp_path / "m.json"), str(tmp_path / "m.json"),
-        None, False, None, 1, {}, ready_event,
-        str(pid_file), str(log_file),
+        args,
+        [],
+        str(tmp_path),
+        str(tmp_path / "m.json"),
+        str(tmp_path / "m.json"),
+        None,
+        False,
+        None,
+        1,
+        {},
+        ready_event,
+        str(pid_file),
+        str(log_file),
     )
 
     fds = [fd_target for _, fd_target in dup2_calls]
@@ -920,15 +931,14 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch, tmp_path):
     assert 1 in fds
     assert 2 in fds
     import stat
+
     assert stat.S_IMODE(log_file.stat().st_mode) == 0o600
 
 
 def test_daemon_child_releases_lock_when_workflow_raises(monkeypatch):
     import pytest
 
-    args = dailyfx_agent._build_parser().parse_args(
-        ["--schedule-id", "1", "--target", "agy"]
-    )
+    args = dailyfx_agent._build_parser().parse_args(["--schedule-id", "1", "--target", "agy"])
     released = []
 
     def fail(*args, **kwargs):
@@ -982,17 +992,27 @@ def test_daemon_fork_failure_cleans_generated_manifest(monkeypatch, tmp_path):
     monkeypatch.setattr("dailyfx_agent.runner._acquire_lock", lambda *args: None)
 
     class FakeFailingProcess:
-        def __init__(self, *args, **kwargs): pass
-        def start(self): raise RuntimeError("fork failed")
-        def terminate(self): pass
-        def join(self, timeout=None): pass
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self):
+            raise RuntimeError("fork failed")
+
+        def terminate(self):
+            pass
+
+        def join(self, timeout=None):
+            pass
+
         @property
-        def pid(self): return 0
+        def pid(self):
+            return 0
 
     class FakeCtx:
         @staticmethod
         def Event():
             return type("evt", (), {"wait": lambda self, timeout=None: True})()
+
         @staticmethod
         def Process(*args, **kwargs):
             return FakeFailingProcess()
@@ -1040,9 +1060,7 @@ def test_daemon_startup_timeout_is_bounded(monkeypatch, tmp_path):
     monkeypatch.setattr("dailyfx_agent.runner.multiprocessing.get_context", lambda name: FakeCtx())
     monkeypatch.setattr("dailyfx_agent.runner._release_lock", lambda *args: None)
 
-    assert dailyfx_agent.main(
-        ["--daemon", "--schedule-id", "1", "--target", "schedule"]
-    ) == 1
+    assert dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "schedule"]) == 1
 
 
 def test_read_jsonrpc_message_without_queue_raises_runtime_error():
@@ -2199,6 +2217,34 @@ def test_pid_is_dailyfx_agent_multiprocessing_child(monkeypatch):
     assert _pid_is_dailyfx_agent(999999) is True
 
 
+def test_pid_is_dailyfx_agent_rejects_unrelated_python_process(monkeypatch):
+    from dailyfx_agent.queue import _pid_is_dailyfx_agent
+
+    original_exists = Path.exists
+    original_resolve = Path.resolve
+
+    def fake_exists(self):
+        if "888888" in str(self):
+            return True
+        return original_exists(self)
+
+    def fake_resolve(self):
+        if "888888/cwd" in str(self):
+            return Path.cwd().resolve()
+        return original_resolve(self)
+
+    def fake_read_bytes(self):
+        if "888888/cmdline" in str(self):
+            return b"python3\x00-m\x00pytest\x00backend/tests/test_something.py\x00"
+        return b""
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    monkeypatch.setattr(Path, "resolve", fake_resolve)
+    monkeypatch.setattr(Path, "read_bytes", fake_read_bytes)
+
+    assert _pid_is_dailyfx_agent(888888) is False
+
+
 def test_enqueue_or_claim_accumulates_repeats(tmp_path, monkeypatch):
     from dailyfx_agent.queue import claim_job, enqueue_or_claim, queue_runs
 
@@ -2237,3 +2283,8 @@ def test_queue_runs_tracks_running_job_remaining_iterations(tmp_path, monkeypatc
     assert queue_runs("agy") == 0
 
 
+def test_package_exports_print_manifest():
+    import dailyfx_agent
+
+    assert hasattr(dailyfx_agent, "_print_manifest")
+    assert callable(dailyfx_agent._print_manifest)

@@ -193,9 +193,11 @@ def test_scheduler_main_silences_httpx_and_httpcore(monkeypatch):
     # Set root logger to INFO
     logging.getLogger().setLevel(logging.INFO)
 
-    # Mock engine setup and asyncio run to prevent database initialization and infinite loop execution
+    async def dummy_async_main():
+        pass
+
     monkeypatch.setattr("app.database._ensure_engine", lambda: None)
-    monkeypatch.setattr("asyncio.run", lambda coroutine: None)
+    monkeypatch.setattr("app.workers.scheduler._async_main", dummy_async_main)
 
     # Run main
     main()

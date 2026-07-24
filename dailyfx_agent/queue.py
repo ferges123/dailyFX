@@ -51,7 +51,7 @@ def _pid_is_dailyfx_agent(pid: int) -> bool:
         return False
     if "dailyfx-agent" in command or "dailyfx_agent" in command:
         return True
-    if "python" in command or "multiprocessing" in command:
+    if "multiprocessing" in command:
         try:
             proc_cwd = Path(f"/proc/{pid}/cwd").resolve()
             project_root = Path(__file__).resolve().parent.parent
@@ -60,6 +60,7 @@ def _pid_is_dailyfx_agent(pid: int) -> bool:
         except (OSError, RuntimeError):
             pass
     return False
+
 
 
 def _read_owner(root: Path) -> dict | None:

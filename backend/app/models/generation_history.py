@@ -42,7 +42,7 @@ class GenerationHistoryModel(Base):
 
     schedule_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(
         UTCDateTime,
         server_default=func.now(),

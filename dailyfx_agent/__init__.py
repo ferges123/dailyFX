@@ -77,6 +77,7 @@ from dailyfx_agent.utils import (
     _container_to_host_image_path,
     _get_agent_version,
     _print_command,
+    _print_manifest,
     _print_note,
     _print_status,
     _print_table,
