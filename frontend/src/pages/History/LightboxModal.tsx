@@ -1,4 +1,4 @@
-import { useEffect, useState, memo, useMemo } from 'react';
+import { useEffect, useState, useRef, memo, useMemo } from 'react';
 import {
   X,
   Cpu,
@@ -60,6 +60,9 @@ function makeSafeFileName(title: string | null | undefined, ext = 'png') {
   return `${base || 'dailyfx-image'}.${ext}`;
 }
 
+const SWIPE_MIN_DISTANCE = 56;
+const SWIPE_HORIZONTAL_RATIO = 1.2;
+
 interface ExifData {
   make?: string | null;
   model?: string | null;
@@ -117,6 +120,11 @@ export const LightboxModal = memo(function LightboxModal({
     'idle',
   );
   const [showOriginal, setShowOriginal] = useState(false);
+  const swipeStartRef = useRef<{
+    x: number;
+    y: number;
+    pointerId: number;
+  } | null>(null);
   const trapRef = useFocusTrap(isOpen);
   const qc = useQueryClient();
   const [liked, setLiked] = useState<boolean | null>(entry.liked ?? null);
@@ -150,6 +158,40 @@ export const LightboxModal = memo(function LightboxModal({
   useEffect(() => {
     setShowOriginal(false);
   }, [imageUrl, isOpen]);
+
+  function handleSwipeStart(event: React.PointerEvent<HTMLDivElement>) {
+    if (!isOpen || event.pointerType !== 'touch' || !event.isPrimary) return;
+    swipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleSwipeEnd(event: React.PointerEvent<HTMLDivElement>) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || start.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    const horizontalDistance = Math.abs(deltaX);
+    if (
+      horizontalDistance < SWIPE_MIN_DISTANCE ||
+      horizontalDistance <= Math.abs(deltaY) * SWIPE_HORIZONTAL_RATIO
+    ) {
+      return;
+    }
+
+    if (deltaX < 0 && onNext && hasNext) onNext();
+    if (deltaX > 0 && onPrev && hasPrev) onPrev();
+  }
+
+  function handleSwipeCancel() {
+    swipeStartRef.current = null;
+  }
 
   const sourceAssetId = parseFirstSourceAssetId(entry?.source_asset_ids);
   const originalImageUrl = sourceAssetId
@@ -270,7 +312,13 @@ export const LightboxModal = memo(function LightboxModal({
               <ChevronRight size={22} />
             </button>
           )}
-          <div className="relative flex items-center justify-center max-h-full max-w-full">
+          <div
+            className="relative flex items-center justify-center max-h-full max-w-full"
+            style={{ touchAction: 'pan-y' }}
+            onPointerDown={handleSwipeStart}
+            onPointerUp={handleSwipeEnd}
+            onPointerCancel={handleSwipeCancel}
+          >
             <SecureImage
               src={imageUrl}
               alt="Preview"

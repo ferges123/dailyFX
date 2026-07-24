@@ -99,6 +99,97 @@ describe('LightboxModal', () => {
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('navigates with horizontal touch swipes and ignores invalid gestures', () => {
+    const onPrev = vi.fn();
+    const onNext = vi.fn();
+    const mockEntry = {
+      task_id: 'task-123',
+      title: 'Test Lightbox Title',
+      source_asset_ids: null,
+    } as unknown as GenerationHistoryEntry;
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LightboxModal
+          isOpen={true}
+          imageUrl="http://test.com/img.png"
+          entry={mockEntry}
+          exif={null}
+          onClose={vi.fn()}
+          onPrev={onPrev}
+          onNext={onNext}
+          hasPrev={true}
+          hasNext={true}
+        />
+      </QueryClientProvider>,
+    );
+
+    const preview = screen.getByAltText('Preview');
+    fireEvent.pointerDown(preview, {
+      pointerId: 1,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: 220,
+      clientY: 200,
+    });
+    fireEvent.pointerUp(preview, {
+      pointerId: 1,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: 140,
+      clientY: 205,
+    });
+    expect(onNext).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerDown(preview, {
+      pointerId: 2,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: 140,
+      clientY: 200,
+    });
+    fireEvent.pointerUp(preview, {
+      pointerId: 2,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: 220,
+      clientY: 200,
+    });
+    expect(onPrev).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerDown(preview, {
+      pointerId: 3,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: 220,
+      clientY: 200,
+    });
+    fireEvent.pointerUp(preview, {
+      pointerId: 3,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: 190,
+      clientY: 250,
+    });
+    expect(onNext).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerDown(preview, {
+      pointerId: 4,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 220,
+      clientY: 200,
+    });
+    fireEvent.pointerUp(preview, {
+      pointerId: 4,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 120,
+      clientY: 200,
+    });
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('UploadModal', () => {
