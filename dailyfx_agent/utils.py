@@ -227,4 +227,4 @@ def _get_agent_version() -> str:
         pass
 
     # 4. Fallback default: keep this aligned with backend/pyproject.toml.
-    return "0.14.2"
+    return "0.15.0"
