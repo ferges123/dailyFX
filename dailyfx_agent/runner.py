@@ -3,12 +3,11 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import multiprocessing
 import os
 import re
-import select
 import shlex
 import shutil
-import signal
 import subprocess
 import sys
 import threading
@@ -781,6 +780,95 @@ def _run_workflow_iteration(
     return 0
 
 
+def _daemon_child_main(
+    args: argparse.Namespace,
+    backend_command: list[str],
+    project_dir_str: str,
+    manifest_path_str: str,
+    shared_manifest_path_str: str,
+    queue_target: str | None,
+    queue_owner: bool,
+    queue_job_id: str | None,
+    repeat: int,
+    status_data: dict[str, object],
+    ready_event: multiprocessing.Event,
+    pid_file_str: str,
+    log_file_path_str: str,
+) -> None:
+    project_dir = Path(project_dir_str)
+    manifest_path = Path(manifest_path_str)
+    shared_manifest_path = Path(shared_manifest_path_str)
+    pid_file = Path(pid_file_str)
+    log_file_path = Path(log_file_path_str)
+
+    status_data = dict(status_data)
+
+    try:
+        os.umask(0o077)
+        metadata_file = pid_file.with_name(pid_file.name + ".json")
+        metadata = {
+            "pid": os.getpid(), "schedule_id": args.schedule_id,
+            "target": args.target, "started_at": datetime.now(timezone.utc).isoformat(),
+            "log_path": str(log_file_path.resolve()),
+            "manifest_path": str(manifest_path.resolve()), "repeat": repeat,
+        }
+        pid_file.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(pid_file, f"{os.getpid()}\n")
+        _atomic_write_text(metadata_file, json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
+    except BaseException:
+        pid_file.unlink(missing_ok=True)
+        pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+        _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+        return
+
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+        devnull = os.open(os.devnull, os.O_RDONLY)
+        os.dup2(devnull, 0)
+        os.dup2(log_fd, 1)
+        os.dup2(log_fd, 2)
+        os.close(devnull)
+        os.close(log_fd)
+    except OSError:
+        pass
+    sys.stdin = open(os.devnull, "r")
+    sys.stdout = open(str(log_file_path), "a")
+    sys.stderr = open(str(log_file_path), "a")
+
+    ready_event.set()
+
+    last_exit = 0
+    for run_index in range(1, repeat + 1):
+        if repeat > 1:
+            print(f"--- run {run_index}/{repeat} ---")
+
+        manifest_path = _manifest_path_for_run(args, run_index, manifest_path if run_index == 1 else None)
+        shared_manifest_path = manifest_path
+
+        run_exit = _run_workflow_iteration(
+            args, backend_command, project_dir,
+            manifest_path, shared_manifest_path, status_data,
+        )
+        if run_exit != 0:
+            last_exit = run_exit
+
+    _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+    pid_file.unlink(missing_ok=True)
+    pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
+    if queue_owner and queue_target and queue_job_id:
+        running_dir = Path("data") / "agent-queues" / queue_target / "running"
+        for path in running_dir.glob(f"*-{queue_job_id}.json"):
+            finish_job(path)
+    if args.schedule_id is not None and args.target == "schedule":
+        _release_lock(args.schedule_id, args.target)
+    if status_data.get("task_id"):
+        _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
+    if getattr(args, "json_status", False):
+        print(json.dumps(status_data, ensure_ascii=False, indent=2))
+
+
 def main(argv: list[str] | None = None) -> int:
     status_data = {
         "task_id": "", "schedule_id": None, "target": None, "model": None,
@@ -852,94 +940,44 @@ def main(argv: list[str] | None = None) -> int:
         log_file_path = Path("data") / "logs" / "agent" / f"{pid_file.stem}.log"
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        startup_read_fd, startup_write_fd = os.pipe()
+        spawn_ctx = multiprocessing.get_context('spawn')
+        ready_event = spawn_ctx.Event()
+
+        proc = spawn_ctx.Process(
+            target=_daemon_child_main,
+            args=(
+                args, backend_command, str(project_dir),
+                str(manifest_path), str(shared_manifest_path),
+                queue_target, queue_owner, queue_job_id,
+                repeat, status_data, ready_event,
+                str(pid_file), str(log_file_path),
+            ),
+        )
         try:
-            pid = os.fork()
+            proc.start()
         except BaseException:
-            os.close(startup_read_fd)
-            os.close(startup_write_fd)
             _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
             raise
-        if pid > 0:
-            os.close(startup_write_fd)
-            startup_ok = False
-            try:
-                ready, _, _ = select.select([startup_read_fd], [], [], _DAEMON_STARTUP_TIMEOUT)
-                if ready:
-                    startup_ok = os.read(startup_read_fd, 1) == b"1"
-            finally:
-                os.close(startup_read_fd)
 
-            if not startup_ok:
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                except OSError:
-                    pass
-                try:
-                    os.waitpid(pid, 0)
-                except ChildProcessError:
-                    pass
-                pid_file.unlink(missing_ok=True)
-                pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
-                _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
-                if args.schedule_id is not None and args.target == "schedule":
-                    _release_lock(args.schedule_id, args.target)
-                sys.stderr.write("Error: daemon failed to start\n")
-                return 1
-
-            non_local_lock_release = True
+        if not ready_event.wait(timeout=_DAEMON_STARTUP_TIMEOUT):
+            proc.terminate()
+            proc.join(timeout=5)
+            _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
             if args.schedule_id is not None and args.target == "schedule":
-                _update_lock_for_daemon_child(args.schedule_id, args.target, pid)
-            if queue_owner and queue_target:
-                update_owner_pid(queue_target, pid)
-
-            print(f"daemon started: pid={pid} pidfile={pid_file}")
-            return 0
-
-        os.close(startup_read_fd)
-        try:
-            os.umask(0o077)
-            os.setsid()
-            metadata_file = pid_file.with_name(pid_file.name + ".json")
-            metadata = {
-                "pid": os.getpid(), "schedule_id": args.schedule_id,
-                "target": args.target, "started_at": datetime.now(timezone.utc).isoformat(),
-                "log_path": str(log_file_path.resolve()),
-                "manifest_path": str(manifest_path.resolve()), "repeat": repeat,
-            }
-            _atomic_write_text(pid_file, f"{os.getpid()}\n")
-            _atomic_write_text(metadata_file, json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
-            try:
-                os.write(startup_write_fd, b"1")
-            except OSError:
-                pass
-        except BaseException:
+                _release_lock(args.schedule_id, args.target)
             pid_file.unlink(missing_ok=True)
             pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
-            _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
-            try:
-                os.write(startup_write_fd, b"0")
-            except OSError:
-                pass
-            raise
-        finally:
-            os.close(startup_write_fd)
+            sys.stderr.write("Error: daemon failed to start\n")
+            return 1
 
-        try:
-            sys.stdout.flush()
-            sys.stderr.flush()
-            log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
-            devnull = os.open(os.devnull, os.O_RDONLY)
-            os.dup2(devnull, 0)
-            os.dup2(log_fd, 1)
-            os.dup2(log_fd, 2)
-            os.close(devnull)
-            os.close(log_fd)
-        except OSError:
-            pass
-        sys.stdin = open(os.devnull, "r")
-        sys.stdout = open(str(log_file_path), "a")
-        sys.stderr = open(str(log_file_path), "a")
+        non_local_lock_release = True
+        if args.schedule_id is not None and args.target == "schedule":
+            _update_lock_for_daemon_child(args.schedule_id, args.target, proc.pid)
+        if queue_owner and queue_target:
+            update_owner_pid(queue_target, proc.pid)
+
+        print(f"daemon started: pid={proc.pid} pidfile={pid_file}")
+        return 0
 
     try:
         for run_index in range(1, repeat + 1):
@@ -957,9 +995,6 @@ def main(argv: list[str] | None = None) -> int:
                 last_exit = run_exit
     finally:
         _cleanup_manifest_files(args, manifest_path if 'manifest_path' in dir() else None, shared_manifest_path if 'shared_manifest_path' in dir() else None)
-        if args.daemon and pid_file:
-            pid_file.unlink(missing_ok=True)
-            pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
         if queue_owner and queue_target and queue_job_id:
             running_dir = Path("data") / "agent-queues" / queue_target / "running"
             for path in running_dir.glob(f"*-{queue_job_id}.json"):

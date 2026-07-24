@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -868,33 +869,27 @@ def test_list_codex_models_redirects_stderr_to_devnull(monkeypatch):
     assert popen_args[0][1].get("stderr") == subprocess.DEVNULL
 
 
-def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
+def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch, tmp_path):
     dup2_calls = []
-    setsid_called = []
 
-    monkeypatch.setattr(os, "fork", lambda: 0)  # Symulacja dziecka
-    monkeypatch.setattr(os, "setsid", lambda: setsid_called.append(True))
     monkeypatch.setattr(os, "dup2", lambda fd1, fd2: dup2_calls.append((fd1, fd2)))
-    monkeypatch.setattr(
-        "dailyfx_agent.runner._parse_args",
-        lambda argv: dailyfx_agent._build_parser().parse_args(["--daemon", "--schedule-id", "1", "--target", "agy"]),
+    monkeypatch.setattr("dailyfx_agent.runner._atomic_write_text", lambda path, content: None)
+    monkeypatch.setattr("dailyfx_agent.runner._cleanup_manifest_files", lambda *a, **kw: None)
+    monkeypatch.setattr("dailyfx_agent.runner._run_workflow_iteration", lambda *a, **kw: 0)
+    monkeypatch.setattr("dailyfx_agent.runner._manifest_path_for_run", lambda *a, **kw: Path("nope.json"))
+
+    args = dailyfx_agent._build_parser().parse_args(["--daemon", "--schedule-id", "1", "--target", "agy"])
+    pid_file = tmp_path / "test.pid"
+    log_file = tmp_path / "test.log"
+    ready_event = multiprocessing.Event()
+
+    from dailyfx_agent.runner import _daemon_child_main
+    _daemon_child_main(
+        args, [], str(tmp_path), str(tmp_path / "m.json"), str(tmp_path / "m.json"),
+        None, False, None, 1, {}, ready_event,
+        str(pid_file), str(log_file),
     )
 
-    # Zamakowanie reszty maina, by nie wywoływał komend Dockera
-    monkeypatch.setattr("dailyfx_agent.runner._build_backend_command", lambda args: [])
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *args, **kwargs: type("obj", (object,), {"returncode": 0, "stdout": "{}", "stderr": ""}),
-    )
-    monkeypatch.setattr("dailyfx_agent.runner._load_manifest", lambda path: {})
-
-    try:
-        dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "agy"])
-    except SystemExit:
-        pass
-
-    # Sprawdzenie czy dup2 przekierował FD 0, 1, 2
     fds = [fd_target for _, fd_target in dup2_calls]
     assert 0 in fds
     assert 1 in fds
@@ -933,7 +928,24 @@ def test_daemon_fork_failure_cleans_generated_manifest(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("dailyfx_agent.runner._build_backend_command", lambda args: ["true"])
     monkeypatch.setattr("dailyfx_agent.runner._acquire_lock", lambda *args: None)
-    monkeypatch.setattr(os, "fork", lambda: (_ for _ in ()).throw(RuntimeError("fork failed")))
+
+    class FakeFailingProcess:
+        def __init__(self, *args, **kwargs): pass
+        def start(self): raise RuntimeError("fork failed")
+        def terminate(self): pass
+        def join(self, timeout=None): pass
+        @property
+        def pid(self): return 0
+
+    class FakeCtx:
+        @staticmethod
+        def Event():
+            return type("evt", (), {"wait": lambda self, timeout=None: True})()
+        @staticmethod
+        def Process(*args, **kwargs):
+            return FakeFailingProcess()
+
+    monkeypatch.setattr("dailyfx_agent.runner.multiprocessing.get_context", lambda name: FakeCtx())
 
     try:
         dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "schedule"])
