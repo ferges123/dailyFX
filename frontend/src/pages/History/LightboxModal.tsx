@@ -287,11 +287,11 @@ export const LightboxModal = memo(function LightboxModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="lightbox-modal-title"
-        className="relative flex w-full h-full md:h-auto md:max-h-[92vh] max-w-full md:max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-stone-200/80 bg-white/95 shadow-2xl animate-scale-in md:flex-row"
+        className="relative flex w-full h-full md:h-[92vh] md:max-h-[92vh] max-w-full md:max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-stone-200/80 bg-white/95 shadow-2xl animate-scale-in md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Photo Canvas */}
-        <div className="relative flex h-[52vh] md:h-auto md:max-h-[85vh] flex-1 items-center justify-center bg-stone-50 p-2">
+        <div className="relative flex h-[52vh] min-h-0 md:h-full md:min-w-0 md:max-h-none flex-1 items-center justify-center bg-stone-50 p-2">
           {hasPrev && onPrev && (
             <button
               type="button"
@@ -313,7 +313,7 @@ export const LightboxModal = memo(function LightboxModal({
             </button>
           )}
           <div
-            className="relative flex items-center justify-center max-h-full max-w-full"
+            className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center"
             style={{ touchAction: 'pan-y' }}
             onPointerDown={handleSwipeStart}
             onPointerUp={handleSwipeEnd}
@@ -322,7 +322,7 @@ export const LightboxModal = memo(function LightboxModal({
             <SecureImage
               src={imageUrl}
               alt="Preview"
-              className="max-h-full max-w-full rounded-lg object-contain"
+              className="h-full w-full rounded-lg object-contain"
               decoding="async"
             />
             {originalImageUrl && (
@@ -334,7 +334,7 @@ export const LightboxModal = memo(function LightboxModal({
                 <SecureImage
                   src={originalImageUrl}
                   alt="Original Preview"
-                  className="w-full h-full rounded-lg object-cover"
+                  className="h-full w-full rounded-lg object-contain"
                   decoding="async"
                 />
               </div>

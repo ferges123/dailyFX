@@ -190,6 +190,39 @@ describe('LightboxModal', () => {
     });
     expect(onNext).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps portrait previews contained on desktop and when showing the original', () => {
+    const mockEntry = {
+      task_id: 'task-portrait',
+      title: 'Portrait image',
+      source_asset_ids: '["source-123"]',
+    } as unknown as GenerationHistoryEntry;
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LightboxModal
+          isOpen={true}
+          imageUrl="http://test.com/portrait.png"
+          entry={mockEntry}
+          exif={null}
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByAltText('Preview')).toHaveClass(
+      'h-full',
+      'w-full',
+      'object-contain',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Original' }));
+    expect(screen.getByAltText('Original Preview')).toHaveClass(
+      'h-full',
+      'w-full',
+      'object-contain',
+    );
+  });
 });
 
 describe('UploadModal', () => {
