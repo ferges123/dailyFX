@@ -253,8 +253,8 @@ def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
     from app.models.generation_history import GenerationHistoryModel
     from app.models.generation_task import GenerationTaskModel
 
-    # 15 minutes timeout
-    cutoff = current.astimezone(timezone.utc) - timedelta(minutes=15)
+    # 5 minutes timeout
+    cutoff = current.astimezone(timezone.utc) - timedelta(minutes=5)
 
     # 1. Reset stuck running history entries
     try:

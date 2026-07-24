@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -370,7 +370,24 @@ async def _prepare_host_render(schedule_id: int, task_id: str | None, target: st
             .first()
         )
         if active_task:
-            raise CLIError(f"Schedule {schedule_id} is already being processed by task {active_task.task_id}")
+            stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+            if active_task.updated_at is not None and active_task.updated_at < stale_cutoff:
+                update_task(
+                    db,
+                    active_task.task_id,
+                    status="failed",
+                    step="failed",
+                    error="Task timed out (stale, auto-cleared by prepare-host)",
+                )
+                upsert_history_entry(
+                    db,
+                    active_task.task_id,
+                    status="FAILED",
+                    task_step="failed",
+                    summary="Task timed out (stale, auto-cleared by prepare-host)",
+                )
+            else:
+                raise CLIError(f"Schedule {schedule_id} is already being processed by task {active_task.task_id}")
 
         ensure_task(db, resolved_task_id, status="queued", step="queued", progress=0.0, schedule_id=schedule_id)
         try:
