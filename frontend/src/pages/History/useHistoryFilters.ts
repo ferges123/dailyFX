@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { type HistoryStatusFilter } from '../history.types';
 import { historyStatusToStatusParam } from './history.utils';
 import { useDebounce } from './useDebounce';

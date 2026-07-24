@@ -15,7 +15,7 @@ import { ErrorBanner } from '../../components/ErrorUI';
 import { SearchInput } from '../../components/SearchInput';
 import { formatDateTime } from '../datetime.utils';
 import { type HistoryStatusFilter } from '../history.types';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { logger } from '../../utils/logger';
 import { appendQueryParam } from '../../utils/url';
 

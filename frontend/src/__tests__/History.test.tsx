@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router';
 import { HistoryPage } from '../pages/History/HistoryPage';
 import * as client from '../api/client';
 

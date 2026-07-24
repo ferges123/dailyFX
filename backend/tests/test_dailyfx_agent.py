@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import multiprocessing
 import os
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -611,6 +612,30 @@ def test_dailyfx_agent_shows_help_without_arguments(monkeypatch, capsys):
     assert "--list-schedules" in captured.out
     assert "--schedule-id" in captured.out
     assert "Examples:" in captured.out
+
+
+def test_dailyfx_agent_entrypoint_does_not_run_when_spawned(monkeypatch):
+    calls = []
+    monkeypatch.setattr(dailyfx_agent, "main", lambda: calls.append(True))
+
+    runpy.run_path(str(ROOT / "dailyfx-agent"), run_name="__mp_main__")
+
+    assert calls == []
+
+
+def test_dailyfx_agent_entrypoint_exits_parent_after_daemon_start(monkeypatch):
+    import pytest
+
+    exited = []
+    monkeypatch.setattr(dailyfx_agent, "main", lambda: 0)
+    monkeypatch.setattr(os, "_exit", lambda code: exited.append(code))
+    monkeypatch.setattr(sys, "argv", ["dailyfx-agent", "--daemon"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        runpy.run_path(str(ROOT / "dailyfx-agent"), run_name="__main__")
+
+    assert exited == [0]
+    assert exc_info.value.code == 0
 
 
 def test_dailyfx_agent_renders_agy_template(monkeypatch, tmp_path, capsys):

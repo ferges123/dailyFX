@@ -7,7 +7,7 @@ import { LightboxModal } from '../pages/History/LightboxModal';
 import { HistoryPage } from '../pages/History/HistoryPage';
 import { SettingsPage } from '../pages/Settings';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import { type GenerationHistoryEntry } from '../api/client';
 
 vi.mock('../api/client', () => ({

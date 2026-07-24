@@ -7,7 +7,7 @@ import { useHistoryStreamSync } from '../pages/History/useHistoryStreamSync';
 import { openGenerationStream } from '../api/generationStream';
 import React from 'react';
 import { type GenerationHistoryEntry } from '../api/client';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
 vi.mock('../api/generationStream', () => {
   return {

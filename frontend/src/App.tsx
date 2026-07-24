@@ -22,7 +22,7 @@ import {
   Routes,
   useLocation,
   useParams,
-} from 'react-router-dom';
+} from 'react-router';
 import { getHealth } from './api/client';
 import { AuthProvider, useAuth } from './api/AuthContext';
 import { BrandLogo } from './components/BrandLogo';

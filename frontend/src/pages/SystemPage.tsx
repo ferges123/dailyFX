@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router';
 import { ListTodo, ClipboardList, BarChart3 } from 'lucide-react';
 
 const StatisticsPage = lazy(() =>

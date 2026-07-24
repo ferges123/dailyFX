@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { test, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { SystemPage } from '../pages/SystemPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as client from '../api/client';

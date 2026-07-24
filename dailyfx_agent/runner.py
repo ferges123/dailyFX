@@ -967,6 +967,11 @@ def main(argv: list[str] | None = None) -> int:
             proc.start()
         except BaseException:
             _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+            if queue_owner and queue_target and queue_job_id:
+                running_dir = Path("data") / "agent-queues" / queue_target / "running"
+                for path in running_dir.glob(f"*-{queue_job_id}.json"):
+                    finish_job(path)
+                release_owner(queue_target, os.getpid())
             if args.schedule_id is not None:
                 _release_lock(args.schedule_id, args.target)
                 lock_released = True
@@ -976,6 +981,11 @@ def main(argv: list[str] | None = None) -> int:
             proc.terminate()
             proc.join(timeout=5)
             _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+            if queue_owner and queue_target and queue_job_id:
+                running_dir = Path("data") / "agent-queues" / queue_target / "running"
+                for path in running_dir.glob(f"*-{queue_job_id}.json"):
+                    finish_job(path)
+                release_owner(queue_target, os.getpid())
             if args.schedule_id is not None:
                 _release_lock(args.schedule_id, args.target)
                 lock_released = True
