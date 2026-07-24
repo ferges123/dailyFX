@@ -51,17 +51,14 @@ def _pid_is_dailyfx_agent(pid: int) -> bool:
         return False
     if "dailyfx-agent" in command or "dailyfx_agent" in command:
         return True
-    if "multiprocessing" in command or "python" in command:
-        stat_path = Path(f"/proc/{pid}/stat")
-        if stat_path.exists():
-            try:
-                raw = stat_path.read_text(encoding="utf-8")
-                fields = raw.rsplit(")", 1)[1].split()
-                ppid = int(fields[1])
-                if ppid > 0 and _pid_is_dailyfx_agent(ppid):
-                    return True
-            except (IndexError, ValueError, OSError):
-                pass
+    if "python" in command or "multiprocessing" in command:
+        try:
+            proc_cwd = Path(f"/proc/{pid}/cwd").resolve()
+            project_root = Path(__file__).resolve().parent.parent
+            if proc_cwd == Path.cwd().resolve() or proc_cwd == project_root:
+                return True
+        except (OSError, RuntimeError):
+            pass
     return False
 
 
