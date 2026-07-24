@@ -7,7 +7,7 @@ from dailyfx_agent.config import (
     _RECOVERY_DIR_BUFFER_SECONDS,
     _RECOVERY_FILE_BUFFER_SECONDS,
 )
-from dailyfx_agent.utils import _get_pkg_attr, _print_note
+from dailyfx_agent.utils import _print_note
 
 
 def _find_latest_image(
@@ -106,12 +106,7 @@ def _find_latest_codex_image(
     *,
     notes_to_stderr: bool = False,
 ) -> Path | None:
-    fn = _get_pkg_attr("_find_latest_codex_image", None)
-    if fn is not None and fn is not _find_latest_codex_image:
-        return fn(start_time, generated_root, task_id=task_id, notes_to_stderr=notes_to_stderr)
-
-    path_cls = _get_pkg_attr("Path", Path)
-    generated_root = generated_root or (path_cls.home() / ".codex" / "generated_images")
+    generated_root = generated_root or (Path.home() / ".codex" / "generated_images")
     return _find_latest_image(
         start_time, generated_root, task_id, notes_to_stderr=notes_to_stderr
     )
@@ -124,13 +119,8 @@ def _find_latest_agy_image(
     *,
     notes_to_stderr: bool = False,
 ) -> Path | None:
-    fn = _get_pkg_attr("_find_latest_agy_image", None)
-    if fn is not None and fn is not _find_latest_agy_image:
-        return fn(start_time, generated_root, task_id=task_id, notes_to_stderr=notes_to_stderr)
-
-    path_cls = _get_pkg_attr("Path", Path)
     generated_root = generated_root or (
-        path_cls.home() / ".gemini" / "antigravity-cli" / "brain"
+        Path.home() / ".gemini" / "antigravity-cli" / "brain"
     )
     return _find_latest_image(
         start_time, generated_root, task_id, notes_to_stderr=notes_to_stderr

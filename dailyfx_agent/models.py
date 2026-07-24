@@ -292,16 +292,13 @@ def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
 
 
 def _list_codex_models(timeout: int = 60) -> int:
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    sub = getattr(sub_module, "subprocess", subprocess) if sub_module else subprocess
-
     command = ["codex", "mcp-server"]
     deadline = time.time() + timeout
-    proc = sub.Popen(
+    proc = subprocess.Popen(
         command,
-        stdin=sub.PIPE,
-        stdout=sub.PIPE,
-        stderr=sub.DEVNULL,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         text=True,
     )
 

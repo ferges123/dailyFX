@@ -4,8 +4,6 @@ import json
 import sys
 from pathlib import Path
 
-from dailyfx_agent.utils import _get_pkg_attr
-
 # Try to dynamically import the shared manifest contract from the backend app.
 try:
     _script_dir = Path(__file__).resolve().parents[1]
@@ -60,8 +58,7 @@ except ImportError:
         if not 3 <= len(normalized_tags) <= 6:
             raise ManifestValidationError("Host manifest did not include valid tags")
 
-        required_source = _get_pkg_attr("HOST_METADATA_SOURCE", HOST_METADATA_SOURCE)
-        if metadata_source != required_source:
+        if metadata_source != HOST_METADATA_SOURCE:
             raise ManifestValidationError("Host manifest did not include the required metadata_source")
 
         normalized["title"] = title
@@ -152,7 +149,7 @@ def _augment_host_prompt(
     abs_output_path: str,
     task_id: str,
 ) -> str:
-    source_str = _get_pkg_attr("HOST_METADATA_SOURCE", HOST_METADATA_SOURCE)
+    source_str = HOST_METADATA_SOURCE
     checklist = (
         f"\n\nCRITICAL SYSTEM INSTRUCTION: THIS IS NOT A SOFTWARE DEVELOPMENT, CODING, OR TESTING TASK. "
         f"DO NOT look at the git status, DO NOT read files from the repository (e.g., Python source code files), "

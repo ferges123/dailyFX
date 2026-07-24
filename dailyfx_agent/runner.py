@@ -50,7 +50,6 @@ from dailyfx_agent.recovery import (
 from dailyfx_agent.utils import (
     _atomic_write_text,
     _container_to_host_image_path,
-    _get_pkg_attr,
     _print_command,
     _print_manifest,
     _print_note,
@@ -228,14 +227,12 @@ def _recover_target_output(
     status_data["stage"] = "recovery"
     status_data["recovery_attempted"] = True
     if target == "codex":
-        find_image = _get_pkg_attr("_find_latest_codex_image", _find_latest_codex_image)
-        generated_image = find_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
+        generated_image = _find_latest_codex_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
         missing_message = (
             f"codex finished without creating {output_file} or a new image under ~/.codex/generated_images"
         )
     else:
-        find_image = _get_pkg_attr("_find_latest_agy_image", _find_latest_agy_image)
-        generated_image = find_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
+        generated_image = _find_latest_agy_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
         missing_message = (
             f"agy finished without creating {output_file} or a new image under ~/.gemini/antigravity-cli/brain"
         )
@@ -293,7 +290,7 @@ def _run_target_with_spinner(
     daemon_mode: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     log_dir = Path("data") / "logs" / "agent"
-    fn_write_log = _get_pkg_attr("_write_target_log", _write_target_log)
+    fn_write_log = _write_target_log
     if daemon_mode:
         result = _run_subprocess_with_active_tracking(command, prompt, timeout)
 
@@ -348,14 +345,9 @@ def _run_target_with_spinner(
 
 
 def main(argv: list[str] | None = None) -> int:
-    sub = _get_pkg_attr("subprocess", subprocess)
-    time_mod = _get_pkg_attr("time", time)
-    path_cls = _get_pkg_attr("Path", Path)
-    fn_acquire_lock = _get_pkg_attr("_acquire_lock", _acquire_lock)
-    fn_release_lock = _get_pkg_attr("_release_lock", _release_lock)
-    fn_update_lock_daemon = _get_pkg_attr("_update_lock_for_daemon_child", _update_lock_for_daemon_child)
-    fn_load_manifest = _get_pkg_attr("_load_manifest", _load_manifest)
-    fn_normalize_manifest = _get_pkg_attr("_normalize_host_manifest", _normalize_host_manifest)
+    sub = subprocess
+    time_mod = time
+    path_cls = Path
 
     status_data = {
         "task_id": "",
@@ -388,8 +380,7 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write("Error: --model option is not supported for target 'schedule'\n")
             return 1
         if args.target == "agy":
-            get_agy = _get_pkg_attr("_get_agy_models", _get_agy_models)
-            available_models = get_agy()
+            available_models = _get_agy_models()
             if available_models and args.model not in available_models:
                 sys.stderr.write(
                     f"Error: Model '{args.model}' is not available for target 'agy'.\n"
@@ -397,8 +388,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 1
         elif args.target == "codex":
-            get_codex = _get_pkg_attr("_get_codex_models", _get_codex_models)
-            available_models = get_codex()
+            available_models = _get_codex_models()
             if available_models and args.model not in available_models:
                 sys.stderr.write(
                     f"Error: Model '{args.model}' is not available for target 'codex'.\n"
@@ -448,10 +438,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         _print_model_list_header(args.target)
         if args.target == "agy":
-            list_agy = _get_pkg_attr("_list_agy_models", _list_agy_models)
-            return list_agy()
-        list_codex = _get_pkg_attr("_list_codex_models", _list_codex_models)
-        return list_codex()
+            return _list_agy_models()
+        return _list_codex_models()
 
     if not (args.list_schedules or args.status or args.stop or args.doctor or args.clean_manifests):
         if args.schedule_id is None or args.target is None:
@@ -534,7 +522,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.schedule_id is not None and args.target == "schedule":
         try:
-            fn_acquire_lock(args.schedule_id, args.target)
+            _acquire_lock(args.schedule_id, args.target)
         except RuntimeError as exc:
             sys.stderr.write(f"{exc}\n")
             return 1
@@ -583,13 +571,13 @@ def main(argv: list[str] | None = None) -> int:
                 pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
                 _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
                 if args.schedule_id is not None and args.target == "schedule":
-                    fn_release_lock(args.schedule_id, args.target)
+                    _release_lock(args.schedule_id, args.target)
                 sys.stderr.write("Error: daemon failed to start\n")
                 return 1
 
             non_local_lock_release = True
             if args.schedule_id is not None and args.target == "schedule":
-                fn_update_lock_daemon(args.schedule_id, args.target, pid)
+                _update_lock_for_daemon_child(args.schedule_id, args.target, pid)
             if queue_owner and queue_target:
                 update_owner_pid(queue_target, pid)
 
@@ -701,7 +689,7 @@ def main(argv: list[str] | None = None) -> int:
                 if shared_manifest_path != manifest_path:
                     shared_manifest_path.parent.mkdir(parents=True, exist_ok=True)
                     shared_manifest_path.write_text(backend_run.stdout, encoding="utf-8")
-                manifest = fn_load_manifest(manifest_path)
+                manifest = _load_manifest(manifest_path)
             except Exception as e:
                 status_data["error"] = str(e)
                 last_exit = 1
@@ -806,8 +794,7 @@ def main(argv: list[str] | None = None) -> int:
             abs_image_path = str(path_cls(image_path).resolve())
             abs_output_path = str(path_cls(output_path).resolve())
             abs_manifest_path = str(manifest_path.resolve())
-            fn_augment_prompt = _get_pkg_attr("_augment_host_prompt", _augment_host_prompt)
-            prompt = fn_augment_prompt(
+            prompt = _augment_host_prompt(
                 prompt,
                 abs_image_path,
                 abs_manifest_path,
@@ -832,8 +819,7 @@ def main(argv: list[str] | None = None) -> int:
             # 3. TARGET RUN STAGE
             status_data["stage"] = "target run"
             try:
-                fn_run_spinner = _get_pkg_attr("_run_target_with_spinner", _run_target_with_spinner)
-                target_run, target_log_path = fn_run_spinner(
+                target_run, target_log_path = _run_target_with_spinner(
                     target_command,
                     prompt=prompt,
                     task_id=task_id,
@@ -867,7 +853,7 @@ def main(argv: list[str] | None = None) -> int:
                 output_file = project_dir / output_file
             try:
                 try:
-                    target_manifest = fn_load_manifest(manifest_path)
+                    target_manifest = _load_manifest(manifest_path)
                     if isinstance(target_manifest, dict):
                         manifest = {**manifest, **target_manifest}
                 except Exception:
@@ -907,8 +893,8 @@ def main(argv: list[str] | None = None) -> int:
 
             status_data["stage"] = "metadata validation"
             try:
-                updated_manifest = fn_normalize_manifest(
-                    fn_load_manifest(manifest_path), original_manifest
+                updated_manifest = _normalize_host_manifest(
+                    _load_manifest(manifest_path), original_manifest
                 )
                 manifest_path.write_text(
                     json.dumps(updated_manifest, ensure_ascii=False, indent=2) + "\n",
@@ -1012,7 +998,7 @@ def main(argv: list[str] | None = None) -> int:
                 finish_job(path)
         if args.schedule_id is not None and args.target == "schedule":
             if not locals().get("non_local_lock_release", False):
-                fn_release_lock(args.schedule_id, args.target)
+                _release_lock(args.schedule_id, args.target)
         if status_data.get("task_id"):
             _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
         if "args" in locals() and getattr(args, "json_status", False):

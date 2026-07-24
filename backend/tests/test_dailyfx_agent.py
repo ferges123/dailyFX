@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -90,9 +91,9 @@ def test_dailyfx_agent_runs_backend_then_target(monkeypatch, tmp_path, capsys):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -154,9 +155,9 @@ def test_dailyfx_agent_requires_updated_metadata_before_finalize(monkeypatch, tm
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -211,9 +212,9 @@ def test_dailyfx_agent_hides_target_thinking_output(monkeypatch, tmp_path, capsy
             )
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -259,7 +260,7 @@ def test_dailyfx_agent_dry_run_shows_backend_and_target_commands(monkeypatch, ca
         calls.append(command)
         raise AssertionError("dry-run should not execute subprocesses")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     exit_code = dailyfx_agent.main(
         [
@@ -298,7 +299,7 @@ def test_dailyfx_agent_lists_schedules(monkeypatch, capsys):
             command, 0, stdout="ID\tNAME\tENABLED\n1\tMorning Run\tyes\n2\tNight Run\tno\n", stderr=""
         )
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     exit_code = dailyfx_agent.main(["--list-schedules"])
     captured = capsys.readouterr()
@@ -339,9 +340,9 @@ def test_dailyfx_agent_supports_short_aliases(monkeypatch, tmp_path):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -392,9 +393,9 @@ def test_dailyfx_agent_passes_model_to_agy(monkeypatch, tmp_path):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -449,9 +450,9 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -477,8 +478,8 @@ def test_dailyfx_agent_lists_models_for_target(monkeypatch, capsys):
     agy_called = {"value": False}
     codex_called = {"value": False}
 
-    monkeypatch.setattr(dailyfx_agent, "_list_agy_models", lambda: agy_called.__setitem__("value", True) or 0)
-    monkeypatch.setattr(dailyfx_agent, "_list_codex_models", lambda: codex_called.__setitem__("value", True) or 0)
+    monkeypatch.setattr("dailyfx_agent.runner._list_agy_models", lambda: agy_called.__setitem__("value", True) or 0)
+    monkeypatch.setattr("dailyfx_agent.runner._list_codex_models", lambda: codex_called.__setitem__("value", True) or 0)
 
     exit_code = dailyfx_agent.main(["--list-models", "--target", "agy"])
     assert exit_code == 0
@@ -499,7 +500,7 @@ def test_list_agy_models_renders_table(monkeypatch, capsys):
     def fake_run(command, **kwargs):
         return CompletedProcess(command, 0, stdout="Gemini 3.5 Flash (Medium)\nGemini 3.1 Pro (High)\n", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     exit_code = dailyfx_agent._list_agy_models()
     output = capsys.readouterr().out
@@ -548,8 +549,8 @@ def test_list_codex_models_renders_table(monkeypatch, capsys):
     def fake_mcp_request(proc, request_id, method, params=None, **kwargs):
         return responses.pop(0)["result"]
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "Popen", FakePopen)
-    monkeypatch.setattr(dailyfx_agent, "_mcp_request", fake_mcp_request)
+    monkeypatch.setattr(subprocess, "Popen", FakePopen)
+    monkeypatch.setattr("dailyfx_agent.models._mcp_request", fake_mcp_request)
 
     exit_code = dailyfx_agent._list_codex_models()
     output = capsys.readouterr().out
@@ -585,9 +586,9 @@ def test_list_codex_models_falls_back_to_doctor_when_catalog_unavailable(monkeyp
             )
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "Popen", FakePopen)
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent, "_mcp_request", fake_mcp_request)
+    monkeypatch.setattr(subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("dailyfx_agent.models._mcp_request", fake_mcp_request)
 
     exit_code = dailyfx_agent._list_codex_models()
     output = capsys.readouterr().out
@@ -641,9 +642,9 @@ def test_dailyfx_agent_renders_agy_template(monkeypatch, tmp_path, capsys):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -710,9 +711,9 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -769,9 +770,9 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -799,7 +800,7 @@ def test_dailyfx_agent_warns_on_quoted_placeholders_in_templates(monkeypatch, ca
         calls.append(command)
         raise AssertionError("dry-run should not execute subprocesses")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     exit_code = dailyfx_agent.main(
         [
@@ -860,8 +861,8 @@ def test_list_codex_models_redirects_stderr_to_devnull(monkeypatch):
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "Popen", FakePopen)
-    monkeypatch.setattr(dailyfx_agent, "_mcp_request", lambda *args, **kwargs: {"data": []})
+    monkeypatch.setattr(subprocess, "Popen", FakePopen)
+    monkeypatch.setattr("dailyfx_agent.models._mcp_request", lambda *args, **kwargs: {"data": []})
 
     dailyfx_agent._list_codex_models()
     assert popen_args[0][1].get("stderr") == subprocess.DEVNULL
@@ -871,23 +872,22 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
     dup2_calls = []
     setsid_called = []
 
-    monkeypatch.setattr(dailyfx_agent.os, "fork", lambda: 0)  # Symulacja dziecka
-    monkeypatch.setattr(dailyfx_agent.os, "setsid", lambda: setsid_called.append(True))
-    monkeypatch.setattr(dailyfx_agent.os, "dup2", lambda fd1, fd2: dup2_calls.append((fd1, fd2)))
+    monkeypatch.setattr(os, "fork", lambda: 0)  # Symulacja dziecka
+    monkeypatch.setattr(os, "setsid", lambda: setsid_called.append(True))
+    monkeypatch.setattr(os, "dup2", lambda fd1, fd2: dup2_calls.append((fd1, fd2)))
     monkeypatch.setattr(
-        dailyfx_agent,
-        "_parse_args",
+        "dailyfx_agent.runner._parse_args",
         lambda argv: dailyfx_agent._build_parser().parse_args(["--daemon", "--schedule-id", "1", "--target", "agy"]),
     )
 
     # Zamakowanie reszty maina, by nie wywoływał komend Dockera
-    monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: [])
+    monkeypatch.setattr("dailyfx_agent.runner._build_backend_command", lambda args: [])
     monkeypatch.setattr(
-        dailyfx_agent.subprocess,
+        subprocess,
         "run",
         lambda *args, **kwargs: type("obj", (object,), {"returncode": 0, "stdout": "{}", "stderr": ""}),
     )
-    monkeypatch.setattr(dailyfx_agent, "_load_manifest", lambda path: {})
+    monkeypatch.setattr("dailyfx_agent.runner._load_manifest", lambda path: {})
 
     try:
         dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "agy"])
@@ -903,8 +903,8 @@ def test_daemon_mode_performs_os_level_fd_redirection(monkeypatch):
 
 def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(dailyfx_agent.tempfile, "gettempdir", lambda: str(tmp_path))
-    monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr("dailyfx_agent.runner._build_backend_command", lambda args: ["true"])
 
     from subprocess import CompletedProcess
 
@@ -913,12 +913,12 @@ def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
             return CompletedProcess(command, 0, stdout="{}", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     def fake_load_manifest(path):
         raise ValueError("Force crash inside loop")
 
-    monkeypatch.setattr(dailyfx_agent, "_load_manifest", fake_load_manifest)
+    monkeypatch.setattr("dailyfx_agent.runner._load_manifest", fake_load_manifest)
 
     try:
         dailyfx_agent.main(["--schedule-id", "1", "--target", "agy", "--project-dir", str(tmp_path)])
@@ -931,9 +931,9 @@ def test_main_cleans_up_manifests_on_exception(monkeypatch, tmp_path):
 
 def test_daemon_fork_failure_cleans_generated_manifest(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(dailyfx_agent, "_build_backend_command", lambda args: ["true"])
-    monkeypatch.setattr(dailyfx_agent, "_acquire_lock", lambda *args: None)
-    monkeypatch.setattr(dailyfx_agent.os, "fork", lambda: (_ for _ in ()).throw(RuntimeError("fork failed")))
+    monkeypatch.setattr("dailyfx_agent.runner._build_backend_command", lambda args: ["true"])
+    monkeypatch.setattr("dailyfx_agent.runner._acquire_lock", lambda *args: None)
+    monkeypatch.setattr(os, "fork", lambda: (_ for _ in ()).throw(RuntimeError("fork failed")))
 
     try:
         dailyfx_agent.main(["--daemon", "--schedule-id", "1", "--target", "schedule"])
@@ -971,7 +971,7 @@ def test_run_target_with_spinner_skips_spinner_in_daemon_mode(monkeypatch):
 
     monkeypatch.setattr(threading.Thread, "start", fake_thread_start)
     monkeypatch.setattr(
-        dailyfx_agent.subprocess,
+        subprocess,
         "run",
         lambda *args, **kwargs: type("obj", (object,), {"returncode": 0, "stdout": "", "stderr": ""}),
     )
@@ -1027,9 +1027,9 @@ def test_dailyfx_agent_repeat_runs_multiple_times(monkeypatch, tmp_path):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent.time, "time", lambda: 1000.0)
+    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("time.time", lambda: 1000.0)
 
     exit_code = dailyfx_agent.main(
         [
@@ -1064,7 +1064,7 @@ def test_target_log_stored_in_workspace(monkeypatch, tmp_path):
         log_dir_arg = log_dir
         return tmp_path / "fake.log"
 
-    monkeypatch.setattr(dailyfx_agent, "_write_target_log", fake_write_target_log)
+    monkeypatch.setattr("dailyfx_agent.runner._write_target_log", fake_write_target_log)
     monkeypatch.setattr(
         dailyfx_agent,
         "_run_subprocess_with_active_tracking",
@@ -1086,7 +1086,7 @@ def test_sigterm_kills_subprocess(monkeypatch):
             kill_called = True
 
     proc = FakeProc()
-    monkeypatch.setattr(dailyfx_agent, "_active_process", proc)
+    monkeypatch.setattr("dailyfx_agent.utils._active_process", proc)
 
     try:
         dailyfx_agent._sigterm_handler(signal.SIGTERM, None)
@@ -1097,7 +1097,7 @@ def test_sigterm_kills_subprocess(monkeypatch):
 
 
 def test_model_validation_fails_on_invalid_model(monkeypatch, capsys):
-    monkeypatch.setattr(dailyfx_agent, "_get_agy_models", lambda *a: ["gemini-3.5-flash"])
+    monkeypatch.setattr("dailyfx_agent.runner._get_agy_models", lambda *a: ["gemini-3.5-flash"])
     exit_code = dailyfx_agent.main(["--schedule-id", "1", "--target", "agy", "--model", "invalid-model"])
     assert exit_code == 1
     captured = capsys.readouterr()
@@ -1108,7 +1108,7 @@ def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
     manifest_file = tmp_path / "dailyfx-run-custom.json"
     manifest_file.write_text(json.dumps({"task_id": "test"}), encoding="utf-8")
 
-    monkeypatch.setattr(dailyfx_agent, "_validate_command_templates", lambda *a: None)
+    monkeypatch.setattr("dailyfx_agent.runner._validate_command_templates", lambda *a: None)
 
     manifest = {
         "task_id": "cli-s1-abc123",
@@ -1139,7 +1139,7 @@ def test_manifest_cleanup_unconditional(monkeypatch, tmp_path):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     (tmp_path / "out.png").write_bytes(_png_bytes())
     (tmp_path / "out.input.png").write_bytes(_png_bytes())
     _seed_agy_generated_image(tmp_path)
@@ -1231,8 +1231,8 @@ def test_prompt_augmentation(monkeypatch, tmp_path):
         (tmp_path / "run.json").write_text(json.dumps(updated), encoding="utf-8")
         return CompletedProcess(command, 0, stdout="", stderr=""), "/tmp/log"
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent, "_run_target_with_spinner", fake_run_spinner)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("dailyfx_agent.runner._run_target_with_spinner", fake_run_spinner)
 
     exit_code = dailyfx_agent.main(
         [
@@ -1470,7 +1470,7 @@ def test_multiple_daemons_status_and_stop(tmp_path, monkeypatch, capsys):
 def test_agent_version_mcp_init(monkeypatch):
     # Mock _get_agent_version to return a unique custom version
     # Since _get_agent_version is not yet implemented, this mock is safe
-    monkeypatch.setattr(dailyfx_agent, "_get_agent_version", lambda: "99.9.9")
+    monkeypatch.setattr("dailyfx_agent.models._get_agent_version", lambda: "99.9.9")
 
     captured_params = []
 
@@ -1486,7 +1486,7 @@ def test_agent_version_mcp_init(monkeypatch):
             return {"models": []}
         return {}
 
-    monkeypatch.setattr(dailyfx_agent, "_mcp_request", fake_mcp_request)
+    monkeypatch.setattr("dailyfx_agent.models._mcp_request", fake_mcp_request)
 
     class FakeProc:
         def __init__(self):
@@ -1587,7 +1587,7 @@ def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
     import pytest
 
     locks_dir = tmp_path / "locks"
-    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", locks_dir)
+    monkeypatch.setattr("dailyfx_agent.locks.LOCKS_DIR", locks_dir)
 
     lock_file = locks_dir / "dailyfx-s1.lock"
 
@@ -1616,8 +1616,8 @@ def test_lock_file_acquisition_and_cleanup(tmp_path, monkeypatch):
 
 def test_daemon_lock_update_records_child_pid(tmp_path, monkeypatch):
     locks_dir = tmp_path / "locks"
-    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", locks_dir)
-    monkeypatch.setattr(dailyfx_agent.os, "getpid", lambda: 111)
+    monkeypatch.setattr("dailyfx_agent.locks.LOCKS_DIR", locks_dir)
+    monkeypatch.setattr(os, "getpid", lambda: 111)
 
     dailyfx_agent._acquire_lock(1, "agy")
     lock_file = locks_dir / "dailyfx-s1.lock"
@@ -1669,9 +1669,9 @@ def test_json_status_target_failure(tmp_path, monkeypatch, capsys):
             return CompletedProcess(command, 1, stdout="", stderr="Fatal target error")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("dailyfx_agent.locks.LOCKS_DIR", tmp_path / "locks")
 
     exit_code = dailyfx_agent.main(
         ["--schedule-id", "1", "--target", "agy", "--project-dir", str(tmp_path), "--json-status"]
@@ -1690,9 +1690,9 @@ def test_json_status_invalid_manifest(tmp_path, monkeypatch, capsys):
             return CompletedProcess(command, 0, stdout="corrupt json here{", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("dailyfx_agent.locks.LOCKS_DIR", tmp_path / "locks")
 
     exit_code = dailyfx_agent.main(
         ["--schedule-id", "1", "--target", "agy", "--project-dir", str(tmp_path), "--json-status"]
@@ -1733,10 +1733,10 @@ def test_json_status_missing_output(tmp_path, monkeypatch, capsys):
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
-    monkeypatch.setattr(dailyfx_agent, "_find_latest_agy_image", lambda *args, **kwargs: None)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("dailyfx_agent.locks.LOCKS_DIR", tmp_path / "locks")
+    monkeypatch.setattr("dailyfx_agent.runner._find_latest_agy_image", lambda *args, **kwargs: None)
 
     exit_code = dailyfx_agent.main(
         [
@@ -1815,10 +1815,10 @@ def test_successful_recovery_records_source_in_status_and_manifest(tmp_path, mon
             return CompletedProcess(command, 0, stdout="", stderr="")
         return CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr(dailyfx_agent.subprocess, "run", fake_run)
-    monkeypatch.setattr(dailyfx_agent.Path, "home", classmethod(lambda cls: tmp_path))
-    monkeypatch.setattr(dailyfx_agent, "LOCKS_DIR", tmp_path / "locks")
-    monkeypatch.setattr(dailyfx_agent, "_find_latest_agy_image", lambda *args, **kwargs: generated_image)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr("dailyfx_agent.locks.LOCKS_DIR", tmp_path / "locks")
+    monkeypatch.setattr("dailyfx_agent.runner._find_latest_agy_image", lambda *args, **kwargs: generated_image)
 
     exit_code = dailyfx_agent.main(
         [

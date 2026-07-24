@@ -9,11 +9,7 @@ import tempfile
 from pathlib import Path
 
 _active_process: subprocess.Popen[str] | None = None
-
-
-def _get_pkg_attr(name: str, fallback: object) -> object:
-    pkg = sys.modules.get("dailyfx_agent")
-    return getattr(pkg, name, fallback) if pkg else fallback
+_original_subprocess_run = subprocess.run
 
 
 def _atomic_write_text(path: Path, content: str, *, mode: int = 0o600) -> None:
@@ -65,7 +61,7 @@ def _terminate_process_gracefully(
 
 
 def _sigterm_handler(signum, frame):
-    active_proc = _get_pkg_attr("_active_process", None)
+    active_proc = _active_process
     if active_proc:
         try:
             _terminate_process_gracefully(active_proc)
@@ -84,12 +80,9 @@ except ValueError:
 def _run_subprocess_with_active_tracking(
     command: list[str], prompt: str, timeout: int | None
 ) -> subprocess.CompletedProcess[str]:
-    sub = _get_pkg_attr("subprocess", subprocess)
-    orig_run = _get_pkg_attr("_original_subprocess_run", subprocess.run)
-
-    if sub.run is not orig_run:
+    if subprocess.run is not _original_subprocess_run:
         try:
-            return sub.run(
+            return subprocess.run(
                 command,
                 input=prompt,
                 text=True,
@@ -97,8 +90,8 @@ def _run_subprocess_with_active_tracking(
                 check=False,
                 timeout=timeout,
             )
-        except sub.TimeoutExpired:
-            return sub.CompletedProcess(
+        except subprocess.TimeoutExpired:
+            return subprocess.CompletedProcess(
                 command, 124, stdout="", stderr=f"Timed out after {timeout}s"
             )
 
@@ -106,26 +99,26 @@ def _run_subprocess_with_active_tracking(
     proc = None
 
     try:
-        proc = sub.Popen(
+        proc = subprocess.Popen(
             command,
-            stdin=sub.PIPE,
-            stdout=sub.PIPE,
-            stderr=sub.PIPE,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
         )
         _active_process = proc
         stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
-        return sub.CompletedProcess(
+        return subprocess.CompletedProcess(
             command, proc.returncode, stdout=stdout, stderr=stderr
         )
-    except sub.TimeoutExpired:
+    except subprocess.TimeoutExpired:
         if proc:
             try:
                 _terminate_process_gracefully(proc, grace_seconds=2.0)
             except OSError:
                 pass
             stdout, stderr = proc.communicate()
-        return sub.CompletedProcess(
+        return subprocess.CompletedProcess(
             command, 124, stdout="", stderr=f"Timed out after {timeout}s"
         )
     except BaseException:
@@ -203,10 +196,6 @@ def _print_table(rows: list[dict[str, str]], columns: list[tuple[str, str]]) -> 
 
 
 def _get_agent_version() -> str:
-    fn_get_ver = _get_pkg_attr("_get_agent_version", None)
-    if fn_get_ver is not None and fn_get_ver is not _get_agent_version:
-        return fn_get_ver()
-
     # 1. Try dynamic import from backend app.version
     try:
         project_dir = Path(__file__).resolve().parents[1]

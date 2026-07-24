@@ -1,21 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
-import re
-import select
-import shutil
-import signal
-import subprocess
-import sys
-import tempfile
-import threading
-import time
-import uuid
-from pathlib import Path
-
-_original_subprocess_run = subprocess.run
-
 from dailyfx_agent.cli import (
     _build_backend_command,
     _build_parser,
@@ -103,19 +87,6 @@ from dailyfx_agent.utils import (
 
 __all__ = [
     "_active_process",
-    "os",
-    "sys",
-    "subprocess",
-    "shutil",
-    "re",
-    "json",
-    "select",
-    "signal",
-    "tempfile",
-    "threading",
-    "time",
-    "uuid",
-    "Path",
     "LOCKS_DIR",
     "AGENT_QUEUE_DIR",
     "_RECOVERY_DIR_BUFFER_SECONDS",
