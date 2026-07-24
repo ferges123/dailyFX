@@ -375,6 +375,11 @@
       "id": "ai_sand_sculpture",
       "display_group": "3D / Toy",
       "hidden": false
+    },
+    {
+      "id": "ai_muscular",
+      "display_group": "Portrait",
+      "hidden": false
     }
   ]
 }

@@ -265,6 +265,15 @@ def test_expanded_ai_effect_prompt_pack_is_seeded_and_listed():
         db.close()
 
 
+def test_muscular_effect_targets_only_identified_people():
+    effects = {effect.id: effect for effect in load_seed_effects()}
+
+    muscular = effects["ai_muscular"]
+    assert "explicitly identified as transformation targets" in muscular.positive_prompt
+    assert "Leave every untargeted person completely unchanged" in muscular.positive_prompt
+    assert "muscular untargeted people" in muscular.negative_prompt
+
+
 def test_all_builtin_ai_effect_prompts_define_precise_rendering_constraints():
     effects = load_seed_effects()
 
