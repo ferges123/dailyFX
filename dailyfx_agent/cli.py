@@ -77,7 +77,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--agy-command-template",
-        default="--print {prompt}",
+        default="--print '{prompt}'",
         help=(
             "Template used when --target agy is selected. Supports {image_path}, "
             "{output_path}, {manifest_path}, and {prompt}. Prompt is sent on stdin."
@@ -230,10 +230,10 @@ def _build_target_command(
 ) -> list[str]:
     return _target_prefix(target, model) + shlex.split(
         (agy_template if target == "agy" else codex_template).format(
-            image_path=shlex.quote(image_path),
-            manifest_path=shlex.quote(manifest_path),
-            output_path=shlex.quote(output_path),
-            prompt=shlex.quote(prompt),
+            image_path=image_path,
+            manifest_path=manifest_path,
+            output_path=output_path,
+            prompt=prompt,
         )
     )
 
