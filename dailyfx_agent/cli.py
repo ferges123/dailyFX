@@ -77,7 +77,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--agy-command-template",
-        default="--print '{prompt}'",
+        default="--print {prompt}",
         help=(
             "Template used when --target agy is selected. Supports {image_path}, "
             "{output_path}, {manifest_path}, and {prompt}. Prompt is sent on stdin."
@@ -154,7 +154,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _validate_command_templates(args: argparse.Namespace) -> None:
-    placeholders = ["image_path", "output_path", "manifest_path"]
+    placeholders = ["image_path", "output_path", "manifest_path", "prompt"]
     templates = [
         ("agy-command-template", args.agy_command_template),
         ("codex-command-template", args.codex_command_template),
@@ -228,14 +228,19 @@ def _build_target_command(
     agy_template: str,
     codex_template: str,
 ) -> list[str]:
-    return _target_prefix(target, model) + shlex.split(
-        (agy_template if target == "agy" else codex_template).format(
-            image_path=image_path,
-            manifest_path=manifest_path,
-            output_path=output_path,
-            prompt=prompt,
-        )
+    template = agy_template if target == "agy" else codex_template
+    placeholders = ["image_path", "manifest_path", "output_path", "prompt"]
+    for ph in placeholders:
+        template = re.sub(rf"([\"'])\s*{{{ph}}}\s*\1", f"{{{ph}}}", template)
+
+    formatted_cmd = template.format(
+        image_path=shlex.quote(image_path),
+        manifest_path=shlex.quote(manifest_path),
+        output_path=shlex.quote(output_path),
+        prompt=shlex.quote(prompt),
     )
+    return _target_prefix(target, model) + shlex.split(formatted_cmd)
+
 
 
 def _target_prefix(target: str, model: str | None) -> list[str]:

@@ -474,19 +474,20 @@ def _resolve_output_path(manifest: dict[str, object]) -> str:
 
 
 def _handle_dry_run(args: argparse.Namespace, manifest_path: Path, shared_manifest_path: Path) -> int:
-    target_preview = _target_prefix(args.target, args.model)
     backend_command = _build_backend_command(args)
     _print_command("backend", backend_command)
     _print_command("manifest", ["write", str(manifest_path), "and", str(shared_manifest_path)])
     _print_command(
         "target",
-        target_preview + shlex.split(
-            (args.agy_command_template if args.target == "agy" else args.codex_command_template).format(
-                image_path="{image_path}",
-                manifest_path="{manifest_path}",
-                output_path="{output_path}",
-                prompt="{prompt}",
-            )
+        _build_target_command(
+            args.target,
+            "{image_path}",
+            "{manifest_path}",
+            "{output_path}",
+            args.model,
+            "{prompt}",
+            agy_template=args.agy_command_template,
+            codex_template=args.codex_command_template,
         ),
     )
     _print_command(

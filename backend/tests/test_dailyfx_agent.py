@@ -1932,3 +1932,39 @@ def test_schedule_target_execution_short_circuits(monkeypatch):
     # run main with schedule target
     exit_code = main(["--schedule-id", "1", "--target", "schedule"])
     assert exit_code == 0
+
+
+def test_build_target_command_handles_prompts_and_paths_with_quotes_and_newlines():
+    from dailyfx_agent.cli import _build_target_command
+
+    prompt = "This is a prompt with 'single quotes', \"double quotes\", and\nnewlines."
+    image_path = "/path/with spaces/image.png"
+    manifest_path = "/path/with spaces/manifest.json"
+    output_path = "/path/with spaces/output.png"
+
+    # Default agy template with quotes around prompt
+    cmd_agy = _build_target_command(
+        "agy",
+        image_path,
+        manifest_path,
+        output_path,
+        "gemini-2.5-flash",
+        prompt,
+        agy_template="--print '{prompt}'",
+        codex_template="exec --image {image_path} -",
+    )
+    assert cmd_agy == ["agy", "--model", "gemini-2.5-flash", "--print", prompt]
+
+    # Codex template with paths having spaces
+    cmd_codex = _build_target_command(
+        "codex",
+        image_path,
+        manifest_path,
+        output_path,
+        None,
+        prompt,
+        agy_template="--print '{prompt}'",
+        codex_template="exec --image {image_path} -",
+    )
+    assert cmd_codex == ["codex", "exec", "--image", image_path, "-"]
+
