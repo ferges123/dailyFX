@@ -200,8 +200,6 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
             json.dumps({"jsonrpc": "2.0", "method": "exit"}) + "\n"
         )
         proc.stdin.flush()
-        proc.terminate()
-        proc.wait(timeout=1.0)
 
         res = []
         for model in models:
@@ -210,12 +208,16 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
                 res.append(model_id)
         return res
     except Exception:
+        return []
+    finally:
         try:
             proc.terminate()
             proc.wait(timeout=1.0)
         except Exception:
-            pass
-        return []
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
 
 def _list_agy_models(timeout: int = 30) -> int:

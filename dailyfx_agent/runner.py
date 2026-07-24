@@ -53,6 +53,7 @@ from dailyfx_agent.utils import (
     _print_manifest,
     _print_note,
     _run_subprocess_with_active_tracking,
+    _setup_signal_handlers,
 )
 
 
@@ -471,34 +472,6 @@ def _resolve_output_path(manifest: dict[str, object]) -> str:
     return output_path
 
 
-def _mark_host_task_failed(subprocess_module, args, task_id: str, error: str) -> None:
-    command = [
-        "docker",
-        "compose",
-        "-f",
-        args.compose_file,
-        "exec",
-        "-T",
-        args.service,
-        "dailyfx",
-        "fail-host",
-        "--task-id",
-        task_id,
-        "--error",
-        error[:2000],
-    ]
-    try:
-        subprocess_module.run(
-            command,
-            cwd=args.project_dir,
-            check=False,
-            text=True,
-            capture_output=True,
-            timeout=min(args.timeout, 30),
-        )
-    except Exception:
-        pass
-
 
 def _handle_dry_run(args: argparse.Namespace, manifest_path: Path, shared_manifest_path: Path) -> int:
     target_preview = _target_prefix(args.target, args.model)
@@ -870,6 +843,7 @@ def _daemon_child_main(
 
 
 def main(argv: list[str] | None = None) -> int:
+    _setup_signal_handlers()
     status_data = {
         "task_id": "", "schedule_id": None, "target": None, "model": None,
         "stage": "prepare", "manifest_path": None, "source_image_path": None,

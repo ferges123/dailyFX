@@ -70,11 +70,12 @@ def _sigterm_handler(signum, frame):
     sys.exit(128 + signum)
 
 
-try:
-    signal.signal(signal.SIGTERM, _sigterm_handler)
-    signal.signal(signal.SIGINT, _sigterm_handler)
-except ValueError:
-    pass
+def _setup_signal_handlers() -> None:
+    try:
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+        signal.signal(signal.SIGINT, _sigterm_handler)
+    except ValueError:
+        pass
 
 
 def _run_subprocess_with_active_tracking(

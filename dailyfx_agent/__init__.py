@@ -81,6 +81,7 @@ from dailyfx_agent.utils import (
     _print_status,
     _print_table,
     _run_subprocess_with_active_tracking,
+    _setup_signal_handlers,
     _sigterm_handler,
     _terminate_process_gracefully,
 )
@@ -101,6 +102,7 @@ __all__ = [
     "_normalize_host_manifest",
     "_augment_host_prompt",
     "_atomic_write_text",
+    "_setup_signal_handlers",
     "_sigterm_handler",
     "_terminate_process_gracefully",
     "_run_subprocess_with_active_tracking",
