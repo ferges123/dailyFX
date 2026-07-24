@@ -35,9 +35,6 @@ def _handle_clean_manifests() -> int:
 
 
 def _handle_doctor(args: argparse.Namespace) -> int:
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    sub = getattr(sub_module, "subprocess", subprocess) if sub_module else subprocess
-
     checks = []
     has_errors = False
     has_warnings = False
@@ -47,7 +44,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
 
     # 1. Docker Compose Config
     try:
-        run = sub.run(
+        run = subprocess.run(
             ["docker", "compose", "-f", args.compose_file, "config"],
             capture_output=True,
             text=True,
@@ -66,7 +63,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
     # 2. API Service Reachability
     if not has_errors:
         try:
-            run = sub.run(
+            run = subprocess.run(
                 ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "python", "-c", f"import urllib.request; urllib.request.urlopen('http://localhost:8438/api/health', timeout={_DOCTOR_HTTP_PROBE_TIMEOUT})"],
                 capture_output=True,
                 text=True,
@@ -87,7 +84,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
     # 3. DailyFX Schedules
     if not has_errors:
         try:
-            run = sub.run(
+            run = subprocess.run(
                 ["docker", "compose", "-f", args.compose_file, "exec", "-T", args.service, "dailyfx", "schedules"],
                 capture_output=True,
                 text=True,
@@ -151,13 +148,9 @@ def _handle_doctor(args: argparse.Namespace) -> int:
             checks[-1] = ("target_codex_executable", "FAIL", "not found in PATH")
 
     # 6. Target models
-    path_cls = getattr(sub_module, "Path", Path) if sub_module else Path
-    get_agy = getattr(sub_module, "_get_agy_models", _get_agy_models) if sub_module else _get_agy_models
-    get_codex = getattr(sub_module, "_get_codex_models", _get_codex_models) if sub_module else _get_codex_models
-
     if agy_path:
         try:
-            models = get_agy(timeout=5)
+            models = _get_agy_models(timeout=5)
             if models:
                 add_check("agy_models", "OK", f"retrieved {len(models)} models")
             else:
@@ -171,7 +164,7 @@ def _handle_doctor(args: argparse.Namespace) -> int:
 
     if codex_path:
         try:
-            models = get_codex(timeout=5)
+            models = _get_codex_models(timeout=5)
             if models:
                 add_check("codex_models", "OK", f"retrieved {len(models)} models")
             else:
@@ -184,8 +177,8 @@ def _handle_doctor(args: argparse.Namespace) -> int:
         add_check("codex_models", "WARNING", "skipped (codex target missing)")
 
     # 7. Recovery directories
-    agy_rec = path_cls.home() / ".gemini" / "antigravity-cli" / "brain"
-    codex_rec = path_cls.home() / ".codex" / "generated_images"
+    agy_rec = Path.home() / ".gemini" / "antigravity-cli" / "brain"
+    codex_rec = Path.home() / ".codex" / "generated_images"
 
     if agy_rec.is_dir() and os.access(agy_rec, os.R_OK):
         add_check("recovery_dir_agy", "OK", "exists and readable")

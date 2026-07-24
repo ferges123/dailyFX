@@ -93,14 +93,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--timeout",
-        type=int,
+        type=_timeout_value,
         default=600,
         help="Timeout in seconds for the host tool execution (default: 600)",
     )
     parser.add_argument(
         "-x",
         "--repeat",
-        type=int,
+        type=_repeat_value,
         default=1,
         help="Number of times to run the task (default: 1)",
     )
@@ -141,6 +141,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Enable print of detailed error backtraces and context information",
     )
     parser.add_argument(
+        "--strict-recovery",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Require recovered images to match the task id (default: enabled)",
+    )
+    parser.add_argument(
         "--json-status",
         action="store_true",
         help="Output execution diagnostics and status formatted as JSON on exit",
@@ -151,6 +157,20 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return _build_parser().parse_args(argv)
+
+
+def _timeout_value(value: str) -> int:
+    parsed = int(value)
+    if parsed < 10:
+        raise argparse.ArgumentTypeError("timeout must be at least 10 seconds")
+    return parsed
+
+
+def _repeat_value(value: str) -> int:
+    parsed = int(value)
+    if not 1 <= parsed <= 100:
+        raise argparse.ArgumentTypeError("repeat must be between 1 and 100")
+    return parsed
 
 
 def _validate_command_templates(args: argparse.Namespace) -> None:

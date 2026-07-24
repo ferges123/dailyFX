@@ -65,6 +65,7 @@ Execute the agent from the project root:
 | `--codex-command-template`| `str` | `"exec --image {image_path} -"`| Command template for `codex`. Supports `{image_path}`, `{output_path}`, and `{manifest_path}`. |
 | `--timeout` | `int` | `600` | Timeout in seconds for the target tool execution. |
 | `-x, --repeat` | `int` | `1` | Number of times to repeat the execution task. |
+| `--strict-recovery/--no-strict-recovery` | `bool` | `True` | Require a recovered image to match the task ID; disable only for legacy fallback behavior. |
 | `-d, --daemon` | `flag` | `False` | Run in background (detached daemon mode). Writes PID and exits immediately. |
 | `--pid-file` | `str` | `None` | Path to write the daemon PID file. Defaults to `data/dailyfx-agent-{target}.pid`. |
 | `--status` | `flag` | `False` | Check the status of the daemon process. |
@@ -198,7 +199,7 @@ You can manage the running daemon process using these flags:
 The `dailyfx-agent` resolves its version dynamically to stay aligned with the backend application:
 1. It tries to dynamically import the backend package version (`app.version.APP_VERSION`).
 2. If the import fails, it parses the `pyproject.toml` configuration file under the `backend/` directory.
-3. In case both fail, it falls back to using `importlib.metadata` or the backend-aligned default version identifier (`"0.14.1"`).
+3. In case both fail, it falls back to using `importlib.metadata` or the backend-aligned default version identifier (`"0.15.0"`).
 
 This resolved version is used during Codex MCP initialization as the client version (under `clientInfo.version`).
 

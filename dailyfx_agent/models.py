@@ -7,7 +7,7 @@ import sys
 import threading
 import time
 
-from dailyfx_agent.config import IS_TESTING
+from dailyfx_agent.config import is_testing
 from dailyfx_agent.utils import _get_agent_version, _print_table
 
 
@@ -41,17 +41,14 @@ def _parse_agy_model_line(line: str) -> dict[str, str] | None:
 
 
 def _get_agy_models(timeout: int = 15) -> list[str]:
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    sub = getattr(sub_module, "subprocess", subprocess) if sub_module else subprocess
-
-    if IS_TESTING:
+    if is_testing():
         return ["gpt-5.5", "gemini-3.5-flash"]
     command = ["agy", "models"]
     try:
-        run = sub.run(
+        run = subprocess.run(
             command, text=True, capture_output=True, check=False, timeout=timeout
         )
-    except sub.TimeoutExpired:
+    except subprocess.TimeoutExpired:
         return []
     if run.returncode != 0:
         return []
@@ -63,29 +60,41 @@ def _get_agy_models(timeout: int = 15) -> list[str]:
     return models
 
 
-def _read_jsonrpc_message(stream, timeout_seconds: float = 10.0) -> dict[str, object]:
-    q = getattr(stream, "response_queue", None)
-    if q is None:
-        raise RuntimeError("Stream does not have a response queue attached")
+class _JsonRpcReader:
+    def __init__(self) -> None:
+        self._queue: queue.Queue[str] = queue.Queue()
 
-    deadline = time.time() + timeout_seconds
-    while time.time() < deadline:
-        remaining = deadline - time.time()
-        if remaining <= 0:
-            break
-        try:
-            line = q.get(timeout=remaining)
-        except queue.Empty:
-            continue
-        if not line:
-            continue
-        try:
-            parsed = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(parsed, dict):
-            return parsed
-    raise TimeoutError("Timed out waiting for Codex MCP response")
+    def put(self, line: str) -> None:
+        self._queue.put(line)
+
+    def read_message(self, timeout_seconds: float = 10.0) -> dict[str, object]:
+        q = self._queue
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            try:
+                line = q.get(timeout=remaining)
+            except queue.Empty:
+                continue
+            if not line:
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                return parsed
+        raise TimeoutError("Timed out waiting for Codex MCP response")
+
+
+def _read_jsonrpc_message(
+    reader: _JsonRpcReader, timeout_seconds: float = 10.0
+) -> dict[str, object]:
+    if not isinstance(reader, _JsonRpcReader):
+        raise RuntimeError("Stream does not have a response queue attached")
+    return reader.read_message(timeout_seconds)
 
 
 def _mcp_request(
@@ -95,14 +104,12 @@ def _mcp_request(
     params: dict[str, object] | None = None,
     *,
     deadline: float | None = None,
+    reader: _JsonRpcReader | None = None,
 ) -> dict[str, object]:
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    mcp_req = getattr(sub_module, "_mcp_request", None) if sub_module else None
-    if mcp_req is not None and mcp_req is not _mcp_request:
-        return mcp_req(proc, request_id, method, params, deadline=deadline)
-
     if proc.stdin is None or proc.stdout is None:
         raise RuntimeError("Codex MCP server pipes are unavailable")
+    if reader is None:
+        raise RuntimeError("Codex MCP response reader is unavailable")
     payload = {"jsonrpc": "2.0", "id": request_id, "method": method}
     if params is not None:
         payload["params"] = params
@@ -111,7 +118,7 @@ def _mcp_request(
     while True:
         if deadline is not None and time.time() >= deadline:
             raise TimeoutError(f"MCP request {method!r} timed out")
-        message = _read_jsonrpc_message(proc.stdout)
+        message = reader.read_message()
         if message.get("id") == request_id:
             if "error" in message:
                 raise RuntimeError(str(message["error"]))
@@ -122,33 +129,29 @@ def _mcp_request(
 
 
 def _get_codex_models(timeout: int = 15) -> list[str]:
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    sub = getattr(sub_module, "subprocess", subprocess) if sub_module else subprocess
-
-    if IS_TESTING:
+    if is_testing():
         return ["gpt-5.5", "gemini-3.5-flash"]
     command = ["codex", "mcp-server"]
 
     deadline = time.time() + timeout
     try:
-        proc = sub.Popen(
+        proc = subprocess.Popen(
             command,
-            stdin=sub.PIPE,
-            stdout=sub.PIPE,
-            stderr=sub.DEVNULL,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             text=True,
         )
-    except Exception:
+    except Exception as exc:
+        sys.stderr.write(f"warning: failed to retrieve Codex models: {exc}\n")
         return []
 
-    q: queue.Queue[str] = queue.Queue()
-    if proc.stdout is not None:
-        setattr(proc.stdout, "response_queue", q)
+    reader = _JsonRpcReader()
 
     def _reader() -> None:
         if proc.stdout is not None:
             for line in proc.stdout:
-                q.put(line)
+                reader.put(line)
 
     thread = threading.Thread(target=_reader, daemon=True)
     thread.start()
@@ -164,6 +167,7 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
                 "clientInfo": {"name": "dailyfx-agent", "version": _get_agent_version()},
             },
             deadline=deadline,
+            reader=reader,
         )
         if proc.stdin is None:
             return []
@@ -180,7 +184,8 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
             if cursor:
                 params["cursor"] = cursor
             result = _mcp_request(
-                proc, request_id, "model/list", params, deadline=deadline
+                proc, request_id, "model/list", params,
+                deadline=deadline, reader=reader,
             )
             request_id += 1
             batch = result.get("data")
@@ -207,7 +212,8 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
             if model_id:
                 res.append(model_id)
         return res
-    except Exception:
+    except Exception as exc:
+        sys.stderr.write(f"warning: failed to retrieve Codex models: {exc}\n")
         return []
     finally:
         try:
@@ -221,15 +227,12 @@ def _get_codex_models(timeout: int = 15) -> list[str]:
 
 
 def _list_agy_models(timeout: int = 30) -> int:
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    sub = getattr(sub_module, "subprocess", subprocess) if sub_module else subprocess
-
     command = ["agy", "models"]
     try:
-        run = sub.run(
+        run = subprocess.run(
             command, text=True, capture_output=True, check=False, timeout=timeout
         )
-    except sub.TimeoutExpired:
+    except subprocess.TimeoutExpired:
         sys.stderr.write(f"agy models timed out after {timeout}s\n")
         return 124
     if run.returncode != 0:
@@ -263,18 +266,16 @@ def _list_agy_models(timeout: int = 30) -> int:
 
 def _list_codex_current_model(timeout: int = 15) -> dict[str, str] | None:
     import re
-    sub_module = sys.modules.get("dailyfx_agent", None)
-    sub = getattr(sub_module, "subprocess", subprocess) if sub_module else subprocess
 
     try:
-        run = sub.run(
+        run = subprocess.run(
             ["codex", "doctor"],
             text=True,
             capture_output=True,
             check=False,
             timeout=timeout,
         )
-    except sub.TimeoutExpired:
+    except subprocess.TimeoutExpired:
         return None
     if run.returncode != 0:
         return None
@@ -304,14 +305,12 @@ def _list_codex_models(timeout: int = 60) -> int:
         text=True,
     )
 
-    q: queue.Queue[str] = queue.Queue()
-    if proc.stdout is not None:
-        setattr(proc.stdout, "response_queue", q)
+    reader = _JsonRpcReader()
 
     def _reader() -> None:
         if proc.stdout is not None:
             for line in proc.stdout:
-                q.put(line)
+                reader.put(line)
 
     thread = threading.Thread(target=_reader, daemon=True)
     thread.start()
@@ -327,6 +326,7 @@ def _list_codex_models(timeout: int = 60) -> int:
                 "clientInfo": {"name": "dailyfx-agent", "version": _get_agent_version()},
             },
             deadline=deadline,
+            reader=reader,
         )
         if proc.stdin is None:
             raise RuntimeError("Codex MCP server stdin is unavailable")
@@ -343,7 +343,8 @@ def _list_codex_models(timeout: int = 60) -> int:
             if cursor:
                 params["cursor"] = cursor
             result = _mcp_request(
-                proc, request_id, "model/list", params, deadline=deadline
+                proc, request_id, "model/list", params,
+                deadline=deadline, reader=reader,
             )
             request_id += 1
             batch = result.get("data")

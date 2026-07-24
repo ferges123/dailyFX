@@ -16,6 +16,7 @@ def _find_latest_image(
     task_id: str = "target",
     *,
     notes_to_stderr: bool = False,
+    strict: bool = True,
 ) -> Path | None:
     if not generated_root.exists():
         return None
@@ -87,16 +88,22 @@ def _find_latest_image(
             stderr=notes_to_stderr,
         )
         return chosen
-    else:
-        chosen = max(other_candidates, key=lambda p: p.stat().st_mtime)
+
+    if strict:
         sys.stderr.write(
-            f"warning: No image found matching task_id '{task_id}'. Falling back to the latest generated image.\n"
+            f"error: No image found matching task_id '{task_id}'; refusing unmatched recovery.\n"
         )
-        _print_note(
-            f"Selected recovery image {chosen} (fallback latest image) because no task_id match was found.",
-            stderr=notes_to_stderr,
-        )
-        return chosen
+        return None
+
+    chosen = max(other_candidates, key=lambda p: p.stat().st_mtime)
+    sys.stderr.write(
+        f"warning: No image found matching task_id '{task_id}'. Falling back to the latest generated image.\n"
+    )
+    _print_note(
+        f"Selected recovery image {chosen} (fallback latest image) because no task_id match was found.",
+        stderr=notes_to_stderr,
+    )
+    return chosen
 
 
 def _find_latest_codex_image(
@@ -105,10 +112,12 @@ def _find_latest_codex_image(
     task_id: str = "target",
     *,
     notes_to_stderr: bool = False,
+    strict: bool = True,
 ) -> Path | None:
     generated_root = generated_root or (Path.home() / ".codex" / "generated_images")
     return _find_latest_image(
-        start_time, generated_root, task_id, notes_to_stderr=notes_to_stderr
+        start_time, generated_root, task_id,
+        notes_to_stderr=notes_to_stderr, strict=strict,
     )
 
 
@@ -118,12 +127,14 @@ def _find_latest_agy_image(
     task_id: str = "target",
     *,
     notes_to_stderr: bool = False,
+    strict: bool = True,
 ) -> Path | None:
     generated_root = generated_root or (
         Path.home() / ".gemini" / "antigravity-cli" / "brain"
     )
     return _find_latest_image(
-        start_time, generated_root, task_id, notes_to_stderr=notes_to_stderr
+        start_time, generated_root, task_id,
+        notes_to_stderr=notes_to_stderr, strict=strict,
     )
 
 

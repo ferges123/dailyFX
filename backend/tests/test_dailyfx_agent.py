@@ -26,7 +26,7 @@ def _png_bytes(color=(12, 34, 56)) -> bytes:
     return buffer.getvalue()
 
 
-def _seed_agy_generated_image(tmp_path, filename="desert_diorama_123.jpg"):
+def _seed_agy_generated_image(tmp_path, filename="desert_diorama_cli-s1-abc123.jpg"):
     generated_root = tmp_path / ".gemini" / "antigravity-cli" / "brain" / "session-1"
     generated_root.mkdir(parents=True)
     image_path = generated_root / filename
@@ -435,7 +435,7 @@ def test_dailyfx_agent_passes_model_to_codex(monkeypatch, tmp_path):
     backend_stdout = json.dumps(manifest)
     generated_root = tmp_path / ".codex" / "generated_images" / "session-1"
     generated_root.mkdir(parents=True)
-    codex_image = generated_root / "ig_test.png"
+    codex_image = generated_root / "ig_cli-s1-abc123_test.png"
     codex_image.write_bytes(_png_bytes())
     os.utime(codex_image, (time.time() + 100, time.time() + 100))
     calls: list[list[str]] = []
@@ -696,7 +696,7 @@ def test_dailyfx_agent_copies_codex_generated_image_when_output_is_missing(
     backend_stdout = json.dumps(manifest)
     generated_root = tmp_path / ".codex" / "generated_images" / "session-1"
     generated_root.mkdir(parents=True)
-    codex_image = generated_root / "ig_test.png"
+    codex_image = generated_root / "ig_cli-s1-abc123_test.png"
     codex_image.write_bytes(_png_bytes())
     os.utime(codex_image, (time.time() + 100, time.time() + 100))
     calls: list[list[str]] = []
@@ -755,7 +755,7 @@ def test_dailyfx_agent_copies_agy_generated_image_when_output_is_missing(
     backend_stdout = json.dumps(manifest)
     generated_root = tmp_path / ".gemini" / "antigravity-cli" / "brain" / "session-1"
     generated_root.mkdir(parents=True)
-    agy_image = generated_root / "desert_diorama_123.jpg"
+    agy_image = generated_root / "desert_diorama_cli-s1-abc123.jpg"
     agy_image.write_bytes(_png_bytes())
     os.utime(agy_image, (time.time() + 100, time.time() + 100))
     calls: list[list[str]] = []
@@ -1293,7 +1293,7 @@ def test_find_latest_image_prioritizes_task_id(tmp_path, capsys):
     # Expect Image B to be returned when task_id is 'another_task'
     # and a warning to be printed in stderr
     recovered_b = dailyfx_agent._find_latest_image(
-        start_time=now, generated_root=generated_root, task_id="another_task"
+        start_time=now, generated_root=generated_root, task_id="another_task", strict=False
     )
     assert recovered_b == img_b
     captured = capsys.readouterr()
@@ -1317,6 +1317,7 @@ def test_find_latest_image_accepts_nested_directory_with_five_minute_buffer(tmp_
         start_time=now,
         generated_root=generated_root,
         task_id="missing-task",
+        strict=False,
     )
 
     assert recovered == image_path
@@ -1967,4 +1968,3 @@ def test_build_target_command_handles_prompts_and_paths_with_quotes_and_newlines
         codex_template="exec --image {image_path} -",
     )
     assert cmd_codex == ["codex", "exec", "--image", image_path, "-"]
-

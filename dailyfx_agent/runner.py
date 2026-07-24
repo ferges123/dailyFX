@@ -6,7 +6,6 @@ import json
 import multiprocessing
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -21,7 +20,6 @@ from dailyfx_agent.cli import (
     _build_parser,
     _build_target_command,
     _parse_args,
-    _target_prefix,
     _validate_command_templates,
 )
 from dailyfx_agent.config import _DAEMON_STARTUP_TIMEOUT, _LIST_SCHEDULES_TIMEOUT
@@ -220,6 +218,7 @@ def _recover_target_output(
     manifest: dict[str, object],
     status_data: dict[str, object],
     notes_to_stderr: bool,
+    strict_recovery: bool,
 ) -> dict[str, object]:
     if output_file.exists():
         return manifest
@@ -227,12 +226,18 @@ def _recover_target_output(
     status_data["stage"] = "recovery"
     status_data["recovery_attempted"] = True
     if target == "codex":
-        generated_image = _find_latest_codex_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
+        generated_image = _find_latest_codex_image(
+            target_start_time, task_id=task_id,
+            notes_to_stderr=notes_to_stderr, strict=strict_recovery,
+        )
         missing_message = (
             f"codex finished without creating {output_file} or a new image under ~/.codex/generated_images"
         )
     else:
-        generated_image = _find_latest_agy_image(target_start_time, task_id=task_id, notes_to_stderr=notes_to_stderr)
+        generated_image = _find_latest_agy_image(
+            target_start_time, task_id=task_id,
+            notes_to_stderr=notes_to_stderr, strict=strict_recovery,
+        )
         missing_message = (
             f"agy finished without creating {output_file} or a new image under ~/.gemini/antigravity-cli/brain"
         )
@@ -510,9 +515,6 @@ def _run_workflow_iteration(
     shared_manifest_path: Path,
     status_data: dict[str, object],
 ) -> int:
-    time_mod = time
-    repeat_prefix = ""
-
     # 1. PREPARE STAGE
     status_data["stage"] = "prepare" if args.target != "schedule" else "generate"
     if args.target == "schedule" and not args.json_status:
@@ -614,7 +616,7 @@ def _run_workflow_iteration(
         codex_template=args.codex_command_template,
     )
 
-    target_start_time = time_mod.time()
+    target_start_time = time.time()
 
     # 3. TARGET RUN STAGE
     status_data["stage"] = "target run"
@@ -664,6 +666,7 @@ def _run_workflow_iteration(
             task_id=task_id, output_file=output_file,
             manifest=manifest, status_data=status_data,
             notes_to_stderr=args.json_status,
+            strict_recovery=args.strict_recovery,
         )
         if status_data.get("recovered_from"):
             manifest_path.write_text(
@@ -800,20 +803,18 @@ def _daemon_child_main(
         sys.stderr.flush()
         log_fd = os.open(str(log_file_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
         devnull = os.open(os.devnull, os.O_RDONLY)
-        os.dup2(devnull, 0)
-        os.dup2(log_fd, 1)
-        os.dup2(log_fd, 2)
-        os.close(devnull)
-        os.close(log_fd)
+        try:
+            os.dup2(devnull, 0)
+            os.dup2(log_fd, 1)
+            os.dup2(log_fd, 2)
+        finally:
+            os.close(devnull)
+            os.close(log_fd)
     except OSError:
         pass
-    sys.stdin = open(os.devnull, "r")
-    sys.stdout = open(str(log_file_path), "a")
-    sys.stderr = open(str(log_file_path), "a")
 
     ready_event.set()
 
-    last_exit = 0
     for run_index in range(1, repeat + 1):
         if repeat > 1:
             print(f"--- run {run_index}/{repeat} ---")
@@ -821,12 +822,10 @@ def _daemon_child_main(
         manifest_path = _manifest_path_for_run(args, run_index, manifest_path if run_index == 1 else None)
         shared_manifest_path = manifest_path
 
-        run_exit = _run_workflow_iteration(
+        _run_workflow_iteration(
             args, backend_command, project_dir,
             manifest_path, shared_manifest_path, status_data,
         )
-        if run_exit != 0:
-            last_exit = run_exit
 
     _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
     pid_file.unlink(missing_ok=True)
@@ -835,7 +834,7 @@ def _daemon_child_main(
         running_dir = Path("data") / "agent-queues" / queue_target / "running"
         for path in running_dir.glob(f"*-{queue_job_id}.json"):
             finish_job(path)
-    if args.schedule_id is not None and args.target == "schedule":
+    if args.schedule_id is not None:
         _release_lock(args.schedule_id, args.target)
     if status_data.get("task_id"):
         _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)
@@ -896,11 +895,17 @@ def main(argv: list[str] | None = None) -> int:
     repeat = max(1, args.repeat)
     last_exit = 0
     pid_file = None
+    lock_released = False
 
-    if args.schedule_id is not None and args.target == "schedule":
+    if args.schedule_id is not None:
         try:
             _acquire_lock(args.schedule_id, args.target)
         except RuntimeError as exc:
+            if queue_owner and queue_target and queue_job_id:
+                running_dir = Path("data") / "agent-queues" / queue_target / "running"
+                for path in running_dir.glob(f"*-{queue_job_id}.json"):
+                    finish_job(path)
+                release_owner(queue_target, os.getpid())
             sys.stderr.write(f"{exc}\n")
             return 1
 
@@ -932,21 +937,25 @@ def main(argv: list[str] | None = None) -> int:
             proc.start()
         except BaseException:
             _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
+            if args.schedule_id is not None:
+                _release_lock(args.schedule_id, args.target)
+                lock_released = True
             raise
 
         if not ready_event.wait(timeout=_DAEMON_STARTUP_TIMEOUT):
             proc.terminate()
             proc.join(timeout=5)
             _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
-            if args.schedule_id is not None and args.target == "schedule":
+            if args.schedule_id is not None:
                 _release_lock(args.schedule_id, args.target)
+                lock_released = True
             pid_file.unlink(missing_ok=True)
             pid_file.with_name(pid_file.name + ".json").unlink(missing_ok=True)
             sys.stderr.write("Error: daemon failed to start\n")
             return 1
 
-        non_local_lock_release = True
-        if args.schedule_id is not None and args.target == "schedule":
+        lock_released = True
+        if args.schedule_id is not None:
             _update_lock_for_daemon_child(args.schedule_id, args.target, proc.pid)
         if queue_owner and queue_target:
             update_owner_pid(queue_target, proc.pid)
@@ -969,13 +978,13 @@ def main(argv: list[str] | None = None) -> int:
             if run_exit != 0:
                 last_exit = run_exit
     finally:
-        _cleanup_manifest_files(args, manifest_path if 'manifest_path' in dir() else None, shared_manifest_path if 'shared_manifest_path' in dir() else None)
+        _cleanup_manifest_files(args, manifest_path, shared_manifest_path)
         if queue_owner and queue_target and queue_job_id:
             running_dir = Path("data") / "agent-queues" / queue_target / "running"
             for path in running_dir.glob(f"*-{queue_job_id}.json"):
                 finish_job(path)
-        if args.schedule_id is not None and args.target == "schedule":
-            if not locals().get("non_local_lock_release", False):
+        if args.schedule_id is not None:
+            if not lock_released:
                 _release_lock(args.schedule_id, args.target)
         if status_data.get("task_id"):
             _write_task_json_artifact(str(status_data["task_id"]), "status.json", status_data)

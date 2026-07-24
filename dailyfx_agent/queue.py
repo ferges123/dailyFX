@@ -10,6 +10,9 @@ from pathlib import Path
 from dailyfx_agent.config import AGENT_QUEUE_DIR
 
 
+_OWNER_MAX_AGE_SECONDS = 24 * 60 * 60
+
+
 @contextmanager
 def _queue_lock(target: str):
     import fcntl
@@ -35,11 +38,28 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
+def _pid_is_dailyfx_agent(pid: int) -> bool:
+    """Reject a reused PID when Linux exposes the process command line."""
+    if pid == os.getpid():
+        return True
+    cmdline_path = Path(f"/proc/{pid}/cmdline")
+    if not cmdline_path.exists():
+        return True
+    try:
+        command = cmdline_path.read_bytes().replace(b"\0", b" ").decode(errors="replace")
+    except OSError:
+        return False
+    return "dailyfx-agent" in command or "dailyfx_agent" in command
+
+
 def _read_owner(root: Path) -> dict | None:
     path = root / "owner.json"
     try:
         owner = json.loads(path.read_text(encoding="utf-8"))
-        if _pid_alive(int(owner.get("pid", 0))):
+        pid = int(owner.get("pid", 0))
+        started_at = float(owner.get("started_at", 0))
+        is_recent = time.time() - started_at <= _OWNER_MAX_AGE_SECONDS
+        if is_recent and _pid_alive(pid) and _pid_is_dailyfx_agent(pid):
             return owner
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         pass
