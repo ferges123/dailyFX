@@ -68,6 +68,8 @@ def _prepare_accept_data(
         proxy.title = row.title
         proxy.summary = row.summary
         proxy.tags_json = row.tags_json
+        proxy.config_json = row.config_json
+        proxy.source_asset_ids = row.source_asset_ids
         proxy.generation_type = row.generation_type
         proxy.provider = row.provider
         proxy.model = row.model
@@ -246,6 +248,8 @@ def _prepare_retry_data(task_id: str) -> tuple[str | None, Path | None, str | No
         proxy.title = row.title
         proxy.summary = row.summary
         proxy.tags_json = row.tags_json
+        proxy.config_json = row.config_json
+        proxy.source_asset_ids = row.source_asset_ids
         proxy.generation_type = row.generation_type
         proxy.provider = row.provider
         proxy.model = row.model
