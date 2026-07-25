@@ -148,6 +148,9 @@ export function StudioPage() {
       list.push(mod);
       map.set(g, list);
     }
+    for (const [, list] of map) {
+      list.sort((a, b) => a.label.localeCompare(b.label));
+    }
     return Array.from(map.entries()).sort(([a], [b]) => {
       const aOrder = getAIEffectGroupOrder(a);
       const bOrder = getAIEffectGroupOrder(b);
