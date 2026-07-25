@@ -100,6 +100,68 @@ describe('LightboxModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('renders full screen toggle button and handles toggle and Escape key correctly', () => {
+    const onClose = vi.fn();
+    const mockEntry = {
+      task_id: 'task-123',
+      title: 'Test Lightbox Title',
+      source_asset_ids: null,
+    } as unknown as GenerationHistoryEntry;
+
+    const requestFullscreenMock = vi.fn().mockResolvedValue(undefined);
+    const exitFullscreenMock = vi.fn().mockResolvedValue(undefined);
+
+    const origRequestFs = HTMLElement.prototype.requestFullscreen;
+    const origExitFs = document.exitFullscreen;
+
+    HTMLElement.prototype.requestFullscreen = requestFullscreenMock;
+    document.exitFullscreen = exitFullscreenMock;
+
+    try {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <LightboxModal
+            isOpen={true}
+            imageUrl="http://test.com/img.png"
+            entry={mockEntry}
+            exif={null}
+            onClose={onClose}
+          />
+        </QueryClientProvider>,
+      );
+
+      const fullScreenBtn = screen.getByRole('button', {
+        name: 'Toggle full screen',
+      });
+      expect(fullScreenBtn).toBeInTheDocument();
+
+      // Click full screen button
+      fireEvent.click(fullScreenBtn);
+      expect(requestFullscreenMock).toHaveBeenCalled();
+
+      // Test Escape key when NOT in full screen: should call onClose
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        value: null,
+      });
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      onClose.mockClear();
+
+      // Test Escape key when IN full screen: should NOT call onClose
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        value: document.body,
+      });
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(onClose).not.toHaveBeenCalled();
+    } finally {
+      HTMLElement.prototype.requestFullscreen = origRequestFs;
+      document.exitFullscreen = origExitFs;
+    }
+  });
+
   it('navigates with horizontal touch swipes and ignores invalid gestures', () => {
     const onPrev = vi.fn();
     const onNext = vi.fn();

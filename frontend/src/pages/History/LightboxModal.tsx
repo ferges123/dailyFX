@@ -15,6 +15,8 @@ import {
   ThumbsDown,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -126,8 +128,28 @@ export const LightboxModal = memo(function LightboxModal({
     pointerId: number;
   } | null>(null);
   const trapRef = useFocusTrap(isOpen);
+  const modalRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const [liked, setLiked] = useState<boolean | null>(entry.liked ?? null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.().catch(() => {});
+    } else if (modalRef.current) {
+      void modalRef.current.requestFullscreen?.().catch(() => {});
+    }
+  };
 
   useEffect(() => {
     setLiked(entry.liked ?? null);
@@ -203,6 +225,10 @@ export const LightboxModal = memo(function LightboxModal({
     if (!isOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        if (document.fullscreenElement) {
+          // If in native full screen mode, let browser exit full screen without closing lightbox
+          return;
+        }
         onClose();
       } else if (event.key === 'ArrowLeft' && onPrev && hasPrev) {
         onPrev();
@@ -284,6 +310,7 @@ export const LightboxModal = memo(function LightboxModal({
       onClick={onClose}
     >
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="lightbox-modal-title"
@@ -629,15 +656,26 @@ export const LightboxModal = memo(function LightboxModal({
           </div>
         </div>
 
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950 shadow-md transition active:scale-90"
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
+        {/* Top Control Buttons */}
+        <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950 shadow-md transition active:scale-90"
+            aria-label="Toggle full screen"
+            title={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950 shadow-md transition active:scale-90"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );
