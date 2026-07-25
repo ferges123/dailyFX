@@ -351,28 +351,30 @@ export function ImmichAssetBrowserModal({
             )}
 
             <div>
-              <h2
-                id="asset-browser-title"
-                className="text-base font-bold text-stone-950 flex items-center gap-2"
-              >
-                <ImageIcon size={18} className="text-emerald-700" />
-                {view === 'assets'
-                  ? assetsSource === 'album'
-                    ? `Album: ${selectedAlbum?.album_name}`
-                    : `Person: ${selectedPerson?.name}`
-                  : activeTab === 'albums'
-                  ? 'Browse Immich Albums'
-                  : 'Browse Immich People'}
-              </h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                {view === 'assets'
-                  ? assetsSource === 'album'
-                    ? `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`
-                    : `Browse photos of this person. Total photos: ${selectedPerson?.asset_count || 0}`
-                  : activeTab === 'albums'
-                  ? 'Select an album to browse its photos'
-                  : 'Select a person to browse their photos'}
-              </p>
+              {view === 'assets' ? (
+                <>
+                  <h2
+                    id="asset-browser-title"
+                    className="text-base font-bold text-stone-950 flex items-center gap-2"
+                  >
+                    <ImageIcon size={18} className="text-emerald-700" />
+                    {assetsSource === 'album'
+                      ? `Album: ${selectedAlbum?.album_name}`
+                      : `Person: ${selectedPerson?.name}`}
+                  </h2>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    {assetsSource === 'album'
+                      ? `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`
+                      : `Browse photos of this person. Total photos: ${selectedPerson?.asset_count || 0}`}
+                  </p>
+                </>
+              ) : (
+                <p id="asset-browser-title" className="text-xs font-medium text-stone-500">
+                  {activeTab === 'albums'
+                    ? 'Select an album to browse its photos'
+                    : 'Select a person to browse their photos'}
+                </p>
+              )}
             </div>
           </div>
           <button
