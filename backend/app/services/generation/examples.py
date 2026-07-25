@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
+from fastapi.concurrency import run_in_threadpool
+
 from app.config import get_settings
 from app.models.settings import SettingsModel
 from app.schemas.generation import GenerationExampleResponse
@@ -16,6 +18,18 @@ EXAMPLE_PRESET_CONFIGS: dict[str, dict] = {
     "collage": {"styles": ["clarendon", "perpetua", "valencia", "lark"]},
     "instafilter": {"styles": ["clarendon"]},
 }
+
+
+def _read_meta(meta_path: Path) -> dict:
+    try:
+        return json.loads(meta_path.read_text())
+    except json.JSONDecodeError:
+        return {}
+
+
+def _write_preview_files(image_path: Path, meta_path: Path, result_bytes: bytes, meta_dict: dict) -> None:
+    image_path.write_bytes(result_bytes)
+    meta_path.write_text(json.dumps(meta_dict, indent=2))
 
 
 @dataclass(frozen=True)
@@ -73,10 +87,7 @@ async def ensure_example_preview(module_name: str, settings: SettingsModel) -> E
     image_path = _example_image_path(module_name)
     meta_path = _example_meta_path(module_name)
     if image_path.exists() and meta_path.exists():
-        try:
-            meta = json.loads(meta_path.read_text())
-        except json.JSONDecodeError:
-            meta = {}
+        meta = await run_in_threadpool(_read_meta, meta_path)
         if meta.get("source_asset_id") == source_asset_id:
             return ExamplePreviewResult(
                 module_name=module_name,
@@ -105,19 +116,23 @@ async def ensure_example_preview(module_name: str, settings: SettingsModel) -> E
     finally:
         random.setstate(state)
 
-    image_path.write_bytes(result.image_bytes)
-    meta_path.write_text(
-        json.dumps(
-            {
-                "module_name": module_name,
-                "title": result.title,
-                "summary": result.summary,
-                "source_asset_id": source_asset_id,
-                "config": result.config,
-            },
-            indent=2,
-        )
+    meta_dict = {
+        "module_name": module_name,
+        "title": result.title,
+        "summary": result.summary,
+        "source_asset_id": source_asset_id,
+        "config": result.config,
+    }
+    await run_in_threadpool(_write_preview_files, image_path, meta_path, result.image_bytes, meta_dict)
+
+    return ExamplePreviewResult(
+        module_name=module_name,
+        title=result.title,
+        summary=result.summary,
+        image_path=image_path,
+        source_asset_id=source_asset_id,
     )
+
     return ExamplePreviewResult(
         module_name=module_name,
         title=result.title,

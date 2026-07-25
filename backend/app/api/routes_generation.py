@@ -165,18 +165,19 @@ async def list_generation_examples(
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
 ) -> list[GenerationExampleResponse]:
-    settings = get_or_create_settings(db)
+    settings = await run_in_threadpool(get_or_create_settings, db)
     return await list_example_previews(settings)
 
 
 @router.get("/examples/{module_name}")
 async def get_generation_example(module_name: str, db: Session = Depends(get_db), _: None = Depends(require_auth)):
-    settings = get_or_create_settings(db)
+    settings = await run_in_threadpool(get_or_create_settings, db)
     preview = await ensure_example_preview(module_name, settings)
     path = preview.image_path
     if not path.exists():
         raise HTTPException(status_code=404, detail="Example image not found")
     return FileResponse(path, media_type="image/png")
+
 
 
 @router.get("/review/{task_id}", response_class=FileResponse)

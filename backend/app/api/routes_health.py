@@ -2,6 +2,7 @@ import time
 
 import httpx
 from fastapi import APIRouter, Depends
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,20 @@ from app.services.local_ai import LocalAIConfigurationError, get_local_ai_api_ke
 from app.version import APP_VERSION
 
 router = APIRouter(prefix="/api", tags=["health"])
+
+
+def _check_scheduler_health(data_dir) -> dict:
+    scheduler_health_path = data_dir / "scheduler.health"
+    if not scheduler_health_path.exists():
+        return {"status": "missing", "detail": "No scheduler heartbeat yet"}
+    age_seconds = max(0, int(time.time() - scheduler_health_path.stat().st_mtime))
+    if age_seconds > 120:
+        return {
+            "status": "stale",
+            "age_seconds": age_seconds,
+            "detail": "Scheduler heartbeat is stale",
+        }
+    return {"status": "ok", "age_seconds": age_seconds}
 
 
 @router.get("/health")
@@ -38,30 +53,18 @@ async def health_detailed(db: Session = Depends(get_db), _: None = Depends(requi
 
     # DB check
     try:
-        db.execute(text("SELECT 1"))
+        await run_in_threadpool(db.execute, text("SELECT 1"))
         checks["database"] = {"status": "ok"}
     except Exception as e:
         checks["database"] = {"status": "error", "detail": str(e)}
 
     try:
-        scheduler_health_path = app_settings.data_dir / "scheduler.health"
-        if not scheduler_health_path.exists():
-            checks["scheduler"] = {"status": "missing", "detail": "No scheduler heartbeat yet"}
-        else:
-            age_seconds = max(0, int(time.time() - scheduler_health_path.stat().st_mtime))
-            if age_seconds > 120:
-                checks["scheduler"] = {
-                    "status": "stale",
-                    "age_seconds": age_seconds,
-                    "detail": "Scheduler heartbeat is stale",
-                }
-            else:
-                checks["scheduler"] = {"status": "ok", "age_seconds": age_seconds}
+        checks["scheduler"] = await run_in_threadpool(_check_scheduler_health, app_settings.data_dir)
     except Exception as e:
         checks["scheduler"] = {"status": "error", "detail": str(e)}
 
     try:
-        settings = get_or_create_settings(db)
+        settings = await run_in_threadpool(get_or_create_settings, db)
         if settings.immich_url:
             result = await build_immich_client(settings).test_connection()
             checks["immich"] = {"status": "ok", "version": result.server_version, "user": result.user_email}
@@ -73,7 +76,7 @@ async def health_detailed(db: Session = Depends(get_db), _: None = Depends(requi
         checks["immich"] = {"status": "error", "detail": str(e)}
 
     try:
-        settings = get_or_create_settings(db)
+        settings = await run_in_threadpool(get_or_create_settings, db)
         provider = settings.default_ai_provider or "none"
         if provider == "none":
             checks["ai"] = {"status": "not_configured"}
