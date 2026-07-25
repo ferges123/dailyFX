@@ -196,9 +196,9 @@ describe('StudioPage', () => {
     // Click browse button to open modal
     fireEvent.click(browseBtn);
 
-    // Modal header should be visible with Album view instructions
+    // Modal header should be visible with Album tab
     expect(
-      await screen.findByText('Select an album to browse its photos'),
+      await screen.findByRole('tab', { name: /albumy/i }),
     ).toBeInTheDocument();
 
     // Find the album Summer 2026 and click it
@@ -219,7 +219,7 @@ describe('StudioPage', () => {
 
     // Modal should close, and the selected asset info should be in the upload zone
     expect(
-      screen.queryByText('Select an album to browse its photos'),
+      screen.queryByRole('tab', { name: /albumy/i }),
     ).not.toBeInTheDocument();
     expect(await screen.findByText('sunset.jpg')).toBeInTheDocument();
     expect(

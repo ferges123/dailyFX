@@ -301,6 +301,7 @@ export function ImmichAssetBrowserModal({
               </button>
             ) : (
               <div
+                id="asset-browser-title"
                 role="tablist"
                 aria-label="Browser navigation tabs"
                 className="flex items-center gap-1.5 p-1 rounded-2xl bg-stone-200/60 border border-stone-200"
@@ -350,32 +351,24 @@ export function ImmichAssetBrowserModal({
               </div>
             )}
 
-            <div>
-              {view === 'assets' ? (
-                <>
-                  <h2
-                    id="asset-browser-title"
-                    className="text-base font-bold text-stone-950 flex items-center gap-2"
-                  >
-                    <ImageIcon size={18} className="text-emerald-700" />
-                    {assetsSource === 'album'
-                      ? `Album: ${selectedAlbum?.album_name}`
-                      : `Person: ${selectedPerson?.name}`}
-                  </h2>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    {assetsSource === 'album'
-                      ? `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`
-                      : `Browse photos of this person. Total photos: ${selectedPerson?.asset_count || 0}`}
-                  </p>
-                </>
-              ) : (
-                <p id="asset-browser-title" className="text-xs font-medium text-stone-500">
-                  {activeTab === 'albums'
-                    ? 'Select an album to browse its photos'
-                    : 'Select a person to browse their photos'}
+            {view === 'assets' && (
+              <div>
+                <h2
+                  id="asset-browser-title"
+                  className="text-base font-bold text-stone-950 flex items-center gap-2"
+                >
+                  <ImageIcon size={18} className="text-emerald-700" />
+                  {assetsSource === 'album'
+                    ? `Album: ${selectedAlbum?.album_name}`
+                    : `Person: ${selectedPerson?.name}`}
+                </h2>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  {assetsSource === 'album'
+                    ? `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`
+                    : `Browse photos of this person. Total photos: ${selectedPerson?.asset_count || 0}`}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           <button
             type="button"
