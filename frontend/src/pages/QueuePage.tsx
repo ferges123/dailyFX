@@ -11,9 +11,19 @@ export function QueuePage() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['queue', statusFilter, sourceFilter],
     queryFn: () => getQueueList({ status: statusFilter, source: sourceFilter }),
-    refetchInterval: 5000,
+    refetchInterval: (query) => {
+      const items = query.state.data?.items || [];
+      const hasActive = items.some(
+        (item: QueueItem) =>
+          item.status === 'queued' ||
+          item.status === 'running' ||
+          item.status === 'cancel_requested',
+      );
+      return hasActive ? 3000 : 30000;
+    },
     refetchIntervalInBackground: false,
   });
+
 
   const cancelMutation = useMutation({
     mutationFn: (taskId: string) => cancelQueueTask(taskId),
