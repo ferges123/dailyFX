@@ -11,20 +11,35 @@ logger = logging.getLogger(__name__)
 
 
 def backfill_asset_usage(db: Session) -> None:
-    """Idempotently backfills the asset_usage registry from existing generation_history records."""
+    """Idempotently backfills the asset_usage registry from existing generation_history records.
+    
+    Query is incrementally scoped only to history records that do not already have
+    corresponding entries in the asset_usage table.
+    """
     try:
-        # Load all history records chronologically
-        history_records = db.query(GenerationHistoryModel).order_by(GenerationHistoryModel.created_at.asc()).all()
-        if not history_records:
+        # Load only history records with assets that do not have an asset_usage entry yet
+        missing_records = (
+            db.query(GenerationHistoryModel)
+            .outerjoin(AssetUsageModel, GenerationHistoryModel.task_id == AssetUsageModel.task_id)
+            .filter(
+                AssetUsageModel.id.is_(None),
+                GenerationHistoryModel.source_asset_ids.is_not(None),
+                GenerationHistoryModel.source_asset_ids != "",
+                GenerationHistoryModel.source_asset_ids != "[]",
+            )
+            .order_by(GenerationHistoryModel.created_at.asc())
+            .all()
+        )
+        if not missing_records:
             return
 
-        logger.info("Starting asset usage registry backfill from %d history records", len(history_records))
+        logger.info("Starting asset usage registry backfill for %d missing history records", len(missing_records))
         added_count = 0
 
-        # Get existing unique (task_id, asset_id) pairs to ensure idempotency
+        # Load existing pairs only when missing records actually need processing
         existing_pairs = set(db.query(AssetUsageModel.task_id, AssetUsageModel.asset_id).all())
 
-        for record in history_records:
+        for record in missing_records:
             if not record.source_asset_ids:
                 continue
 

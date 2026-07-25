@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Integer, String, Text, func
+from sqlalchemy import Boolean, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, UTCDateTime
@@ -9,6 +9,9 @@ from app.models.effect_statistics_log import EffectStatisticsLogModel
 
 class GenerationHistoryModel(Base):
     __tablename__ = "generation_history"
+    __table_args__ = (
+        Index("ix_generation_history_type_created_at", "generation_type", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
