@@ -62,6 +62,24 @@ vi.mock('../api/client', async () => {
     getImmichAssetThumbnailUrl: vi.fn(
       (id: string) => `/api/immich/assets/${id}/thumbnail`,
     ),
+    getImmichFilterOptions: vi.fn(async () => ({
+      albums: [
+        {
+          id: 'immich-album-123',
+          album_name: 'Summer 2026',
+          asset_count: 5,
+          thumbnail_asset_id: 'immich-asset-123',
+        },
+      ],
+      people: [
+        {
+          id: 'person-456',
+          name: 'John Doe',
+          is_hidden: false,
+          asset_count: 12,
+        },
+      ],
+    })),
     getApiUrl: (path: string) => path,
   };
 });
@@ -226,4 +244,37 @@ describe('StudioPage', () => {
       );
     });
   });
+
+  it('switches to Osoby tab in Immich modal and selects assets by person', async () => {
+    renderStudio();
+
+    const browseBtn = await screen.findByRole('button', {
+      name: /browse immich/i,
+    });
+    fireEvent.click(browseBtn);
+
+    // Modal should render tabs: Albumy and Osoby
+    const peopleTab = await screen.findByRole('tab', { name: /osoby/i });
+    expect(peopleTab).toBeInTheDocument();
+
+    // Click Osoby tab
+    fireEvent.click(peopleTab);
+
+    // Person John Doe should appear in the people view
+    const personCard = await screen.findByText('John Doe');
+    expect(personCard).toBeInTheDocument();
+
+    // Click person card to view assets for John Doe
+    fireEvent.click(personCard);
+
+    // Verify assets query was called with personIds
+    await waitFor(() => {
+      expect(client.getImmichAssets).toHaveBeenCalledWith(
+        expect.objectContaining({
+          personIds: ['person-456'],
+        }),
+      );
+    });
+  });
 });
+

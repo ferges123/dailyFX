@@ -33,6 +33,8 @@ export function getImmichAlbums(params: {
 export function getImmichAssets(filters?: {
   mediaType?: 'all' | 'photo' | 'video';
   albumIds?: string[];
+  personIds?: string[];
+  personModes?: string[];
   page?: number;
   size?: number;
 }) {
@@ -48,6 +50,12 @@ export function getImmichAssets(filters?: {
   }
   if (filters?.albumIds) {
     filters.albumIds.forEach((id) => params.append('album_ids', id));
+  }
+  if (filters?.personIds) {
+    filters.personIds.forEach((id) => params.append('person_ids', id));
+  }
+  if (filters?.personModes) {
+    filters.personModes.forEach((mode) => params.append('person_modes', mode));
   }
   const qs = params.toString();
   return request<ImmichAssetPage>(`/api/immich/assets${qs ? `?${qs}` : ''}`);

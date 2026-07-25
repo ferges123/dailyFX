@@ -178,6 +178,8 @@ describe('API Layer - Settings', () => {
   });
 });
 
+import { getImmichAssets } from '../api/immich';
+
 describe('API Layer - Generation', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
@@ -199,4 +201,26 @@ describe('API Layer - Generation', () => {
       expect.anything(),
     );
   });
+
+  it('getImmichAssets appends person_ids query parameters correctly', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: [], total: 0, count: 0, next_page: null }), {
+        status: 200,
+      }),
+    );
+    await getImmichAssets({
+      mediaType: 'photo',
+      personIds: ['person-1', 'person-2'],
+      page: 1,
+      size: 24,
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/immich/assets?'),
+      expect.anything(),
+    );
+    const calledUrl = vi.mocked(fetch).mock.calls[0][0] as string;
+    expect(calledUrl).toContain('person_ids=person-1');
+    expect(calledUrl).toContain('person_ids=person-2');
+  });
 });
+

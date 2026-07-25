@@ -5,14 +5,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Folder,
+  Users,
+  User,
+  Search,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getImmichAlbums,
   getImmichAssets,
+  getImmichFilterOptions,
   getImmichAssetThumbnailUrl,
   type ImmichAsset,
   type ImmichAlbum,
+  type ImmichPerson,
 } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { InlineSpinner } from '../../components/ErrorUI';
@@ -118,10 +123,19 @@ export function ImmichAssetBrowserModal({
 }: ImmichAssetBrowserModalProps) {
   const trapRef = useFocusTrap(isOpen);
 
-  const [view, setView] = useState<'albums' | 'assets'>('albums');
+  const [activeTab, setActiveTab] = useState<'albums' | 'people'>('albums');
+  const [view, setView] = useState<'albums' | 'people' | 'assets'>('albums');
   const [selectedAlbum, setSelectedAlbum] = useState<ImmichAlbum | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<ImmichPerson | null>(
+    null,
+  );
+  const [assetsSource, setAssetsSource] = useState<'album' | 'people' | null>(
+    null,
+  );
+
   const [albumsPage, setAlbumsPage] = useState(1);
   const [assetsPage, setAssetsPage] = useState(1);
+  const [personSearch, setPersonSearch] = useState('');
 
   const [sortBy, setSortBy] = useState<
     'name' | 'count' | 'created' | 'modified'
@@ -146,43 +160,108 @@ export function ImmichAssetBrowserModal({
         sortBy,
         sortOrder,
       }),
-    enabled: isOpen && view === 'albums',
+    enabled: isOpen && activeTab === 'albums' && view === 'albums',
   });
 
-  // Query for assets in the selected album
+  // Query for people list
+  const {
+    data: filterOptionsData,
+    isLoading: isLoadingPeople,
+    isError: isErrorPeople,
+    error: errorPeople,
+  } = useQuery({
+    queryKey: ['immich-people-studio'],
+    queryFn: getImmichFilterOptions,
+    enabled: isOpen && activeTab === 'people' && view === 'people',
+  });
+
+  const peopleList = filterOptionsData?.people ?? [];
+  const filteredPeople = peopleList.filter((p) =>
+    p.name.toLowerCase().includes(personSearch.toLowerCase()),
+  );
+
+  // Query for assets in selected album or selected person
   const {
     data: assetsData,
     isLoading: isLoadingAssets,
     isError: isErrorAssets,
     error: errorAssets,
   } = useQuery({
-    queryKey: ['immich-assets-studio', selectedAlbum?.id, assetsPage],
+    queryKey: [
+      'immich-assets-studio',
+      assetsSource,
+      selectedAlbum?.id,
+      selectedPerson?.id,
+      assetsPage,
+    ],
     queryFn: () =>
       getImmichAssets({
         mediaType: 'photo',
-        albumIds: selectedAlbum ? [selectedAlbum.id] : undefined,
+        albumIds:
+          assetsSource === 'album' && selectedAlbum
+            ? [selectedAlbum.id]
+            : undefined,
+        personIds:
+          assetsSource === 'people' && selectedPerson
+            ? [selectedPerson.id]
+            : undefined,
         page: assetsPage,
         size: ASSETS_PAGE_SIZE,
       }),
-    enabled: isOpen && view === 'assets' && !!selectedAlbum,
+    enabled:
+      isOpen &&
+      view === 'assets' &&
+      ((assetsSource === 'album' && !!selectedAlbum) ||
+        (assetsSource === 'people' && !!selectedPerson)),
   });
 
   const handleSelectAlbum = (album: ImmichAlbum) => {
     setSelectedAlbum(album);
+    setSelectedPerson(null);
+    setAssetsSource('album');
     setAssetsPage(1);
     setView('assets');
   };
 
-  const handleBackToAlbums = () => {
-    setView('albums');
+  const handleSelectPerson = (person: ImmichPerson) => {
+    setSelectedPerson(person);
     setSelectedAlbum(null);
+    setAssetsSource('people');
+    setAssetsPage(1);
+    setView('assets');
+  };
+
+  const handleBackFromAssets = () => {
+    if (assetsSource === 'album') {
+      setView('albums');
+      setActiveTab('albums');
+      setSelectedAlbum(null);
+    } else {
+      setView('people');
+      setActiveTab('people');
+      setSelectedPerson(null);
+    }
+    setAssetsSource(null);
+  };
+
+  const handleTabChange = (tab: 'albums' | 'people') => {
+    setActiveTab(tab);
+    setView(tab);
+    setSelectedAlbum(null);
+    setSelectedPerson(null);
+    setAssetsSource(null);
+    setAssetsPage(1);
   };
 
   const handleClose = () => {
+    setActiveTab('albums');
     setView('albums');
     setSelectedAlbum(null);
+    setSelectedPerson(null);
+    setAssetsSource(null);
     setAlbumsPage(1);
     setAssetsPage(1);
+    setPersonSearch('');
     setSortBy('name');
     setSortOrder('asc');
     onClose();
@@ -211,30 +290,88 @@ export function ImmichAssetBrowserModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-stone-150 px-6 py-4 bg-stone-50/50">
           <div className="flex items-center gap-3">
-            {view === 'assets' && (
+            {view === 'assets' ? (
               <button
                 type="button"
-                onClick={handleBackToAlbums}
+                onClick={handleBackFromAssets}
                 className="flex items-center gap-1 rounded-xl border border-stone-250 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-50 active:scale-95 transition"
               >
                 <ChevronLeft size={14} />
-                Back to Albums
+                {assetsSource === 'album' ? 'Back to Albums' : 'Back to People'}
               </button>
+            ) : (
+              <div
+                role="tablist"
+                aria-label="Browser navigation tabs"
+                className="flex items-center gap-1.5 p-1 rounded-2xl bg-stone-200/60 border border-stone-200"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'albums'}
+                  onClick={() => handleTabChange('albums')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                    activeTab === 'albums'
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Folder
+                    size={15}
+                    className={
+                      activeTab === 'albums'
+                        ? 'text-emerald-700'
+                        : 'text-stone-400'
+                    }
+                  />
+                  Albumy
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'people'}
+                  onClick={() => handleTabChange('people')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                    activeTab === 'people'
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Users
+                    size={15}
+                    className={
+                      activeTab === 'people'
+                        ? 'text-emerald-700'
+                        : 'text-stone-400'
+                    }
+                  />
+                  Osoby
+                </button>
+              </div>
             )}
+
             <div>
               <h2
                 id="asset-browser-title"
                 className="text-base font-bold text-stone-950 flex items-center gap-2"
               >
                 <ImageIcon size={18} className="text-emerald-700" />
-                {view === 'albums'
+                {view === 'assets'
+                  ? assetsSource === 'album'
+                    ? `Album: ${selectedAlbum?.album_name}`
+                    : `Person: ${selectedPerson?.name}`
+                  : activeTab === 'albums'
                   ? 'Browse Immich Albums'
-                  : `Album: ${selectedAlbum?.album_name}`}
+                  : 'Browse Immich People'}
               </h2>
               <p className="text-xs text-stone-500 mt-0.5">
-                {view === 'albums'
+                {view === 'assets'
+                  ? assetsSource === 'album'
+                    ? `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`
+                    : `Browse photos of this person. Total photos: ${selectedPerson?.asset_count || 0}`
+                  : activeTab === 'albums'
                   ? 'Select an album to browse its photos'
-                  : `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`}
+                  : 'Select a person to browse their photos'}
               </p>
             </div>
           </div>
@@ -396,6 +533,98 @@ export function ImmichAssetBrowserModal({
             </div>
           )}
 
+          {/* People View */}
+          {view === 'people' && (
+            <div className="flex-1 flex flex-col justify-between">
+              <div>
+                {isLoadingPeople && (
+                  <div className="flex min-h-[30vh] flex-col items-center justify-center gap-3 text-stone-500">
+                    <InlineSpinner />
+                    <span className="text-xs font-medium">
+                      Loading people from Immich…
+                    </span>
+                  </div>
+                )}
+
+                {isErrorPeople && (
+                  <div className="flex min-h-[30vh] flex-col items-center justify-center">
+                    <InlineError
+                      title="Failed to load people"
+                      message={
+                        errorPeople instanceof Error
+                          ? errorPeople.message
+                          : 'Unknown error occurred'
+                      }
+                    />
+                  </div>
+                )}
+
+                {!isLoadingPeople && !isErrorPeople && (
+                  <>
+                    {/* Search bar */}
+                    <div className="flex items-center gap-2 mb-5 pb-3 border-b border-stone-150">
+                      <div className="relative flex-1">
+                        <Search
+                          size={16}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                        />
+                        <input
+                          type="text"
+                          value={personSearch}
+                          onChange={(e) => setPersonSearch(e.target.value)}
+                          placeholder="Search people by name…"
+                          className="w-full rounded-xl border border-stone-250 bg-white pl-9 pr-3 py-2 text-xs font-semibold text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-700 transition"
+                        />
+                      </div>
+                      <div className="text-xs font-semibold text-stone-500 shrink-0">
+                        {filteredPeople.length}{' '}
+                        {filteredPeople.length === 1 ? 'person' : 'people'}
+                      </div>
+                    </div>
+
+                    {filteredPeople.length === 0 ? (
+                      <div className="flex min-h-[30vh] flex-col items-center justify-center text-center p-6 border border-dashed border-stone-250 rounded-2xl bg-stone-50/50">
+                        <Users size={32} className="text-stone-300 mb-2" />
+                        <p className="text-sm font-semibold text-stone-800">
+                          No people found
+                        </p>
+                        <p className="text-xs text-stone-500 mt-1">
+                          {personSearch
+                            ? 'No person matched your search criteria.'
+                            : 'Your Immich library does not contain named people.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {filteredPeople.map((person) => (
+                          <button
+                            key={person.id}
+                            type="button"
+                            onClick={() => handleSelectPerson(person)}
+                            className="group relative flex items-center gap-3 p-3.5 rounded-2xl border border-stone-200 bg-white hover:border-emerald-700 hover:shadow-lg transition-all duration-300 cursor-pointer text-left hover:-translate-y-0.5 active:translate-y-0 active:scale-98"
+                          >
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200/60 font-bold group-hover:bg-emerald-700 group-hover:text-white transition-colors duration-300">
+                              <User size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-xs font-bold text-stone-850 truncate leading-tight group-hover:text-emerald-800 transition-colors">
+                                {person.name}
+                              </h3>
+                              <p className="text-[10px] font-semibold text-stone-500 mt-0.5">
+                                {person.asset_count}{' '}
+                                {person.asset_count === 1 ? 'photo' : 'photos'}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Assets View */}
           {view === 'assets' && (
             <div className="flex-1 flex flex-col justify-between">
@@ -403,9 +632,7 @@ export function ImmichAssetBrowserModal({
                 {isLoadingAssets && (
                   <div className="flex min-h-[30vh] flex-col items-center justify-center gap-3 text-stone-500">
                     <InlineSpinner />
-                    <span className="text-xs font-medium">
-                      Loading album photos…
-                    </span>
+                    <span className="text-xs font-medium">Loading photos…</span>
                   </div>
                 )}
 
@@ -431,8 +658,9 @@ export function ImmichAssetBrowserModal({
                         No photos found
                       </p>
                       <p className="text-xs text-stone-500 mt-1">
-                        This album is empty or contains no supported photo
-                        assets.
+                        {assetsSource === 'album'
+                          ? 'This album is empty or contains no supported photo assets.'
+                          : 'No photos found for this person.'}
                       </p>
                     </div>
                   )}
@@ -481,8 +709,10 @@ export function ImmichAssetBrowserModal({
                 <Pagination
                   currentPage={assetsPage}
                   totalPages={
-                    selectedAlbum
+                    assetsSource === 'album' && selectedAlbum
                       ? Math.ceil(selectedAlbum.asset_count / ASSETS_PAGE_SIZE)
+                      : assetsSource === 'people' && selectedPerson
+                      ? Math.ceil(selectedPerson.asset_count / ASSETS_PAGE_SIZE)
                       : 1
                   }
                   onPageChange={setAssetsPage}
