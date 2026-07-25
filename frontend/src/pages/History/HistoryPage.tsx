@@ -75,6 +75,7 @@ const HistoryItemCard = memo(function HistoryItemCard({
           <SecureImage
             src={appendQueryParam(item.image_url, 'thumbnail', 'true')}
             alt={item.title}
+            loading="lazy"
             className="h-full w-full object-cover"
           />
         </div>

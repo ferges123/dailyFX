@@ -271,7 +271,7 @@ async def retry_acceptance(
 
 
 @router.post("/history/{task_id}/reject", response_model=GenerationHistoryResponse)
-async def reject_generation(
+def reject_generation(
     task_id: str,
     db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
@@ -409,7 +409,7 @@ def _delete_history_records_and_files(
 
 
 @router.delete("/history/rejected", status_code=204)
-async def delete_rejected_cache(
+def delete_rejected_cache(
     db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
@@ -423,7 +423,7 @@ async def delete_rejected_cache(
 
 
 @router.delete("/history/status/{status}", status_code=204)
-async def delete_history_by_status(
+def delete_history_by_status(
     status: str,
     db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
@@ -449,7 +449,7 @@ async def delete_history_by_status(
 
 
 @router.delete("/history/cache", status_code=204)
-async def clear_generation_cache(
+def clear_generation_cache(
     db: Session = Depends(get_db_dependency),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
@@ -463,7 +463,7 @@ async def clear_generation_cache(
 
 
 @router.post("/history/{task_id}/like", response_model=GenerationHistoryResponse)
-async def like_generation(
+def like_generation(
     task_id: str,
     review_token: str | None = None,
     db: Session = Depends(get_db_dependency),
@@ -508,7 +508,7 @@ async def like_generation(
 
 
 @router.post("/history/{task_id}/dislike", response_model=GenerationHistoryResponse)
-async def dislike_generation(
+def dislike_generation(
     task_id: str,
     review_token: str | None = None,
     db: Session = Depends(get_db_dependency),

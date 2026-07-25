@@ -27,7 +27,7 @@ def test_task_status_contract():
         db.add(make_generation_task_row(task_id="task-contract-1"))
         db.commit()
 
-        payload = asyncio.run(get_task_status("task-contract-1", db))
+        payload = get_task_status("task-contract-1", db)
         assert payload.model_dump(mode="json") == {
             "task_id": "task-contract-1",
             "status": "running",
@@ -84,7 +84,7 @@ def test_generation_history_contract():
         db.commit()
         db.refresh(row)
 
-        payload = asyncio.run(get_generation_history(db))
+        payload = get_generation_history(db)
         contract = GenerationHistoryPage.model_validate(payload).model_dump(mode="json")
 
         assert contract == {

@@ -68,7 +68,7 @@ def test_generation_history_empty():
         db.query(GenerationHistoryModel).delete()
         db.query(GenerationStreamEventModel).delete()
         db.commit()
-        history_page = asyncio.run(get_generation_history(db))
+        history_page = get_generation_history(db)
         assert history_page.items == []
         assert history_page.total == 0
         assert history_page.latest_event_id == 0
@@ -153,7 +153,7 @@ def test_task_status_returns_new_contract():
         db.add(make_generation_task_row(task_id="task-status-1"))
         db.commit()
 
-        payload = asyncio.run(get_task_status("task-status-1", db))
+        payload = get_task_status("task-status-1", db)
 
         assert payload.task_id == "task-status-1"
         assert payload.status == "running"
@@ -173,7 +173,7 @@ def test_generation_history_returns_entry():
         db.query(GenerationHistoryModel).delete()
         db.commit()
         _add_history_row(db, "task-123")
-        history_page = asyncio.run(get_generation_history(db))
+        history_page = get_generation_history(db)
         assert len(history_page.items) == 1
         assert history_page.items[0].task_id == "task-123"
         assert history_page.items[0].status == "PENDING_REVIEW"
@@ -222,7 +222,7 @@ def test_reject_generation(tmp_path):
     db = _setup_generation_routes_db()
     try:
         _add_history_row(db, "task-reject")
-        result = asyncio.run(reject_generation("task-reject", db))
+        result = reject_generation("task-reject", db)
         assert result.status == "REJECTED"
         assert result.task_id == "task-reject"
     finally:
@@ -236,7 +236,7 @@ def test_reject_generation_not_found():
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(reject_generation("nonexistent", db))
+            reject_generation("nonexistent", db)
         assert exc_info.value.status_code == 404
     finally:
         db.close()
@@ -255,7 +255,7 @@ def test_reject_already_uploaded():
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(reject_generation("task-already-uploaded", db))
+            reject_generation("task-already-uploaded", db)
         assert exc_info.value.status_code == 409
     finally:
         db.close()
@@ -528,7 +528,7 @@ def test_delete_history_by_status(tmp_path, monkeypatch):
         _add_history_row(db, "task-running", status="RUNNING", output_path=str(img_path_running))
 
         # 1. Delete failed items
-        asyncio.run(delete_history_by_status("failed", db))
+        delete_history_by_status("failed", db)
         assert not img_path_failed.exists()
         assert img_path_pending.exists()
         assert img_path_uploaded.exists()
@@ -536,20 +536,20 @@ def test_delete_history_by_status(tmp_path, monkeypatch):
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "FAILED").count() == 0
 
         # 2. Delete pending items
-        asyncio.run(delete_history_by_status("pending", db))
+        delete_history_by_status("pending", db)
         assert not img_path_pending.exists()
         assert img_path_uploaded.exists()
         assert img_path_running.exists()
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "PENDING_REVIEW").count() == 0
 
         # 3. Delete accepted (uploaded) items
-        asyncio.run(delete_history_by_status("accepted", db))
+        delete_history_by_status("accepted", db)
         assert not img_path_uploaded.exists()
         assert img_path_running.exists()
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "UPLOADED").count() == 0
 
         # 4. Delete running items
-        asyncio.run(delete_history_by_status("running", db))
+        delete_history_by_status("running", db)
         assert not img_path_running.exists()
         assert db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").count() == 0
 
@@ -589,17 +589,17 @@ def test_generation_history_search_wildcard_escaping():
         from app.api.routes_generation import get_generation_history
 
         # Search literal "%"
-        res = asyncio.run(get_generation_history(db, search="%"))
+        res = get_generation_history(db, search="%")
         assert len(res.items) == 1
         assert res.items[0].task_id == "task-1"
 
         # Search literal "_"
-        res = asyncio.run(get_generation_history(db, search="_"))
+        res = get_generation_history(db, search="_")
         assert len(res.items) == 1
         assert res.items[0].task_id == "task-2"
 
         # Search literal "\\"
-        res = asyncio.run(get_generation_history(db, search="\\"))
+        res = get_generation_history(db, search="\\")
         assert len(res.items) == 1
         assert res.items[0].task_id == "task-3"
 
@@ -633,15 +633,15 @@ def test_generation_history_filters_effect_liked_and_sort_order():
         db.add(EffectStatisticsLogModel(effect_id="ai_comic_book", task_id=comic.task_id, liked=True))
         db.commit()
 
-        effect_res = asyncio.run(get_generation_history(db, status="UPLOADED", effect="ai_anime"))
+        effect_res = get_generation_history(db, status="UPLOADED", effect="ai_anime")
         assert effect_res.total == 2
         assert [item.task_id for item in effect_res.items] == ["task-anime-new", "task-anime-old"]
 
-        liked_res = asyncio.run(get_generation_history(db, status="UPLOADED", liked=True))
+        liked_res = get_generation_history(db, status="UPLOADED", liked=True)
         assert liked_res.total == 2
         assert {item.task_id for item in liked_res.items} == {"task-comic", "task-anime-old"}
 
-        oldest_res = asyncio.run(get_generation_history(db, status="UPLOADED", sort="oldest"))
+        oldest_res = get_generation_history(db, status="UPLOADED", sort="oldest")
         assert [item.task_id for item in oldest_res.items] == [
             "task-anime-old",
             "task-comic",

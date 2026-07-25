@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { getAuthToken } from '../api/client';
 
 interface SecureImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -36,31 +36,69 @@ function cacheBlobUrl(key: string, url: string) {
 
 export const SecureImage = memo(function SecureImage({
   src,
+  loading,
+  decoding = 'async',
   ...props
 }: SecureImageProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingImg, setLoadingImg] = useState<boolean>(true);
+  const [shouldFetch, setShouldFetch] = useState<boolean>(() => {
+    if (loading !== 'lazy') return true;
+    return typeof IntersectionObserver === 'undefined';
+  });
+
+  const placeholderRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!src) return;
+    if (shouldFetch || loading !== 'lazy' || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    const el = placeholderRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const isIntersecting = entries.some(
+          (entry) => entry.isIntersecting || entry.intersectionRatio > 0,
+        );
+        if (isIntersecting) {
+          setShouldFetch(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px' },
+    );
+
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loading, shouldFetch]);
+
+  useEffect(() => {
+    if (!src || !shouldFetch) return;
 
     let isMounted = true;
     const token = getAuthToken();
     const key = cacheKey(src, token);
 
-    // Check synchronous cache first
+    // Check synchronous cache first and refresh recency
     const cached = blobCache.get(key);
     if (cached) {
+      blobCache.delete(key);
+      blobCache.set(key, cached);
       setBlobUrl(cached);
-      setLoading(false);
+      setLoadingImg(false);
       setError(false);
       return;
     }
 
     async function fetchImage() {
       try {
-        setLoading(true);
+        setLoadingImg(true);
 
         let promise = pendingFetches.get(key);
         if (!promise) {
@@ -97,7 +135,7 @@ export const SecureImage = memo(function SecureImage({
         }
       } finally {
         if (isMounted) {
-          setLoading(false);
+          setLoadingImg(false);
         }
       }
     }
@@ -107,25 +145,27 @@ export const SecureImage = memo(function SecureImage({
     return () => {
       isMounted = false;
     };
-  }, [src]);
+  }, [src, shouldFetch]);
 
   if (error) {
     return (
       <div
-        className={`${props.className} flex items-center justify-center bg-stone-100 text-stone-400`}
+        className={`${props.className ?? ''} flex items-center justify-center bg-stone-100 text-stone-400`}
       >
         <span className="text-xs">Failed to load</span>
       </div>
     );
   }
 
-  if (loading || !blobUrl) {
+  if (loadingImg || !blobUrl) {
     return (
       <div
-        className={`${props.className} animate-pulse rounded-[inherit] bg-stone-100/90`}
+        ref={placeholderRef}
+        className={`${props.className ?? ''} animate-pulse rounded-[inherit] bg-stone-100/90`}
       />
     );
   }
 
-  return <img src={blobUrl} {...props} />;
+  return <img src={blobUrl} loading={loading} decoding={decoding} {...props} />;
 });
+

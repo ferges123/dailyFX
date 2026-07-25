@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.config import get_settings
 from app.database import SessionLocal, get_db
@@ -48,8 +49,30 @@ def _stream_event_message(event_type: str, payload: dict | None = None, event_id
     return "\n".join(lines) + "\n\n"
 
 
+def _poll_generation_events(cursor: int) -> tuple[bool, list[tuple[int, str, dict]]]:
+    """Poll generation events after cursor in a thread-pool worker.
+
+    Returns:
+        (resync_required, [(event_id, event_type, payload_dict), ...])
+    """
+    session = SessionLocal()
+    try:
+        if cursor > 0 and replay_gap_requires_resync(session, cursor):
+            return True, []
+
+        rows = load_events_after(session, cursor)
+        events = []
+        if rows:
+            for row in rows:
+                payload = json.loads(row.payload_json)
+                events.append((row.id, row.event_type, payload))
+        return False, events
+    finally:
+        session.close()
+
+
 @router.get("/task/{task_id}/status")
-async def get_task_status(
+def get_task_status(
     task_id: str,
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
@@ -65,10 +88,9 @@ async def get_task_status(
 async def stream_generation_events(request: Request, _: None = Depends(require_auth)):
     """SSE endpoint for real-time generation status updates.
 
-    Polling design: we create a short-lived DB session per iteration to avoid
-    holding a transaction open for the entire stream lifetime. The poll interval
-    is 5 seconds (not 1s) to limit DB load when many clients are connected.
-    Duplicate payloads are suppressed so the client receives only state changes.
+    Polling design: we create a short-lived DB session per iteration in a thread-pool
+    worker to avoid blocking the asyncio event loop or holding a transaction open for
+    the entire stream lifetime. The poll interval is 5 seconds to limit DB load.
     """
     last_event_id_header = request.headers.get("last-event-id")
     try:
@@ -85,27 +107,19 @@ async def stream_generation_events(request: Request, _: None = Depends(require_a
                 if await request.is_disconnected():
                     break
 
-                # Open a short-lived session only for this read, then close it.
-                # This avoids holding a transaction open across the sleep and
-                # prevents unbounded session/connection churn under load.
-                session = SessionLocal()
-                try:
-                    if cursor > 0 and replay_gap_requires_resync(session, cursor):
-                        yield _stream_event_message(
-                            "resync-required",
-                            {"reason": "stream_gap", "last_event_id": cursor},
-                        )
-                        return
+                resync_required, events = await run_in_threadpool(_poll_generation_events, cursor)
+                if resync_required:
+                    yield _stream_event_message(
+                        "resync-required",
+                        {"reason": "stream_gap", "last_event_id": cursor},
+                    )
+                    return
 
-                    rows = load_events_after(session, cursor)
-                    if rows:
-                        for row in rows:
-                            payload = json.loads(row.payload_json)
-                            yield _stream_event_message(row.event_type, payload, row.id)
-                            cursor = row.id
-                        heartbeat_at = time.monotonic()
-                finally:
-                    session.close()
+                if events:
+                    for event_id, event_type, payload in events:
+                        yield _stream_event_message(event_type, payload, event_id)
+                        cursor = event_id
+                    heartbeat_at = time.monotonic()
 
                 now = time.monotonic()
                 if now - heartbeat_at >= 15:
@@ -173,7 +187,7 @@ async def get_review_page(task_id: str) -> FileResponse:
 
 
 @router.get("/review/{task_id}/thumbnail")
-async def get_review_thumbnail(
+def get_review_thumbnail(
     task_id: str,
     review_token: str | None = None,
     db: Session = Depends(get_db),
@@ -205,7 +219,7 @@ async def get_review_thumbnail(
 
 
 @router.get("/history/{task_id}", response_model=GenerationHistoryResponse)
-async def get_generation_history_entry(
+def get_generation_history_entry(
     task_id: str,
     review_token: str | None = None,
     db: Session = Depends(get_db),
@@ -220,7 +234,7 @@ async def get_generation_history_entry(
 
 
 @router.get("/history", response_model=GenerationHistoryPage)
-async def get_generation_history(
+def get_generation_history(
     db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     status: str | None = None,
