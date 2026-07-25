@@ -45,12 +45,7 @@ def build_generation_history_page(
     else:
         q = q.order_by(GenerationHistoryModel.created_at.desc())
     total = q.count()
-    items = (
-        q.options(selectinload(GenerationHistoryModel.stats_log))
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    items = q.options(selectinload(GenerationHistoryModel.stats_log)).offset(offset).limit(limit).all()
     return GenerationHistoryPage.from_rows(
         items,
         total=total,

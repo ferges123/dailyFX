@@ -41,11 +41,19 @@ _client_cache: dict[tuple[str, float], httpx.AsyncClient] = {}
 
 
 class ImmichClient:
-    def __init__(self, server_url: str, api_key: str, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        server_url: str,
+        api_key: str,
+        timeout: float = 30.0,
+        stats_concurrency: int = 10,
+    ) -> None:
         self.server_url = server_url.rstrip("/")
         self.api_base_url = normalize_api_url(server_url)
         self.api_key = api_key
         self.timeout = timeout
+        self.stats_concurrency = stats_concurrency
+
 
     def _get_client(self, timeout: float | None = None) -> httpx.AsyncClient:
         t = timeout if timeout is not None else self.timeout
@@ -584,7 +592,7 @@ class ImmichClient:
         status = response_payload.get("status")
         return ImmichUploadResult(id=asset_id, status=status if isinstance(status, str) else None)
 
-    async def list_people(self) -> list[ImmichPersonSummary]:
+    async def list_people(self, concurrency: int | None = None) -> list[ImmichPersonSummary]:
         client = self._get_client()
         people: list[ImmichPersonSummary] = []
         page = 1
@@ -614,8 +622,15 @@ class ImmichClient:
         if not people:
             return []
 
+        limit = max(1, concurrency if concurrency is not None else self.stats_concurrency)
+        sem = asyncio.Semaphore(limit)
+
+        async def _fetch_stat(person_id: str) -> int:
+            async with sem:
+                return await self._get_person_asset_count(client, person_id)
+
         named = [p for p in people if p.name.strip()]
-        stats = await asyncio.gather(*(self._get_person_asset_count(client, p.id) for p in named))
+        stats = await asyncio.gather(*(_fetch_stat(p.id) for p in named))
         enriched = []
         for p, count in zip(named, stats, strict=True):
             p_new = replace(p, asset_count=count)
@@ -623,6 +638,7 @@ class ImmichClient:
                 enriched.append(p_new)
         enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
         return enriched[:33]
+
 
     async def _get_person_asset_count(self, client: httpx.AsyncClient, person_id: str) -> int:
         payload = await self._get_json(f"/people/{person_id}/statistics", client)

@@ -1,6 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.immich.client import ImmichClient
 from app.immich.errors import ImmichConfigurationError
 from app.immich.models import ImmichAlbumSummary, ImmichAssetPage, ImmichPersonSummary, ImmichSearchFilters
@@ -33,7 +34,13 @@ def build_immich_client(row: SettingsModel) -> ImmichClient:
     api_key = decrypt_secret(row.encrypted_immich_api_key)
     if not api_key:
         raise ImmichConfigurationError("Immich API key is not configured")
-    return ImmichClient(row.immich_url, api_key, timeout=30.0)
+    return ImmichClient(
+        row.immich_url,
+        api_key,
+        timeout=30.0,
+        stats_concurrency=get_settings().immich_people_stats_concurrency,
+    )
+
 
 
 async def list_filter_options(row: SettingsModel) -> tuple[list[ImmichAlbumSummary], list[ImmichPersonSummary]]:

@@ -187,7 +187,9 @@ async def accept_generation(
     # Phase 2: Async Immich HTTP calls without DB session
     client = build_immich_client(settings)
     try:
-        upload_result = await _upload_generation_asset(client=client, row=row_proxy, task_id=task_id, image_path=image_path)
+        upload_result = await _upload_generation_asset(
+            client=client, row=row_proxy, task_id=task_id, image_path=image_path
+        )
         await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=upload_result.id, row=row_proxy)
 
         if album_name:
@@ -218,7 +220,9 @@ async def accept_generation(
     )
 
 
-def _prepare_retry_data(task_id: str) -> tuple[str | None, Path | None, str | None, str | None, SettingsModel, _RowProxy]:
+def _prepare_retry_data(
+    task_id: str,
+) -> tuple[str | None, Path | None, str | None, str | None, SettingsModel, _RowProxy]:
     session = SessionLocal()
     try:
         row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
@@ -383,7 +387,9 @@ async def retry_acceptance(
             new_uploaded_asset_id = upload_result.id
             upload_status = upload_result.status
             accepted_at = datetime.now(timezone.utc)
-            await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=new_uploaded_asset_id, row=row_proxy)
+            await _apply_uploaded_asset_caption_and_tags(
+                client=client, upload_asset_id=new_uploaded_asset_id, row=row_proxy
+            )
 
         if album_name and new_uploaded_asset_id:
             album_id, album_created, album_updated, accept_notes = await _apply_album_and_tag(

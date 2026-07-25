@@ -283,3 +283,65 @@ def test_stats_trends_api(authenticated_client: TestClient, db_session: Session)
     assert today_point["auto"] == 1
     assert today_point["cli"] == 1
     assert today_point["manual"] == 2
+
+
+def test_upsert_history_entry_atomically_creates_stats_log(db_session: Session):
+    from app.services.generation.history import upsert_history_entry
+
+    row = upsert_history_entry(db_session, "task-upsert-100", generation_type="ai_anime")
+    assert row.generation_type == "ai_anime"
+    log = db_session.query(EffectStatisticsLogModel).filter_by(task_id="task-upsert-100").first()
+    assert log is not None
+    assert log.effect_id == "ai_anime"
+
+
+
+def test_backfill_effect_statistics_log(db_session: Session):
+    from app.database import backfill_effect_statistics_log
+    from app.models.generation_history import GenerationHistoryModel
+
+    # Manually create history row without stats log
+    row = GenerationHistoryModel(
+        task_id="orphan-task-1",
+        generation_type="ai_cyberpunk",
+        status="PENDING_REVIEW",
+        title="Orphan title",
+        summary="Summary",
+        source_asset_ids="[]",
+        config_json="{}",
+    )
+    db_session.add(row)
+    db_session.commit()
+
+    log_before = db_session.query(EffectStatisticsLogModel).filter_by(task_id="orphan-task-1").first()
+    assert log_before is None
+
+    backfill_effect_statistics_log(db_session)
+
+    log_after = db_session.query(EffectStatisticsLogModel).filter_by(task_id="orphan-task-1").first()
+    assert log_after is not None
+    assert log_after.effect_id == "ai_cyberpunk"
+
+
+def test_get_effect_stats_is_read_only(authenticated_client: TestClient, db_session: Session):
+    from app.models.generation_history import GenerationHistoryModel
+
+    row = GenerationHistoryModel(
+        task_id="readonly-task-1",
+        generation_type="ai_claymation",
+        status="PENDING_REVIEW",
+        title="Readonly title",
+        summary="Summary",
+        source_asset_ids="[]",
+        config_json="{}",
+    )
+    db_session.add(row)
+    db_session.commit()
+
+    # Call GET /api/generation/stats/effects
+    response = authenticated_client.get("/api/generation/stats/effects")
+    assert response.status_code == 200
+
+    # Ensure GET endpoint did NOT perform side-effect backfill
+    log = db_session.query(EffectStatisticsLogModel).filter_by(task_id="readonly-task-1").first()
+    assert log is None

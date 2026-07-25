@@ -214,4 +214,3 @@ def test_openapi_security_schema():
     assert "securitySchemes" in schema["components"]
     assert "HTTPBearer" in schema["components"]["securitySchemes"]
     assert schema["components"]["securitySchemes"]["HTTPBearer"]["type"] == "http"
-

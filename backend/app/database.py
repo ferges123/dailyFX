@@ -147,13 +147,30 @@ def init_db() -> None:
     command.upgrade(alembic_cfg, "head")
     bootstrap_builtin_ai_effects()
 
-    # Backfill asset usage registry from existing history
+    # Backfill asset usage registry and effect statistics log from existing history
     db = SessionLocal()
     try:
         from app.services.generation.asset_usage import backfill_asset_usage
 
         backfill_asset_usage(db)
+        backfill_effect_statistics_log(db)
     finally:
         db.close()
 
     _initialized_databases.add(database_url)
+
+
+def backfill_effect_statistics_log(db: Session) -> None:
+    from app.models.effect_statistics_log import EffectStatisticsLogModel
+    from app.models.generation_history import GenerationHistoryModel
+
+    missing = (
+        db.query(GenerationHistoryModel.task_id, GenerationHistoryModel.generation_type)
+        .outerjoin(EffectStatisticsLogModel, GenerationHistoryModel.task_id == EffectStatisticsLogModel.task_id)
+        .filter(EffectStatisticsLogModel.id.is_(None))
+        .all()
+    )
+    if missing:
+        for task_id, gen_type in missing:
+            db.add(EffectStatisticsLogModel(effect_id=gen_type, task_id=task_id))
+        db.commit()

@@ -201,3 +201,11 @@ def test_studio_api_validation(authenticated_client):
     )
     assert response.status_code == 400
     assert "Invalid request value" in response.json()["detail"]
+
+
+def test_immich_people_stats_concurrency_default():
+    from app.config import get_settings
+
+    settings = get_settings()
+    assert settings.immich_people_stats_concurrency == 10
+

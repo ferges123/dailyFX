@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.models.effect_statistics_log import EffectStatisticsLogModel
 from app.models.generation_history import GenerationHistoryModel
 from app.services.generation.stream import record_history_snapshot
 
@@ -40,6 +41,14 @@ def upsert_history_entry(db: Session, task_id: str, **fields: Any) -> Generation
     else:
         for key, value in normalized_fields.items():
             setattr(row, key, value)
+
+    # Sync or create EffectStatisticsLogModel entry in the same transaction
+    log = db.query(EffectStatisticsLogModel).filter_by(task_id=task_id).first()
+    if not log:
+        log = EffectStatisticsLogModel(effect_id=row.generation_type, task_id=task_id)
+        db.add(log)
+    elif row.generation_type and log.effect_id != row.generation_type:
+        log.effect_id = row.generation_type
 
     db.commit()
     db.refresh(row)

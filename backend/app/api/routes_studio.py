@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.immich.errors import handle_immich_errors
 from app.limiter import limiter
+from app.models.effect_statistics_log import EffectStatisticsLogModel
 from app.models.generation_history import GenerationHistoryModel
 from app.schemas.generation import GenerationModuleResponse
 from app.security import require_auth
@@ -214,6 +215,7 @@ async def _execute_studio_preview(
         tags_json=json.dumps(tags),
     )
     db.add(row)
+    db.add(EffectStatisticsLogModel(effect_id=row.generation_type, task_id=task_id))
     db.commit()
     db.refresh(row)
     record_history_snapshot(db, row)

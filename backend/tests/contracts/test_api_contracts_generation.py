@@ -113,6 +113,7 @@ def test_generation_history_contract():
         }
 
         from app.api.routes_generation import get_generation_history_entry
+
         detail_payload = get_generation_history_entry("task-contract-1", db=db)
         assert detail_payload.model_dump(mode="json") == {
             "id": row.id,
