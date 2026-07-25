@@ -363,9 +363,10 @@ export function ImmichAssetBrowserModal({
                     : `Person: ${selectedPerson?.name}`}
                 </h2>
                 <p className="text-xs text-stone-500 mt-0.5">
+                  Total photos:{' '}
                   {assetsSource === 'album'
-                    ? `Browse photos inside this album. Total photos: ${selectedAlbum?.asset_count || 0}`
-                    : `Browse photos of this person. Total photos: ${selectedPerson?.asset_count || 0}`}
+                    ? selectedAlbum?.asset_count || 0
+                    : selectedPerson?.asset_count || 0}
                 </p>
               </div>
             )}
