@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
@@ -201,6 +201,8 @@ export function GalleryPage() {
   }, [data?.items, offset]);
 
   const entries = loadedEntries;
+  const total = data?.total ?? 0;
+  const hasMore = offset + PAGE_SIZE < total;
 
   const lightboxDetailQuery = useQuery({
     queryKey: ['generation-history-detail', taskId],
@@ -228,6 +230,36 @@ export function GalleryPage() {
     const basePath = newTaskId ? `/gallery/${newTaskId}` : '/gallery';
     return qs ? `${basePath}?${qs}` : basePath;
   };
+
+  const pendingNextFromIdxRef = useRef<number | null>(null);
+
+  // Auto-prefetch next page when nearing the end of current list while in Lightbox
+  useEffect(() => {
+    if (!lightboxEntry) return;
+    const currentIdx = entries.findIndex(
+      (e) => e.task_id === lightboxEntry.task_id,
+    );
+    if (
+      currentIdx >= 0 &&
+      currentIdx >= entries.length - 3 &&
+      hasMore &&
+      !isFetching
+    ) {
+      setOffset((prev) => prev + PAGE_SIZE);
+    }
+  }, [lightboxEntry, entries, hasMore, isFetching]);
+
+  // Navigate to next entry once requested page is loaded
+  useEffect(() => {
+    if (
+      pendingNextFromIdxRef.current !== null &&
+      entries[pendingNextFromIdxRef.current + 1]
+    ) {
+      const nextEntry = entries[pendingNextFromIdxRef.current + 1];
+      pendingNextFromIdxRef.current = null;
+      navigate(getGalleryUrl(nextEntry.task_id));
+    }
+  }, [entries]);
 
   const handleCardClick = (entry: GenerationHistoryListItem) => {
     navigate(getGalleryUrl(entry.task_id));
@@ -260,8 +292,6 @@ export function GalleryPage() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [entries]);
 
-  const total = data?.total ?? 0;
-  const hasMore = offset + PAGE_SIZE < total;
   const activeFilterCount =
     Number(Boolean(effectFilter)) + Number(likedFilter === true);
 
@@ -481,7 +511,19 @@ export function GalleryPage() {
           (e) => e.task_id === lightboxEntry.task_id,
         );
         const hasPrev = currentIdx > 0;
-        const hasNext = currentIdx < entries.length - 1;
+        const hasNext = currentIdx < entries.length - 1 || hasMore;
+
+        const handleNext = () => {
+          if (currentIdx >= 0 && currentIdx < entries.length - 1) {
+            navigate(getGalleryUrl(entries[currentIdx + 1].task_id));
+          } else if (hasMore) {
+            pendingNextFromIdxRef.current = currentIdx;
+            if (!isFetching) {
+              setOffset((prev) => prev + PAGE_SIZE);
+            }
+          }
+        };
+
         return (
           <LightboxModal
             isOpen={true}
@@ -494,11 +536,7 @@ export function GalleryPage() {
                 ? () => navigate(getGalleryUrl(entries[currentIdx - 1].task_id))
                 : undefined
             }
-            onNext={
-              hasNext
-                ? () => navigate(getGalleryUrl(entries[currentIdx + 1].task_id))
-                : undefined
-            }
+            onNext={hasNext ? handleNext : undefined}
             hasPrev={hasPrev}
             hasNext={hasNext}
           />
