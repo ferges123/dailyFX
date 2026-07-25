@@ -8,8 +8,8 @@ import {
   RefreshCw,
   SlidersHorizontal,
 } from 'lucide-react';
-import { getGenerationHistory } from '../api/client';
-import { type GenerationHistoryEntry } from '../api/types';
+import { getGenerationHistory, getGenerationHistoryEntry } from '../api/client';
+import { type GenerationHistoryListItem } from '../api/types';
 import { SecureImage } from '../components/SecureImage';
 import { SearchInput } from '../components/SearchInput';
 import { LightboxModal } from './History/LightboxModal';
@@ -53,7 +53,7 @@ function GalleryCard({
   entry,
   onClick,
 }: {
-  entry: GenerationHistoryEntry;
+  entry: GenerationHistoryListItem;
   onClick: () => void;
 }) {
   const label =
@@ -111,7 +111,7 @@ export function GalleryPage() {
   );
 
   const [offset, setOffset] = useState(0);
-  const [loadedEntries, setLoadedEntries] = useState<GenerationHistoryEntry[]>(
+  const [loadedEntries, setLoadedEntries] = useState<GenerationHistoryListItem[]>(
     [],
   );
 
@@ -199,10 +199,13 @@ export function GalleryPage() {
 
   const entries = loadedEntries;
 
-  const lightboxEntry = useMemo(() => {
-    if (!taskId) return null;
-    return entries.find((e) => e.task_id === taskId) || null;
-  }, [taskId, entries]);
+  const lightboxDetailQuery = useQuery({
+    queryKey: ['generation-history-detail', taskId],
+    queryFn: () => getGenerationHistoryEntry(taskId!),
+    enabled: !!taskId,
+  });
+
+  const lightboxEntry = lightboxDetailQuery.data ?? null;
 
   const { selectedExif } = useSelectedExif(
     lightboxEntry?.config_json,
@@ -215,7 +218,7 @@ export function GalleryPage() {
     return qs ? `${basePath}?${qs}` : basePath;
   };
 
-  const handleCardClick = (entry: GenerationHistoryEntry) => {
+  const handleCardClick = (entry: GenerationHistoryListItem) => {
     navigate(getGalleryUrl(entry.task_id));
   };
 

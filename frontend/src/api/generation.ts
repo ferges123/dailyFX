@@ -141,6 +141,10 @@ export function getGenerationHistory(
   );
 }
 
+export function getGenerationHistoryEntry(taskId: string) {
+  return request<GenerationHistoryEntry>(`/api/generation/history/${taskId}`);
+}
+
 export function acceptGeneration(
   taskId: string,
   payload: GenerationAcceptRequest,

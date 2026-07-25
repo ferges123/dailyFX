@@ -198,7 +198,7 @@ export type ImmichAssetExif = {
   [key: string]: unknown;
 };
 
-export type GenerationHistoryEntry = {
+export type GenerationHistoryListItem = {
   id: number;
   task_id: string;
   generation_type: string;
@@ -212,31 +212,34 @@ export type GenerationHistoryEntry = {
     | string;
   title: string;
   summary: string;
-  source_asset_ids: string;
-  output_path: string | null;
   local_file_status?: string;
-  local_file_deleted_at?: string | null;
-  local_file_delete_reason?: string | null;
   image_url: string | null;
   provider: string | null;
   model: string | null;
+  task_step: string | null;
+  output_format?: 'png' | 'gif' | 'webp';
+  frame_count?: number | null;
+  album_name: string | null;
+  liked?: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GenerationHistoryEntry = GenerationHistoryListItem & {
+  source_asset_ids: string;
+  output_path: string | null;
+  local_file_deleted_at?: string | null;
+  local_file_delete_reason?: string | null;
   total_token_count: number | null;
   config_json: string;
   tags_json: string | null;
-  task_step: string | null;
   uploaded_asset_id: string | null;
   upload_status: string | null;
   album_id: string | null;
-  album_name: string | null;
   album_created: boolean;
   album_updated: boolean;
   accept_notes: string | null;
   accepted_at: string | null;
-  output_format?: 'png' | 'gif' | 'webp';
-  frame_count?: number | null;
-  liked?: boolean | null;
-  created_at: string;
-  updated_at: string;
 };
 
 export type EffectStats = {
@@ -282,7 +285,7 @@ export type GenerationAcceptRequest = {
 };
 
 export type GenerationHistoryPage = {
-  items: GenerationHistoryEntry[];
+  items: GenerationHistoryListItem[];
   total: number;
   latest_event_id: number;
 };

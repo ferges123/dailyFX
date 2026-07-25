@@ -5,10 +5,11 @@ import {
   acceptGeneration,
   getImmichAssetDetailUrl,
   getSettings,
+  getGenerationHistoryEntry,
   rejectGeneration,
   retryGenerationAcceptance,
   getImmichFilterOptions,
-  type GenerationHistoryEntry,
+  type GenerationHistoryListItem,
 } from '../../api/client';
 import { SecureImage } from '../../components/SecureImage';
 import { ErrorBanner } from '../../components/ErrorUI';
@@ -44,14 +45,14 @@ const HistoryItemCard = memo(function HistoryItemCard({
   isSelected,
   onSelect,
 }: {
-  item: GenerationHistoryEntry;
+  item: GenerationHistoryListItem;
   isSelected: boolean;
   onSelect: (taskId: string) => void;
 }) {
   const status = (item.status || '').toUpperCase();
   const isQueued = status === 'QUEUED';
   const isRunning = status === 'RUNNING';
-  const isUploaded = status === 'UPLOADED' || Boolean(item.accepted_at);
+  const isUploaded = status === 'UPLOADED';
   const isRejected = status === 'REJECTED';
   const isFailed = status === 'FAILED';
   const taskStep = item.task_step ? item.task_step.replace(/_/g, ' ') : '';
@@ -245,13 +246,21 @@ export function HistoryPage() {
     return [...list].sort((a, b) => a.album_name.localeCompare(b.album_name));
   }, [filterOptions.data]);
 
-  const { selectedHistoryEntry, mobileShowDetail, setMobileShowDetail } =
+  const { mobileShowDetail, setMobileShowDetail } =
     useHistorySelection(
       filteredHistoryItems,
       selectedHistoryTaskId,
       setSelectedHistoryTaskId,
       !taskId,
     );
+
+  const historyDetailQuery = useQuery({
+    queryKey: ['generation-history-detail', selectedHistoryTaskId],
+    queryFn: () => getGenerationHistoryEntry(selectedHistoryTaskId!),
+    enabled: !!selectedHistoryTaskId,
+  });
+
+  const selectedHistoryEntry = historyDetailQuery.data ?? null;
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -282,6 +291,7 @@ export function HistoryPage() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['generation-history-detail'] });
       setIsUploadModalOpen(false);
     },
   });
@@ -290,6 +300,7 @@ export function HistoryPage() {
     mutationFn: retryGenerationAcceptance,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['generation-history-detail'] });
     },
   });
 
@@ -297,6 +308,7 @@ export function HistoryPage() {
     mutationFn: rejectGeneration,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['generation-history-detail'] });
     },
   });
 

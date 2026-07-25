@@ -89,17 +89,50 @@ def record_task_snapshot(db: Session, row: GenerationTaskModel) -> None:
     append_stream_event(db, "task-upsert", serialize_task_row(row), task_id=row.task_id)
 
 
+STREAM_EVENT_MAX_ROWS = 5_000
+STREAM_REPLAY_BATCH_SIZE = 500
+
+
 def get_latest_event_id(db: Session) -> int:
     return db.query(func.max(GenerationStreamEventModel.id)).scalar() or 0
 
 
-def load_events_after(db: Session, after_id: int) -> list[GenerationStreamEventModel]:
+def load_events_after(
+    db: Session, after_id: int, limit: int = STREAM_REPLAY_BATCH_SIZE
+) -> list[GenerationStreamEventModel]:
     return (
         db.query(GenerationStreamEventModel)
         .filter(GenerationStreamEventModel.id > after_id)
         .order_by(GenerationStreamEventModel.id.asc())
+        .limit(limit)
         .all()
     )
+
+
+def prune_generation_stream_events(
+    db: Session,
+    *,
+    max_rows: int = STREAM_EVENT_MAX_ROWS,
+) -> int:
+    if max_rows < 1:
+        raise ValueError("max_rows must be at least 1")
+
+    cutoff_id = (
+        db.query(GenerationStreamEventModel.id)
+        .order_by(GenerationStreamEventModel.id.desc())
+        .offset(max_rows)
+        .limit(1)
+        .scalar()
+    )
+    if cutoff_id is None:
+        return 0
+
+    deleted_count = (
+        db.query(GenerationStreamEventModel)
+        .filter(GenerationStreamEventModel.id <= cutoff_id)
+        .delete(synchronize_session=False)
+    )
+    return deleted_count
 
 
 def replay_gap_requires_resync(db: Session, after_id: int) -> bool:

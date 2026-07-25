@@ -21,6 +21,7 @@ vi.mock('../api/client', () => ({
     }),
   ),
   getGenerationHistory: vi.fn(() => Promise.resolve({ items: [], total: 0 })),
+  getGenerationHistoryEntry: vi.fn(() => Promise.resolve(null)),
   getImmichFilterOptions: vi.fn(() => Promise.resolve([])),
   getImmichAssetExif: vi.fn(() => Promise.resolve({})),
   acceptGeneration: vi.fn(() => Promise.resolve({})),

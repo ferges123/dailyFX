@@ -77,8 +77,45 @@ class GenerationHistoryResponse(GenerationHistoryBase):
         return self
 
 
+class GenerationHistoryListItemResponse(BaseModel):
+    id: int
+    task_id: str
+    generation_type: str
+    status: Literal["QUEUED", "RUNNING", "PENDING_REVIEW", "UPLOADED", "REJECTED", "FAILED"] = "PENDING_REVIEW"
+    title: str
+    summary: str
+    local_file_status: str = "available"
+    image_url: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    task_step: str | None = None
+    output_format: Literal["png", "gif", "webp"] = "png"
+    frame_count: int | None = None
+    album_name: str | None = None
+    liked: bool | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_model(cls, row: object) -> "GenerationHistoryListItemResponse":
+        return cls.model_validate(row)
+
+    @model_validator(mode="after")
+    def append_cache_buster(self) -> "GenerationHistoryListItemResponse":
+        if self.image_url and self.updated_at:
+            t = int(self.updated_at.timestamp())
+            parts = urlsplit(self.image_url)
+            query = dict(parse_qsl(parts.query, keep_blank_values=True))
+            if "t" not in query:
+                query["t"] = str(t)
+                self.image_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+        return self
+
+
 class GenerationHistoryPage(BaseModel):
-    items: list[GenerationHistoryResponse]
+    items: list[GenerationHistoryListItemResponse]
     total: int
     latest_event_id: int = 0
 
@@ -91,7 +128,7 @@ class GenerationHistoryPage(BaseModel):
         latest_event_id: int,
     ) -> "GenerationHistoryPage":
         return cls(
-            items=[GenerationHistoryResponse.from_model(row) for row in rows],
+            items=[GenerationHistoryListItemResponse.from_model(row) for row in rows],
             total=total,
             latest_event_id=latest_event_id,
         )

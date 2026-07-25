@@ -16,6 +16,7 @@ vi.mock('../api/client', () => {
   return {
     getSettings: vi.fn(),
     getGenerationHistory: vi.fn(),
+    getGenerationHistoryEntry: vi.fn(),
     getImmichFilterOptions: vi.fn(),
     getImmichAssetExif: vi.fn(),
     acceptGeneration: vi.fn(),
@@ -216,6 +217,15 @@ describe('HistoryPage', () => {
     vi.clearAllMocks();
     sessionStorage.clear();
     localStorage.clear();
+    vi.mocked(client.getGenerationHistoryEntry).mockImplementation((taskId) => {
+      const allMockItems = [
+        mockHistoryItem1,
+        mockHistoryItem2,
+        mockQueuedHistoryItem,
+      ];
+      const found = allMockItems.find((e) => e.task_id === taskId);
+      return Promise.resolve(found ?? mockHistoryItem1);
+    });
     vi.mocked(client.acceptGeneration).mockResolvedValue(mockHistoryItem1);
     vi.mocked(client.rejectGeneration).mockResolvedValue(mockHistoryItem1);
     vi.mocked(client.getImmichAssetExif).mockResolvedValue({});
@@ -285,7 +295,7 @@ describe('HistoryPage', () => {
     expect(await screen.findByText('Queued: Morning run')).toBeInTheDocument();
     expect(screen.getAllByText('Queued').length).toBeGreaterThan(0);
     expect(
-      screen.getByText(
+      await screen.findByText(
         'This task is queued and waiting for the worker to start it.',
       ),
     ).toBeInTheDocument();
@@ -323,7 +333,7 @@ describe('HistoryPage', () => {
 
     // Displays second card details
     expect(
-      screen.getByText('"Portrait stylized as anime"'),
+      await screen.findByText('"Portrait stylized as anime"'),
     ).toBeInTheDocument();
     expect(screen.getByText('#portrait')).toBeInTheDocument();
     expect(screen.getByText('#anime')).toBeInTheDocument();
@@ -465,6 +475,9 @@ describe('HistoryPage', () => {
 
     // Wait for the detail panel of man-2 to load
     expect(await screen.findByText('Mayfair Sunset')).toBeInTheDocument();
+    expect(
+      await screen.findByText('"Portrait stylized as anime"'),
+    ).toBeInTheDocument();
 
     // Verify detail panel is shown initially (has class showing it, not hidden lg:flex on its own)
     const detailPanel = container.querySelectorAll('.app-panel')[1];

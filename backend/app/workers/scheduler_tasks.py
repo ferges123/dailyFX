@@ -58,10 +58,20 @@ def _backup_database(retention_count: int | None = None) -> None:
 def _cleanup_old_results(results_dir: Path) -> None:
     """Run the configured, safe retention policy."""
     try:
+        from app.services.generation.stream import prune_generation_stream_events
         from app.services.retention import execute_retention
 
         session = app.database.SessionLocal()
         try:
+            try:
+                pruned_events = prune_generation_stream_events(session)
+                if pruned_events > 0:
+                    session.commit()
+                    logger.info("Pruned %d generation stream events", pruned_events)
+            except Exception:
+                session.rollback()
+                logger.exception("Failed to prune generation stream events")
+
             settings = get_or_create_settings(session)
             preview = execute_retention(session, settings, data_dir=results_dir.parent)
             logger.info(

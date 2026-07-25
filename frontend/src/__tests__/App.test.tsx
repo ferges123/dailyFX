@@ -28,6 +28,7 @@ vi.mock('../api/client', async (importOriginal) => {
     getSettings: () => Promise.resolve({}),
     getGenerationHistory: () =>
       Promise.resolve({ items: [], total: 0, latest_event_id: 0 }),
+    getGenerationHistoryEntry: () => Promise.resolve(null),
     getPeoplePresets: () => Promise.resolve([]),
     getEffectPresets: () => Promise.resolve([]),
     getNotificationPresets: () => Promise.resolve([]),
@@ -72,7 +73,7 @@ describe('App', () => {
     ).toHaveLength(2);
   });
 
-  it('uses the light logo for the app chrome brand icon', async () => {
+  it('uses the pwa logo for the app chrome brand icon', async () => {
     renderApp();
 
     expect(
@@ -81,7 +82,7 @@ describe('App', () => {
     expect(screen.getAllByRole('img', { name: 'DailyFX logo' })).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          src: expect.stringContaining('/logo_light.png'),
+          src: expect.stringContaining('/pwa-192x192.png'),
         }),
       ]),
     );

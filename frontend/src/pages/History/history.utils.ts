@@ -1,6 +1,6 @@
 import { type InfiniteData } from '@tanstack/react-query';
 import {
-  type GenerationHistoryEntry,
+  type GenerationHistoryListItem,
   type GenerationHistoryPage,
 } from '../../api/client';
 import { type GenerationStreamEvent } from '../../api/generationStream';
@@ -9,7 +9,7 @@ import { type HistoryStatusFilter } from '../history.types';
 export const HISTORY_PAGE_LIMIT = 10;
 
 export function matchesHistoryFilters(
-  item: GenerationHistoryEntry,
+  item: GenerationHistoryListItem,
   statusParam: string | undefined,
   search: string,
 ): boolean {
@@ -34,7 +34,7 @@ export function matchesHistoryFilters(
 
 export function updateHistoryCacheForUpsert(
   oldData: InfiniteData<GenerationHistoryPage> | undefined,
-  entry: GenerationHistoryEntry,
+  entry: GenerationHistoryListItem,
   statusParam: string | undefined,
   search: string,
 ): InfiniteData<GenerationHistoryPage> | undefined {
@@ -123,7 +123,7 @@ export function updateHistoryCacheForTask(
         : payload.status === 'running' && current.status === 'RUNNING'
           ? 'RUNNING'
           : current.status;
-    const merged: GenerationHistoryEntry = {
+    const merged: GenerationHistoryListItem = {
       ...current,
       status: nextStatus,
       task_step: payload.step ?? current.task_step,

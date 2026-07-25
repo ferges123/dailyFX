@@ -66,10 +66,10 @@ describe('LoginPage', () => {
   it('shows the DailyFX logo on the login card', () => {
     renderWithAuth();
 
-    expect(screen.getByRole('img', { name: 'DailyFX logo' })).toHaveAttribute(
-      'src',
-      '/logo_light.png',
-    );
+    const logo = screen.getByRole('img', { name: 'DailyFX logo' });
+    expect(logo).toHaveAttribute('src', '/pwa-192x192.png');
+    expect(logo).toHaveAttribute('width', '192');
+    expect(logo).toHaveAttribute('height', '192');
   });
 
   it('authenticates when token is valid', async () => {

@@ -145,6 +145,66 @@ def test_stream_replay_gap_detection():
         db.close()
 
 
+def test_load_events_after_bounded_limit():
+    from app.services.generation.stream import load_events_after
+
+    db = _setup_generation_routes_db()
+    try:
+        db.query(GenerationStreamEventModel).delete()
+        db.commit()
+
+        db.add_all(
+            [
+                GenerationStreamEventModel(event_type="test-event", task_id=f"t-{i}", payload_json="{}")
+                for i in range(600)
+            ]
+        )
+        db.commit()
+
+        batch1 = load_events_after(db, 0)
+        assert len(batch1) == 500
+        assert batch1[0].task_id == "t-0"
+        assert batch1[-1].task_id == "t-499"
+
+        batch2 = load_events_after(db, batch1[-1].id)
+        assert len(batch2) == 100
+        assert batch2[0].task_id == "t-500"
+        assert batch2[-1].task_id == "t-599"
+    finally:
+        db.close()
+
+
+def test_prune_generation_stream_events():
+    from app.services.generation.stream import prune_generation_stream_events
+
+    db = _setup_generation_routes_db()
+    try:
+        db.query(GenerationStreamEventModel).delete()
+        db.commit()
+
+        db.add_all(
+            [
+                GenerationStreamEventModel(event_type="test-event", task_id=f"p-{i}", payload_json="{}")
+                for i in range(10)
+            ]
+        )
+        db.commit()
+
+        deleted = prune_generation_stream_events(db, max_rows=5)
+        db.commit()
+
+        assert deleted == 5
+        rows = db.query(GenerationStreamEventModel).order_by(GenerationStreamEventModel.id.asc()).all()
+        assert len(rows) == 5
+        assert [r.task_id for r in rows] == ["p-5", "p-6", "p-7", "p-8", "p-9"]
+
+        # Cursor for pruned event p-2 receives resync-required
+        pruned_cursor = rows[0].id - 2
+        assert replay_gap_requires_resync(db, pruned_cursor) is True
+    finally:
+        db.close()
+
+
 def test_task_status_returns_new_contract():
     db = _setup_generation_routes_db()
     try:
@@ -179,6 +239,38 @@ def test_generation_history_returns_entry():
         assert history_page.items[0].status == "PENDING_REVIEW"
         assert history_page.total == 1
         assert history_page.latest_event_id >= 0
+    finally:
+        db.close()
+
+
+def test_generation_history_query_count_is_bounded():
+    db = _setup_generation_routes_db()
+    try:
+        db.query(EffectStatisticsLogModel).delete()
+        db.query(GenerationHistoryModel).delete()
+        db.commit()
+
+        for i in range(24):
+            task_id = f"task-bound-{i}"
+            _add_history_row(db, task_id)
+            db.add(EffectStatisticsLogModel(effect_id="collage", task_id=task_id, liked=bool(i % 2)))
+        db.commit()
+
+        from sqlalchemy import event
+
+        queries = []
+
+        def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+            queries.append(statement)
+
+        event.listen(db.get_bind(), "before_cursor_execute", before_cursor_execute)
+        try:
+            page = get_generation_history(db, limit=24)
+            assert len(page.items) == 24
+            assert page.items[0].liked is not None
+            assert len(queries) <= 4
+        finally:
+            event.remove(db.get_bind(), "before_cursor_execute", before_cursor_execute)
     finally:
         db.close()
 

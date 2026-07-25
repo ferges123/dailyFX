@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type GenerationHistoryEntry } from '../../api/client';
+import { type GenerationHistoryListItem } from '../../api/client';
 
 const LAST_STARTED_TASK_ID_KEY = 'dailyfx_last_started_task_id';
 
 export function useHistorySelection(
-  filteredHistoryItems: GenerationHistoryEntry[],
+  filteredHistoryItems: GenerationHistoryListItem[],
   selectedHistoryTaskId: string | null,
   setSelectedHistoryTaskId: (taskId: string | null) => void,
   allowFallbackSelection = true,
@@ -13,7 +13,7 @@ export function useHistorySelection(
     !allowFallbackSelection,
   );
 
-  const selectedHistoryEntry = useMemo(
+  const selectedHistoryListItem = useMemo(
     () =>
       filteredHistoryItems.find(
         (item) => item.task_id === selectedHistoryTaskId,
@@ -70,7 +70,7 @@ export function useHistorySelection(
   ]);
 
   return {
-    selectedHistoryEntry,
+    selectedHistoryListItem,
     mobileShowDetail,
     setMobileShowDetail,
   };

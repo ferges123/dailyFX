@@ -45,6 +45,7 @@ async def accept_generation(
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     """Accept and upload a generated image to Immich."""
+    # Phase 1: Prepare and validate state from DB
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Generation history entry not found")
@@ -64,11 +65,13 @@ async def accept_generation(
         raise HTTPException(status_code=500, detail="Settings not found")
 
     client = build_immich_client(settings)
+    album_name = request.album_name or row.album_name or None
+
+    # Phase 2: Perform async Immich network operations without DB operations
     try:
         upload_result = await _upload_generation_asset(client=client, row=row, task_id=task_id, image_path=image_path)
         await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=upload_result.id, row=row)
 
-        album_name = request.album_name or row.album_name or None
         if album_name:
             album_id, album_created, album_updated, accept_notes = await _apply_album_and_tag(
                 client=client,
@@ -78,74 +81,82 @@ async def accept_generation(
             )
         else:
             album_id, album_created, album_updated, accept_notes = None, False, False, []
-
-        row.uploaded_asset_id = upload_result.id
-        row.upload_status = upload_result.status
-        row.status = "UPLOADED"
-        row.album_id = album_id
-        row.album_name = album_name
-        row.album_created = album_created
-        row.album_updated = album_updated
-        row.accept_notes = "\n".join(accept_notes) if accept_notes else None
-        row.accepted_at = datetime.now(timezone.utc)
-
-        db.commit()
-        db.refresh(row)
-
-        try:
-            from app.services.generation.asset_usage import accept_task_assets
-
-            accept_task_assets(db, task_id)
-        except Exception as registry_exc:
-            logger.exception("Failed to accept assets in registry for task %s: %s", task_id, registry_exc)
-
-        record_history_snapshot(db, row)
-
-        record_audit_event(
-            db=db,
-            action="generation.accepted",
-            category="generation",
-            outcome="success",
-            actor_type=actor_ctx.actor_type,
-            request_id=actor_ctx.request_id,
-            source_ip_hash=actor_ctx.source_ip_hash,
-            target_type="generation",
-            target_id=task_id,
-            task_id=task_id,
-            summary=f"Generation accepted and uploaded to Immich (Asset ID: {upload_result.id})",
-            metadata={
-                "uploaded_asset_id": upload_result.id,
-                "album_name": album_name,
-                "album_id": album_id,
-            },
-        )
-
-        return row
     except Exception as exc:
-        row.status = "FAILED"
-        row.accept_notes = "Upload failed"
-        db.commit()
-        db.refresh(row)
-        record_history_snapshot(db, row)
+        # Finalize error state in DB
+        row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if row:
+            row.status = "FAILED"
+            row.accept_notes = "Upload failed"
+            db.commit()
+            db.refresh(row)
+            record_history_snapshot(db, row)
 
-        record_audit_event(
-            db=db,
-            action="generation.accepted",
-            category="generation",
-            outcome="failure",
-            actor_type=actor_ctx.actor_type,
-            request_id=actor_ctx.request_id,
-            source_ip_hash=actor_ctx.source_ip_hash,
-            target_type="generation",
-            target_id=task_id,
-            task_id=task_id,
-            summary=f"Failed to accept generation: {str(exc)}",
-            error_code=exc.__class__.__name__,
-            metadata={"error": str(exc)},
-        )
+            record_audit_event(
+                db=db,
+                action="generation.accepted",
+                category="generation",
+                outcome="failure",
+                actor_type=actor_ctx.actor_type,
+                request_id=actor_ctx.request_id,
+                source_ip_hash=actor_ctx.source_ip_hash,
+                target_type="generation",
+                target_id=task_id,
+                task_id=task_id,
+                summary=f"Failed to accept generation: {str(exc)}",
+                error_code=exc.__class__.__name__,
+                metadata={"error": str(exc)},
+            )
 
         logger.exception("Failed to upload image to Immich: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to upload image to Immich") from exc
+
+    # Phase 3: Finalize DB update
+    row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Generation history entry not found")
+
+    row.uploaded_asset_id = upload_result.id
+    row.upload_status = upload_result.status
+    row.status = "UPLOADED"
+    row.album_id = album_id
+    row.album_name = album_name
+    row.album_created = album_created
+    row.album_updated = album_updated
+    row.accept_notes = "\n".join(accept_notes) if accept_notes else None
+    row.accepted_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(row)
+
+    try:
+        from app.services.generation.asset_usage import accept_task_assets
+
+        accept_task_assets(db, task_id)
+    except Exception as registry_exc:
+        logger.exception("Failed to accept assets in registry for task %s: %s", task_id, registry_exc)
+
+    record_history_snapshot(db, row)
+
+    record_audit_event(
+        db=db,
+        action="generation.accepted",
+        category="generation",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="generation",
+        target_id=task_id,
+        task_id=task_id,
+        summary=f"Generation accepted and uploaded to Immich (Asset ID: {upload_result.id})",
+        metadata={
+            "uploaded_asset_id": upload_result.id,
+            "album_name": album_name,
+            "album_id": album_id,
+        },
+    )
+
+    return row
 
 
 @router.post("/history/{task_id}/retry", response_model=GenerationHistoryResponse)
@@ -157,6 +168,7 @@ async def retry_acceptance(
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     """Retry album/tag steps or the entire upload for a generation."""
+    # Phase 1: Prepare and validate state from DB
     row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Generation history entry not found")
@@ -166,108 +178,127 @@ async def retry_acceptance(
         raise HTTPException(status_code=500, detail="Settings not found")
 
     client = build_immich_client(settings)
-    try:
-        # If not uploaded yet, try uploading first
-        if not row.uploaded_asset_id:
-            if not row.output_path:
-                raise HTTPException(status_code=400, detail="No output image file path in history")
-            image_path = Path(row.output_path).resolve()
-            data_dir = get_settings().data_dir.resolve()
-            if not image_path.is_relative_to(data_dir):
-                raise HTTPException(status_code=400, detail="Invalid path")
-            if not image_path.exists():
-                raise HTTPException(status_code=400, detail="Generated image file not found on disk")
+    uploaded_asset_id = row.uploaded_asset_id
+    image_path = None
+    if not uploaded_asset_id:
+        if not row.output_path:
+            raise HTTPException(status_code=400, detail="No output image file path in history")
+        image_path = Path(row.output_path).resolve()
+        data_dir = get_settings().data_dir.resolve()
+        if not image_path.is_relative_to(data_dir):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if not image_path.exists():
+            raise HTTPException(status_code=400, detail="Generated image file not found on disk")
 
+    album_name = (row.album_name or "").strip() or None
+    row_album_id = row.album_id
+
+    # Phase 2: Perform async Immich network operations without DB operations
+    try:
+        new_uploaded_asset_id = uploaded_asset_id
+        upload_status = row.upload_status
+        accepted_at = row.accepted_at
+
+        if not new_uploaded_asset_id and image_path:
             upload_result = await _upload_generation_asset(
                 client=client,
                 row=row,
                 task_id=task_id,
                 image_path=image_path,
             )
-            row.uploaded_asset_id = upload_result.id
-            row.upload_status = upload_result.status
-            row.accepted_at = datetime.now(timezone.utc)
-            await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=upload_result.id, row=row)
+            new_uploaded_asset_id = upload_result.id
+            upload_status = upload_result.status
+            accepted_at = datetime.now(timezone.utc)
+            await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=new_uploaded_asset_id, row=row)
 
-        # Now apply/retry album and tagging
-        album_name = (row.album_name or "").strip() or None
-        if album_name:
+        if album_name and new_uploaded_asset_id:
             album_id, album_created, album_updated, accept_notes = await _apply_album_and_tag(
                 client=client,
-                upload_asset_id=row.uploaded_asset_id,
+                upload_asset_id=new_uploaded_asset_id,
                 album_name=album_name,
                 request=GenerationAcceptRequest(
                     create_album=True,
                     album_name=album_name,
-                    album_id=row.album_id,
+                    album_id=row_album_id,
                 ),
             )
         else:
-            album_id, album_created, album_updated, accept_notes = row.album_id, False, False, []
-
-        row.album_id = album_id
-        row.album_name = album_name
-        row.album_created = album_created
-        row.album_updated = album_updated
-        row.accept_notes = "\n".join(accept_notes) if accept_notes else None
-        row.status = "UPLOADED"
-        db.commit()
-        db.refresh(row)
-
-        try:
-            from app.services.generation.asset_usage import accept_task_assets
-
-            accept_task_assets(db, task_id)
-        except Exception as registry_exc:
-            logger.exception("Failed to accept assets in registry during retry for task %s: %s", task_id, registry_exc)
-
-        record_history_snapshot(db, row)
-
-        record_audit_event(
-            db=db,
-            action="generation.retried",
-            category="generation",
-            outcome="success",
-            actor_type=actor_ctx.actor_type,
-            request_id=actor_ctx.request_id,
-            source_ip_hash=actor_ctx.source_ip_hash,
-            target_type="generation",
-            target_id=task_id,
-            task_id=task_id,
-            summary="Generation retry succeeded",
-            metadata={
-                "uploaded_asset_id": row.uploaded_asset_id,
-                "album_name": album_name,
-                "album_id": album_id,
-            },
-        )
-
-        return row
+            album_id, album_created, album_updated, accept_notes = row_album_id, False, False, []
     except Exception as exc:
-        row.status = "FAILED"
-        row.accept_notes = "Retry failed"
-        db.commit()
-        db.refresh(row)
-        record_history_snapshot(db, row)
+        row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if row:
+            row.status = "FAILED"
+            row.accept_notes = "Retry failed"
+            db.commit()
+            db.refresh(row)
+            record_history_snapshot(db, row)
 
-        record_audit_event(
-            db=db,
-            action="generation.retried",
-            category="generation",
-            outcome="failure",
-            actor_type=actor_ctx.actor_type,
-            request_id=actor_ctx.request_id,
-            source_ip_hash=actor_ctx.source_ip_hash,
-            target_type="generation",
-            target_id=task_id,
-            task_id=task_id,
-            summary=f"Generation retry failed: {str(exc)}",
-            error_code=exc.__class__.__name__,
-            metadata={"error": str(exc)},
-        )
+            record_audit_event(
+                db=db,
+                action="generation.retried",
+                category="generation",
+                outcome="failure",
+                actor_type=actor_ctx.actor_type,
+                request_id=actor_ctx.request_id,
+                source_ip_hash=actor_ctx.source_ip_hash,
+                target_type="generation",
+                target_id=task_id,
+                task_id=task_id,
+                summary=f"Generation retry failed: {str(exc)}",
+                error_code=exc.__class__.__name__,
+                metadata={"error": str(exc)},
+            )
 
         logger.exception("Retry failed for task %s", task_id)
         raise HTTPException(status_code=500, detail="Retry failed") from exc
+
+    # Phase 3: Finalize DB update
+    row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Generation history entry not found")
+
+    row.uploaded_asset_id = new_uploaded_asset_id
+    row.upload_status = upload_status
+    if accepted_at:
+        row.accepted_at = accepted_at
+    row.album_id = album_id
+    row.album_name = album_name
+    row.album_created = album_created
+    row.album_updated = album_updated
+    row.accept_notes = "\n".join(accept_notes) if accept_notes else None
+    row.status = "UPLOADED"
+    db.commit()
+    db.refresh(row)
+
+    try:
+        from app.services.generation.asset_usage import accept_task_assets
+
+        accept_task_assets(db, task_id)
+    except Exception as registry_exc:
+        logger.exception("Failed to accept assets in registry during retry for task %s: %s", task_id, registry_exc)
+
+    record_history_snapshot(db, row)
+
+    record_audit_event(
+        db=db,
+        action="generation.retried",
+        category="generation",
+        outcome="success",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="generation",
+        target_id=task_id,
+        task_id=task_id,
+        summary="Generation retry succeeded",
+        metadata={
+            "uploaded_asset_id": row.uploaded_asset_id,
+            "album_name": album_name,
+            "album_id": album_id,
+        },
+    )
+
+    return row
 
 
 @router.post("/history/{task_id}/reject", response_model=GenerationHistoryResponse)

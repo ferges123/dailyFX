@@ -9,6 +9,7 @@ vi.mock('../api/client', () => {
   return {
     getAuthToken: vi.fn(() => null),
     getGenerationHistory: vi.fn(),
+    getGenerationHistoryEntry: vi.fn(),
     likeGeneration: vi.fn(),
     dislikeGeneration: vi.fn(),
   };
@@ -104,6 +105,11 @@ function renderGallery(initialEntries = ['/gallery']) {
 describe('GalleryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(client.getGenerationHistoryEntry).mockImplementation((taskId) => {
+      const allEntries = [animeEntry, comicEntry, secondPageEntry];
+      const found = allEntries.find((e) => e.task_id === taskId);
+      return Promise.resolve(found ?? animeEntry);
+    });
   });
 
   it('loads uploaded images as thumbnails and appends the next page', async () => {
