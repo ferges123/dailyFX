@@ -314,11 +314,21 @@ export const LightboxModal = memo(function LightboxModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="lightbox-modal-title"
-        className="relative flex w-full h-full md:h-[92vh] md:max-h-[92vh] max-w-full md:max-w-[94vw] flex-col items-stretch justify-center overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-stone-200/80 bg-white/95 shadow-2xl animate-scale-in md:flex-row"
+        className={`relative flex w-full flex-col items-stretch justify-center overflow-hidden animate-scale-in ${
+          isFullscreen
+            ? 'h-full max-h-none max-w-full rounded-none border-0 bg-black text-white'
+            : 'h-full md:h-[92vh] md:max-h-[92vh] max-w-full md:max-w-[94vw] rounded-none md:rounded-2xl border-0 md:border border-stone-200/80 bg-white/95 shadow-2xl md:flex-row'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Photo Canvas */}
-        <div className="relative flex h-[52vh] min-h-0 md:h-full md:min-w-0 md:max-h-none flex-1 items-center justify-center bg-stone-50 p-2">
+        <div
+          className={`relative flex min-h-0 flex-1 items-center justify-center ${
+            isFullscreen
+              ? 'h-full w-full max-h-none bg-black p-0'
+              : 'h-[52vh] md:h-full md:min-w-0 md:max-h-none bg-stone-50 p-2'
+          }`}
+        >
           {hasPrev && onPrev && (
             <button
               type="button"
@@ -384,7 +394,8 @@ export const LightboxModal = memo(function LightboxModal({
         </div>
 
         {/* Premium EXIF Details Overlay Panel */}
-        <div className="flex h-[48vh] md:h-auto min-h-0 w-full shrink-0 flex-col bg-stone-50 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
+        {!isFullscreen && (
+          <div className="flex h-[48vh] md:h-auto min-h-0 w-full shrink-0 flex-col bg-stone-50 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
           <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5 space-y-4">
             <div>
               <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">
@@ -655,13 +666,18 @@ export const LightboxModal = memo(function LightboxModal({
             </div>
           </div>
         </div>
+        )}
 
         {/* Top Control Buttons */}
         <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950 shadow-md transition active:scale-90"
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 ${
+              isFullscreen
+                ? 'bg-stone-800/80 text-white hover:bg-stone-700 hover:text-white backdrop-blur-md'
+                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950'
+            }`}
             aria-label="Toggle full screen"
             title={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
           >
@@ -670,7 +686,11 @@ export const LightboxModal = memo(function LightboxModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950 shadow-md transition active:scale-90"
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 ${
+              isFullscreen
+                ? 'bg-stone-800/80 text-white hover:bg-stone-700 hover:text-white backdrop-blur-md'
+                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950'
+            }`}
             aria-label="Close"
           >
             <X size={18} />

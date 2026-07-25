@@ -9,7 +9,10 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { getGenerationHistory, getGenerationHistoryEntry } from '../api/client';
-import { type GenerationHistoryListItem } from '../api/types';
+import {
+  type GenerationHistoryListItem,
+  type GenerationHistoryEntry,
+} from '../api/types';
 import { SecureImage } from '../components/SecureImage';
 import { SearchInput } from '../components/SearchInput';
 import { LightboxModal } from './History/LightboxModal';
@@ -205,7 +208,15 @@ export function GalleryPage() {
     enabled: !!taskId,
   });
 
-  const lightboxEntry = lightboxDetailQuery.data ?? null;
+  const fallbackEntry = taskId
+    ? entries.find((e) => e.task_id === taskId)
+    : undefined;
+
+  const lightboxEntry =
+    lightboxDetailQuery.data ??
+    (fallbackEntry
+      ? (fallbackEntry as unknown as GenerationHistoryEntry)
+      : null);
 
   const { selectedExif } = useSelectedExif(
     lightboxEntry?.config_json,

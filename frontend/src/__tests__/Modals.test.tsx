@@ -139,23 +139,30 @@ describe('LightboxModal', () => {
       fireEvent.click(fullScreenBtn);
       expect(requestFullscreenMock).toHaveBeenCalled();
 
-      // Test Escape key when NOT in full screen: should call onClose
-      Object.defineProperty(document, 'fullscreenElement', {
-        configurable: true,
-        value: null,
-      });
-      fireEvent.keyDown(window, { key: 'Escape' });
-      expect(onClose).toHaveBeenCalledTimes(1);
-
-      onClose.mockClear();
-
-      // Test Escape key when IN full screen: should NOT call onClose
+      // Simulate fullscreenchange event entering fullscreen
       Object.defineProperty(document, 'fullscreenElement', {
         configurable: true,
         value: document.body,
       });
+      fireEvent(document, new Event('fullscreenchange'));
+
+      // Details panel should be hidden in fullscreen mode
+      expect(screen.queryByText('Image Metadata')).not.toBeInTheDocument();
+
+      // Test Escape key when IN full screen: should NOT call onClose
       fireEvent.keyDown(window, { key: 'Escape' });
       expect(onClose).not.toHaveBeenCalled();
+
+      // Simulate exiting fullscreen
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        value: null,
+      });
+      fireEvent(document, new Event('fullscreenchange'));
+
+      // Test Escape key when NOT in full screen: should call onClose
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
     } finally {
       HTMLElement.prototype.requestFullscreen = origRequestFs;
       document.exitFullscreen = origExitFs;
