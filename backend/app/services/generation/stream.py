@@ -22,6 +22,7 @@ def _serialize_datetime(value: datetime | None) -> str | None:
 
 
 def serialize_history_row(row: GenerationHistoryModel) -> dict[str, Any]:
+    liked_val = row.stats_log.liked if getattr(row, "stats_log", None) else None
     return {
         "id": row.id,
         "task_id": row.task_id,
@@ -29,26 +30,15 @@ def serialize_history_row(row: GenerationHistoryModel) -> dict[str, Any]:
         "status": row.status,
         "title": row.title,
         "summary": row.summary,
-        "source_asset_ids": row.source_asset_ids,
-        "output_path": row.output_path,
+        "local_file_status": getattr(row, "local_file_status", "available"),
         "image_url": row.image_url,
         "provider": row.provider,
         "model": row.model,
-        "total_token_count": row.total_token_count,
-        "config_json": row.config_json,
-        "tags_json": row.tags_json,
         "task_step": row.task_step,
         "output_format": row.output_format,
         "frame_count": row.frame_count,
-        "uploaded_asset_id": row.uploaded_asset_id,
-        "upload_status": row.upload_status,
-        "album_id": row.album_id,
         "album_name": row.album_name,
-        "album_created": row.album_created,
-        "album_updated": row.album_updated,
-        "accept_notes": row.accept_notes,
-        "accepted_at": _serialize_datetime(row.accepted_at),
-        "schedule_id": row.schedule_id,
+        "liked": liked_val,
         "created_at": _serialize_datetime(row.created_at),
         "updated_at": _serialize_datetime(row.updated_at),
     }

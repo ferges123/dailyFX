@@ -423,7 +423,7 @@ export function HistoryPage() {
       return (
         <div className="grid gap-4 lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:grid-cols-[330px_minmax(0,1fr)] lg:items-stretch">
           {/* Left Panel: Cards Skeleton List */}
-          <div className="flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 h-152 lg:h-full">
+          <div className="flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 h-[calc(100dvh-12rem)] md:h-[calc(100dvh-7.5rem)] lg:h-full">
             <div className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-1.5 custom-scrollbar">
               <HistoryItemSkeleton />
               <HistoryItemSkeleton />
@@ -462,7 +462,7 @@ export function HistoryPage() {
             className={`flex flex-col min-h-0 rounded-xl md:rounded-2xl border border-stone-200 bg-stone-50/60 p-1.5 md:p-2 ${
               mobileShowDetail
                 ? 'hidden lg:flex lg:h-full'
-                : 'flex h-152 lg:h-full'
+                : 'flex h-[calc(100dvh-12rem)] md:h-[calc(100dvh-7.5rem)] lg:h-full'
             }`}
           >
             <div

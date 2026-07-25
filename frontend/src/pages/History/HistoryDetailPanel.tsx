@@ -131,7 +131,9 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
   return (
     <div
       className={`app-panel flex flex-col min-h-0 overflow-y-auto p-3 md:p-4 lg:h-full ${
-        mobileShowDetail ? 'flex' : 'hidden lg:flex'
+        mobileShowDetail
+          ? 'flex h-[calc(100dvh-12rem)] md:h-[calc(100dvh-7.5rem)] lg:h-full'
+          : 'hidden lg:flex'
       }`}
     >
       {/* Mobile Back Button */}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import {
-  type GenerationHistoryEntry,
+  type GenerationHistoryListItem,
   type GenerationHistoryPage,
 } from '../../api/client';
 import {
@@ -43,7 +43,7 @@ export function useHistoryStreamSync({
       },
       onEvent: (event) => {
         if (event.event === 'history-upsert') {
-          const payload = event.data as GenerationHistoryEntry;
+          const payload = event.data as GenerationHistoryListItem;
           if (!payload?.task_id) return;
           queryClient.setQueryData<InfiniteData<GenerationHistoryPage>>(
             historyQueryKey,
@@ -55,10 +55,19 @@ export function useHistoryStreamSync({
                 debouncedSearch,
               ),
           );
+          queryClient.invalidateQueries({
+            queryKey: ['generation-history-detail', payload.task_id],
+          });
           return;
         }
 
         if (event.event === 'task-upsert') {
+          const payload = event.data as { task_id?: string } | null;
+          if (payload?.task_id) {
+            queryClient.invalidateQueries({
+              queryKey: ['generation-history-detail', payload.task_id],
+            });
+          }
           queryClient.setQueryData<InfiniteData<GenerationHistoryPage>>(
             historyQueryKey,
             (oldData) =>

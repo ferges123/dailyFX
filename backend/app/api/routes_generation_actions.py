@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.database import get_db_dependency
+from app.database import SessionLocal, get_db
 from app.models.generation_history import GenerationHistoryModel
 from app.models.settings import SettingsModel
 from app.schemas.generation import GenerationAcceptRequest, GenerationHistoryResponse
@@ -35,64 +35,123 @@ from app.api.generation_upload_helpers import (
 )
 
 
-@router.post("/history/{task_id}/accept", response_model=GenerationHistoryResponse)
-async def accept_generation(
-    task_id: str,
-    request: GenerationAcceptRequest,
-    db: Session = Depends(get_db_dependency),
-    _: None = Depends(require_auth),
-    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
-):
-    actor_ctx = resolve_actor_context(actor_ctx)
-    """Accept and upload a generated image to Immich."""
-    # Phase 1: Prepare and validate state from DB
-    row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Generation history entry not found")
+class _RowProxy:
+    pass
 
-    if not row.output_path:
-        raise HTTPException(status_code=404, detail="Output path not available in history")
 
-    image_path = Path(row.output_path).resolve()
-    data_dir = get_settings().data_dir.resolve()
-    if not image_path.is_relative_to(data_dir):
-        raise HTTPException(status_code=400, detail="Invalid path")
-    if not image_path.exists():
-        raise HTTPException(status_code=404, detail="Generated image not found on disk")
-
-    settings = db.query(SettingsModel).first()
-    if not settings:
-        raise HTTPException(status_code=500, detail="Settings not found")
-
-    client = build_immich_client(settings)
-    album_name = request.album_name or row.album_name or None
-
-    # Phase 2: Perform async Immich network operations without DB operations
+def _prepare_accept_data(
+    task_id: str, request: GenerationAcceptRequest
+) -> tuple[Path, str | None, SettingsModel, _RowProxy]:
+    session = SessionLocal()
     try:
-        upload_result = await _upload_generation_asset(client=client, row=row, task_id=task_id, image_path=image_path)
-        await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=upload_result.id, row=row)
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Generation history entry not found")
 
-        if album_name:
-            album_id, album_created, album_updated, accept_notes = await _apply_album_and_tag(
-                client=client,
-                upload_asset_id=upload_result.id,
-                album_name=album_name,
-                request=request,
-            )
-        else:
-            album_id, album_created, album_updated, accept_notes = None, False, False, []
-    except Exception as exc:
-        # Finalize error state in DB
-        row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row.output_path:
+            raise HTTPException(status_code=404, detail="Output path not available in history")
+
+        image_path = Path(row.output_path).resolve()
+        data_dir = get_settings().data_dir.resolve()
+        if not image_path.is_relative_to(data_dir):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Generated image not found on disk")
+
+        settings = session.query(SettingsModel).first()
+        if not settings:
+            raise HTTPException(status_code=500, detail="Settings not found")
+
+        album_name = request.album_name or row.album_name or None
+        proxy = _RowProxy()
+        proxy.task_id = row.task_id
+        proxy.title = row.title
+        proxy.summary = row.summary
+        proxy.tags_json = row.tags_json
+        proxy.generation_type = row.generation_type
+        proxy.provider = row.provider
+        proxy.model = row.model
+        proxy.created_at = row.created_at
+        return image_path, album_name, settings, proxy
+    finally:
+        session.close()
+
+
+def _finalize_accept_success(
+    task_id: str,
+    upload_result_id: str,
+    upload_result_status: str,
+    album_id: str | None,
+    album_name: str | None,
+    album_created: bool,
+    album_updated: bool,
+    accept_notes: list[str],
+    actor_ctx: ActorContext,
+) -> GenerationHistoryModel:
+    session = SessionLocal()
+    session.expire_on_commit = False
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Generation history entry not found")
+
+        row.uploaded_asset_id = upload_result_id
+        row.upload_status = upload_result_status
+        row.status = "UPLOADED"
+        row.album_id = album_id
+        row.album_name = album_name
+        row.album_created = album_created
+        row.album_updated = album_updated
+        row.accept_notes = "\n".join(accept_notes) if accept_notes else None
+        row.accepted_at = datetime.now(timezone.utc)
+
+        session.commit()
+
+        try:
+            from app.services.generation.asset_usage import accept_task_assets
+
+            accept_task_assets(session, task_id)
+        except Exception as registry_exc:
+            logger.exception("Failed to accept assets in registry for task %s: %s", task_id, registry_exc)
+
+        record_history_snapshot(session, row)
+
+        record_audit_event(
+            db=session,
+            action="generation.accepted",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary=f"Generation accepted and uploaded to Immich (Asset ID: {upload_result_id})",
+            metadata={
+                "uploaded_asset_id": upload_result_id,
+                "album_name": album_name,
+                "album_id": album_id,
+            },
+        )
+        return row
+    finally:
+        session.close()
+
+
+def _finalize_accept_failure(task_id: str, exc: Exception, actor_ctx: ActorContext) -> None:
+    session = SessionLocal()
+    session.expire_on_commit = False
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
         if row:
             row.status = "FAILED"
             row.accept_notes = "Upload failed"
-            db.commit()
-            db.refresh(row)
-            record_history_snapshot(db, row)
+            session.commit()
+            record_history_snapshot(session, row)
 
             record_audit_event(
-                db=db,
+                db=session,
                 action="generation.accepted",
                 category="generation",
                 outcome="failure",
@@ -106,110 +165,221 @@ async def accept_generation(
                 error_code=exc.__class__.__name__,
                 metadata={"error": str(exc)},
             )
+    finally:
+        session.close()
 
+
+@router.post("/history/{task_id}/accept", response_model=GenerationHistoryResponse)
+async def accept_generation(
+    task_id: str,
+    request: GenerationAcceptRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
+):
+    actor_ctx = resolve_actor_context(actor_ctx)
+    """Accept and upload a generated image to Immich."""
+    # Phase 1: Short DB session read
+    image_path, album_name, settings, row_proxy = _prepare_accept_data(task_id, request)
+
+    # Phase 2: Async Immich HTTP calls without DB session
+    client = build_immich_client(settings)
+    try:
+        upload_result = await _upload_generation_asset(client=client, row=row_proxy, task_id=task_id, image_path=image_path)
+        await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=upload_result.id, row=row_proxy)
+
+        if album_name:
+            album_id, album_created, album_updated, accept_notes = await _apply_album_and_tag(
+                client=client,
+                upload_asset_id=upload_result.id,
+                album_name=album_name,
+                request=request,
+            )
+        else:
+            album_id, album_created, album_updated, accept_notes = None, False, False, []
+    except Exception as exc:
+        _finalize_accept_failure(task_id, exc, actor_ctx)
         logger.exception("Failed to upload image to Immich: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to upload image to Immich") from exc
 
-    # Phase 3: Finalize DB update
-    row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Generation history entry not found")
-
-    row.uploaded_asset_id = upload_result.id
-    row.upload_status = upload_result.status
-    row.status = "UPLOADED"
-    row.album_id = album_id
-    row.album_name = album_name
-    row.album_created = album_created
-    row.album_updated = album_updated
-    row.accept_notes = "\n".join(accept_notes) if accept_notes else None
-    row.accepted_at = datetime.now(timezone.utc)
-
-    db.commit()
-    db.refresh(row)
-
-    try:
-        from app.services.generation.asset_usage import accept_task_assets
-
-        accept_task_assets(db, task_id)
-    except Exception as registry_exc:
-        logger.exception("Failed to accept assets in registry for task %s: %s", task_id, registry_exc)
-
-    record_history_snapshot(db, row)
-
-    record_audit_event(
-        db=db,
-        action="generation.accepted",
-        category="generation",
-        outcome="success",
-        actor_type=actor_ctx.actor_type,
-        request_id=actor_ctx.request_id,
-        source_ip_hash=actor_ctx.source_ip_hash,
-        target_type="generation",
-        target_id=task_id,
+    # Phase 3: Short DB session update
+    return _finalize_accept_success(
         task_id=task_id,
-        summary=f"Generation accepted and uploaded to Immich (Asset ID: {upload_result.id})",
-        metadata={
-            "uploaded_asset_id": upload_result.id,
-            "album_name": album_name,
-            "album_id": album_id,
-        },
+        upload_result_id=upload_result.id,
+        upload_result_status=upload_result.status,
+        album_id=album_id,
+        album_name=album_name,
+        album_created=album_created,
+        album_updated=album_updated,
+        accept_notes=accept_notes,
+        actor_ctx=actor_ctx,
     )
 
-    return row
+
+def _prepare_retry_data(task_id: str) -> tuple[str | None, Path | None, str | None, str | None, SettingsModel, _RowProxy]:
+    session = SessionLocal()
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Generation history entry not found")
+
+        settings = session.query(SettingsModel).first()
+        if not settings:
+            raise HTTPException(status_code=500, detail="Settings not found")
+
+        uploaded_asset_id = row.uploaded_asset_id
+        image_path = None
+        if not uploaded_asset_id:
+            if not row.output_path:
+                raise HTTPException(status_code=400, detail="No output image file path in history")
+            image_path = Path(row.output_path).resolve()
+            data_dir = get_settings().data_dir.resolve()
+            if not image_path.is_relative_to(data_dir):
+                raise HTTPException(status_code=400, detail="Invalid path")
+            if not image_path.exists():
+                raise HTTPException(status_code=400, detail="Generated image file not found on disk")
+
+        album_name = (row.album_name or "").strip() or None
+        row_album_id = row.album_id
+        proxy = _RowProxy()
+        proxy.task_id = row.task_id
+        proxy.title = row.title
+        proxy.summary = row.summary
+        proxy.tags_json = row.tags_json
+        proxy.generation_type = row.generation_type
+        proxy.provider = row.provider
+        proxy.model = row.model
+        proxy.created_at = row.created_at
+        proxy.upload_status = row.upload_status
+        proxy.accepted_at = row.accepted_at
+        return uploaded_asset_id, image_path, album_name, row_album_id, settings, proxy
+    finally:
+        session.close()
+
+
+def _finalize_retry_success(
+    task_id: str,
+    new_uploaded_asset_id: str,
+    upload_status: str,
+    accepted_at: datetime | None,
+    album_id: str | None,
+    album_name: str | None,
+    album_created: bool,
+    album_updated: bool,
+    accept_notes: list[str],
+    actor_ctx: ActorContext,
+) -> GenerationHistoryModel:
+    session = SessionLocal()
+    session.expire_on_commit = False
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Generation history entry not found")
+
+        row.uploaded_asset_id = new_uploaded_asset_id
+        row.upload_status = upload_status
+        if accepted_at:
+            row.accepted_at = accepted_at
+        row.album_id = album_id
+        row.album_name = album_name
+        row.album_created = album_created
+        row.album_updated = album_updated
+        row.accept_notes = "\n".join(accept_notes) if accept_notes else None
+        row.status = "UPLOADED"
+        session.commit()
+
+        try:
+            from app.services.generation.asset_usage import accept_task_assets
+
+            accept_task_assets(session, task_id)
+        except Exception as registry_exc:
+            logger.exception("Failed to accept assets in registry during retry for task %s: %s", task_id, registry_exc)
+
+        record_history_snapshot(session, row)
+
+        record_audit_event(
+            db=session,
+            action="generation.retried",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary="Generation retry succeeded",
+            metadata={
+                "uploaded_asset_id": row.uploaded_asset_id,
+                "album_name": album_name,
+                "album_id": album_id,
+            },
+        )
+        return row
+    finally:
+        session.close()
+
+
+def _finalize_retry_failure(task_id: str, exc: Exception, actor_ctx: ActorContext) -> None:
+    session = SessionLocal()
+    session.expire_on_commit = False
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if row:
+            row.status = "FAILED"
+            row.accept_notes = "Retry failed"
+            session.commit()
+            record_history_snapshot(session, row)
+
+            record_audit_event(
+                db=session,
+                action="generation.retried",
+                category="generation",
+                outcome="failure",
+                actor_type=actor_ctx.actor_type,
+                request_id=actor_ctx.request_id,
+                source_ip_hash=actor_ctx.source_ip_hash,
+                target_type="generation",
+                target_id=task_id,
+                task_id=task_id,
+                summary=f"Generation retry failed: {str(exc)}",
+                error_code=exc.__class__.__name__,
+                metadata={"error": str(exc)},
+            )
+    finally:
+        session.close()
 
 
 @router.post("/history/{task_id}/retry", response_model=GenerationHistoryResponse)
 async def retry_acceptance(
     task_id: str,
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     """Retry album/tag steps or the entire upload for a generation."""
-    # Phase 1: Prepare and validate state from DB
-    row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Generation history entry not found")
+    # Phase 1: Short DB session read
+    uploaded_asset_id, image_path, album_name, row_album_id, settings, row_proxy = _prepare_retry_data(task_id)
 
-    settings = db.query(SettingsModel).first()
-    if not settings:
-        raise HTTPException(status_code=500, detail="Settings not found")
-
+    # Phase 2: Async Immich HTTP calls without DB session
     client = build_immich_client(settings)
-    uploaded_asset_id = row.uploaded_asset_id
-    image_path = None
-    if not uploaded_asset_id:
-        if not row.output_path:
-            raise HTTPException(status_code=400, detail="No output image file path in history")
-        image_path = Path(row.output_path).resolve()
-        data_dir = get_settings().data_dir.resolve()
-        if not image_path.is_relative_to(data_dir):
-            raise HTTPException(status_code=400, detail="Invalid path")
-        if not image_path.exists():
-            raise HTTPException(status_code=400, detail="Generated image file not found on disk")
-
-    album_name = (row.album_name or "").strip() or None
-    row_album_id = row.album_id
-
-    # Phase 2: Perform async Immich network operations without DB operations
     try:
         new_uploaded_asset_id = uploaded_asset_id
-        upload_status = row.upload_status
-        accepted_at = row.accepted_at
+        upload_status = row_proxy.upload_status
+        accepted_at = row_proxy.accepted_at
 
         if not new_uploaded_asset_id and image_path:
             upload_result = await _upload_generation_asset(
                 client=client,
-                row=row,
+                row=row_proxy,
                 task_id=task_id,
                 image_path=image_path,
             )
             new_uploaded_asset_id = upload_result.id
             upload_status = upload_result.status
             accepted_at = datetime.now(timezone.utc)
-            await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=new_uploaded_asset_id, row=row)
+            await _apply_uploaded_asset_caption_and_tags(client=client, upload_asset_id=new_uploaded_asset_id, row=row_proxy)
 
         if album_name and new_uploaded_asset_id:
             album_id, album_created, album_updated, accept_notes = await _apply_album_and_tag(
@@ -225,86 +395,29 @@ async def retry_acceptance(
         else:
             album_id, album_created, album_updated, accept_notes = row_album_id, False, False, []
     except Exception as exc:
-        row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
-        if row:
-            row.status = "FAILED"
-            row.accept_notes = "Retry failed"
-            db.commit()
-            db.refresh(row)
-            record_history_snapshot(db, row)
-
-            record_audit_event(
-                db=db,
-                action="generation.retried",
-                category="generation",
-                outcome="failure",
-                actor_type=actor_ctx.actor_type,
-                request_id=actor_ctx.request_id,
-                source_ip_hash=actor_ctx.source_ip_hash,
-                target_type="generation",
-                target_id=task_id,
-                task_id=task_id,
-                summary=f"Generation retry failed: {str(exc)}",
-                error_code=exc.__class__.__name__,
-                metadata={"error": str(exc)},
-            )
-
+        _finalize_retry_failure(task_id, exc, actor_ctx)
         logger.exception("Retry failed for task %s", task_id)
         raise HTTPException(status_code=500, detail="Retry failed") from exc
 
-    # Phase 3: Finalize DB update
-    row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Generation history entry not found")
-
-    row.uploaded_asset_id = new_uploaded_asset_id
-    row.upload_status = upload_status
-    if accepted_at:
-        row.accepted_at = accepted_at
-    row.album_id = album_id
-    row.album_name = album_name
-    row.album_created = album_created
-    row.album_updated = album_updated
-    row.accept_notes = "\n".join(accept_notes) if accept_notes else None
-    row.status = "UPLOADED"
-    db.commit()
-    db.refresh(row)
-
-    try:
-        from app.services.generation.asset_usage import accept_task_assets
-
-        accept_task_assets(db, task_id)
-    except Exception as registry_exc:
-        logger.exception("Failed to accept assets in registry during retry for task %s: %s", task_id, registry_exc)
-
-    record_history_snapshot(db, row)
-
-    record_audit_event(
-        db=db,
-        action="generation.retried",
-        category="generation",
-        outcome="success",
-        actor_type=actor_ctx.actor_type,
-        request_id=actor_ctx.request_id,
-        source_ip_hash=actor_ctx.source_ip_hash,
-        target_type="generation",
-        target_id=task_id,
+    # Phase 3: Short DB session update
+    return _finalize_retry_success(
         task_id=task_id,
-        summary="Generation retry succeeded",
-        metadata={
-            "uploaded_asset_id": row.uploaded_asset_id,
-            "album_name": album_name,
-            "album_id": album_id,
-        },
+        new_uploaded_asset_id=new_uploaded_asset_id,
+        upload_status=upload_status,
+        accepted_at=accepted_at,
+        album_id=album_id,
+        album_name=album_name,
+        album_created=album_created,
+        album_updated=album_updated,
+        accept_notes=accept_notes,
+        actor_ctx=actor_ctx,
     )
-
-    return row
 
 
 @router.post("/history/{task_id}/reject", response_model=GenerationHistoryResponse)
 def reject_generation(
     task_id: str,
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
@@ -441,7 +554,7 @@ def _delete_history_records_and_files(
 
 @router.delete("/history/rejected", status_code=204)
 def delete_rejected_cache(
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
@@ -456,7 +569,7 @@ def delete_rejected_cache(
 @router.delete("/history/status/{status}", status_code=204)
 def delete_history_by_status(
     status: str,
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
@@ -481,7 +594,7 @@ def delete_history_by_status(
 
 @router.delete("/history/cache", status_code=204)
 def clear_generation_cache(
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     _: None = Depends(require_auth),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
@@ -497,7 +610,7 @@ def clear_generation_cache(
 def like_generation(
     task_id: str,
     review_token: str | None = None,
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
@@ -542,7 +655,7 @@ def like_generation(
 def dislike_generation(
     task_id: str,
     review_token: str | None = None,
-    db: Session = Depends(get_db_dependency),
+    db: Session = Depends(get_db),
     credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
