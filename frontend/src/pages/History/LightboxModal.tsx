@@ -90,6 +90,7 @@ interface LightboxModalProps {
   imageUrl: string;
   entry: GenerationHistoryEntry;
   exif: ExifData | null;
+  scheduleName?: string | null;
   onPrev?: () => void;
   onNext?: () => void;
   hasPrev?: boolean;
@@ -102,6 +103,7 @@ export const LightboxModal = memo(function LightboxModal({
   imageUrl,
   entry,
   exif,
+  scheduleName,
   onPrev,
   onNext,
   hasPrev = false,
@@ -422,6 +424,12 @@ export const LightboxModal = memo(function LightboxModal({
                       #{tag}
                     </span>
                   ))}
+                </div>
+              )}
+              {scheduleName && (
+                <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-stone-150/60 px-2 py-0.5 text-[10px] font-medium text-stone-600 border border-stone-200/80">
+                  <Calendar size={11} className="text-stone-500 shrink-0" />
+                  <span>{scheduleName}</span>
                 </div>
               )}
             </div>

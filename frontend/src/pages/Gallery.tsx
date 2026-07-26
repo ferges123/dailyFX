@@ -3,12 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   AlertCircle,
+  Calendar,
   Grid3X3,
   Heart,
   RefreshCw,
   SlidersHorizontal,
 } from 'lucide-react';
-import { getGenerationHistory, getGenerationHistoryEntry } from '../api/client';
+import { getGenerationHistory, getGenerationHistoryEntry, getSchedules } from '../api/client';
 import {
   type GenerationHistoryListItem,
   type GenerationHistoryEntry,
@@ -54,9 +55,11 @@ const EFFECT_LABELS: Record<string, string> = {
 
 function GalleryCard({
   entry,
+  scheduleName,
   onClick,
 }: {
   entry: GenerationHistoryListItem;
+  scheduleName?: string | null;
   onClick: () => void;
 }) {
   const label =
@@ -80,13 +83,23 @@ function GalleryCard({
         <p className="text-sm font-semibold text-white drop-shadow-md line-clamp-1">
           {entry.title}
         </p>
-        <p className="mt-0.5 text-xs text-white/80 drop-shadow-md">{label}</p>
+        <p className="mt-0.5 text-xs text-white/80 drop-shadow-md">
+          {label} {scheduleName ? `• ${scheduleName}` : ''}
+        </p>
       </div>
       <div className="absolute top-2 right-2">
         <span className="inline-block rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
           {label}
         </span>
       </div>
+      {scheduleName && (
+        <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
+            <Calendar size={10} />
+            <span className="truncate max-w-[100px]">{scheduleName}</span>
+          </span>
+        </div>
+      )}
       {entry.liked === true && (
         <div className="absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md">
           <Heart size={13} fill="currentColor" />
@@ -104,13 +117,36 @@ export function GalleryPage() {
   const searchParam = searchParams.get('search') || '';
   const effectFilter = searchParams.get('effect') || null;
   const likedFilter = searchParams.get('liked') === 'true' ? true : null;
+  const scheduleFilter = searchParams.get('schedule') || null;
   const sort = (searchParams.get('sort') as 'newest' | 'oldest') || 'newest';
+
+  const scheduleIdFilter = useMemo(() => {
+    if (!scheduleFilter) return null;
+    if (scheduleFilter === 'manual') return -1;
+    const parsed = parseInt(scheduleFilter, 10);
+    return isNaN(parsed) ? null : parsed;
+  }, [scheduleFilter]);
+
+  const { data: schedules } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: getSchedules,
+  });
+
+  const schedulesMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    if (schedules) {
+      for (const s of schedules) {
+        map[s.id] = s.name;
+      }
+    }
+    return map;
+  }, [schedules]);
 
   const [search, setSearch] = useState(searchParam);
   const debouncedSearch = useDebounce(search, 300);
 
   const [showFilters, setShowFilters] = useState(() =>
-    Boolean(effectFilter || likedFilter),
+    Boolean(effectFilter || likedFilter || scheduleFilter),
   );
 
   const [offset, setOffset] = useState(0);
@@ -126,6 +162,7 @@ export function GalleryPage() {
     search?: string | null;
     effect?: string | null;
     liked?: boolean | null;
+    schedule?: string | null;
     sort?: 'newest' | 'oldest' | null;
   }) => {
     const newParams = new URLSearchParams(searchParams);
@@ -140,6 +177,10 @@ export function GalleryPage() {
     if (updates.liked !== undefined) {
       if (updates.liked === true) newParams.set('liked', 'true');
       else newParams.delete('liked');
+    }
+    if (updates.schedule !== undefined) {
+      if (updates.schedule) newParams.set('schedule', updates.schedule);
+      else newParams.delete('schedule');
     }
     if (updates.sort !== undefined) {
       if (updates.sort && updates.sort !== 'newest')
@@ -159,9 +200,10 @@ export function GalleryPage() {
     () => ({
       effect: effectFilter,
       liked: likedFilter,
+      schedule_id: scheduleIdFilter,
       sort,
     }),
-    [effectFilter, likedFilter, sort],
+    [effectFilter, likedFilter, scheduleIdFilter, sort],
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -186,7 +228,7 @@ export function GalleryPage() {
   useEffect(() => {
     setOffset(0);
     setLoadedEntries([]);
-  }, [debouncedSearch, effectFilter, likedFilter, sort]);
+  }, [debouncedSearch, effectFilter, likedFilter, scheduleFilter, sort]);
 
   useEffect(() => {
     if (!data?.items) return;
@@ -293,7 +335,9 @@ export function GalleryPage() {
   }, [entries]);
 
   const activeFilterCount =
-    Number(Boolean(effectFilter)) + Number(likedFilter === true);
+    Number(Boolean(effectFilter)) +
+    Number(likedFilter === true) +
+    Number(Boolean(scheduleFilter));
 
   return (
     <div className="grid gap-4">
@@ -393,7 +437,7 @@ export function GalleryPage() {
               />
               Favorites
             </button>
-            {(effectFilter || likedFilter === true || search) && (
+            {(effectFilter || likedFilter === true || scheduleFilter || search) && (
               <button
                 type="button"
                 onClick={() => {
@@ -401,6 +445,7 @@ export function GalleryPage() {
                   updateFilters({
                     effect: null,
                     liked: null,
+                    schedule: null,
                     search: null,
                   });
                 }}
@@ -428,6 +473,53 @@ export function GalleryPage() {
                   }`}
                 >
                   {ef.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-stone-200/60">
+            <span className="text-xs font-semibold text-stone-500 mr-1 flex items-center gap-1">
+              <Calendar size={13} /> Schedule:
+            </span>
+            <button
+              type="button"
+              onClick={() => updateFilters({ schedule: null })}
+              aria-pressed={!scheduleFilter}
+              className={`inline-flex h-7 items-center rounded-full px-3 text-[11px] font-semibold transition ${
+                !scheduleFilter
+                  ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                  : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+              }`}
+            >
+              All sources
+            </button>
+            <button
+              type="button"
+              onClick={() => updateFilters({ schedule: 'manual' })}
+              aria-pressed={scheduleFilter === 'manual'}
+              className={`inline-flex h-7 items-center rounded-full px-3 text-[11px] font-semibold transition ${
+                scheduleFilter === 'manual'
+                  ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                  : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+              }`}
+            >
+              Studio / Manual
+            </button>
+            {schedules?.map((sch) => {
+              const active = scheduleFilter === String(sch.id);
+              return (
+                <button
+                  key={sch.id}
+                  type="button"
+                  onClick={() => updateFilters({ schedule: String(sch.id) })}
+                  aria-pressed={active}
+                  className={`inline-flex h-7 items-center rounded-full px-3 text-[11px] font-semibold transition ${
+                    active
+                      ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+                      : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+                  }`}
+                >
+                  {sch.name}
                 </button>
               );
             })}
@@ -473,7 +565,7 @@ export function GalleryPage() {
               No images found
             </p>
             <p className="mt-1 text-xs text-stone-400">
-              {search || effectFilter || likedFilter === true
+              {search || effectFilter || likedFilter === true || scheduleFilter
                 ? 'Try a different search term or filter'
                 : 'Generate some images in Studio or Schedules'}
             </p>
@@ -481,13 +573,19 @@ export function GalleryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {entries.map((entry) => (
-            <GalleryCard
-              key={entry.task_id}
-              entry={entry}
-              onClick={() => handleCardClick(entry)}
-            />
-          ))}
+          {entries.map((entry) => {
+            const scheduleName = entry.schedule_id
+              ? (schedulesMap[entry.schedule_id] || `Schedule #${entry.schedule_id}`)
+              : undefined;
+            return (
+              <GalleryCard
+                key={entry.task_id}
+                entry={entry}
+                scheduleName={scheduleName}
+                onClick={() => handleCardClick(entry)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -524,12 +622,17 @@ export function GalleryPage() {
           }
         };
 
+        const lightboxScheduleName = lightboxEntry.schedule_id
+          ? (schedulesMap[lightboxEntry.schedule_id] || `Schedule #${lightboxEntry.schedule_id}`)
+          : 'Studio / Manual';
+
         return (
           <LightboxModal
             isOpen={true}
             entry={lightboxEntry}
             imageUrl={lightboxEntry.image_url || ''}
             exif={selectedExif}
+            scheduleName={lightboxScheduleName}
             onClose={handleCloseLightbox}
             onPrev={
               hasPrev

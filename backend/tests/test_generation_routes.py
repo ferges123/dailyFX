@@ -742,3 +742,37 @@ def test_generation_history_filters_effect_liked_and_sort_order():
 
     finally:
         db.close()
+
+
+def test_generation_history_filters_schedule_id():
+    db = _setup_generation_routes_db()
+    try:
+        db.query(GenerationHistoryModel).delete()
+        db.commit()
+
+        sched1 = _add_history_row(db, "task-sched1", status="UPLOADED")
+        sched1.schedule_id = 10
+        sched2 = _add_history_row(db, "task-sched2", status="UPLOADED")
+        sched2.schedule_id = 20
+        manual = _add_history_row(db, "task-manual", status="UPLOADED")
+        manual.schedule_id = None
+        db.commit()
+
+        # Specific schedule
+        s10_res = get_generation_history(db, status="UPLOADED", schedule_id=10)
+        assert s10_res.total == 1
+        assert s10_res.items[0].task_id == "task-sched1"
+        assert s10_res.items[0].schedule_id == 10
+
+        # Manual / studio (-1)
+        manual_res = get_generation_history(db, status="UPLOADED", schedule_id=-1)
+        assert manual_res.total == 1
+        assert manual_res.items[0].task_id == "task-manual"
+        assert manual_res.items[0].schedule_id is None
+
+        # All schedules (None)
+        all_res = get_generation_history(db, status="UPLOADED")
+        assert all_res.total == 3
+    finally:
+        db.close()
+

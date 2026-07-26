@@ -221,6 +221,7 @@ export type GenerationHistoryListItem = {
   frame_count?: number | null;
   album_name: string | null;
   liked?: boolean | null;
+  schedule_id?: number | null;
   created_at: string;
   updated_at: string;
 };

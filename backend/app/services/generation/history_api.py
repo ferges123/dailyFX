@@ -13,6 +13,7 @@ def build_generation_history_page(
     search: str | None = None,
     effect: str | None = None,
     liked: bool | None = None,
+    schedule_id: int | None = None,
     sort: str = "newest",
     offset: int = 0,
     limit: int = 10,
@@ -22,6 +23,11 @@ def build_generation_history_page(
         q = q.filter(GenerationHistoryModel.status == status.upper())
     if effect:
         q = q.filter(GenerationHistoryModel.generation_type == effect)
+    if schedule_id is not None:
+        if schedule_id == -1:
+            q = q.filter(GenerationHistoryModel.schedule_id.is_(None))
+        else:
+            q = q.filter(GenerationHistoryModel.schedule_id == schedule_id)
     if liked is not None:
         q = q.join(
             EffectStatisticsLogModel,

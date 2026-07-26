@@ -122,6 +122,7 @@ export function getGenerationHistory(
   options: {
     effect?: string | null;
     liked?: boolean | null;
+    schedule_id?: number | null;
     sort?: 'newest' | 'oldest';
   } = {},
 ) {
@@ -132,6 +133,9 @@ export function getGenerationHistory(
   if (options.effect) params.set('effect', options.effect);
   if (options.liked !== undefined && options.liked !== null) {
     params.set('liked', String(options.liked));
+  }
+  if (options.schedule_id !== undefined && options.schedule_id !== null) {
+    params.set('schedule_id', String(options.schedule_id));
   }
   if (options.sort) params.set('sort', options.sort);
   params.set('limit', String(limit));

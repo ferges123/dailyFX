@@ -10,6 +10,7 @@ vi.mock('../api/client', () => {
     getAuthToken: vi.fn(() => null),
     getGenerationHistory: vi.fn(),
     getGenerationHistoryEntry: vi.fn(),
+    getSchedules: vi.fn(() => Promise.resolve([])),
     likeGeneration: vi.fn(),
     dislikeGeneration: vi.fn(),
   };
@@ -144,6 +145,7 @@ describe('GalleryPage', () => {
       {
         effect: null,
         liked: null,
+        schedule_id: null,
         sort: 'newest',
       },
     );
@@ -172,6 +174,7 @@ describe('GalleryPage', () => {
         {
           effect: 'ai_anime',
           liked: null,
+          schedule_id: null,
           sort: 'newest',
         },
       );
@@ -188,6 +191,7 @@ describe('GalleryPage', () => {
         {
           effect: 'ai_anime',
           liked: true,
+          schedule_id: null,
           sort: 'newest',
         },
       );
@@ -206,6 +210,7 @@ describe('GalleryPage', () => {
         {
           effect: 'ai_anime',
           liked: true,
+          schedule_id: null,
           sort: 'oldest',
         },
       );
@@ -235,6 +240,7 @@ describe('GalleryPage', () => {
       {
         effect: null,
         liked: null,
+        schedule_id: null,
         sort: 'newest',
       },
     );
@@ -249,6 +255,7 @@ describe('GalleryPage', () => {
         {
           effect: null,
           liked: null,
+          schedule_id: null,
           sort: 'newest',
         },
       );
@@ -267,13 +274,14 @@ describe('GalleryPage', () => {
         {
           effect: null,
           liked: null,
+          schedule_id: null,
           sort: 'newest',
         },
       );
     });
   });
 
-  it('parses URL search parameters on mount', async () => {
+  it('parses URL search parameters on mount including schedule filter', async () => {
     vi.mocked(client.getGenerationHistory).mockResolvedValue({
       items: [animeEntry],
       total: 1,
@@ -281,7 +289,7 @@ describe('GalleryPage', () => {
     });
 
     renderGallery([
-      '/gallery?search=portrait&effect=ai_anime&liked=true&sort=oldest',
+      '/gallery?search=portrait&effect=ai_anime&liked=true&schedule=manual&sort=oldest',
     ]);
 
     await waitFor(() => {
@@ -293,6 +301,7 @@ describe('GalleryPage', () => {
         {
           effect: 'ai_anime',
           liked: true,
+          schedule_id: -1,
           sort: 'oldest',
         },
       );

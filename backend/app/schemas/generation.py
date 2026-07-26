@@ -52,6 +52,7 @@ class GenerationHistoryBase(BaseModel):
     accept_notes: str | None = None
     accepted_at: datetime | None = None
     liked: bool | None = None
+    schedule_id: int | None = None
 
 
 class GenerationHistoryResponse(GenerationHistoryBase):
@@ -93,6 +94,7 @@ class GenerationHistoryListItemResponse(BaseModel):
     frame_count: int | None = None
     album_name: str | None = None
     liked: bool | None = None
+    schedule_id: int | None = None
     created_at: datetime
     updated_at: datetime
 
