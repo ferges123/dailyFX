@@ -87,7 +87,7 @@ export function SchedulesPage() {
 
   const schedules = useQuery({
     queryKey: ['schedules'],
-    queryFn: getSchedules,
+    queryFn: () => getSchedules(),
   });
   const peoplePresets = useQuery({
     queryKey: ['people-presets'],

@@ -308,7 +308,10 @@ export function exportAIEffects() {
 }
 
 // Schedules
-export const getSchedules = () => request<Schedule[]>('/api/schedules');
+export const getSchedules = (options?: { include_deleted?: boolean }) =>
+  request<Schedule[]>(
+    `/api/schedules${options?.include_deleted ? '?include_deleted=true' : ''}`,
+  );
 export const createSchedule = (
   body: Omit<
     Schedule,

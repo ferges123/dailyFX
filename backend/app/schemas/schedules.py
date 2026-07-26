@@ -30,6 +30,7 @@ class ScheduleResponse(BaseModel):
     id: int
     name: str
     enabled: bool
+    is_deleted: bool = False
     schedule_expr: str
     people_preset_id: int
     effect_preset_id: int
@@ -66,6 +67,7 @@ class ScheduleResponse(BaseModel):
             id=row.id,
             name=row.name,
             enabled=row.enabled,
+            is_deleted=row.is_deleted,
             schedule_expr=row.schedule_expr,
             people_preset_id=row.people_preset_id,
             effect_preset_id=row.effect_preset_id,

@@ -174,7 +174,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
                 logger.warning("[Sync Mode] Queued manual task %s failed: %s", queued_task.task_id, result.get("error"))
             return result
 
-        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True)).all()
+        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True), ScheduleModel.is_deleted.is_(False)).all()
         if not schedules:
             return {"status": "skipped", "reason": "no enabled schedules"}
 
@@ -232,7 +232,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
 
     else:
         # --- ASYNCHRONOUS CONCURRENT MODE (For production) ---
-        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True)).all()
+        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True), ScheduleModel.is_deleted.is_(False)).all()
         schedules_enqueued = 0
         for schedule in schedules:
             if not should_run_automation(schedule.schedule_expr, schedule.last_run_at, current):

@@ -389,6 +389,7 @@ export type Schedule = {
   id: number;
   name: string;
   enabled: boolean;
+  is_deleted?: boolean;
   schedule_expr: string;
   people_preset_id: number;
   effect_preset_id: number;

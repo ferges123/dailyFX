@@ -71,10 +71,16 @@ def _validate_presets(body: ScheduleCreate, db: Session) -> None:
 
 
 @router.get("", response_model=list[ScheduleResponse])
-def list_schedules(db: Session = Depends(get_db), _: None = Depends(require_auth)):
+def list_schedules(
+    db: Session = Depends(get_db),
+    include_deleted: bool = False,
+    _: None = Depends(require_auth),
+):
+    query = db.query(ScheduleModel)
+    if not include_deleted:
+        query = query.filter(ScheduleModel.is_deleted.is_(False))
     rows = (
-        db.query(ScheduleModel)
-        .options(selectinload(ScheduleModel.notification_presets))
+        query.options(selectinload(ScheduleModel.notification_presets))
         .order_by(ScheduleModel.name)
         .all()
     )
@@ -168,7 +174,7 @@ def update_schedule(
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     row = db.get(ScheduleModel, schedule_id)
-    if not row:
+    if not row or row.is_deleted:
         raise HTTPException(status_code=404, detail="Schedule not found")
     _validate_presets(body, db)
 
@@ -259,13 +265,13 @@ def delete_schedule(
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     row = db.get(ScheduleModel, schedule_id)
-    if not row:
+    if not row or row.is_deleted:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     schedule_name = row.name
-    # Clean up many-to-many relationship
-    row.notification_presets = []
-    db.delete(row)
+    row.is_deleted = True
+    row.enabled = False
+    row.next_run_at = None
     db.commit()
 
     record_audit_event(
@@ -298,7 +304,7 @@ async def trigger_schedule_now(
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
     row = db.get(ScheduleModel, schedule_id)
-    if not row:
+    if not row or row.is_deleted:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     res = await trigger_schedule_run_now(db, schedule_id)
@@ -336,7 +342,7 @@ async def get_schedule_diagnostics(
     from app.services.immich import build_immich_client, get_or_create_settings
 
     schedule = db.get(ScheduleModel, schedule_id)
-    if not schedule:
+    if not schedule or schedule.is_deleted:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     fp = db.get(PeoplePresetModel, schedule.people_preset_id)

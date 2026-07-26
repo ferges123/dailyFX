@@ -128,15 +128,15 @@ export function GalleryPage() {
   }, [scheduleFilter]);
 
   const { data: schedules } = useQuery({
-    queryKey: ['schedules'],
-    queryFn: getSchedules,
+    queryKey: ['schedules', 'include_deleted'],
+    queryFn: () => getSchedules({ include_deleted: true }),
   });
 
   const schedulesMap = useMemo(() => {
     const map: Record<number, string> = {};
     if (schedules) {
       for (const s of schedules) {
-        map[s.id] = s.name;
+        map[s.id] = s.is_deleted ? `${s.name} (deleted)` : s.name;
       }
     }
     return map;
@@ -507,6 +507,7 @@ export function GalleryPage() {
             </button>
             {schedules?.map((sch) => {
               const active = scheduleFilter === String(sch.id);
+              const displayName = sch.is_deleted ? `${sch.name} (deleted)` : sch.name;
               return (
                 <button
                   key={sch.id}
@@ -516,10 +517,12 @@ export function GalleryPage() {
                   className={`inline-flex h-7 items-center rounded-full px-3 text-[11px] font-semibold transition ${
                     active
                       ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
-                      : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+                      : sch.is_deleted
+                        ? 'border border-amber-300/60 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        : 'border border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
                   }`}
                 >
-                  {sch.name}
+                  {displayName}
                 </button>
               );
             })}

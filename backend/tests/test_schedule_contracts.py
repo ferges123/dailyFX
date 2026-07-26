@@ -73,6 +73,7 @@ def test_schedule_response_adapter_preserves_preset_names_and_ids():
             "id": schedule.id,
             "name": "Schedule A",
             "enabled": True,
+            "is_deleted": False,
             "schedule_expr": "daily",
             "people_preset_id": people_preset.id,
             "effect_preset_id": effect_preset.id,
@@ -94,6 +95,47 @@ def test_schedule_response_adapter_preserves_preset_names_and_ids():
             "effect_preset_name": "Effect A",
             "notification_preset_names": ["Notify One", "Notify Two"],
         }
+    finally:
+        db.close()
+        test_db.unlink(missing_ok=True)
+
+
+def test_schedule_soft_delete():
+    from app.api.routes_schedules import delete_schedule, list_schedules
+
+    init_db()
+    db = SessionLocal()
+    try:
+        people_preset = PeoplePresetModel(name="Filter S", album_ids_json="[]", person_filters_json="[]")
+        effect_preset = make_effect_preset_row(name="Effect S", groups_json='{"instafilter": {"enabled": true}}')
+        db.add_all([people_preset, effect_preset])
+        db.commit()
+
+        schedule = ScheduleModel(
+            name="Schedule Soft Delete",
+            enabled=True,
+            schedule_expr="daily",
+            people_preset_id=people_preset.id,
+            effect_preset_id=effect_preset.id,
+        )
+        db.add(schedule)
+        db.commit()
+
+        # Delete schedule (soft delete)
+        delete_schedule(schedule.id, db)
+
+        # Verify row still exists in DB but is_deleted=True and enabled=False
+        db.refresh(schedule)
+        assert schedule.is_deleted is True
+        assert schedule.enabled is False
+
+        # Active list should NOT contain deleted schedule
+        active_schedules = list_schedules(db, include_deleted=False)
+        assert not any(s.id == schedule.id for s in active_schedules)
+
+        # List including deleted SHOULD contain deleted schedule
+        all_schedules = list_schedules(db, include_deleted=True)
+        assert any(s.id == schedule.id for s in all_schedules)
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
