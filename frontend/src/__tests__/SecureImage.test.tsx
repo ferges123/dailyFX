@@ -40,6 +40,26 @@ describe('SecureImage', () => {
     return import('../components/SecureImage');
   }
 
+  it('shows an accessible loading indicator when requested by the fullscreen preview', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise<Response>(() => undefined)),
+    );
+    const { SecureImage } = await loadSecureImage();
+
+    const view = render(
+      <SecureImage
+        src="/api/fullscreen-image"
+        alt="fullscreen image"
+        showLoadingIndicator
+      />,
+    );
+
+    expect(await screen.findByRole('status')).toBeInTheDocument();
+    expect(screen.getByText('Loading image...')).toBeInTheDocument();
+    view.unmount();
+  });
+
   it('retries a source after a failed fetch instead of reusing the rejected pending request', async () => {
     const fetchMock = vi
       .fn()
@@ -113,9 +133,7 @@ describe('SecureImage', () => {
 
     // Now insert item 101 (lru-100), triggering 1 eviction.
     // Since lru-0 was recently accessed, lru-1 (blob:test-2) should be evicted first.
-    const newView = render(
-      <SecureImage src="/api/lru-100" alt="lru-100" />,
-    );
+    const newView = render(<SecureImage src="/api/lru-100" alt="lru-100" />);
     await waitFor(() =>
       expect(screen.getByAltText('lru-100')).toHaveAttribute(
         'src',
@@ -225,7 +243,9 @@ describe('SecureImage', () => {
       vi.stubGlobal('fetch', fetchMock);
       const { SecureImage } = await loadSecureImage();
 
-      render(<SecureImage src="/api/lazy-2" alt="lazy image 2" loading="lazy" />);
+      render(
+        <SecureImage src="/api/lazy-2" alt="lazy image 2" loading="lazy" />,
+      );
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(mockObserverInstances).toHaveLength(1);
@@ -249,7 +269,9 @@ describe('SecureImage', () => {
       vi.stubGlobal('fetch', fetchMock);
       const { SecureImage } = await loadSecureImage();
 
-      render(<SecureImage src="/api/eager-1" alt="eager image" loading="eager" />);
+      render(
+        <SecureImage src="/api/eager-1" alt="eager image" loading="eager" />,
+      );
 
       await waitFor(() =>
         expect(screen.getByAltText('eager image')).toHaveAttribute(
@@ -265,7 +287,9 @@ describe('SecureImage', () => {
       vi.stubGlobal('fetch', fetchMock);
       const { SecureImage } = await loadSecureImage();
 
-      render(<SecureImage src="/api/lazy-multi" alt="lazy multi" loading="lazy" />);
+      render(
+        <SecureImage src="/api/lazy-multi" alt="lazy multi" loading="lazy" />,
+      );
 
       act(() => {
         mockObserverInstances[0].triggerIntersect(true);
@@ -323,4 +347,3 @@ describe('SecureImage', () => {
     });
   });
 });
-

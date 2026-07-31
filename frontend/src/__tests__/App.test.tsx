@@ -46,6 +46,10 @@ vi.mock('../api/generationStream', () => ({
 
 afterEach(() => {
   window.history.pushState({}, '', '/');
+  Object.defineProperty(navigator, 'onLine', {
+    configurable: true,
+    value: true,
+  });
 });
 
 function renderApp(path = '/') {
@@ -71,6 +75,22 @@ describe('App', () => {
     expect(
       await screen.findAllByText('DailyFX for immich', {}, { timeout: 5000 }),
     ).toHaveLength(2);
+  });
+
+  it('shows the offline status in the app chrome and still renders cached routes', async () => {
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: false,
+    });
+
+    renderApp('/gallery');
+
+    expect(
+      await screen.findAllByText(/Offline — showing saved data/i),
+    ).toHaveLength(2);
+    expect(
+      await screen.findByRole('heading', { name: 'Gallery' }),
+    ).toBeInTheDocument();
   });
 
   it('uses the pwa logo for the app chrome brand icon', async () => {

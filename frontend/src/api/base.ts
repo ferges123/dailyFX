@@ -52,6 +52,9 @@ export async function handleResponseError(response: Response): Promise<never> {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new ApiError(0, 'Offline: this action requires a connection');
+  }
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {
@@ -86,6 +89,9 @@ export async function requestText(
   path: string,
   init?: RequestInit,
 ): Promise<string> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new ApiError(0, 'Offline: this action requires a connection');
+  }
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
   try {

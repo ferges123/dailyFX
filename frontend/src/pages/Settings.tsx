@@ -16,6 +16,7 @@ import { APP_VERSION } from '../version';
 import { ConfirmDeleteModal } from './History/ConfirmDeleteModal';
 
 import { RuntimeStatusSection } from './Settings/RuntimeStatusSection';
+import { OfflineStorageSection } from './Settings/OfflineStorageSection';
 import { ConnectionTestsSection } from './Settings/ConnectionTestsSection';
 import { AIProviderSettingsSection } from './Settings/AIProviderSettingsSection';
 import {
@@ -293,6 +294,9 @@ export function SettingsPage() {
 
       {/* Runtime Status */}
       <RuntimeStatusSection />
+
+      {/* Offline Storage */}
+      <OfflineStorageSection />
 
       {/* Immich Connection */}
       <ConnectionTestsSection

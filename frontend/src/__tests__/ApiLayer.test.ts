@@ -101,6 +101,24 @@ describe('API Layer - Base', () => {
     }
   });
 
+  it('fails fast with a clear error while the browser is offline', async () => {
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: false,
+    });
+
+    await expect(request('/offline-endpoint')).rejects.toMatchObject({
+      status: 0,
+      detail: 'Offline: this action requires a connection',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: true,
+    });
+  });
+
   it('does not lose default headers (Content-Type, Authorization) when custom headers are passed in init', async () => {
     localStorage.setItem('dailyfx_token', 'my-auth-token');
     vi.mocked(fetch).mockResolvedValueOnce(
@@ -204,9 +222,12 @@ describe('API Layer - Generation', () => {
 
   it('getImmichAssets appends person_ids query parameters correctly', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ items: [], total: 0, count: 0, next_page: null }), {
-        status: 200,
-      }),
+      new Response(
+        JSON.stringify({ items: [], total: 0, count: 0, next_page: null }),
+        {
+          status: 200,
+        },
+      ),
     );
     await getImmichAssets({
       mediaType: 'photo',
@@ -223,4 +244,3 @@ describe('API Layer - Generation', () => {
     expect(calledUrl).toContain('person_ids=person-2');
   });
 });
-

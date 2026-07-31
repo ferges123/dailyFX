@@ -1,8 +1,10 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import { LoaderCircle } from 'lucide-react';
 import { getAuthToken } from '../api/client';
 
 interface SecureImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
+  showLoadingIndicator?: boolean;
 }
 
 const MAX_BLOB_CACHE_ITEMS = 100;
@@ -38,6 +40,7 @@ export const SecureImage = memo(function SecureImage({
   src,
   loading,
   decoding = 'async',
+  showLoadingIndicator = false,
   ...props
 }: SecureImageProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -51,7 +54,11 @@ export const SecureImage = memo(function SecureImage({
   const placeholderRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (shouldFetch || loading !== 'lazy' || typeof IntersectionObserver === 'undefined') {
+    if (
+      shouldFetch ||
+      loading !== 'lazy' ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
       return;
     }
 
@@ -161,11 +168,24 @@ export const SecureImage = memo(function SecureImage({
     return (
       <div
         ref={placeholderRef}
-        className={`${props.className ?? ''} animate-pulse rounded-[inherit] bg-stone-100/90`}
-      />
+        className={`${props.className ?? ''} relative flex items-center justify-center rounded-[inherit] ${showLoadingIndicator ? 'bg-transparent' : 'animate-pulse bg-stone-100/90'}`}
+      >
+        {showLoadingIndicator && (
+          <div
+            role="status"
+            className="pointer-events-none flex flex-col items-center justify-center gap-2 text-white/80"
+          >
+            <LoaderCircle
+              size={30}
+              aria-hidden="true"
+              className="animate-spin motion-reduce:animate-none"
+            />
+            <span className="sr-only">Loading image...</span>
+          </div>
+        )}
+      </div>
     );
   }
 
   return <img src={blobUrl} loading={loading} decoding={decoding} {...props} />;
 });
-

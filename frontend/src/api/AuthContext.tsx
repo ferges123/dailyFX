@@ -7,6 +7,10 @@ import {
 } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { registerOnUnauthorized } from './client';
+import {
+  clearOfflineImageCaches,
+  clearOfflineStorage,
+} from '../offline/storage';
 
 interface AuthContextType {
   token: string | null;
@@ -48,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokenState(null);
       localStorage.removeItem('dailyfx_token');
       queryClient.clear();
+      void clearOfflineStorage().catch(() => undefined);
+      clearOfflineImageCaches();
     });
   }, [queryClient]);
 

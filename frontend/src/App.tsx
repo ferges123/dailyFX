@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import {
   Bell,
   CalendarDays,
   Camera,
+  CloudOff,
   History,
   Image,
   LogOut,
@@ -27,6 +28,11 @@ import { getHealth } from './api/client';
 import { AuthProvider, useAuth } from './api/AuthContext';
 import { BrandLogo } from './components/BrandLogo';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
+import {
+  clearOfflineImageCaches,
+  clearOfflineStorage,
+} from './offline/storage';
 import { APP_VERSION } from './version';
 
 const GITHUB_URL = 'https://github.com/ferges123/dailyFX';
@@ -108,14 +114,37 @@ function RouteView({ children }: { children: ReactNode }) {
 function AppShell() {
   const { isAuthenticated, setToken } = useAuth();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
   const health = useQuery({
     queryKey: ['health'],
     queryFn: getHealth,
     retry: false,
+    refetchOnReconnect: true,
   });
   const location = useLocation();
 
-  if (health.isLoading) {
+  const storedAuthEnabled =
+    typeof localStorage !== 'undefined' &&
+    localStorage.getItem('dailyfx_auth_enabled') === 'true';
+  const authRequiredByBackend = health.data?.auth_enabled ?? storedAuthEnabled;
+  const connectionState: ConnectionState = !isOnline
+    ? 'offline'
+    : health.isError
+      ? 'unavailable'
+      : 'online';
+
+  useEffect(() => {
+    if (typeof health.data?.auth_enabled === 'boolean') {
+      localStorage.setItem(
+        'dailyfx_auth_enabled',
+        String(health.data.auth_enabled),
+      );
+    }
+  }, [health.data?.auth_enabled]);
+
+  // A physical offline state leaves an online-only query pending. It must not
+  // block the shell from rendering restored Gallery/History data.
+  if (health.isLoading && isOnline) {
     return (
       <div className="flex h-screen items-center justify-center bg-stone-50">
         <div className="text-sm font-medium text-stone-600">Loading...</div>
@@ -123,12 +152,14 @@ function AppShell() {
     );
   }
 
-  const authRequiredByBackend = health.data?.auth_enabled;
   if (authRequiredByBackend && !isAuthenticated) {
     return (
-      <RouteView>
-        <LoginPage />
-      </RouteView>
+      <>
+        <OfflineStatusBanner state={connectionState} />
+        <RouteView>
+          <LoginPage />
+        </RouteView>
+      </>
     );
   }
 
@@ -144,6 +175,8 @@ function AppShell() {
   function handleLogout() {
     setToken(null);
     queryClient.clear();
+    void clearOfflineStorage().catch(() => undefined);
+    clearOfflineImageCaches();
   }
 
   if (location.pathname === '/') {
@@ -175,6 +208,9 @@ function AppShell() {
               <LogOut size={16} />
             </button>
           )}
+        </div>
+        <div className="px-3 pb-2">
+          <OfflineStatusBanner state={connectionState} />
         </div>
       </header>
 
@@ -282,6 +318,9 @@ function AppShell() {
 
       <div className="min-w-0">
         <main className="grid gap-3 px-3 py-3 pb-32 md:gap-4 md:px-5 md:py-5 md:pb-6">
+          <div className="hidden md:block">
+            <OfflineStatusBanner state={connectionState} />
+          </div>
           <Routes>
             <Route
               path="/history"
@@ -443,11 +482,7 @@ function AppShell() {
         <BottomNavLink to="/studio" active={isStudioRoute} label="Studio">
           <Camera size={18} />
         </BottomNavLink>
-        <BottomNavLink
-          to="/system"
-          active={isSystemRoute}
-          label="System"
-        >
+        <BottomNavLink to="/system" active={isSystemRoute} label="System">
           <ClipboardList size={18} />
         </BottomNavLink>
         <BottomNavLink
@@ -458,6 +493,27 @@ function AppShell() {
           <Settings size={18} />
         </BottomNavLink>
       </nav>
+    </div>
+  );
+}
+
+type ConnectionState = 'online' | 'offline' | 'unavailable';
+
+function OfflineStatusBanner({ state }: { state: ConnectionState }) {
+  if (state === 'online') return null;
+
+  const isOffline = state === 'offline';
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-xs"
+    >
+      <CloudOff size={16} aria-hidden="true" />
+      <span>
+        {isOffline
+          ? 'Offline — showing saved data. Write operations are unavailable.'
+          : 'DailyFX server is unavailable — showing saved data.'}
+      </span>
     </div>
   );
 }
