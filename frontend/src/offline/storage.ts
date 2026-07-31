@@ -5,7 +5,7 @@ const DB_VERSION = 1;
 const QUERY_STORE = 'queries';
 const DB_TIMEOUT_MS = 1500;
 
-export const OFFLINE_CACHE_BUSTER = '0.20.1';
+export const OFFLINE_CACHE_BUSTER = '0.20.3';
 
 export interface PersistedOfflineQuery {
   id: string;

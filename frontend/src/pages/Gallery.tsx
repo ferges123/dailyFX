@@ -349,7 +349,7 @@ export function GalleryPage() {
             {total} images
           </span>
         </div>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <div className="ml-auto flex w-full min-w-0 flex-nowrap items-center justify-end gap-2 sm:w-auto">
           <label className="sr-only" htmlFor="gallery-sort">
             Sort gallery
           </label>
@@ -360,12 +360,12 @@ export function GalleryPage() {
             onChange={(e) =>
               updateFilters({ sort: e.target.value as 'newest' | 'oldest' })
             }
-            className="app-control app-control-muted h-9 w-auto px-3 text-xs font-medium"
+            className="app-control app-control-muted h-9 w-auto shrink-0 px-3 text-xs font-medium"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
           </select>
-          <div className="w-40">
+          <div className="min-w-0 w-40 flex-1 sm:flex-none">
             <SearchInput
               value={search}
               onSearch={setSearch}
@@ -383,7 +383,7 @@ export function GalleryPage() {
             type="button"
             onClick={() => setShowFilters(!showFilters)}
             aria-pressed={showFilters}
-            className={`app-button-secondary h-9 px-3 text-xs ${
+            className={`app-button-secondary h-9 shrink-0 px-3 text-xs ${
               showFilters || activeFilterCount > 0
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100'
                 : ''

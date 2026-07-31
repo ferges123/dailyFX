@@ -4,6 +4,7 @@ import {
   precacheAndRoute,
 } from 'workbox-precaching';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst } from 'workbox-strategies';
@@ -13,6 +14,11 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 
 // Immediately clean up old caches from previous builds
 cleanupOutdatedCaches();
+
+// Activate updated workers immediately so a stale tab does not keep serving
+// the previous precached application shell.
+self.skipWaiting();
+clientsClaim();
 
 const IMAGE_CACHE_NAME = 'dailyfx-images-v1';
 const imageCacheStrategy = new CacheFirst({
