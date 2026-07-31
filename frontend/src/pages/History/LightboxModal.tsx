@@ -17,6 +17,9 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -97,6 +100,12 @@ interface LightboxModalProps {
   hasNext?: boolean;
 }
 
+function getTouchDistance(t1: Touch, t2: Touch): number {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.hypot(dx, dy);
+}
+
 export const LightboxModal = memo(function LightboxModal({
   isOpen,
   onClose,
@@ -134,6 +143,236 @@ export const LightboxModal = memo(function LightboxModal({
   const qc = useQueryClient();
   const [liked, setLiked] = useState<boolean | null>(entry.liked ?? null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Zoom & Pan state
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+  const positionRef = useRef(position);
+  positionRef.current = position;
+
+  const resetZoom = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+    setIsDragging(false);
+  };
+
+  const clampPosition = (
+    newScale: number,
+    newX: number,
+    newY: number,
+  ): { x: number; y: number } => {
+    if (newScale <= 1 || !imageContainerRef.current) {
+      return { x: 0, y: 0 };
+    }
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const maxDx = Math.max(0, (rect.width * newScale - rect.width) / 2);
+    const maxDy = Math.max(0, (rect.height * newScale - rect.height) / 2);
+    return {
+      x: Math.min(Math.max(newX, -maxDx), maxDx),
+      y: Math.min(Math.max(newY, -maxDy), maxDy),
+    };
+  };
+
+  const handleZoomIn = () => {
+    const nextScale = Math.min(scale * 1.5, 4);
+    setScale(nextScale);
+    if (nextScale === 1) setPosition({ x: 0, y: 0 });
+    else setPosition((prev) => clampPosition(nextScale, prev.x, prev.y));
+  };
+
+  const handleZoomOut = () => {
+    const nextScale = Math.max(scale / 1.5, 1);
+    setScale(nextScale);
+    if (nextScale === 1) setPosition({ x: 0, y: 0 });
+    else setPosition((prev) => clampPosition(nextScale, prev.x, prev.y));
+  };
+
+  const handleDoubleTap = (clientX: number, clientY: number) => {
+    if (scaleRef.current > 1) {
+      resetZoom();
+    } else {
+      const targetScale = 2.5;
+      if (imageContainerRef.current) {
+        const rect = imageContainerRef.current.getBoundingClientRect();
+        const offsetX = clientX - (rect.left + rect.width / 2);
+        const offsetY = clientY - (rect.top + rect.height / 2);
+        const newX = -offsetX * (targetScale - 1);
+        const newY = -offsetY * (targetScale - 1);
+        setScale(targetScale);
+        setPosition(clampPosition(targetScale, newX, newY));
+      } else {
+        setScale(targetScale);
+      }
+    }
+  };
+
+  useEffect(() => {
+    resetZoom();
+  }, [imageUrl, isOpen]);
+
+  useEffect(() => {
+    const container = imageContainerRef.current;
+    if (!container || !isOpen) return;
+
+    let touchStartDist = 0;
+    let touchStartScale = 1;
+    let touchStartPos = { x: 0, y: 0 };
+    let singleTouchStart: {
+      x: number;
+      y: number;
+      posX: number;
+      posY: number;
+    } | null = null;
+    let lastTapTime = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        touchStartDist = getTouchDistance(e.touches[0], e.touches[1]);
+        touchStartScale = scaleRef.current;
+        touchStartPos = { ...positionRef.current };
+        singleTouchStart = null;
+        setIsDragging(true);
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+          e.preventDefault();
+          handleDoubleTap(e.touches[0].clientX, e.touches[0].clientY);
+          lastTapTime = 0;
+          return;
+        }
+        lastTapTime = now;
+
+        if (scaleRef.current > 1) {
+          e.preventDefault();
+          singleTouchStart = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            posX: positionRef.current.x,
+            posY: positionRef.current.y,
+          };
+          setIsDragging(true);
+        }
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDist > 0) {
+        e.preventDefault();
+        const dist = getTouchDistance(e.touches[0], e.touches[1]);
+        const factor = dist / touchStartDist;
+        const newScale = Math.min(Math.max(touchStartScale * factor, 1), 4);
+        setScale(newScale);
+
+        if (newScale === 1) {
+          setPosition({ x: 0, y: 0 });
+        } else {
+          setPosition(
+            clampPosition(newScale, touchStartPos.x, touchStartPos.y),
+          );
+        }
+      } else if (
+        e.touches.length === 1 &&
+        singleTouchStart &&
+        scaleRef.current > 1
+      ) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - singleTouchStart.x;
+        const dy = e.touches[0].clientY - singleTouchStart.y;
+        const newX = singleTouchStart.posX + dx;
+        const newY = singleTouchStart.posY + dy;
+        setPosition(clampPosition(scaleRef.current, newX, newY));
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        touchStartDist = 0;
+      }
+      if (e.touches.length === 0) {
+        singleTouchStart = null;
+        setIsDragging(false);
+        if (scaleRef.current < 1.05) {
+          resetZoom();
+        }
+      }
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const currentScale = scaleRef.current;
+      const newScale = Math.min(Math.max(currentScale * zoomFactor, 1), 4);
+      setScale(newScale);
+      if (newScale === 1) {
+        setPosition({ x: 0, y: 0 });
+      } else {
+        setPosition((prev) => clampPosition(newScale, prev.x, prev.y));
+      }
+    };
+
+    container.addEventListener('touchstart', handleTouchStart, {
+      passive: false,
+    });
+    container.addEventListener('touchmove', handleTouchMove, {
+      passive: false,
+    });
+    container.addEventListener('touchend', handleTouchEnd);
+    container.addEventListener('touchcancel', handleTouchEnd);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchEnd);
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [isOpen]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale <= 1 || e.button !== 0) return;
+    setIsDragging(true);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startPosX = position.x;
+    const startPosY = position.y;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      setPosition(
+        clampPosition(scaleRef.current, startPosX + dx, startPosY + dy),
+      );
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handlePrev = () => {
+    resetZoom();
+    if (onPrev && hasPrev) onPrev();
+  };
+
+  const handleNext = () => {
+    resetZoom();
+    if (onNext && hasNext) onNext();
+  };
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -184,7 +423,7 @@ export const LightboxModal = memo(function LightboxModal({
   }, [imageUrl, isOpen]);
 
   function handleSwipeStart(event: React.PointerEvent<HTMLDivElement>) {
-    if (!isOpen || event.pointerType !== 'touch' || !event.isPrimary) return;
+    if (!isOpen || event.pointerType !== 'touch' || !event.isPrimary || scale > 1) return;
     swipeStartRef.current = {
       x: event.clientX,
       y: event.clientY,
@@ -209,8 +448,8 @@ export const LightboxModal = memo(function LightboxModal({
       return;
     }
 
-    if (deltaX < 0 && onNext && hasNext) onNext();
-    if (deltaX > 0 && onPrev && hasPrev) onPrev();
+    if (deltaX < 0 && hasNext) handleNext();
+    if (deltaX > 0 && hasPrev) handlePrev();
   }
 
   function handleSwipeCancel() {
@@ -334,7 +573,10 @@ export const LightboxModal = memo(function LightboxModal({
           {hasPrev && onPrev && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onPrev(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrev();
+              }}
               className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-white/80 backdrop-blur-sm transition hover:bg-black/25 hover:text-white active:scale-90"
               aria-label="Previous photo"
             >
@@ -344,7 +586,10 @@ export const LightboxModal = memo(function LightboxModal({
           {hasNext && onNext && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onNext(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNext();
+              }}
               className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-white/80 backdrop-blur-sm transition hover:bg-black/25 hover:text-white active:scale-90"
               aria-label="Next photo"
             >
@@ -352,32 +597,48 @@ export const LightboxModal = memo(function LightboxModal({
             </button>
           )}
           <div
-            className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center"
-            style={{ touchAction: 'pan-y' }}
+            ref={imageContainerRef}
+            className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden select-none"
+            style={{
+              touchAction: scale > 1 ? 'none' : 'pan-y',
+              cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            }}
             onPointerDown={handleSwipeStart}
             onPointerUp={handleSwipeEnd}
             onPointerCancel={handleSwipeCancel}
+            onMouseDown={handleMouseDown}
           >
-            <SecureImage
-              src={imageUrl}
-              alt="Preview"
-              className="h-full w-full rounded-lg object-contain"
-              decoding="async"
-            />
-            {originalImageUrl && (
-              <div
-                className={`absolute inset-0 bg-stone-50 rounded-lg transition-opacity duration-200 pointer-events-none ${
-                  showOriginal ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                <SecureImage
-                  src={originalImageUrl}
-                  alt="Original Preview"
-                  className="h-full w-full rounded-lg object-contain"
-                  decoding="async"
-                />
-              </div>
-            )}
+            <div
+              className="relative flex h-full w-full items-center justify-center"
+              style={{
+                transform: `translate3d(${position.x}px, ${position.y}px, 0px) scale(${scale})`,
+                transition: isDragging
+                  ? 'none'
+                  : 'transform 0.15s cubic-bezier(0.2, 0, 0.2, 1)',
+                willChange: 'transform',
+              }}
+            >
+              <SecureImage
+                src={imageUrl}
+                alt="Preview"
+                className="h-full w-full rounded-lg object-contain pointer-events-none"
+                decoding="async"
+              />
+              {originalImageUrl && (
+                <div
+                  className={`absolute inset-0 bg-stone-50 rounded-lg transition-opacity duration-200 pointer-events-none ${
+                    showOriginal ? 'opacity-100' : 'opacity-0'
+                  }`}
+                >
+                  <SecureImage
+                    src={originalImageUrl}
+                    alt="Original Preview"
+                    className="h-full w-full rounded-lg object-contain pointer-events-none"
+                    decoding="async"
+                  />
+                </div>
+              )}
+            </div>
           </div>
           {originalImageUrl && (
             <button
@@ -678,6 +939,50 @@ export const LightboxModal = memo(function LightboxModal({
 
         {/* Top Control Buttons */}
         <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
+          {scale > 1 && (
+            <button
+              type="button"
+              onClick={resetZoom}
+              className={`inline-flex h-9 items-center justify-center gap-1 rounded-xl px-2.5 shadow-md transition active:scale-90 text-xs font-semibold ${
+                isFullscreen
+                  ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                  : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200'
+              }`}
+              aria-label="Reset zoom"
+              title="Reset zoom"
+            >
+              <RotateCcw size={14} />
+              <span>{Math.round(scale * 100)}%</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={scale >= 4}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+              isFullscreen
+                ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200'
+            }`}
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            <ZoomIn size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={scale <= 1}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+              isFullscreen
+                ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200'
+            }`}
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            <ZoomOut size={18} />
+          </button>
           <button
             type="button"
             onClick={toggleFullscreen}
