@@ -295,7 +295,6 @@ def test_upsert_history_entry_atomically_creates_stats_log(db_session: Session):
     assert log.effect_id == "ai_anime"
 
 
-
 def test_backfill_effect_statistics_log(db_session: Session):
     from app.database import backfill_effect_statistics_log
     from app.models.generation_history import GenerationHistoryModel

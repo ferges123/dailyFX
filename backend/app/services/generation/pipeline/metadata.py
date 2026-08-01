@@ -129,10 +129,12 @@ async def _apply_source_vision(
         model=settings.default_ai_model,
     )
     t0 = time.time()
-    original_bytes = await client.get_asset_data(source_asset_id)
+    preview_bytes, _ = await client.get_asset_thumbnail(source_asset_id, size="preview")
+    if not preview_bytes:
+        raise RuntimeError("Source image preview is unavailable for AI analysis")
     ai_analysis = await analyze_image(
         settings,
-        original_bytes,
+        preview_bytes,
         context_hint=people_context.anonymized_prompt_hint() if people_context else None,
     )
     state["ai_title"] = ai_analysis.title
@@ -159,6 +161,16 @@ async def _apply_source_vision(
         tokens=state["ai_token_count"],
         provider=state["ai_provider"],
         model=state["ai_model"],
+    )
+    _trace_stage(
+        db,
+        task_id,
+        stage="source_vision_complete",
+        message="Source image AI analysis completed",
+        step="analyzing_image",
+        status="running",
+        progress=0.6,
+        details={"elapsed_seconds": round(time.time() - t0, 2), "source_image": "immich_preview"},
     )
 
 
@@ -219,6 +231,16 @@ async def _apply_final_vision(
         tokens=state["ai_token_count"],
         provider=state["ai_provider"],
         model=state["ai_model"],
+    )
+    _trace_stage(
+        db,
+        task_id,
+        stage="final_vision_complete",
+        message="Final image AI analysis completed",
+        step="analyzing_final_image",
+        status="running",
+        progress=0.75,
+        details={"elapsed_seconds": round(time.time() - t1, 2)},
     )
 
 

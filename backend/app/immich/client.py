@@ -54,7 +54,6 @@ class ImmichClient:
         self.timeout = timeout
         self.stats_concurrency = stats_concurrency
 
-
     def _get_client(self, timeout: float | None = None) -> httpx.AsyncClient:
         t = timeout if timeout is not None else self.timeout
         key = (self.api_base_url, t)
@@ -638,7 +637,6 @@ class ImmichClient:
                 enriched.append(p_new)
         enriched.sort(key=lambda p: (-p.asset_count, p.name.lower()))
         return enriched[:33]
-
 
     async def _get_person_asset_count(self, client: httpx.AsyncClient, person_id: str) -> int:
         payload = await self._get_json(f"/people/{person_id}/statistics", client)

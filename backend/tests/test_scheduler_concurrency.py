@@ -51,17 +51,19 @@ def test_scheduler_async_concurrency_limit(monkeypatch):
             )
         db.commit()
 
-        # Mock run_queued_generation_task to do a small sleep to simulate execution
+        # Mock process supervision to avoid spawning real image workers.
         called_tasks = []
 
-        async def fake_run_queued_generation_task(session, settings, queued_task, *args, **kwargs):
-            called_tasks.append(queued_task.task_id)
-            await asyncio.sleep(0.1)
-            return {"status": "completed"}
+        async def fake_run_queued_task_in_background(task_id):
+            called_tasks.append(task_id)
+            try:
+                await asyncio.sleep(0.1)
+            finally:
+                _running_task_ids.discard(task_id)
 
         monkeypatch.setattr(
-            "app.workers.scheduler.run_queued_generation_task",
-            fake_run_queued_generation_task,
+            "app.workers.scheduler._run_queued_task_in_background",
+            fake_run_queued_task_in_background,
         )
 
         async def run_test_logic():

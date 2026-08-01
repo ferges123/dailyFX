@@ -29,10 +29,7 @@ class AppSettings(BaseSettings):
     app_external_url: str | None = Field(default=None, alias="APP_EXTERNAL_URL")
     log_json: bool = Field(default=False, alias="LOG_JSON")
     require_auth_for_review: bool = Field(default=False, alias="REQUIRE_AUTH_FOR_REVIEW")
-    immich_people_stats_concurrency: int = Field(
-        default=10, alias="IMMICH_PEOPLE_STATS_CONCURRENCY", ge=1, le=50
-    )
-
+    immich_people_stats_concurrency: int = Field(default=10, alias="IMMICH_PEOPLE_STATS_CONCURRENCY", ge=1, le=50)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 

@@ -208,4 +208,3 @@ def test_immich_people_stats_concurrency_default():
 
     settings = get_settings()
     assert settings.immich_people_stats_concurrency == 10
-

@@ -76,6 +76,7 @@ def test_metrics_endpoint_returns_prometheus_format():
         assert "dailyfx_app_info" in response.text
         assert "dailyfx_generation_task_status" in response.text
         assert "dailyfx_generation_history_status" in response.text
+        assert "dailyfx_process_resident_memory_bytes" in response.text
 
 
 def test_metrics_endpoint_enforces_auth_when_app_access_token_configured(monkeypatch):

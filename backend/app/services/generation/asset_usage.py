@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def backfill_asset_usage(db: Session) -> None:
     """Idempotently backfills the asset_usage registry from existing generation_history records.
-    
+
     Query is incrementally scoped only to history records that do not already have
     corresponding entries in the asset_usage table.
     """

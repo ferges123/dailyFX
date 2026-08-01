@@ -179,7 +179,6 @@ async def get_generation_example(module_name: str, db: Session = Depends(get_db)
     return FileResponse(path, media_type="image/png")
 
 
-
 @router.get("/review/{task_id}", response_class=FileResponse)
 async def get_review_page(task_id: str) -> FileResponse:
     """Serve the standalone review page for a generation."""

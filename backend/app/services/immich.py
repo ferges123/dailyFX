@@ -42,7 +42,6 @@ def build_immich_client(row: SettingsModel) -> ImmichClient:
     )
 
 
-
 async def list_filter_options(row: SettingsModel) -> tuple[list[ImmichAlbumSummary], list[ImmichPersonSummary]]:
     client = build_immich_client(row)
     albums = await client.list_albums()

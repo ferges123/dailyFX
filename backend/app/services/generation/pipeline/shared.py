@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.immich.models import ImmichExifInfo
 from app.models.settings import SettingsModel
+from app.observability.memory import memory_snapshot
 from app.services.audit import record_audit_event
 from app.services.generation.history import append_history_trace, history_status_for_task_status, upsert_history_entry
 from app.services.generation.tasks import update_task
@@ -144,6 +145,8 @@ def _trace_stage(
     progress: float | None = None,
     details: dict | None = None,
 ) -> None:
+    trace_details = dict(details or {})
+    trace_details.setdefault("memory", memory_snapshot())
     append_history_trace(
         db,
         task_id,
@@ -152,7 +155,7 @@ def _trace_stage(
         step=step,
         status=status,
         progress=progress,
-        details=details,
+        details=trace_details,
     )
 
 

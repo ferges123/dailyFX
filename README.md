@@ -223,6 +223,7 @@ All connections (Immich, AI keys) and preferences are configured directly via th
 | `EXAMPLE_ASSET_ID` | no | Any asset ID from your library — enables effect preview images in the Effects tab. |
 | `CORS_ORIGINS` | no | Comma-separated allowed origins (default: localhost and frontend ports). |
 | `LOG_JSON` | no | If set to `true`, use structured JSON logging instead of plain text (default: `false`). |
+| `CONCURRENCY_LIMIT` | no | Maximum simultaneous image-generation tasks (default: `1`). Raise only after measuring peak memory for the effects and image sizes in use. |
 | `IMMICH_THUMBNAIL_CACHE_TTL` | no | TTL for cached Immich asset thumbnails (default: `7d`). Supports time units: `d` (days), `h` (hours), `m` (minutes), `s` (seconds), `w` (weeks). |
 | `IMMICH_THUMBNAIL_CACHE_RETENTION` | no | Retention period for local thumbnail cleanup (default: `30d`). Supports time units: `d` (days), `h` (hours), `m` (minutes), `s` (seconds), `w` (weeks). |
 
@@ -437,4 +438,3 @@ You are in full control of which providers are enabled. External API keys can be
 ## License
 
 Source-available for non-commercial use under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).
-

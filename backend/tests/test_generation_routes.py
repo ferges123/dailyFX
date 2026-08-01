@@ -775,4 +775,3 @@ def test_generation_history_filters_schedule_id():
         assert all_res.total == 3
     finally:
         db.close()
-

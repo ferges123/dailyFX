@@ -79,11 +79,7 @@ def list_schedules(
     query = db.query(ScheduleModel)
     if not include_deleted:
         query = query.filter(ScheduleModel.is_deleted.is_(False))
-    rows = (
-        query.options(selectinload(ScheduleModel.notification_presets))
-        .order_by(ScheduleModel.name)
-        .all()
-    )
+    rows = query.options(selectinload(ScheduleModel.notification_presets)).order_by(ScheduleModel.name).all()
 
     people_preset_ids = {row.people_preset_id for row in rows}
     effect_preset_ids = {row.effect_preset_id for row in rows}

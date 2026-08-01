@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import multiprocessing
 import os
 from datetime import datetime, timedelta, timezone
+from queue import Empty
 
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.services.generation.engine import run_generation_cycle
 from app.services.generation.history import upsert_history_entry
 from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.generation.schedule_runs import build_scheduled_run_context
-from app.services.generation.task_flow import run_queued_generation_task
 from app.services.generation.tasks import ensure_task, update_task
 from app.services.immich import get_or_create_settings
+from app.workers.generation_worker import run_generation_task_process
 
 _running_task_ids: set[str] = set()
 _background_tasks: set[asyncio.Task] = set()
@@ -31,49 +32,90 @@ from app.workers.schedule_parser import (
 
 async def _run_queued_task_in_background(task_id: str) -> None:
     _running_task_ids.add(task_id)
-    logger.info("Starting background task: %s", task_id)
+    logger.info("Starting isolated generation worker for task: %s", task_id)
+    context = multiprocessing.get_context("spawn")
+    result_queue = context.Queue(maxsize=1)
+    process = context.Process(target=run_generation_task_process, args=(task_id, result_queue))
+    try:
+        process.start()
+        await asyncio.to_thread(process.join)
+        try:
+            result = await asyncio.to_thread(result_queue.get, True, 1)
+        except Empty:
+            result = {
+                "status": "failed",
+                "error": f"Generation worker exited without a result (exit code {process.exitcode})",
+            }
+
+        if process.exitcode not in (0, None):
+            result = {
+                "status": "failed",
+                "error": f"Generation worker exited with code {process.exitcode}",
+            }
+        if result["status"] == "failed":
+            logger.warning("Generation worker %s failed: %s", task_id, result.get("error"))
+            _record_worker_failure(task_id, str(result.get("error") or "Generation worker failed"))
+
+        _update_schedule_after_queued_task(task_id, result)
+    except Exception as exc:
+        logger.exception("Exception while supervising generation worker %s: %s", task_id, exc)
+        _record_worker_failure(task_id, str(exc))
+    finally:
+        result_queue.close()
+        result_queue.join_thread()
+        process.close()
+        _running_task_ids.discard(task_id)
+        logger.info(
+            "Generation worker finished and released memory: %s. Current running count: %d",
+            task_id,
+            len(_running_task_ids),
+        )
+
+
+def _record_worker_failure(task_id: str, error: str) -> None:
+    """Persist a crash in the supervisor when a worker cannot do so itself."""
     session = SessionLocal()
     try:
-        settings = get_or_create_settings(session)
+        update_task(session, task_id, status="failed", step="failed", progress=0.0, error=error)
+        upsert_history_entry(session, task_id, status="FAILED", summary=error, task_step="failed")
+    except Exception:
+        logger.exception("Could not persist worker failure for task %s", task_id)
+    finally:
+        session.close()
+
+
+def _update_schedule_after_queued_task(task_id: str, result: dict[str, object]) -> None:
+    """Update the schedule from a fresh DB session after the child exits."""
+    if not (task_id.startswith("auto-s") or task_id.startswith("man-")):
+        return
+
+    session = SessionLocal()
+    try:
         from app.models.generation_task import GenerationTaskModel
+        from app.models.schedule import ScheduleModel
 
         queued_task = session.get(GenerationTaskModel, task_id)
         if not queued_task:
-            logger.warning("Queued background task %s not found in database", task_id)
             return
-
-        result = await run_queued_generation_task(
-            session,
-            settings,
-            queued_task,
-            run_generation_cycle_fn=run_generation_cycle,
-        )
-        if result["status"] == "failed":
-            logger.warning("Background task %s failed: %s", task_id, result.get("error"))
-
-        if task_id.startswith("auto-s") or task_id.startswith("man-"):
-            payload = parse_run_now_task_payload(queued_task.payload_json)
-            if payload.schedule_id:
-                from app.models.schedule import ScheduleModel
-
-                schedule = session.get(ScheduleModel, payload.schedule_id)
-                if schedule:
-                    if result["status"] == "completed":
-                        schedule.last_tick_status = "completed"
-                        schedule.last_tick_reason = "generation completed"
-                    else:
-                        schedule.last_tick_status = "error"
-                        schedule.last_tick_reason = str(result.get("error") or "generation failed")
-                    session.add(schedule)
-                    session.commit()
-    except Exception as exc:
-        logger.exception("Exception in background task execution %s: %s", task_id, exc)
+        payload = parse_run_now_task_payload(queued_task.payload_json)
+        if not payload.schedule_id:
+            return
+        schedule = session.get(ScheduleModel, payload.schedule_id)
+        if not schedule:
+            return
+        if result["status"] == "completed":
+            schedule.last_tick_status = "completed"
+            schedule.last_tick_reason = "generation completed"
+        else:
+            schedule.last_tick_status = "error"
+            schedule.last_tick_reason = str(result.get("error") or "generation failed")
+        session.add(schedule)
+        session.commit()
+    except Exception:
+        logger.exception("Could not update schedule after generation worker %s", task_id)
+        session.rollback()
     finally:
         session.close()
-        _running_task_ids.discard(task_id)
-        logger.info(
-            "Background task finished and cleaned up: %s. Current running count: %d", task_id, len(_running_task_ids)
-        )
 
 
 def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
@@ -151,7 +193,7 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
     _reset_stuck_tasks_at_runtime(session, current)
 
     settings = get_or_create_settings(session)
-    MAX_CONCURRENT_TASKS = int(os.environ.get("CONCURRENCY_LIMIT", "2"))
+    MAX_CONCURRENT_TASKS = int(os.environ.get("CONCURRENCY_LIMIT", "1"))
 
     if not async_mode:
         # --- SYNCHRONOUS MODE (For tests) ---
@@ -164,6 +206,9 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
 
         if queued_task:
             logger.info("[Sync Mode] Found queued manual task: %s", queued_task.task_id)
+            from app.services.generation.engine import run_generation_cycle
+            from app.services.generation.task_flow import run_queued_generation_task
+
             result = await run_queued_generation_task(
                 session,
                 settings,
@@ -174,7 +219,11 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
                 logger.warning("[Sync Mode] Queued manual task %s failed: %s", queued_task.task_id, result.get("error"))
             return result
 
-        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True), ScheduleModel.is_deleted.is_(False)).all()
+        schedules = (
+            session.query(ScheduleModel)
+            .filter(ScheduleModel.enabled.is_(True), ScheduleModel.is_deleted.is_(False))
+            .all()
+        )
         if not schedules:
             return {"status": "skipped", "reason": "no enabled schedules"}
 
@@ -232,7 +281,11 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
 
     else:
         # --- ASYNCHRONOUS CONCURRENT MODE (For production) ---
-        schedules = session.query(ScheduleModel).filter(ScheduleModel.enabled.is_(True), ScheduleModel.is_deleted.is_(False)).all()
+        schedules = (
+            session.query(ScheduleModel)
+            .filter(ScheduleModel.enabled.is_(True), ScheduleModel.is_deleted.is_(False))
+            .all()
+        )
         schedules_enqueued = 0
         for schedule in schedules:
             if not should_run_automation(schedule.schedule_expr, schedule.last_run_at, current):
