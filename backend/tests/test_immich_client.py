@@ -133,18 +133,18 @@ def test_search_assets_applies_filters_and_sampling(monkeypatch: pytest.MonkeyPa
     requests: list[dict[str, object]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/search/random"
+        assert request.url.path == "/api/search/metadata"
         requests.append(json.loads(request.content.decode()))
         return httpx.Response(
             200,
-            json=[
+            json={"assets": {"items": [
                 {
                     "id": "asset-2",
                     "originalFileName": "b.jpg",
                     "type": "VIDEO",
                     "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
                 }
-            ],
+            ]}},
         )
 
     original_async_client = httpx.AsyncClient
@@ -191,12 +191,12 @@ def test_search_assets_uses_requested_random_size_and_returns_all_assets(monkeyp
         requests.append(json.loads(request.content.decode()))
         return httpx.Response(
             200,
-            json=[
+            json={"assets": {"items": [
                 {"id": "asset-1", "originalFileName": "a.jpg", "type": "IMAGE", "people": []},
                 {"id": "asset-2", "originalFileName": "b.jpg", "type": "IMAGE", "people": []},
                 {"id": "asset-3", "originalFileName": "c.jpg", "type": "IMAGE", "people": []},
                 {"id": "asset-4", "originalFileName": "d.jpg", "type": "IMAGE", "people": []},
-            ],
+            ]}},
         )
 
     original_async_client = httpx.AsyncClient
@@ -223,7 +223,7 @@ def test_search_assets_allows_random_size_up_to_100(monkeypatch: pytest.MonkeyPa
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(json.loads(request.content.decode()))
-        return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"assets": {"items": []}})
 
     original_async_client = httpx.AsyncClient
 
@@ -282,23 +282,19 @@ def test_search_assets_parses_people_faces() -> None:
 def test_search_assets_sends_obligatory_people_to_request(monkeypatch: pytest.MonkeyPatch) -> None:
     requests: list[dict[str, object]] = []
 
-    class NoShuffleRandom:
-        def shuffle(self, items):
-            return None
-
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/search/random"
+        assert request.url.path == "/api/search/metadata"
         requests.append(json.loads(request.content.decode()))
         return httpx.Response(
             200,
-            json=[
+            json={"assets": {"items": [
                 {
                     "id": "asset-1",
                     "originalFileName": "a.jpg",
                     "type": "IMAGE",
                     "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
                 }
-            ],
+            ]}},
         )
 
     original_async_client = httpx.AsyncClient
@@ -308,7 +304,6 @@ def test_search_assets_sends_obligatory_people_to_request(monkeypatch: pytest.Mo
         return original_async_client(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
-    monkeypatch.setattr("app.immich.client.Random", NoShuffleRandom)
     asyncio.run(
         ImmichClient("https://photos.example.com", "secret-key").search_assets(
             ImmichSearchFilters(
@@ -326,20 +321,16 @@ def test_search_assets_sends_obligatory_people_to_request(monkeypatch: pytest.Mo
 def test_search_assets_tries_optional_person_combinations(monkeypatch: pytest.MonkeyPatch) -> None:
     requests: list[dict[str, object]] = []
 
-    class NoShuffleRandom:
-        def shuffle(self, items):
-            return None
-
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/search/random"
+        assert request.url.path == "/api/search/metadata"
         body = json.loads(request.content.decode())
         requests.append(body)
         person_ids = body.get("personIds", [])
         if person_ids != ["person-1", "person-2"]:
-            return httpx.Response(200, json=[])
+            return httpx.Response(200, json={"assets": {"items": []}})
         return httpx.Response(
             200,
-            json=[
+            json={"assets": {"items": [
                 {
                     "id": "asset-2",
                     "originalFileName": "b.jpg",
@@ -349,7 +340,7 @@ def test_search_assets_tries_optional_person_combinations(monkeypatch: pytest.Mo
                         {"id": "person-2", "name": "Bob", "isHidden": False},
                     ],
                 },
-            ],
+            ]}},
         )
 
     original_async_client = httpx.AsyncClient
@@ -359,7 +350,6 @@ def test_search_assets_tries_optional_person_combinations(monkeypatch: pytest.Mo
         return original_async_client(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
-    monkeypatch.setattr("app.immich.client.Random", NoShuffleRandom)
     result = asyncio.run(
         ImmichClient("https://photos.example.com", "secret-key").search_assets(
             ImmichSearchFilters(
@@ -382,19 +372,15 @@ def test_search_assets_tries_optional_person_combinations(monkeypatch: pytest.Mo
 def test_search_assets_obligatory_optional_falls_back_after_empty_response(monkeypatch: pytest.MonkeyPatch) -> None:
     requests: list[dict[str, object]] = []
 
-    class NoShuffleRandom:
-        def shuffle(self, items):
-            return None
-
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/search/random"
+        assert request.url.path == "/api/search/metadata"
         body = json.loads(request.content.decode())
         requests.append(body)
         if body.get("personIds") == ["person-1"]:
-            return httpx.Response(200, json=[])
+            return httpx.Response(200, json={"assets": {"items": []}})
         return httpx.Response(
             200,
-            json=[
+            json={"assets": {"items": [
                 {
                     "id": "asset-10",
                     "originalFileName": "combo.jpg",
@@ -404,7 +390,7 @@ def test_search_assets_obligatory_optional_falls_back_after_empty_response(monke
                         {"id": "person-2", "name": "Bob", "isHidden": False},
                     ],
                 }
-            ],
+            ]}},
         )
 
     original_async_client = httpx.AsyncClient
@@ -414,7 +400,6 @@ def test_search_assets_obligatory_optional_falls_back_after_empty_response(monke
         return original_async_client(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
-    monkeypatch.setattr("app.immich.client.Random", NoShuffleRandom)
     result = asyncio.run(
         ImmichClient("https://photos.example.com", "secret-key").search_assets(
             ImmichSearchFilters(
@@ -461,9 +446,9 @@ def test_search_assets_exclude_retries_same_variant(monkeypatch: pytest.MonkeyPa
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/search/random"
+        assert request.url.path == "/api/search/metadata"
         requests.append(json.loads(request.content.decode()))
-        return httpx.Response(200, json=next(responses))
+        return httpx.Response(200, json={"assets": {"items": next(responses)}})
 
     original_async_client = httpx.AsyncClient
 
@@ -486,7 +471,49 @@ def test_search_assets_exclude_retries_same_variant(monkeypatch: pytest.MonkeyPa
     assert len(requests) == 2
     assert requests[0]["personIds"] == ["person-1"]
     assert requests[1]["personIds"] == ["person-1"]
+    assert [request["page"] for request in requests] == [1, 2]
     assert [item.id for item in result.items] == ["asset-allowed"]
+    assert result.next_page == "3"
+
+
+def test_search_assets_stops_after_bounded_excluded_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/search/metadata"
+        requests.append(json.loads(request.content.decode()))
+        return httpx.Response(
+            200,
+            json={
+                "assets": {
+                    "items": [
+                        {
+                            "id": f"asset-{len(requests)}",
+                            "originalFileName": "excluded.jpg",
+                            "type": "IMAGE",
+                            "people": [{"id": "person-excluded", "name": "Hidden", "isHidden": False}],
+                        }
+                    ]
+                }
+            },
+        )
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    result = asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").search_assets(
+            ImmichSearchFilters(person_filters=[ImmichPersonFilter(person_id="person-excluded", mode="exclude")])
+        )
+    )
+
+    assert result.items == []
+    assert result.next_page is None
+    assert [request["page"] for request in requests] == list(range(1, 11))
 
 
 def test_list_people_orders_by_asset_count(monkeypatch: pytest.MonkeyPatch) -> None:

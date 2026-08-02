@@ -197,6 +197,34 @@ def build_person_request_sets(filters: ImmichSearchFilters) -> list[list[str]]:
     return request_sets or [[]]
 
 
+def build_metadata_search_body(
+    filters: ImmichSearchFilters,
+    person_ids: list[str],
+    page: int,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "page": page,
+        "size": max(1, min(100, int(getattr(filters, "random_size", 1) or 1))),
+        "withDeleted": False,
+        "withExif": False,
+        "withPeople": True,
+        "withStacked": False,
+    }
+    if filters.album_ids:
+        body["albumIds"] = filters.album_ids
+    if person_ids:
+        body["personIds"] = person_ids
+    if filters.taken_after is not None:
+        body["takenAfter"] = to_iso_utc_start(filters.taken_after)
+    if filters.taken_before is not None:
+        body["takenBefore"] = to_iso_utc_end(filters.taken_before)
+    if filters.media_type == "photo":
+        body["type"] = "IMAGE"
+    elif filters.media_type == "video":
+        body["type"] = "VIDEO"
+    return body
+
+
 def build_random_search_body(
     filters: ImmichSearchFilters,
     person_ids: list[str],

@@ -1,6 +1,7 @@
 import asyncio
+import json
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _contract_helpers import configure_contract_test_db
@@ -9,7 +10,7 @@ from app.database import SessionLocal
 from app.database import init_db as _init_db
 from app.immich.models import ImmichSearchFilters
 from app.models.asset_usage import AssetUsageModel
-from app.services.generation.pipeline.assets import _pipeline_retrieve_and_select_assets
+from app.services.generation.pipeline.assets import _pipeline_retrieve_and_select_assets, rank_source_assets_for_effect
 from app.services.generation.pipeline.shared import GenerationModuleSelection, GenerationPipelineContext
 from app.services.immich import get_or_create_settings
 
@@ -43,6 +44,7 @@ def _make_mock_asset(asset_id, filename="photo.jpg"):
 def _make_mock_page(items):
     page = MagicMock()
     page.items = items
+    page.next_page = None
     return page
 
 
@@ -273,7 +275,9 @@ def test_multiple_search_attempts_automatic_runs(mock_search, setup_db):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            return MagicMock(), _make_mock_page([_make_mock_asset("asset-1")])
+            page = _make_mock_page([_make_mock_asset("asset-1")])
+            page.next_page = "2"
+            return MagicMock(), page
         else:
             return MagicMock(), _make_mock_page([_make_mock_asset("asset-1"), _make_mock_asset("asset-2")])
 
@@ -295,6 +299,70 @@ def test_multiple_search_attempts_automatic_runs(mock_search, setup_db):
     assert page_items[0].id == "asset-2"
     assert ctx.asset_selection["search_attempts"] == 2
     assert ctx.asset_selection["selection_reason_code"] == "never_used"
+
+
+@patch("app.services.generation.pipeline.assets._search_assets_for_generation")
+def test_automatic_selection_advances_page_after_dailyfx_results(mock_search, setup_db):
+    db = setup_db
+    settings = get_or_create_settings(db)
+    settings.ai_photo_selection_enabled = False
+    db.commit()
+
+    first_page = _make_mock_page([_make_mock_asset("asset-dailyfx", "dailyfx-output.png")])
+    first_page.next_page = "2"
+    second_page = _make_mock_page([_make_mock_asset("asset-usable", "family.jpg")])
+    mock_search.side_effect = [(MagicMock(), first_page), (MagicMock(), second_page)]
+
+    ctx = GenerationPipelineContext(
+        db=db, settings=settings, task_id="auto-task-pages", filters=ImmichSearchFilters(person_filters=[])
+    )
+    module = MagicMock()
+    module.source_asset_count = 1
+    module_selection = GenerationModuleSelection(name="duotone", module=module, config={})
+
+    result = asyncio.run(_pipeline_retrieve_and_select_assets(ctx, module_selection))
+
+    assert result is not None
+    assert result[2][0].id == "asset-usable"
+    assert [call.kwargs["page"] for call in mock_search.call_args_list] == [1, 2]
+
+
+@patch("app.services.generation.pipeline.assets._search_assets_for_generation")
+@patch("app.services.generation.pipeline.assets.debug_log")
+def test_no_candidates_records_dailyfx_exclusion_diagnostics(mock_debug_log, mock_search, setup_db):
+    db = setup_db
+    settings = get_or_create_settings(db)
+    settings.ai_photo_selection_enabled = False
+    db.commit()
+
+    page = _make_mock_page([
+        _make_mock_asset("asset-dailyfx-1", "dailyfx-one.png"),
+        _make_mock_asset("asset-dailyfx-2", "DailyFX-two.png"),
+    ])
+    mock_search.return_value = (MagicMock(), page)
+    ctx = GenerationPipelineContext(
+        db=db, settings=settings, task_id="auto-task-empty", filters=ImmichSearchFilters(person_filters=[])
+    )
+    module = MagicMock()
+    module.source_asset_count = 1
+    module_selection = GenerationModuleSelection(name="duotone", module=module, config={})
+
+    result = asyncio.run(_pipeline_retrieve_and_select_assets(ctx, module_selection))
+
+    assert result is None
+    assert ctx.asset_selection["raw_result_count"] == 2
+    assert ctx.asset_selection["dailyfx_generated_count"] == 2
+    assert ctx.asset_selection["usable_unique_count"] == 0
+    assert ctx.asset_selection["search_attempts"] == 1
+    assert ctx.current_step == "failed"
+    mock_debug_log.assert_any_call(
+        "Skipping: no available candidates found after exclusions",
+        task_id="auto-task-empty",
+        missing_id_count=0,
+        duplicate_count=0,
+        dailyfx_generated_count=2,
+        pending_excluded_count=0,
+    )
 
 
 @patch("app.services.generation.pipeline.assets._search_assets_for_generation")
@@ -336,3 +404,84 @@ def test_manual_selection_override(mock_search, setup_db):
     assert len(page_items) == 1
     assert page_items[0].id == "asset-1"
     assert ctx.asset_selection["selection_reason_code"] == "manual_override"
+
+@patch("app.services.generation.pipeline.assets.analyze_images")
+def test_rank_source_assets_initial_success(mock_analyze):
+    assets = [_make_mock_asset(f"asset-{i}") for i in range(1, 5)]
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(return_value=b"img")
+    settings = MagicMock(default_ai_provider="xiaomi")
+    module = MagicMock()
+
+    mock_result = MagicMock()
+    mock_result.summary = json.dumps({"selected_index": 2, "selection_reason": "Good"})
+    mock_result.title = "Ranking"
+    mock_analyze.return_value = mock_result
+
+    trace = {}
+    selected = asyncio.run(rank_source_assets_for_effect(
+        client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
+    ))
+
+    assert selected.id == "asset-2"
+    assert trace["succeeded"] is True
+    assert trace["retry_count"] == 0
+    assert mock_analyze.call_count == 1
+
+@patch("app.services.generation.pipeline.assets.analyze_images")
+def test_rank_source_assets_malformed_then_retry_success(mock_analyze):
+    assets = [_make_mock_asset(f"asset-{i}") for i in range(1, 5)]
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(return_value=b"img")
+    settings = MagicMock(default_ai_provider="xiaomi")
+    module = MagicMock()
+
+    fail_result = MagicMock()
+    fail_result.summary = "Just some prose, no JSON."
+    fail_result.title = "Title"
+
+    success_result = MagicMock()
+    success_result.summary = "```json\n" + json.dumps({"selected_index": 3, "selection_reason": "Better"}) + "\n```"
+    success_result.title = "Title"
+
+    mock_analyze.side_effect = [fail_result, success_result]
+
+    trace = {}
+    selected = asyncio.run(rank_source_assets_for_effect(
+        client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
+    ))
+
+    assert selected.id == "asset-3"
+    assert trace["succeeded"] is True
+    assert trace["retry_count"] == 1
+    assert mock_analyze.call_count == 2
+    assert "ONLY raw JSON" in mock_analyze.call_args_list[1][1]["prompt"]
+
+@patch("app.services.generation.pipeline.assets.analyze_images")
+def test_rank_source_assets_double_failure_local_fallback(mock_analyze):
+    assets = [
+        _make_mock_asset("asset-1"),
+        _make_mock_asset("asset-2"),
+    ]
+    # Make asset-2 more recent
+    assets[0].created_at = "2026-05-12T10:00:00Z"
+    assets[1].created_at = "2026-05-13T10:00:00Z"
+
+    client = AsyncMock()
+    client.get_asset_data = AsyncMock(return_value=b"img")
+    settings = MagicMock(default_ai_provider="xiaomi")
+    module = MagicMock()
+
+    mock_analyze.side_effect = Exception("Vision API failed")
+
+    trace = {}
+    selected = asyncio.run(rank_source_assets_for_effect(
+        client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
+    ))
+
+    # asset-2 should be selected because it's newer (deterministic fallback)
+    assert selected.id == "asset-2"
+    assert trace["succeeded"] is False
+    assert trace["retry_count"] == 1
+    assert "Vision API failed" in trace["failure_causes"][0]
+    assert trace["fallback_strategy"] is not None

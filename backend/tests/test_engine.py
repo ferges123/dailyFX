@@ -533,10 +533,13 @@ def test_ai_photo_selection_falls_back_to_first_candidate_on_error():
         )
     )
 
-    assert selected.id == "asset-1"
+    assert selected.id == "asset-4"
     assert trace["succeeded"] is False
-    assert trace["selected_asset_id"] == "asset-1"
-    assert "vision failed" in trace["error"]
+    assert trace["selected_asset_id"] == "asset-4"
+    assert "All ranking attempts failed" in trace["error"]
+    assert any("vision failed" in str(cause) for cause in trace["failure_causes"])
+    assert trace["fallback_strategy"] == "newest_created_at"
+    assert trace["fallback_reason"] == "deterministic_metadata_fallback"
 
 
 def test_effect_preset_random_selection():

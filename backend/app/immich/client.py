@@ -3,7 +3,6 @@ import hashlib
 import logging
 from dataclasses import replace
 from datetime import date
-from random import Random
 from typing import Any
 
 import httpx
@@ -645,65 +644,101 @@ class ImmichClient:
             return max(assets, 0)
         return 0
 
-    async def search_assets(self, filters: ImmichSearchFilters) -> ImmichAssetPage:
+    async def search_assets(self, filters: ImmichSearchFilters, page: int = 1) -> ImmichAssetPage:
         try:
             return await asyncio.wait_for(
-                self._search_assets_inner(filters),
+                self._search_assets_inner(filters, page),
                 timeout=60.0,
             )
         except asyncio.TimeoutError as exc:
             raise ImmichConnectionError("Asset search timed out after 60 s — try fewer person filters") from exc
 
-    async def _search_assets_inner(self, filters: ImmichSearchFilters) -> ImmichAssetPage:
-        selected = await self._search_random_asset(filters)
+    async def _search_assets_inner(self, filters: ImmichSearchFilters, page: int = 1) -> ImmichAssetPage:
+        selected, actual_page = await self._search_metadata_asset(filters, page)
         return ImmichAssetPage(
             items=selected,
             total=len(selected),
             count=len(selected),
-            next_page=None,
+            next_page=str(actual_page + 1) if selected else None,
         )
 
-    async def _search_random_asset(
+    async def _search_metadata_asset(
         self,
         filters: ImmichSearchFilters,
-    ) -> list[ImmichAssetSummary]:
+        page: int,
+    ) -> tuple[list[ImmichAssetSummary], int]:
         exclude_ids = {f.person_id for f in filters.person_filters if f.mode == "exclude"}
         request_sets = self._build_person_request_sets(filters)
-        Random().shuffle(request_sets)
 
         client = self._get_client()
         for person_ids in request_sets:
-            attempts = 3 if exclude_ids else 1
-            for _ in range(attempts):
-                assets = await self._post_random_assets(client, filters, person_ids)
+            current_page = page
+            attempts = 0
+            while attempts < 10:  # Hard maximum safety cap
+                attempts += 1
+                body = self._build_metadata_search_body(filters, person_ids, current_page)
+
+                try:
+                    payload = await self._post_json("/search/metadata", client, body)
+                    assets_payload = payload.get("assets", {})
+                    if not isinstance(assets_payload, dict):
+                        raise ImmichUnexpectedResponseError("Immich returned unexpected assets field in search metadata")
+                    items = assets_payload.get("items", [])
+                    if not isinstance(items, list):
+                        items = []
+                    assets = [
+                        summary
+                        for item in items
+                        if isinstance(item, dict) and (summary := self._coerce_asset_summary(item)) is not None
+                    ]
+
+                    page_size = int(body.get("size", 1))
+                    total = assets_payload.get("total")
+                    if total is not None and isinstance(total, int):
+                        can_paginate = (current_page * page_size) < total
+                    else:
+                        can_paginate = len(items) >= page_size
+                except ImmichUnexpectedResponseError as exc:
+                    if "not found" in str(exc).lower() or "404" in str(exc):
+                        random_body = self._build_random_search_body(filters, person_ids)
+                        payload = await self._request_any_json("POST", "/search/random", client, json_payload=random_body)
+                        if not isinstance(payload, list):
+                            assets = []
+                        else:
+                            assets = [
+                                summary
+                                for item in payload
+                                if isinstance(item, dict) and (summary := self._coerce_asset_summary(item)) is not None
+                            ]
+                        can_paginate = False
+                    else:
+                        raise
+
                 if not assets:
                     break
+
                 if exclude_ids:
-                    assets = [asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)]
-                if not assets:
-                    continue
-                return assets
-        return []
+                    filtered_assets = [asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)]
+                    if not filtered_assets:
+                        if can_paginate:
+                            current_page += 1
+                            continue
+                        break
+                    return filtered_assets, current_page
+                return assets, current_page
+        return [], page
+
+    def _build_metadata_search_body(
+        self,
+        filters: ImmichSearchFilters,
+        person_ids: list[str],
+        page: int,
+    ) -> dict[str, Any]:
+        return endpoints.build_metadata_search_body(filters, person_ids, page)
 
     @staticmethod
     def _build_person_request_sets(filters: ImmichSearchFilters) -> list[list[str]]:
         return endpoints.build_person_request_sets(filters)
-
-    async def _post_random_assets(
-        self,
-        client: httpx.AsyncClient,
-        filters: ImmichSearchFilters,
-        person_ids: list[str],
-    ) -> list[ImmichAssetSummary]:
-        body = self._build_random_search_body(filters, person_ids)
-        payload = await self._request_any_json("POST", "/search/random", client, json_payload=body)
-        if not isinstance(payload, list):
-            raise ImmichUnexpectedResponseError("Immich returned unexpected random asset search response")
-        return [
-            summary
-            for item in payload
-            if isinstance(item, dict) and (summary := self._coerce_asset_summary(item)) is not None
-        ]
 
     def _build_random_search_body(
         self,

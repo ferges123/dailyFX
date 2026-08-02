@@ -25,6 +25,7 @@ async def _search_assets_for_generation(
     task_id: str,
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
+    page: int = 1,
 ) -> tuple[object, object]:
     from app.services.immich import build_immich_client
 
@@ -35,11 +36,12 @@ async def _search_assets_for_generation(
         album_ids=filters.album_ids,
         media_type=filters.media_type,
         person_filters=[f"{p.person_id}({p.mode})" for p in (filters.person_filters or [])],
+        page=page,
     )
     _task_update(step="selecting_asset", progress=0.1)
     _progress("Searching for photos…")
-    page = await client.search_assets(filters)
-    return client, page
+    page_obj = await client.search_assets(filters, page=page)
+    return client, page_obj
 
 
 def _search_filters_for_module(*, filters: ImmichSearchFilters, module, settings: SettingsModel) -> ImmichSearchFilters:
@@ -210,13 +212,22 @@ def _parse_ranking_payload(result) -> dict:
     for candidate in candidates:
         if not isinstance(candidate, str):
             continue
-        text = candidate.strip().replace("```json", "").replace("```", "").strip()
+        text = candidate.strip()
+        # Safe outer first-'{' / last-'}' slice after fenced cleanup
+        text = text.replace("```json", "").replace("```", "")
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            json_str = text[start:end+1]
+        else:
+            json_str = text
+
         try:
-            parsed = json.loads(text)
+            parsed = json.loads(json_str.strip())
+            if isinstance(parsed, dict):
+                return parsed
         except Exception:
             continue
-        if isinstance(parsed, dict):
-            return parsed
     return {}
 
 
@@ -240,17 +251,29 @@ async def rank_source_assets_for_effect(
         error=None,
         fallback_reason=None,
         selection_reason=None,
+        retry_count=0,
+        failure_causes=[],
     )
     if not candidates:
         trace.update(error="No candidates available", fallback_reason="no_candidates")
         return None
+
+    failure_causes = []
 
     try:
         effect_label = getattr(module, "label", getattr(module, "name", "selected effect"))
         effect_description = getattr(module, "description", "")
         total = min(4, len(candidates))
         candidate_images = [await client.get_asset_data(asset.id) for asset in candidates[:4]]
-        prompt = (
+    except Exception as exc:
+        failure_causes.append(str(exc))
+        logger.warning("Failed to get asset data for AI photo selection: %s", exc)
+        candidate_images = []
+        base_prompt = ""
+        retry_prompt = ""
+
+    if candidate_images:
+        base_prompt = (
             "Compare these candidate source photos for a DailyFX effect. "
             f"Effect/filter to apply: {effect_label}. Description: {effect_description}. "
             f"There are {total} candidates, shown in order as Candidate 1 through Candidate {total}. "
@@ -259,45 +282,73 @@ async def rank_source_assets_for_effect(
             "Return raw JSON only: selected_index (1-based), selected_asset_id if known, and "
             "selection_reason: one short sentence explaining why it beats the other candidates."
         )
-        result = await analyze_images(
-            settings,
-            candidate_images,
-            provider=getattr(settings, "default_ai_provider", None),
-            model=getattr(settings, "default_ai_model", None),
-            prompt=prompt,
+
+        retry_prompt = (
+            "You must return ONLY raw JSON. No prose, no markdown formatting. "
+            "{\"selected_index\": <1-based int>, \"selection_reason\": \"<short reason>\"}\n\n" + base_prompt
         )
-        parsed = _parse_ranking_payload(result)
-        selected_index = parsed.get("selected_index") or parsed.get("index")
-        if not isinstance(selected_index, int) or not 1 <= selected_index <= len(candidates[:4]):
-            selected_index = 1
-            trace["fallback_reason"] = "invalid_ranking_response"
-        selected = candidates[selected_index - 1]
-        selection_reason = parsed.get("selection_reason") or parsed.get("reason")
-        selection_reason = selection_reason if isinstance(selection_reason, str) else None
-        trace.update(
-            succeeded=True,
-            selected_asset_id=selected.id,
-            selection_reason=selection_reason,
-        )
-        debug_log(
-            "AI photo selection selected asset",
-            task_id=task_id,
-            selected_asset_id=selected.id,
-            candidate_asset_ids=candidate_asset_ids,
-            selection_reason=selection_reason,
-        )
-        return selected
-    except Exception as exc:
-        fallback = candidates[0]
-        trace.update(
-            succeeded=False,
-            selected_asset_id=getattr(fallback, "id", None),
-            error=str(exc),
-            fallback_reason="ranking_failed",
-        )
-        debug_log("AI photo selection failed, using first candidate", task_id=task_id, error=str(exc))
-        logger.warning("AI photo selection failed for %s, using first candidate: %s", task_id, exc)
-        return fallback
+
+        for attempt in range(2):
+            try:
+                current_prompt = base_prompt if attempt == 0 else retry_prompt
+                result = await analyze_images(
+                    settings,
+                    candidate_images,
+                    provider=getattr(settings, "default_ai_provider", None),
+                    model=getattr(settings, "default_ai_model", None),
+                    prompt=current_prompt,
+                )
+                parsed = _parse_ranking_payload(result)
+                selected_index = parsed.get("selected_index") or parsed.get("index")
+                if isinstance(selected_index, int) and 1 <= selected_index <= len(candidates[:4]):
+                    selected = candidates[selected_index - 1]
+                    selection_reason = parsed.get("selection_reason") or parsed.get("reason")
+                    selection_reason = selection_reason if isinstance(selection_reason, str) else None
+                    trace.update(
+                        succeeded=True,
+                        selected_asset_id=selected.id,
+                        selection_reason=selection_reason,
+                        retry_count=attempt,
+                        failure_causes=failure_causes,
+                    )
+                    debug_log(
+                        "AI photo selection selected asset",
+                        task_id=task_id,
+                        selected_asset_id=selected.id,
+                        candidate_asset_ids=candidate_asset_ids,
+                        selection_reason=selection_reason,
+                    )
+                    return selected
+                else:
+                    failure_causes.append("invalid_ranking_response")
+            except Exception as exc:
+                failure_causes.append(str(exc))
+                logger.warning("AI photo selection failed attempt %d for %s: %s", attempt + 1, task_id, exc)
+
+    fallback_candidates = list(candidates[:4])
+    def fallback_sort_key(x):
+        dt = getattr(x, "created_at", "")
+        return (str(dt) if dt else "", str(getattr(x, "id", "")))
+
+    fallback_candidates.sort(key=fallback_sort_key, reverse=True)
+    fallback = fallback_candidates[0]
+
+    trace.update(
+        succeeded=False,
+        selected_asset_id=getattr(fallback, "id", None),
+        error="All ranking attempts failed",
+        fallback_reason="deterministic_metadata_fallback",
+        retry_count=1,
+        failure_causes=failure_causes,
+        fallback_strategy="newest_created_at",
+    )
+    debug_log(
+        "AI photo selection failed all attempts, using deterministic fallback",
+        task_id=task_id,
+        failure_causes=failure_causes,
+        fallback_strategy="newest_created_at"
+    )
+    return fallback
 
 
 def format_polish_date(dt) -> str:
@@ -408,6 +459,13 @@ async def _pipeline_retrieve_and_select_assets(
         seen_ids = set()
         usage_statuses = {}
 
+        missing_id_count = 0
+        duplicate_count = 0
+        dailyfx_generated_count = 0
+        raw_result_count = 0
+
+        current_page = 1
+
         for _attempt in range(3):
             if not registry_available:
                 break
@@ -422,6 +480,7 @@ async def _pipeline_retrieve_and_select_assets(
                     task_id=ctx.task_id,
                     _task_update=ctx.task_update,
                     _progress=ctx.progress_msg,
+                    page=current_page,
                 )
             except Exception as exc:
                 logger.warning("Search attempt %d failed: %s", search_attempts, exc)
@@ -430,17 +489,24 @@ async def _pipeline_retrieve_and_select_assets(
             if not page or not page.items:
                 break
 
+            raw_result_count += len(page.items)
+
             # Filter and deduplicate
             filtered = []
             for item in page.items:
                 aid = getattr(item, "id", None)
-                if not aid or aid in seen_ids:
+                if not aid:
+                    missing_id_count += 1
+                    continue
+                if aid in seen_ids:
+                    duplicate_count += 1
                     continue
                 # Skip self-generated dailyFX photos
                 if (
                     getattr(item, "original_file_name", None)
                     and "dailyfx" in getattr(item, "original_file_name", "").lower()
                 ):
+                    dailyfx_generated_count += 1
                     continue
                 filtered.append(item)
                 seen_ids.add(aid)
@@ -485,6 +551,17 @@ async def _pipeline_retrieve_and_select_assets(
 
             # Stop searching if we have enough of the absolute highest category (never_used)
             if never_used and len(never_used) >= required_count:
+                break
+
+            if not getattr(page, "next_page", None):
+                break
+
+            try:
+                next_page_num = int(page.next_page)
+                if next_page_num <= current_page:
+                    break
+                current_page = next_page_num
+            except ValueError:
                 break
 
         if not registry_available:
@@ -573,8 +650,54 @@ async def _pipeline_retrieve_and_select_assets(
 
             # Apply required asset count selection
             if not priority_list:
-                debug_log("Skipping: no available candidates found after exclusions", task_id=ctx.task_id)
-                ctx.task_update(status="failed", step="failed", error="No available candidates found after exclusions")
+                reasons = {
+                    "missing IDs": missing_id_count,
+                    "duplicates": duplicate_count,
+                    "DailyFX-generated files": dailyfx_generated_count,
+                    "pending in registry": pending_excluded_count,
+                }
+                dominant_reason, dominant_count = max(reasons.items(), key=lambda x: x[1])
+
+                error_msg = "No available candidates found after exclusions"
+                if dominant_count > 0:
+                    error_msg = f"No available candidates found after exclusions (dominant reason: {dominant_reason}, {dominant_count} items)"
+
+                debug_log(
+                    "Skipping: no available candidates found after exclusions",
+                    task_id=ctx.task_id,
+                    missing_id_count=missing_id_count,
+                    duplicate_count=duplicate_count,
+                    dailyfx_generated_count=dailyfx_generated_count,
+                    pending_excluded_count=pending_excluded_count,
+                )
+
+                ctx.asset_selection = {
+                    "policy": "global_usage_registry",
+                    "mode": "automatic",
+                    "raw_result_count": raw_result_count,
+                    "usable_unique_count": unique_candidate_count,
+                    "missing_id_count": missing_id_count,
+                    "duplicate_count": duplicate_count,
+                    "dailyfx_generated_count": dailyfx_generated_count,
+                    "pending_excluded_count": pending_excluded_count,
+                    "never_used_count": never_used_count,
+                    "released_count": released_count,
+                    "accepted_count": accepted_count,
+                    "search_attempts": search_attempts,
+                }
+
+                ctx.task_update(status="failed", step="failed", error=error_msg)
+
+                _trace_stage(
+                    ctx.db,
+                    ctx.task_id,
+                    stage="assets_found",
+                    message=error_msg,
+                    step=ctx.current_step,
+                    status="failed",
+                    progress=ctx.current_progress,
+                    details=ctx.asset_selection,
+                )
                 return None
 
             ai_photo_selection_enabled = (
@@ -649,7 +772,8 @@ async def _pipeline_retrieve_and_select_assets(
     selected_asset_ids = [getattr(x, "id", None) for x in page_items if getattr(x, "id", None)]
 
     # We set selection metadata on context
-    ctx.asset_selection = {
+    ctx.asset_selection = getattr(ctx, "asset_selection", {})
+    ctx.asset_selection.update({
         "policy": "global_usage_registry",
         "mode": "manual" if is_manual else "automatic",
         "candidate_count": candidate_count,
@@ -663,7 +787,7 @@ async def _pipeline_retrieve_and_select_assets(
         "selected_asset_ids": selected_asset_ids,
         "selection_reason_code": selection_reason_code,
         "selection_reason": selection_reason,
-    }
+    })
 
     _trace_stage(
         ctx.db,
