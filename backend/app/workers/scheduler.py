@@ -10,6 +10,7 @@ from queue import Empty
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.services.generation.engine import run_generation_cycle
 from app.services.generation.history import upsert_history_entry
 from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.generation.schedule_runs import build_scheduled_run_context
@@ -206,7 +207,6 @@ async def _perform_tick(session: Session, now: datetime | None = None, async_mod
 
         if queued_task:
             logger.info("[Sync Mode] Found queued manual task: %s", queued_task.task_id)
-            from app.services.generation.engine import run_generation_cycle
             from app.services.generation.task_flow import run_queued_generation_task
 
             result = await run_queued_generation_task(

@@ -664,6 +664,7 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
         fake_client = AsyncMock()
         fake_client.search_assets = AsyncMock(return_value=_make_fake_page([_make_fake_asset()]))
         fake_client.get_asset_data = AsyncMock(return_value=source_bytes)
+        fake_client.get_asset_thumbnail = AsyncMock(return_value=(source_bytes, "image/jpeg"))
         fake_client.get_asset_exif = AsyncMock(return_value={})
 
         module_run = AsyncMock(
@@ -793,6 +794,7 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
         fake_client = AsyncMock()
         fake_client.search_assets = AsyncMock(return_value=_make_fake_page([fake_asset]))
         fake_client.get_asset_data = AsyncMock(return_value=source_bytes)
+        fake_client.get_asset_thumbnail = AsyncMock(return_value=(source_bytes, "image/jpeg"))
         fake_client.get_asset_exif = AsyncMock(return_value={})
         fake_client.get_asset_info = AsyncMock(
             return_value={
