@@ -37,6 +37,7 @@ class MuseumArchiveModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -95,6 +96,7 @@ class MuseumArchiveModule:
 
 def _build_museum_frame(source: Image.Image, info_line: str, filename: str, frame_style: str) -> bytes:
     # 1. Enhance photo for gallery look
+
     target_size = (1400, 1000)
     photo = ImageOps.fit(source, target_size, centering=(0.5, 0.5))
     photo = ImageEnhance.Color(photo).enhance(1.05)
@@ -182,6 +184,7 @@ def _build_museum_frame(source: Image.Image, info_line: str, filename: str, fram
 
 
 def _format_date(created_at: str | None) -> str:
+
     if not isinstance(created_at, str):
         return "N/A"
     try:

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import cv2
-import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 from PIL import Image, ImageEnhance
 
 from app.models.settings import SettingsModel
@@ -39,6 +42,9 @@ class CartoonModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+        import cv2
+        import numpy as np
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -109,6 +115,9 @@ class CartoonModule:
 
 
 def _smooth_posterize(img: np.ndarray, levels: int) -> np.ndarray:
+    import cv2
+    import numpy as np
+
     """Posterize with smoothstep transitions between levels.
 
     Standard integer division (img // step * step) produces hard banding

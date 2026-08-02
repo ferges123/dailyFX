@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
 import logging
 import math
 from datetime import UTC, datetime
 
 import httpx
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from app.immich.models import ImmichFaceSummary
@@ -19,6 +23,7 @@ _shared_client: httpx.AsyncClient | None = None
 
 
 def get_shared_client() -> httpx.AsyncClient:
+
     global _shared_client
     if _shared_client is None:
         _shared_client = httpx.AsyncClient(timeout=10.0)
@@ -337,6 +342,7 @@ def get_fallback_weather(lat: float, month: int) -> dict:
 
 
 def draw_pin_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+
     w = max(1.5, size * 0.08)
     cx = x + size / 2
     cy = y + size * 0.38
@@ -354,6 +360,7 @@ def draw_pin_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, co
 
 
 def draw_humidity_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+
     w = max(1.5, size * 0.08)
     cx = x + size / 2
     r = size * 0.28
@@ -368,6 +375,7 @@ def draw_humidity_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: floa
 
 
 def draw_wind_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+
     w = max(1.5, size * 0.08)
     # Line 1 (top)
     y1 = y + size * 0.35
@@ -383,6 +391,7 @@ def draw_wind_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, c
 
 
 def draw_sunrise_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+
     w = max(1.5, size * 0.08)
     cx = x + size / 2
     hy = y + size * 0.75
@@ -408,6 +417,7 @@ def draw_sunrise_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float
 
 
 def draw_sunset_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple):
+
     w = max(1.5, size * 0.08)
     cx = x + size / 2
     hy = y + size * 0.75
@@ -433,6 +443,7 @@ def draw_sunset_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float,
 
 
 def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: tuple = (255, 204, 0, 255)):
+
     w = max(2, size * 0.06)
     cx = x + size / 2
     cy = y + size / 2
@@ -452,6 +463,7 @@ def draw_sun(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, color: 
 
 def draw_cloud(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, fill_color: tuple = (255, 255, 255, 230)):
     # Large left bump
+
     r1 = size * 0.22
     cx1, cy1 = x + size * 0.32, y + size * 0.58
     draw.ellipse([cx1 - r1, cy1 - r1, cx1 + r1, cy1 + r1], fill=fill_color)
@@ -474,6 +486,7 @@ def draw_cloud(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, fill_
 
 def draw_rain(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
     # First draw the cloud slightly shifted up
+
     draw_cloud(draw, x, y - size * 0.08, size, fill_color=(255, 255, 255, 220))
     # Now draw 3 rain streaks
     w = max(1.5, size * 0.06)
@@ -487,6 +500,7 @@ def draw_rain(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
 
 
 def draw_snow(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
+
     draw_cloud(draw, x, y - size * 0.08, size, fill_color=(255, 255, 255, 220))
     # Draw snowflakes (dots)
     color = (255, 255, 255, 255)
@@ -503,6 +517,7 @@ def draw_snow(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
 
 
 def draw_thunderstorm(draw: ImageDraw.ImageDraw, x: float, y: float, size: float):
+
     draw_cloud(draw, x, y - size * 0.08, size, fill_color=(235, 235, 235, 220))
     # Sharp lightning bolt polygon
     color = (255, 220, 0, 255)
@@ -518,6 +533,7 @@ def draw_thunderstorm(draw: ImageDraw.ImageDraw, x: float, y: float, size: float
 
 
 def draw_main_weather_icon(draw: ImageDraw.ImageDraw, x: float, y: float, size: float, code: int):
+
     if code == 0:
         draw_sun(draw, x, y, size)
     elif code in (1, 2):
@@ -578,6 +594,7 @@ class InstaWeatherModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         img = load_rgb(image_bytes)
@@ -689,6 +706,7 @@ def _normalize_face_summary(
     person_id: str | None = None,
     person_name: str | None = None,
 ) -> ImmichFaceSummary | None:
+
     if not isinstance(payload, dict):
         return None
     face_id = payload.get("id") if isinstance(payload.get("id"), str) else payload.get("faceId")
@@ -746,6 +764,7 @@ def _normalize_face_summary(
 def _check_column_collision(
     col_x1: float, col_x2: float, col_y1: float, col_y2: float, faces: list, width: int, height: int
 ) -> bool:
+
     for face in faces:
         if (
             face.bounding_box_x1 is None
@@ -787,6 +806,7 @@ def _check_column_collision(
 def check_weather_column_collision(
     layout: str, faces: list, width: int, height: int, scale: float, margin: int
 ) -> bool:
+
     if layout == "standard":
         col_x1, col_x2 = 0, margin + int(380 * scale)
     else:
@@ -799,6 +819,7 @@ def check_weather_column_collision(
 def check_metrics_column_collision(
     layout: str, faces: list, width: int, height: int, scale: float, margin: int
 ) -> bool:
+
     if layout == "standard":
         col_x1, col_x2 = width - margin - int(320 * scale), width
     else:
@@ -818,6 +839,8 @@ def _draw_graphics_overlay(
     units: str = "celsius",
     font_style: str = "classic",
 ) -> Image.Image:
+    import numpy as np
+
     if faces is None:
         faces = []
     img = _center_square_crop(img)
@@ -950,6 +973,7 @@ def _draw_graphics_overlay(
     draw = ImageDraw.Draw(overlay_layer)
 
     def draw_text_shadow(text, pos, font, text_color=white, shadow_color=(0, 0, 0, 150), fake_bold=False):
+
         x, y = pos
         offsets = [(2.0, 2.0), (0, 2.0), (2.0, 0)]
         for dx, dy in offsets:
@@ -967,6 +991,7 @@ def _draw_graphics_overlay(
             draw.text((x + 1, y + 1), text, font=font, fill=text_color)
 
     def draw_dashed_line(x1, y, x2, color=(255, 255, 255, 180), line_width=2, dash_len=6, gap_len=7):
+
         cx = int(x1)
         end = int(x2)
         while cx < end:
@@ -975,6 +1000,7 @@ def _draw_graphics_overlay(
             cx = seg_end + gap_len
 
     def draw_shadowed_icon(draw_func, x, y, icon_size):
+
         offset = max(2, int(3 * scale))
         draw_func(draw, x + offset, y + offset, icon_size, (0, 0, 0, 140))
         draw_func(draw, x, y, icon_size, white)
@@ -1063,6 +1089,7 @@ def _draw_graphics_overlay(
 
 
 def _center_square_crop(img: Image.Image) -> Image.Image:
+
     width, height = img.size
     side = min(width, height)
     left = max(0, (width - side) // 2)
@@ -1071,6 +1098,7 @@ def _center_square_crop(img: Image.Image) -> Image.Image:
 
 
 def _format_english_date(dt: datetime) -> tuple[str, str]:
+
     days = ("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
     months = (
         "JANUARY",
@@ -1090,6 +1118,7 @@ def _format_english_date(dt: datetime) -> tuple[str, str]:
 
 
 def _cloudiness_label_en(level: str) -> str:
+
     if level == "LOW":
         return "LOW"
     if level == "MEDIUM":

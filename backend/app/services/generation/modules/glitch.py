@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 import random
 
-import numpy as np
 from PIL import Image, ImageEnhance
 
 from app.models.settings import SettingsModel
@@ -11,6 +15,8 @@ from app.services.generation.modules.common import add_grain, apply_vignette, lo
 
 
 def _shift_with_edge_fill(arr: np.ndarray, dx: int, dy: int) -> np.ndarray:
+    import numpy as np
+
     """Shift an HxWxC array by (dx, dy), replicating edge pixels.
 
     Avoids the wrap-around artifact of ``np.roll`` / ``ImageChops.offset``.
@@ -73,6 +79,8 @@ class GlitchModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+        import numpy as np
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)

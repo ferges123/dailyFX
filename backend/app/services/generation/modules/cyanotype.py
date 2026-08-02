@@ -46,6 +46,7 @@ class CyanotypeModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -70,6 +71,7 @@ class CyanotypeModule:
 
 
 def _apply_cyanotype(img: Image.Image, tone: str, texture: float) -> Image.Image:
+
     gray = ImageOps.grayscale(img)
     gray = ImageOps.autocontrast(gray, cutoff=2)
     gray = ImageEnhance.Contrast(gray).enhance(1.3)

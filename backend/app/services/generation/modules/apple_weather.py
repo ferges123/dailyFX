@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def _weather_theme(weather_code: int) -> tuple[tuple[int, int, int], tuple[int, int, int, int]]:
+
     if weather_code == 0:
         return (255, 214, 102), (20, 24, 34, 134)
     if weather_code in (1, 2, 3, 45, 48):
@@ -36,6 +37,7 @@ def _weather_theme(weather_code: int) -> tuple[tuple[int, int, int], tuple[int, 
 
 
 async def _resolve_context(asset, client) -> tuple[datetime, str | None, dict]:
+
     exif_info = await client.get_asset_exif(asset.id)
     lat = exif_info.get("latitude")
     lon = exif_info.get("longitude")
@@ -101,6 +103,7 @@ class AppleWeatherModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         img = load_rgb(image_bytes)
@@ -202,6 +205,7 @@ class AppleWeatherModule:
 
 
 def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: float, weather_code: int, scale: float):
+
     x = cx - size / 2
     y = cy - size / 2
 
@@ -368,6 +372,7 @@ def _draw_weather_icon(draw: ImageDraw.ImageDraw, cx: float, cy: float, size: fl
 
 def _weather_gradient(weather_code: int) -> tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]:
     # Returns (top_color, bottom_color, accent_color)
+
     if weather_code == 0:
         return (50, 130, 230), (120, 190, 255), (255, 214, 102)
     elif weather_code in (1, 2):
@@ -391,6 +396,7 @@ def _draw_apple_weather_overlay(
     layout_position: str,
     units: str,
 ) -> Image.Image:
+
     width, height = img.size
     scale = min(width, height) / 1000.0
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import cv2
-import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
 from PIL import Image, ImageChops, ImageEnhance
 
 from app.models.settings import SettingsModel
@@ -39,6 +42,9 @@ class PencilSketchModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+        import cv2
+        import numpy as np
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)

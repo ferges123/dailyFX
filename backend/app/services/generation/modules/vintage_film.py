@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import cv2
-import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 from PIL import Image, ImageEnhance
 
 from app.models.settings import SettingsModel
@@ -82,6 +85,7 @@ class VintageFilmModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -106,6 +110,9 @@ class VintageFilmModule:
 
 
 def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) -> Image.Image:
+    import cv2
+    import numpy as np
+
     """Apply vintage film with OpenCV S-curves and CLAHE."""
     preset = _FILM_PRESETS[film_type]
 
@@ -160,6 +167,8 @@ def _apply_vintage_film_opencv(img: Image.Image, film_type: str, fade: float) ->
 
 
 def _channel_gain_lut(gain: float) -> np.ndarray:
+    import numpy as np
+
     """Per-channel gain that preserves shadows (256-entry LUT).
 
     Multiplies channel values by `gain` only above mid-gray, so shadow
@@ -177,6 +186,8 @@ def _channel_gain_apply(channel: np.ndarray, gain: float) -> np.ndarray:
 
 
 def _shadow_lift_lut(lift: float) -> np.ndarray:
+    import numpy as np
+
     """Lift shadows without touching highlights (sigmoidal toe) — 256-entry LUT."""
     x = np.arange(256, dtype=np.float32) / 255.0
     shadow_mask = np.clip(1.0 - x * 2.0, 0.0, 1.0) ** 1.4
@@ -185,6 +196,8 @@ def _shadow_lift_lut(lift: float) -> np.ndarray:
 
 
 def _build_characteristic_lut(gamma: float, toe_falloff: float, shoulder_falloff: float) -> np.ndarray:
+    import numpy as np
+
     """Build a film H&D characteristic curve LUT.
 
     Real film stocks have three regions:
@@ -231,6 +244,8 @@ def _build_characteristic_lut(gamma: float, toe_falloff: float, shoulder_falloff
 
 
 def _apply_film_curve(img: np.ndarray, preset: dict) -> np.ndarray:
+    import cv2
+
     """Apply film characteristic curve LUT to each channel."""
     lut = _build_characteristic_lut(
         preset["curve_gamma"],

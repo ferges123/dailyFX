@@ -23,6 +23,7 @@ class InstafilterModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
 

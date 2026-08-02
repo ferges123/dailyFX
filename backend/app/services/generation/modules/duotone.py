@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 from PIL import Image, ImageEnhance, ImageFilter
 
 from app.models.settings import SettingsModel
@@ -9,6 +13,8 @@ from app.services.generation.modules.common import add_grain, apply_vignette, lo
 
 
 def _duotone_lut(dark: tuple[int, int, int], light: tuple[int, int, int]) -> np.ndarray:
+    import numpy as np
+
     """Build a 256-entry RGB lookup table mapping grayscale -> duotone.
 
     Uses a smoothstep (sigmoidal) curve rather than linear interpolation,
@@ -44,6 +50,8 @@ class DuotoneModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+        import numpy as np
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         base = load_rgb(image_bytes)

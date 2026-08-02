@@ -36,6 +36,7 @@ class AIStyleBaseModule:
     custom_prompt_placeholder = "e.g. polished portrait, studio lighting..."
 
     def __init_subclass__(cls, **kwargs):
+
         super().__init_subclass__(**kwargs)
         cls.config_schema = [
             {
@@ -53,9 +54,11 @@ class AIStyleBaseModule:
         ]
 
     def _style_name(self) -> str:
+
         return self.label[3:] if self.label.startswith("AI ") else self.label
 
     def _prompt_for_config(self, config: dict, settings: SettingsModel) -> str:
+
         return (
             (config.get("custom_prompt") or "").strip()
             or (settings.ai_custom_prompt or "").strip()
@@ -63,10 +66,12 @@ class AIStyleBaseModule:
         )
 
     def _summary_for_result(self, provider: str) -> str:
+
         style_name = self._style_name().lower()
         return f"Reimagined the photo as {style_name} with {provider}."
 
     def _album_name_for_settings(self, settings: SettingsModel) -> str | None:
+
         album_name = getattr(settings, "_generation_album_name", None)
         if isinstance(album_name, str):
             cleaned = album_name.strip()
@@ -75,6 +80,7 @@ class AIStyleBaseModule:
 
     @staticmethod
     def _format_exif_context(exif_info: ImmichExifInfo | None) -> str | None:
+
         if not exif_info:
             return None
 
@@ -123,6 +129,7 @@ class AIStyleBaseModule:
         exif_info: ImmichExifInfo | None,
         anonymize: bool = False,
     ) -> dict[str, str | list[str]] | None:
+
         parts: list[str] = []
         people_names: list[str] = []
         if album_name:
@@ -176,6 +183,7 @@ class AIStyleBaseModule:
         client,
         settings: SettingsModel,
     ) -> HostRenderRequest:
+
         candidates = list(page_items)
         random.shuffle(candidates)
         last_exc: Exception | None = None
@@ -264,6 +272,7 @@ class AIStyleBaseModule:
         raise RuntimeError(f"No accessible asset found for {self.label}: {last_exc}")
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         candidates = list(page_items)
         random.shuffle(candidates)
         last_exc: Exception | None = None

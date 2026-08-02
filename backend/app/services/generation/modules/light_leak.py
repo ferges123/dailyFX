@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
 import random
 
-import numpy as np
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
 from app.models.settings import SettingsModel
@@ -20,6 +24,8 @@ _LEAK_ORIGINS = [
 
 
 def _build_radial_gradient(width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]) -> Image.Image:
+    import numpy as np
+
     """Build a radial gradient image fading from *color* at (cx,cy) to black."""
     y_idx, x_idx = np.ogrid[:height, :width]
     dx = (x_idx - cx) / width
@@ -39,6 +45,8 @@ def _build_radial_gradient(width: int, height: int, cx: float, cy: float, color:
 
 
 def _build_accent_gradient(width: int, height: int, cx: float, cy: float, color: tuple[int, int, int]) -> Image.Image:
+    import numpy as np
+
     """Build a tighter accent gradient for depth."""
     y_idx, x_idx = np.ogrid[:height, :width]
     dx = (x_idx - cx) / width
@@ -86,6 +94,7 @@ class LightLeakModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)

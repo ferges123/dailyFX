@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
 import logging
 import random
 from functools import lru_cache
@@ -7,7 +12,6 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from PIL import Image, ImageChops, ImageFilter, ImageFont, ImageOps
 from pillow_heif import register_heif_opener
 
@@ -30,6 +34,7 @@ PALETTE_POOL: list[tuple[tuple[int, int, int], tuple[int, int, int]]] = [
 
 
 def load_rgb(image_bytes: bytes) -> Image.Image:
+
     if len(image_bytes) > 50 * 1024 * 1024:  # 50MB hard limit
         raise ValueError("Image too large (max 50MB)")
     img = Image.open(BytesIO(image_bytes))
@@ -43,12 +48,14 @@ def load_rgb(image_bytes: bytes) -> Image.Image:
 
 
 def save_png(image: Image.Image) -> bytes:
+
     out = BytesIO()
     image.save(out, format="PNG", optimize=True)
     return out.getvalue()
 
 
 def select_palette(config: dict[str, Any] | None = None) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+
     palette = (config or {}).get("palette")
     if (
         isinstance(palette, list)
@@ -63,6 +70,8 @@ def select_palette(config: dict[str, Any] | None = None) -> tuple[tuple[int, int
 
 
 def add_grain(image: Image.Image, *, strength: float = 0.12, blur: float = 0.0) -> Image.Image:
+    import numpy as np
+
     """Film-like grain: Gaussian luminance noise + subtle chroma noise.
 
     Unlike flat uniform noise, this mimics real film grain which has a
@@ -97,6 +106,8 @@ def add_grain(image: Image.Image, *, strength: float = 0.12, blur: float = 0.0) 
 
 
 def apply_vignette(image: Image.Image, *, strength: float = 0.45) -> Image.Image:
+    import numpy as np
+
     """Smooth radial vignette using a cosine-based falloff.
 
     Produces a natural darkening towards the edges/corners (cosine curve)
@@ -126,6 +137,7 @@ def apply_vignette(image: Image.Image, *, strength: float = 0.45) -> Image.Image
 
 
 def apply_screen(base: Image.Image, overlay: Image.Image) -> Image.Image:
+
     return ImageChops.screen(base, overlay)
 
 

@@ -31,6 +31,7 @@ class PolaroidModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -53,6 +54,7 @@ class PolaroidModule:
 
 def _build_polaroid(source: Image.Image, created_at: str | None, caption: str, style: str) -> bytes:
     # 1. Base Dimensions - preserve aspect ratio of source
+
     canvas_w = 1400
     border_side = 100  # left/right margin inside canvas
     photo_w = canvas_w - 2 * border_side
@@ -172,6 +174,7 @@ def _draw_shadow(canvas: Image.Image, offset: tuple[int, int], size: tuple[int, 
 
 
 def _format_date(created_at: str | None) -> str:
+
     if not isinstance(created_at, str):
         return ""
     try:

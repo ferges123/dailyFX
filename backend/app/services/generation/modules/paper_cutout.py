@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
 import random
 from io import BytesIO
 
-import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
@@ -32,6 +36,7 @@ class PaperCutoutModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -54,6 +59,8 @@ class PaperCutoutModule:
 def _build_paper_cutout(
     source: Image.Image, dark: tuple[int, int, int], light: tuple[int, int, int], style: str
 ) -> bytes:
+    import numpy as np
+
     size = (1200, 900)
     fitted = ImageOps.fit(source, size, centering=(0.5, 0.45))
 
@@ -130,6 +137,8 @@ def _build_paper_cutout(
 
 
 def _add_paper_fibers(paper: Image.Image, base_color: tuple[int, int, int], density: float = 0.10) -> Image.Image:
+    import numpy as np
+
     """Add a fiber-based paper texture (low + high frequency)."""
     w, h = paper.size
     # Low-frequency variation: large blurred noise (gives the paper uneven tone)

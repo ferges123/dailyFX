@@ -37,6 +37,7 @@ class CollageModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings=None) -> GenerationResult:
+
         tile_assets = _select_tile_assets(page_items)
         image_bytes_list = [await client.get_asset_data(asset.id) for asset in tile_assets]
         styles = _pick_styles(config)
@@ -58,6 +59,7 @@ class CollageModule:
 
 
 def _select_tile_assets(page_items: list) -> list:
+
     unique_assets = []
     seen_ids = set()
     for item in page_items:
@@ -75,6 +77,7 @@ def _select_tile_assets(page_items: list) -> list:
 
 
 def _pick_styles(config: dict) -> list[str]:
+
     configured = config.get("styles")
     pool = [s for s in configured if isinstance(s, str)] if isinstance(configured, list) else []
     if not pool:
@@ -91,6 +94,7 @@ def _pick_styles(config: dict) -> list[str]:
 def _build_collage(
     image_bytes_list: list[bytes], styles: list[str], canvas_size: tuple[int, int], border: int
 ) -> bytes:
+
     w, h = canvas_size
     tw, th = max(1, (w - border) // 2), max(1, (h - border) // 2)
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import cv2
-import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 from PIL import Image, ImageEnhance
 
 from app.models.settings import SettingsModel
@@ -43,6 +46,7 @@ class BokehBlurModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = page_items[0]
         debug_log("Bokeh: Loading asset", asset_id=asset.id)
 
@@ -75,6 +79,9 @@ class BokehBlurModule:
 
 
 def _apply_bokeh_opencv(img: Image.Image, blur_strength: int, focus_area: str) -> Image.Image:
+    import cv2
+    import numpy as np
+
     """Professional bokeh using OpenCV with face detection."""
     debug_log("Bokeh: Starting OpenCV processing", blur_strength=blur_strength, focus_area=focus_area)
 
@@ -137,6 +144,8 @@ def _apply_bokeh_opencv(img: Image.Image, blur_strength: int, focus_area: str) -
 
 
 def _detect_face_center(img_cv: np.ndarray) -> tuple[int | None, int | None, float]:
+    import cv2
+
     """Detect face using Haar Cascade and return center + keep-sharp radius.
 
     The radius ensures the entire face stays sharp, not just the center pixel.
@@ -167,6 +176,8 @@ def _detect_face_center(img_cv: np.ndarray) -> tuple[int | None, int | None, flo
 
 
 def _create_depth_mask(w: int, h: int, cx: int, cy: int, focus_radius: float) -> np.ndarray:
+    import numpy as np
+
     """Create a depth-of-field mask with a sharp plateau and smooth Gaussian falloff.
 
     - 1.0 (sharp) inside `focus_radius` from (cx, cy)

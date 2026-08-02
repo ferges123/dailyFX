@@ -59,6 +59,7 @@ class FilmstripModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
 
@@ -81,6 +82,7 @@ class FilmstripModule:
 
 
 def _parse_datetime(created_at: str | None) -> tuple[str, str]:
+
     if not isinstance(created_at, str):
         return ("", "")
     try:
@@ -93,6 +95,7 @@ def _parse_datetime(created_at: str | None) -> tuple[str, str]:
 
 
 def _frame_height(i: int) -> int:
+
     if i in FRAME_CROP:
         f, t = FRAME_CROP[i]
         return int(PHOTO_H * (t - f))
@@ -100,6 +103,7 @@ def _frame_height(i: int) -> int:
 
 
 def _build_filmstrip(image_bytes: bytes, date_label: str, time_label: str, frame_style: str) -> bytes:
+
     src = Image.open(BytesIO(image_bytes)).convert("RGB")
     full = ImageOps.fit(src, (PHOTO_W, PHOTO_H))
 
@@ -159,6 +163,7 @@ def _draw_side(
     time_label: str,
     accent_color: tuple,
 ):
+
     cx = x_base + SIDE_W // 2
 
     # tick marks
@@ -179,6 +184,7 @@ def _draw_side(
 
     def _rotated_label(text: str) -> Image.Image | None:
         # measure exact text size
+
         probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
         try:
             tb = probe.textbbox((0, 0), text, font=font)

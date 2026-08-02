@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 import random
 from datetime import datetime
 
-import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter
 
 from app.models.settings import SettingsModel
@@ -37,6 +41,7 @@ class HujiModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
         source = load_rgb(image_bytes)
@@ -55,6 +60,8 @@ class HujiModule:
 
 
 def _apply_huji(source: Image.Image, created_at: str | None, date_stamp: bool) -> bytes:
+    import numpy as np
+
     img = source.copy()
     w, h = img.size
 
@@ -108,6 +115,8 @@ def _apply_huji(source: Image.Image, created_at: str | None, date_stamp: bool) -
 
 
 def _build_leak_layer(w: int, h: int, cx: int, cy: int, primary: tuple, secondary: tuple) -> Image.Image:
+    import numpy as np
+
     """Build a soft, organic light leak from two radial gradients.
 
     Uses a normalized radial distance with a gamma curve so the falloff is
@@ -132,6 +141,8 @@ def _build_leak_layer(w: int, h: int, cx: int, cy: int, primary: tuple, secondar
 
 
 def _shadow_lift_lut(lift: float) -> np.ndarray:
+    import numpy as np
+
     """Lift shadows via a sigmoidal curve that leaves highlights untouched."""
     x = np.arange(256, dtype=np.float32) / 255.0
     shadow_mask = np.clip(1.0 - x * 2.0, 0.0, 1.0) ** 1.4
@@ -140,6 +151,7 @@ def _shadow_lift_lut(lift: float) -> np.ndarray:
 
 
 def _draw_date_stamp(img: Image.Image, date_str: str) -> Image.Image:
+
     w, h = img.size
     font_size = max(16, int(h * 0.022))
     font = get_font("Inter-Regular", font_size)
@@ -158,6 +170,7 @@ def _draw_date_stamp(img: Image.Image, date_str: str) -> Image.Image:
 
 
 def _format_date(created_at: str | None) -> str:
+
     if not isinstance(created_at, str):
         return ""
     try:

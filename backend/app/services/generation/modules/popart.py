@@ -1,7 +1,10 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
 import random
 from io import BytesIO
 
-import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from app.models.settings import SettingsModel
@@ -53,6 +56,7 @@ class PopArtModule:
     ]
 
     async def run(self, page_items: list, config: dict, client, settings: SettingsModel) -> GenerationResult:
+
         asset = random.choice(page_items)
         image_bytes = await client.get_asset_data(asset.id)
         contrast = max(1.5, min(2.8, float(config.get("contrast", 2.2) or 2.2)))
@@ -72,6 +76,7 @@ class PopArtModule:
 
 
 def _build_popart(image_bytes: bytes, base_contrast: float, border: int) -> bytes:
+
     src = Image.open(BytesIO(image_bytes)).convert("RGB")
     tile_w, tile_h = 600, 600
     src = ImageOps.fit(src, (tile_w, tile_h))
@@ -101,6 +106,8 @@ def _build_popart(image_bytes: bytes, base_contrast: float, border: int) -> byte
 
 
 def _popart_tile(img: Image.Image, dark: tuple, light: tuple, contrast: float) -> Image.Image:
+    import numpy as np
+
     """Warhol-style tile with 3-band colorization.
 
     Real Warhol serigraphs use a small number of discrete colors — one per
