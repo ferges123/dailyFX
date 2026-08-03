@@ -1,7 +1,7 @@
 # 📸 DailyFX for Immich
 
 <p align="center">
-  <img src="frontend/public/logo_light.png" alt="DailyFX logo" width="140" />
+  <img src="frontend/public/pwa-512x512.png" alt="DailyFX logo" width="140" />
 </p>
 
 ### *Turn your static photo library into a dynamic, AI-powered creative playground.*
