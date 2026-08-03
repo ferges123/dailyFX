@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 from app.database import get_db
-from app.immich.errors import handle_immich_errors
+from app.immich.errors import ImmichError
 from app.limiter import limiter
 from app.schemas.settings import AvailableModelsResponse, ConnectionTestResponse, SettingsResponse, SettingsUpdate
 from app.security import (
@@ -264,8 +264,7 @@ async def test_immich_connection(
     ok = False
     msg = ""
     try:
-        with handle_immich_errors():
-            result = await build_immich_client(row).test_connection()
+        result = await build_immich_client(row).test_connection()
         ok = True
         msg = "Immich connection succeeded"
         response = _connection_test_response(
@@ -276,10 +275,9 @@ async def test_immich_connection(
             user_id=result.user_id,
             server_version=result.server_version,
         )
-    except Exception as exc:
+    except ImmichError as exc:
         msg = f"Immich connection failed: {str(exc)}"
         response = ConnectionTestResponse(ok=False, message=msg, provider="immich")
-        raise
     finally:
         record_audit_event(
             db=db,

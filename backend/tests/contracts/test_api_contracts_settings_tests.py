@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from _contract_helpers import FakeSettingsRow, configure_contract_test_db
 
 from app.api import routes_settings
+from app.immich.errors import ImmichAuthenticationError
 from app.schemas.settings import ConnectionTestResponse
 
 configure_contract_test_db("api_contracts_settings_tests")
@@ -36,6 +37,29 @@ def test_immich_connection_contract(monkeypatch):
         "user_email": "user@example.test",
         "user_id": "user-123",
         "server_version": "1.0.0",
+    }
+
+
+def test_immich_connection_returns_failed_result_without_invalidating_app_auth(monkeypatch):
+    async def fake_test_connection():
+        raise ImmichAuthenticationError("Immich rejected the API key")
+
+    fake_client = SimpleNamespace(test_connection=fake_test_connection)
+    monkeypatch.setattr("app.api.routes_settings.get_or_create_settings", lambda db: FakeSettingsRow())
+    monkeypatch.setattr("app.api.routes_settings.build_immich_client", lambda row: fake_client)
+
+    response = asyncio.run(routes_settings.test_immich_connection(db=None))
+
+    assert response.model_dump(mode="json") == {
+        "ok": False,
+        "message": "Immich connection failed: Immich rejected the API key",
+        "provider": "immich",
+        "detail": None,
+        "model": None,
+        "server_url": None,
+        "user_email": None,
+        "user_id": None,
+        "server_version": None,
     }
 
 
