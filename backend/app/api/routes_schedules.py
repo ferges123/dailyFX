@@ -330,6 +330,9 @@ async def get_schedule_diagnostics(
 ):
     from datetime import datetime, timezone
 
+    from sqlalchemy import func
+
+    from app.models.asset_usage import AssetUsageModel
     from app.models.effect_preset import EffectPresetModel
     from app.models.people_preset import PeoplePresetModel
     from app.schemas.schedules import DiagnosticAssetDetail, ScheduleDiagnosticsResponse
@@ -372,6 +375,25 @@ async def get_schedule_diagnostics(
     collected_ids = [item.id for item in collected_items]
 
     usage_statuses = get_assets_usage_status(db, collected_ids)
+
+    historical_used_count = (
+        db.query(func.count(func.distinct(AssetUsageModel.asset_id)))
+        .filter(
+            AssetUsageModel.schedule_id == schedule_id,
+            AssetUsageModel.status == "accepted",
+        )
+        .scalar()
+        or 0
+    )
+    historical_released_count = (
+        db.query(func.count(func.distinct(AssetUsageModel.asset_id)))
+        .filter(
+            AssetUsageModel.schedule_id == schedule_id,
+            AssetUsageModel.status == "released",
+        )
+        .scalar()
+        or 0
+    )
 
     never_used_candidates = []
     released_candidates = []
@@ -447,5 +469,7 @@ async def get_schedule_diagnostics(
         released_count=len(released_candidates),
         accepted_count=len(accepted_candidates),
         pending_count=len(pending_candidates),
+        historical_used_count=historical_used_count,
+        historical_released_count=historical_released_count,
         selection_order=selection_order_details,
     )

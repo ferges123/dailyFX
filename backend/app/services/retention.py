@@ -29,18 +29,21 @@ class RetentionPreview:
 
 
 def _cutoff(days: int | None, now: datetime) -> datetime | None:
-    return None if days is None else now - timedelta(days=max(1, days))
+    """Return a cleanup cutoff; zero and null disable cleanup for that category."""
+    return None if days is None or days <= 0 else now - timedelta(days=days)
 
 
-def _min_retention_days(settings: SettingsModel) -> int:
-    return min(
-        getattr(settings, "retention_rejected_files_days", 7) or 7,
-        getattr(settings, "retention_failed_files_days", 7) or 7,
-        getattr(settings, "retention_uploaded_files_days", 30) or 30,
-        getattr(settings, "retention_rejected_metadata_days", 90) or 90,
-        getattr(settings, "retention_failed_metadata_days", 90) or 90,
-        getattr(settings, "retention_uploaded_metadata_days", 30) or 30,
+def _min_retention_days(settings: SettingsModel) -> int | None:
+    values = (
+        getattr(settings, "retention_rejected_files_days", 7),
+        getattr(settings, "retention_failed_files_days", 7),
+        getattr(settings, "retention_uploaded_files_days", 30),
+        getattr(settings, "retention_rejected_metadata_days", 90),
+        getattr(settings, "retention_failed_metadata_days", 90),
+        getattr(settings, "retention_uploaded_metadata_days", 30),
     )
+    enabled_values = [days for days in values if days is not None and days > 0]
+    return min(enabled_values) if enabled_values else None
 
 
 def _safe_path(value: str | None, data_dir: Path) -> Path | None:
@@ -104,6 +107,8 @@ def _metadata_cutoff(row_status: str, settings: SettingsModel, now: datetime) ->
 def _query_retention_candidates(db: Session, settings: SettingsModel, now: datetime):
     """Query only rows eligible for any retention policy, using SQL WHERE filters."""
     min_days = _min_retention_days(settings)
+    if min_days is None:
+        return []
     earliest_cutoff = now - timedelta(days=min_days)
 
     return (

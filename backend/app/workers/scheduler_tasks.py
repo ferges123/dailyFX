@@ -38,16 +38,19 @@ def _backup_database(retention_count: int | None = None) -> None:
             session = app.database.SessionLocal()
             try:
                 settings = get_or_create_settings(session)
-                retention_count = max(1, int(getattr(settings, "retention_backup_count", 7)))
+                retention_count = max(0, int(getattr(settings, "retention_backup_count", 7)))
             finally:
                 session.close()
         else:
-            retention_count = max(1, int(retention_count))
+            retention_count = max(0, int(retention_count))
 
         backups = sorted(backup_dir.glob("app_*.db"))
-        for old in backups[:-retention_count]:
-            old.unlink(missing_ok=True)
-        logger.info("DB backup created: %s (retaining %d copies)", dst.name, retention_count)
+        if retention_count > 0:
+            for old in backups[:-retention_count]:
+                old.unlink(missing_ok=True)
+            logger.info("DB backup created: %s (retaining %d copies)", dst.name, retention_count)
+        else:
+            logger.info("DB backup created: %s (retaining all copies)", dst.name)
     except Exception:
         logger.exception("DB backup failed")
     finally:

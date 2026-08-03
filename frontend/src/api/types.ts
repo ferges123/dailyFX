@@ -426,5 +426,7 @@ export type ScheduleDiagnosticsResponse = {
   released_count: number;
   accepted_count: number;
   pending_count: number;
+  historical_used_count: number;
+  historical_released_count: number;
   selection_order: DiagnosticAssetDetail[];
 };

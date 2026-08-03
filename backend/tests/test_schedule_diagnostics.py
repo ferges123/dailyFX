@@ -94,6 +94,7 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
     u1 = AssetUsageModel(
         asset_id="asset-1",
         task_id="task-old-1",
+        schedule_id=schedule.id,
         generation_type="duotone",
         usage_source="automatic",
         status="accepted",
@@ -102,6 +103,7 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
     u2 = AssetUsageModel(
         asset_id="asset-2",
         task_id="task-old-2",
+        schedule_id=schedule.id,
         generation_type="collage",
         usage_source="automatic",
         status="released",
@@ -109,9 +111,22 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
         released_at=datetime(2026, 7, 2, 12, 0, tzinfo=timezone.utc),
     )
     u3 = AssetUsageModel(
-        asset_id="asset-3", task_id="task-old-3", generation_type="duotone", usage_source="automatic", status="pending"
+        asset_id="asset-3",
+        task_id="task-old-3",
+        schedule_id=schedule.id,
+        generation_type="duotone",
+        usage_source="automatic",
+        status="pending",
     )
-    db.add_all([u1, u2, u3])
+    other_schedule_usage = AssetUsageModel(
+        asset_id="asset-from-another-schedule",
+        task_id="task-other-schedule",
+        schedule_id=schedule.id + 1,
+        generation_type="duotone",
+        usage_source="automatic",
+        status="accepted",
+    )
+    db.add_all([u1, u2, u3, other_schedule_usage])
     db.commit()
 
     # Mock Immich get_assets return
@@ -134,6 +149,8 @@ def test_schedule_diagnostics(mock_build_client, setup_db):
     assert res.released_count == 1
     assert res.accepted_count == 1
     assert res.pending_count == 1
+    assert res.historical_used_count == 1
+    assert res.historical_released_count == 1
 
     # Selection order:
     # 1. never_used (asset-4)

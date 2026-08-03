@@ -110,4 +110,6 @@ class ScheduleDiagnosticsResponse(BaseModel):
     released_count: int
     accepted_count: int
     pending_count: int
+    historical_used_count: int
+    historical_released_count: int
     selection_order: list[DiagnosticAssetDetail]

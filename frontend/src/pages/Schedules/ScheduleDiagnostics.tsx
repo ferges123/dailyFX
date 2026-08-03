@@ -69,21 +69,36 @@ export function ScheduleDiagnostics({ scheduleId }: ScheduleDiagnosticsProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 text-center">
-        <div className="rounded-lg bg-amber-50/50 border border-amber-100 p-1.5">
-          <div className="text-[10px] text-amber-700">Released</div>
-          <div className="text-sm font-bold text-stone-800">{data.released_count}</div>
+      <div>
+        <div className="mb-1 text-[10px] font-semibold text-stone-500">Current pool</div>
+        <div className="grid grid-cols-3 gap-1.5 text-center">
+          <div className="rounded-lg bg-amber-50/50 border border-amber-100 p-1.5">
+            <div className="text-[10px] text-amber-700">Released</div>
+            <div className="text-sm font-bold text-stone-800">{data.released_count}</div>
+          </div>
+          <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-1.5">
+            <div className="text-[10px] text-blue-700">Used</div>
+            <div className="text-sm font-bold text-emerald-800">{data.accepted_count}</div>
+          </div>
+          <div className="rounded-lg bg-stone-100 border border-stone-200/50 p-1.5 opacity-60">
+            <div className="text-[10px] text-stone-600">Pending</div>
+            <div className="text-sm font-bold text-stone-700">{data.pending_count}</div>
+          </div>
         </div>
-        <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-1.5">
-          <div className="text-[10px] text-blue-700">Used</div>
-          <div className="text-sm font-bold text-emerald-800">{data.accepted_count}</div>
-        </div>
-        <div className="rounded-lg bg-stone-100 border border-stone-200/50 p-1.5 opacity-60">
-          <div className="text-[10px] text-stone-600">Pending</div>
-          <div className="text-sm font-bold text-stone-700">{data.pending_count}</div>
+      </div>
+      <div>
+        <div className="mb-1 text-[10px] font-semibold text-stone-500">Historical usage</div>
+        <div className="grid grid-cols-2 gap-1.5 text-center">
+          <div className="rounded-lg bg-emerald-50/50 border border-emerald-100 p-1.5">
+            <div className="text-[10px] text-emerald-700">Used</div>
+            <div className="text-sm font-bold text-emerald-800">{data.historical_used_count}</div>
+          </div>
+          <div className="rounded-lg bg-amber-50/50 border border-amber-100 p-1.5">
+            <div className="text-[10px] text-amber-700">Released</div>
+            <div className="text-sm font-bold text-stone-800">{data.historical_released_count}</div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

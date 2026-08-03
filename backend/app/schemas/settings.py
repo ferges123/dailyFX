@@ -14,15 +14,15 @@ class SettingsBase(BaseModel):
     favorite_albums_json: str | None = None
     ai_custom_prompt: str | None = Field(default=None, max_length=10000)
     retention_enabled: bool = True
-    retention_rejected_files_days: int | None = Field(default=7, ge=1)
-    retention_rejected_metadata_days: int | None = Field(default=90, ge=1)
-    retention_failed_files_days: int | None = Field(default=7, ge=1)
-    retention_failed_metadata_days: int | None = Field(default=90, ge=1)
-    retention_uploaded_files_days: int | None = Field(default=30, ge=1)
-    retention_uploaded_metadata_days: int | None = Field(default=30, ge=1)
-    retention_task_days: int | None = Field(default=30, ge=1)
-    retention_audit_days: int | None = Field(default=180, ge=1)
-    retention_backup_count: int = Field(default=7, ge=1, le=365)
+    retention_rejected_files_days: int | None = Field(default=7, ge=0)
+    retention_rejected_metadata_days: int | None = Field(default=90, ge=0)
+    retention_failed_files_days: int | None = Field(default=7, ge=0)
+    retention_failed_metadata_days: int | None = Field(default=90, ge=0)
+    retention_uploaded_files_days: int | None = Field(default=30, ge=0)
+    retention_uploaded_metadata_days: int | None = Field(default=30, ge=0)
+    retention_task_days: int | None = Field(default=30, ge=0)
+    retention_audit_days: int | None = Field(default=180, ge=0)
+    retention_backup_count: int = Field(default=7, ge=0, le=365)
 
     @field_validator("immich_url", mode="before")
     @classmethod

@@ -559,3 +559,10 @@ def test_cleanup_old_results_retention(tmp_path):
         assert recent_orphan.exists()
     finally:
         db.close()
+
+
+def test_retention_zero_disables_cleanup():
+    from app.services.retention import _cutoff
+
+    now = datetime.now(timezone.utc)
+    assert _cutoff(0, now) is None

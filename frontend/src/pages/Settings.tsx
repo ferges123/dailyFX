@@ -380,7 +380,7 @@ export function SettingsPage() {
               {label} ({key === 'retention_backup_count' ? 'copies' : 'days'})
               <input
                 type="number"
-                min={1}
+                min={0}
                 value={form[key] ?? ''}
                 onChange={(e) =>
                   setValue(
@@ -393,6 +393,7 @@ export function SettingsPage() {
             </label>
           ))}
         </div>
+        <p className="mt-2 text-xs text-stone-500">Set a value to 0 to keep that data forever.</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"

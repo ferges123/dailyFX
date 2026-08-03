@@ -181,6 +181,26 @@ def test_backup_database_uses_configured_retention_count(tmp_path):
     assert len(backups) == 3
 
 
+def test_backup_database_keeps_all_copies_when_retention_is_zero(tmp_path):
+    src = tmp_path / "app.db"
+    with sqlite3.connect(src) as db:
+        db.execute("CREATE TABLE records (value TEXT NOT NULL)")
+        db.commit()
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    for i in range(4):
+        (backup_dir / f"app_2026010{i}.db").write_bytes(b"old")
+
+    mock_settings = MagicMock()
+    mock_settings.data_dir = tmp_path
+    with patch("app.config.get_settings", return_value=mock_settings):
+        from app.workers.scheduler import _backup_database
+
+        _backup_database(retention_count=0)
+
+    assert len(list(backup_dir.glob("app_*.db"))) == 5
+
+
 def test_backup_database_restores_committed_wal_changes(tmp_path):
     src = tmp_path / "app.db"
     writer = sqlite3.connect(src)
