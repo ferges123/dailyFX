@@ -906,8 +906,8 @@ def test_immich_client_default_timeout():
     assert client.timeout == 30.0
 
 
-def test_list_people_limits_to_33(monkeypatch: pytest.MonkeyPatch) -> None:
-    mock_people = [{"id": f"person-{i}", "name": f"Person {i}", "isHidden": False, "count": 1} for i in range(1, 41)]
+def test_list_people_limits_to_50(monkeypatch: pytest.MonkeyPatch) -> None:
+    mock_people = [{"id": f"person-{i}", "name": f"Person {i}", "isHidden": False, "count": 1} for i in range(1, 61)]
     payloads = iter([{"people": mock_people, "hasNextPage": False}])
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -926,4 +926,4 @@ def test_list_people_limits_to_33(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
     people = asyncio.run(ImmichClient("https://photos.example.com", "secret-key").list_people())
 
-    assert len(people) == 33
+    assert len(people) == 50
