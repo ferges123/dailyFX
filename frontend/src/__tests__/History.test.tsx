@@ -21,6 +21,7 @@ vi.mock('../api/client', () => {
     getImmichAssetExif: vi.fn(),
     acceptGeneration: vi.fn(),
     rejectGeneration: vi.fn(),
+    runGenerationAIVision: vi.fn(),
     retryGenerationAcceptance: vi.fn(),
     clearRejectedCache: vi.fn(),
     clearGenerationCache: vi.fn(),
@@ -228,6 +229,7 @@ describe('HistoryPage', () => {
     });
     vi.mocked(client.acceptGeneration).mockResolvedValue(mockHistoryItem1);
     vi.mocked(client.rejectGeneration).mockResolvedValue(mockHistoryItem1);
+    vi.mocked(client.runGenerationAIVision).mockResolvedValue(mockHistoryItem1);
     vi.mocked(client.getImmichAssetExif).mockResolvedValue({});
   });
 
@@ -397,6 +399,30 @@ describe('HistoryPage', () => {
       expect(vi.mocked(client.rejectGeneration)).toHaveBeenCalled();
       expect(vi.mocked(client.rejectGeneration).mock.calls[0][0]).toBe('man-1');
     });
+  });
+
+  it('runs AI Vision for a completed generation', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.getGenerationHistory).mockResolvedValue(mockHistoryPage);
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
+    vi.mocked(client.runGenerationAIVision).mockResolvedValue({
+      ...mockHistoryItem1,
+      title: 'Clay Street Arrival',
+    });
+
+    renderHistory();
+
+    const aiVisionButton = await screen.findByRole('button', {
+      name: 'AI Vision',
+    });
+    fireEvent.click(aiVisionButton);
+
+    await waitFor(() => {
+      expect(client.runGenerationAIVision).toHaveBeenCalledWith('man-1');
+    });
+    expect(await screen.findByText('Clay Street Arrival')).toBeInTheDocument();
   });
 
   it('opens custom upload modal and submits custom destination options', async () => {

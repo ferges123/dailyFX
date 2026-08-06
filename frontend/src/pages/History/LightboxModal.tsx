@@ -602,6 +602,77 @@ export const LightboxModal = memo(function LightboxModal({
               <ChevronRight size={22} />
             </button>
           )}
+          <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
+            {scale > 1 && (
+              <button
+                type="button"
+                onClick={resetZoom}
+                className={`inline-flex h-9 items-center justify-center gap-1 rounded-xl px-2.5 shadow-md transition active:scale-90 text-xs font-semibold ${
+                  isFullscreen
+                    ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                    : 'bg-stone-900/70 text-white hover:bg-stone-900 backdrop-blur-md'
+                }`}
+                aria-label="Reset zoom"
+                title="Reset zoom"
+              >
+                <RotateCcw size={14} />
+                <span>{Math.round(scale * 100)}%</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              disabled={scale >= 4}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+                isFullscreen
+                  ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                  : 'bg-stone-900/70 text-white hover:bg-stone-900 backdrop-blur-md'
+              }`}
+              aria-label="Zoom in"
+              title="Zoom in"
+            >
+              <ZoomIn size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              disabled={scale <= 1}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+                isFullscreen
+                  ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                  : 'bg-stone-900/70 text-white hover:bg-stone-900 backdrop-blur-md'
+              }`}
+              aria-label="Zoom out"
+              title="Zoom out"
+            >
+              <ZoomOut size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 ${
+                isFullscreen
+                  ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                  : 'bg-stone-900/70 text-white hover:bg-stone-900 backdrop-blur-md'
+              }`}
+              aria-label="Toggle full screen"
+              title={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+            >
+              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 ${
+                isFullscreen
+                  ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
+                  : 'bg-stone-900/70 text-white hover:bg-stone-900 backdrop-blur-md'
+              }`}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
           <div
             ref={imageContainerRef}
             className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden select-none"
@@ -952,78 +1023,6 @@ export const LightboxModal = memo(function LightboxModal({
           </div>
         )}
 
-        {/* Top Control Buttons */}
-        <div className="absolute right-4 top-4 z-30 flex items-center gap-2">
-          {scale > 1 && (
-            <button
-              type="button"
-              onClick={resetZoom}
-              className={`inline-flex h-9 items-center justify-center gap-1 rounded-xl px-2.5 shadow-md transition active:scale-90 text-xs font-semibold ${
-                isFullscreen
-                  ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
-                  : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200'
-              }`}
-              aria-label="Reset zoom"
-              title="Reset zoom"
-            >
-              <RotateCcw size={14} />
-              <span>{Math.round(scale * 100)}%</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleZoomIn}
-            disabled={scale >= 4}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
-              isFullscreen
-                ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
-                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200'
-            }`}
-            aria-label="Zoom in"
-            title="Zoom in"
-          >
-            <ZoomIn size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            disabled={scale <= 1}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
-              isFullscreen
-                ? 'bg-stone-800/80 text-white hover:bg-stone-700 backdrop-blur-md'
-                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200'
-            }`}
-            aria-label="Zoom out"
-            title="Zoom out"
-          >
-            <ZoomOut size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 ${
-              isFullscreen
-                ? 'bg-stone-800/80 text-white hover:bg-stone-700 hover:text-white backdrop-blur-md'
-                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950'
-            }`}
-            aria-label="Toggle full screen"
-            title={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-md transition active:scale-90 ${
-              isFullscreen
-                ? 'bg-stone-800/80 text-white hover:bg-stone-700 hover:text-white backdrop-blur-md'
-                : 'bg-stone-100/80 text-stone-800 hover:bg-stone-200 hover:text-stone-950'
-            }`}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
       </div>
     </div>
   );

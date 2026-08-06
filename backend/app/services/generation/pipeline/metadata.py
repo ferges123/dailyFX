@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.immich.client import ImmichClient
 from app.immich.models import ImmichAssetPage, ImmichAssetSummary
 from app.models.settings import SettingsModel
+from app.services.generation.ai_vision import FINAL_GENERATION_VISION_PROMPT
 from app.services.generation.exif_embedder import embed_exif_metadata
 from app.services.generation.modules.base import GenerationResult
 from app.services.generation.people_context import load_people_context
@@ -19,6 +20,9 @@ from .shared import (
     _build_metadata_provenance,
     _trace_stage,
 )
+
+# Compatibility export used by the pipeline package and existing test patches.
+FINAL_AI_VISION_PROMPT = FINAL_GENERATION_VISION_PROMPT
 
 
 def _is_ai_module(generation_type: str | None, group_name: str | None) -> bool:
@@ -38,16 +42,6 @@ def _inject_ai_tags(tags: list[str], module, group_name: str) -> list[str]:
 
 
 logger = logging.getLogger(__name__)
-
-FINAL_AI_VISION_PROMPT = (
-    "Analyze this final generated image. Describe what is actually visible in the image itself, "
-    "not the source photo used to create it. Return a JSON object with three fields: "
-    "'title' (a short, creative 3-5 word title), "
-    "'summary' (one concise sentence describing the final image), and "
-    "'tags' (a list of 3-6 descriptive keyword strings). "
-    "Do not use markdown formatting like ```json, just return the raw JSON object."
-)
-
 
 def _initial_artifact_state(result) -> dict[str, object]:
     return {
@@ -207,7 +201,11 @@ async def _apply_final_vision(
         model=settings.default_ai_model,
     )
     t1 = time.time()
-    final_ai_analysis = await analyze_image(settings, result.image_bytes, prompt=FINAL_AI_VISION_PROMPT)
+    final_ai_analysis = await analyze_image(
+        settings,
+        result.image_bytes,
+        prompt=FINAL_GENERATION_VISION_PROMPT,
+    )
     state["ai_title"] = final_ai_analysis.title
     state["ai_summary"] = final_ai_analysis.summary
     state["ai_tags"] = final_ai_analysis.tags or []

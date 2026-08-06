@@ -61,6 +61,9 @@ class ImmichExifResponse(_ImmichResponseModel):
     iso: int | str | None = None
     latitude: float | int | str | None = None
     longitude: float | int | str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
     dateTimeOriginal: str | None = None
 
     @classmethod

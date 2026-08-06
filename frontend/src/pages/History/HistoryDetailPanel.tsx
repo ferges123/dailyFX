@@ -34,10 +34,13 @@ interface HistoryDetailPanelProps {
   onAcceptWithOptions: () => void;
   onReject: () => void;
   onRetry: () => void;
+  onRunAIVision: () => void;
   onOpenLightbox: (imageUrl: string) => void;
   acceptPending: boolean;
   rejectPending: boolean;
   retryPending: boolean;
+  aiVisionPending: boolean;
+  aiVisionError: Error | null;
 }
 
 export const HistoryDetailPanel = memo(function HistoryDetailPanel({
@@ -50,10 +53,13 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
   onAcceptWithOptions,
   onReject,
   onRetry,
+  onRunAIVision,
   onOpenLightbox,
   acceptPending,
   rejectPending,
   retryPending,
+  aiVisionPending,
+  aiVisionError,
 }: HistoryDetailPanelProps) {
   const [showOriginal, setShowOriginal] = useState(false);
 
@@ -111,6 +117,11 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
     }
   }, [entry?.tags_json]);
 
+  const canRunAIVision =
+    ['PENDING_REVIEW', 'REJECTED', 'UPLOADED'].includes(entry?.status ?? '') &&
+    entry?.local_file_status !== 'deleted_by_retention' &&
+    !!entry?.image_url;
+
   if (!entry) {
     return (
       <div
@@ -153,10 +164,32 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
             <h3 className="font-extrabold text-stone-900 text-xs leading-tight min-w-0 flex-1">
               {entry.title || 'Untitled Generation'}
             </h3>
-            <span className="app-chip shrink-0 px-2 py-0.5 text-[8px] uppercase tracking-wide">
-              {entry.generation_type.replace(/_/g, ' ')}
-            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              {canRunAIVision && (
+                <button
+                  type="button"
+                  onClick={onRunAIVision}
+                  disabled={aiVisionPending}
+                  title="Generate title, description, and tags with AI Vision"
+                  className="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-1.5 text-[9px] font-semibold text-violet-800 hover:border-violet-300 hover:bg-violet-100 disabled:bg-stone-100 disabled:text-stone-400 transition cursor-pointer"
+                >
+                  <RefreshCw
+                    size={11}
+                    className={aiVisionPending ? 'animate-spin' : ''}
+                  />
+                  {aiVisionPending ? 'Analyzing…' : 'AI Vision'}
+                </button>
+              )}
+              <span className="app-chip px-2 py-0.5 text-[8px] uppercase tracking-wide">
+                {entry.generation_type.replace(/_/g, ' ')}
+              </span>
+            </div>
           </div>
+          {aiVisionError && (
+            <p className="rounded-lg border border-red-100 bg-red-50/70 px-2 py-1.5 text-[10px] font-medium text-red-700">
+              AI Vision failed: {aiVisionError.message}
+            </p>
+          )}
           {entry.summary && (
             <p className="rounded-xl border border-stone-100 bg-stone-50/60 p-2 text-[10px] leading-normal italic text-stone-600">
               "{entry.summary}"

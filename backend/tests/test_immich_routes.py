@@ -29,6 +29,9 @@ class ExtendedFakeImmichClient(FakeImmichClient):
             "iso": 400,
             "latitude": 52.2297,
             "longitude": 21.0122,
+            "city": "Warsaw",
+            "state": "Masovian Voivodeship",
+            "country": "Poland",
             "dateTimeOriginal": "2026-05-12T10:00:00Z",
         }
 
@@ -116,6 +119,9 @@ def test_get_asset_exif_returns_typed_payload(monkeypatch):
     assert payload["model"] == "EOS R5"
     assert payload["lensModel"] == "RF 24-70mm F2.8"
     assert payload["iso"] == 400
+    assert payload["city"] == "Warsaw"
+    assert payload["state"] == "Masovian Voivodeship"
+    assert payload["country"] == "Poland"
     assert payload["dateTimeOriginal"] == "2026-05-12T10:00:00Z"
 
 

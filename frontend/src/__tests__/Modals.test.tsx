@@ -75,6 +75,11 @@ describe('LightboxModal', () => {
       make: 'Apple',
       model: 'iPhone 15 Pro',
       fileSizeInByte: 2048,
+      latitude: 52.2297,
+      longitude: 21.0122,
+      city: 'Warsaw',
+      state: 'Masovian Voivodeship',
+      country: 'Poland',
     };
 
     const queryClient = new QueryClient();
@@ -94,6 +99,10 @@ describe('LightboxModal', () => {
     expect(screen.getByText('Test Lightbox Title')).toBeInTheDocument();
     expect(screen.getByText('A beautiful sunset')).toBeInTheDocument();
     expect(screen.getByText('Apple iPhone 15 Pro')).toBeInTheDocument();
+    expect(
+      screen.getByText('Warsaw, Masovian Voivodeship, Poland'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('52.22970, 21.01220')).not.toBeInTheDocument();
 
     const closeBtn = screen.getByRole('button', { name: 'Close' });
     fireEvent.click(closeBtn);

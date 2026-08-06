@@ -15,6 +15,9 @@ class ImmichExifInfo(TypedDict, total=False):
     iso: int | str
     latitude: float | int | str
     longitude: float | int | str
+    city: str
+    state: str
+    country: str
     dateTimeOriginal: str
 
 

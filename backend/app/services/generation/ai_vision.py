@@ -62,6 +62,16 @@ from .vision.xiaomi import (
 logger = logging.getLogger(__name__)
 
 
+FINAL_GENERATION_VISION_PROMPT = (
+    "Analyze this final generated image. Describe what is actually visible in the image itself, "
+    "not the source photo used to create it. Return a JSON object with three fields: "
+    "'title' (a short, creative 3-5 word title), "
+    "'summary' (one concise sentence describing the final image), and "
+    "'tags' (a list of 3-6 descriptive keyword strings). "
+    "Do not use markdown formatting like ```json, just return the raw JSON object."
+)
+
+
 async def analyze_image(
     settings: SettingsModel,
     image_bytes: bytes,

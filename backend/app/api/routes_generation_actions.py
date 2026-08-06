@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -6,6 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.api.generation_upload_helpers import (
+    _apply_album_and_tag,
+    _apply_uploaded_asset_caption_and_tags,
+    _upload_generation_asset,
+)
 from app.config import get_settings
 from app.database import SessionLocal, get_db
 from app.models.generation_history import GenerationHistoryModel
@@ -19,6 +25,12 @@ from app.security import (
     resolve_actor_context,
 )
 from app.services.audit import record_audit_event
+from app.services.generation.ai_budget import AIUsageLimitExceededError
+from app.services.generation.ai_vision import (
+    FINAL_GENERATION_VISION_PROMPT,
+    AIVisionError,
+    analyze_image,
+)
 from app.services.generation.stream import record_history_snapshot
 from app.services.immich import build_immich_client
 
@@ -28,15 +40,192 @@ router = APIRouter(prefix="/api/generation", tags=["generation"])
 _review_bearer = HTTPBearer(auto_error=False)
 
 
-from app.api.generation_upload_helpers import (
-    _apply_album_and_tag,
-    _apply_uploaded_asset_caption_and_tags,
-    _upload_generation_asset,
-)
-
-
 class _RowProxy:
     pass
+
+
+_AI_VISION_HISTORY_STATUSES = {"PENDING_REVIEW", "REJECTED", "UPLOADED"}
+
+
+def _load_history_config(config_json: str | None) -> dict:
+    if not config_json:
+        return {}
+    try:
+        loaded = json.loads(config_json)
+    except (TypeError, ValueError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _merge_history_ai_tags(vision_tags: list[str], tag_injections: object) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    injected_tags = tag_injections if isinstance(tag_injections, list) else []
+    for tag in [*vision_tags, *injected_tags]:
+        if not isinstance(tag, str):
+            continue
+        normalized = tag.strip()
+        key = normalized.casefold()
+        if normalized and key not in seen:
+            seen.add(key)
+            merged.append(normalized)
+    return merged
+
+
+def _prepare_history_ai_vision_data(task_id: str) -> tuple[bytes, SettingsModel]:
+    session = SessionLocal()
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Generation history entry not found")
+        if row.status not in _AI_VISION_HISTORY_STATUSES:
+            raise HTTPException(status_code=409, detail="AI Vision is available only for completed generations")
+        if getattr(row, "local_file_status", "available") == "deleted_by_retention":
+            raise HTTPException(status_code=410, detail="Local image was deleted by retention")
+        if not row.output_path:
+            raise HTTPException(status_code=404, detail="Output path not available in history")
+
+        image_path = Path(row.output_path).resolve()
+        data_dir = get_settings().data_dir.resolve()
+        if not image_path.is_relative_to(data_dir):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if not image_path.exists():
+            raise HTTPException(status_code=404, detail="Generated image not found on disk")
+
+        settings = session.query(SettingsModel).first()
+        if not settings:
+            raise HTTPException(status_code=500, detail="Settings not found")
+        from app.services.generation.pipeline.planning import _resolve_schedule_ai_settings
+
+        _resolve_schedule_ai_settings(session, settings, row.schedule_id)
+        if (getattr(settings, "default_ai_provider", "none") or "none").strip().lower() == "none":
+            raise HTTPException(status_code=422, detail="AI Vision provider is not configured")
+
+        return image_path.read_bytes(), settings
+    finally:
+        session.close()
+
+
+def _save_history_ai_vision_result(task_id: str, analysis, actor_ctx: ActorContext) -> GenerationHistoryModel:
+    session = SessionLocal()
+    session.expire_on_commit = False
+    try:
+        row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Generation history entry not found")
+        if row.status not in _AI_VISION_HISTORY_STATUSES:
+            raise HTTPException(status_code=409, detail="Generation is no longer eligible for AI Vision")
+
+        config = _load_history_config(row.config_json)
+        provenance = config.get("metadata_provenance")
+        if not isinstance(provenance, dict):
+            provenance = {}
+            config["metadata_provenance"] = provenance
+        final_vision = provenance.get("final_vision")
+        if not isinstance(final_vision, dict):
+            final_vision = {}
+            provenance["final_vision"] = final_vision
+
+        row.title = analysis.title or row.title
+        row.summary = analysis.summary
+        row.tags_json = json.dumps(
+            _merge_history_ai_tags(analysis.tags, provenance.get("tag_injections")),
+            ensure_ascii=False,
+        )
+        if analysis.token_count is not None:
+            row.total_token_count = (row.total_token_count or 0) + analysis.token_count
+
+        run_at = datetime.now(timezone.utc).isoformat()
+        final_vision.update(
+            attempted=True,
+            succeeded=True,
+            provider=analysis.provider,
+            model=analysis.model,
+            error=None,
+            last_run_at=run_at,
+        )
+        provenance["title_source"] = "history_final_vision"
+        provenance["summary_source"] = "history_final_vision"
+        provenance["tags_source"] = "history_final_vision"
+        provenance["history_final_vision"] = {
+            "last_run_at": run_at,
+            "provider": analysis.provider,
+            "model": analysis.model,
+        }
+        row.config_json = json.dumps(config, ensure_ascii=False)
+        session.commit()
+        session.refresh(row)
+        record_history_snapshot(session, row)
+        record_audit_event(
+            db=session,
+            action="generation.history_ai_vision",
+            category="generation",
+            outcome="success",
+            actor_type=actor_ctx.actor_type,
+            request_id=actor_ctx.request_id,
+            source_ip_hash=actor_ctx.source_ip_hash,
+            target_type="generation",
+            target_id=task_id,
+            task_id=task_id,
+            summary="AI Vision metadata added to generation history",
+            metadata={"provider": analysis.provider, "model": analysis.model, "tags_count": len(analysis.tags)},
+        )
+        return row
+    finally:
+        session.close()
+
+
+def _record_history_ai_vision_failure(
+    db: Session,
+    task_id: str,
+    actor_ctx: ActorContext,
+    exc: Exception,
+) -> None:
+    record_audit_event(
+        db=db,
+        action="generation.history_ai_vision",
+        category="generation",
+        outcome="failure",
+        actor_type=actor_ctx.actor_type,
+        request_id=actor_ctx.request_id,
+        source_ip_hash=actor_ctx.source_ip_hash,
+        target_type="generation",
+        target_id=task_id,
+        task_id=task_id,
+        summary=f"AI Vision metadata update failed: {str(exc)}",
+        error_code=exc.__class__.__name__,
+        metadata={"error": str(exc)},
+    )
+
+
+@router.post("/history/{task_id}/ai-vision", response_model=GenerationHistoryResponse)
+async def run_history_ai_vision(
+    task_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_auth),
+    actor_ctx: ActorContext = Depends(get_actor_context_dependency),
+):
+    """Generate AI Vision summary and tags for a completed history item."""
+    actor_ctx = resolve_actor_context(actor_ctx)
+    image_bytes, settings = _prepare_history_ai_vision_data(task_id)
+    try:
+        analysis = await analyze_image(
+            settings,
+            image_bytes,
+            prompt=FINAL_GENERATION_VISION_PROMPT,
+        )
+        return _save_history_ai_vision_result(task_id, analysis, actor_ctx)
+    except AIUsageLimitExceededError as exc:
+        _record_history_ai_vision_failure(db, task_id, actor_ctx, exc)
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except (AIVisionError, OSError, ValueError) as exc:
+        _record_history_ai_vision_failure(db, task_id, actor_ctx, exc)
+        logger.warning("AI Vision update failed for task %s: %s", task_id, exc)
+        raise HTTPException(status_code=502, detail="AI Vision analysis failed") from exc
+    except Exception as exc:
+        _record_history_ai_vision_failure(db, task_id, actor_ctx, exc)
+        logger.exception("Unexpected AI Vision update failure for task %s", task_id)
+        raise HTTPException(status_code=502, detail="AI Vision analysis failed") from exc
 
 
 def _prepare_accept_data(

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,6 +16,7 @@ from app.api.routes_generation_actions import (
     accept_generation,
     reject_generation,
     retry_acceptance,
+    run_history_ai_vision,
 )
 from app.database import SessionLocal
 from app.database import init_db as _init_db
@@ -350,6 +352,56 @@ def test_reject_already_uploaded():
             reject_generation("task-already-uploaded", db)
         assert exc_info.value.status_code == 409
     finally:
+        db.close()
+
+
+def test_history_ai_vision_updates_summary_tags_and_provenance(tmp_path, monkeypatch):
+    import app.config
+    from app.services.generation.ai_vision import AIVisionResult
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
+    db = _setup_generation_routes_db()
+    try:
+        image_path = tmp_path / "task-ai-vision.png"
+        image_path.write_bytes(b"test image")
+        row = _add_history_row(db, "task-ai-vision", output_path=str(image_path))
+        row.title = "Original title"
+        row.total_token_count = 7
+        row.config_json = '{"metadata_provenance":{"tag_injections":["AI","Watercolor"]}}'
+        db.commit()
+
+        analysis = AIVisionResult(
+            title="Luminous Painted Landscape",
+            summary="A luminous painted landscape.",
+            tags=["landscape", "sunset", "Landscape"],
+            token_count=12,
+            provider="openai",
+            model="gpt-4o-mini",
+        )
+        with patch(
+            "app.api.routes_generation_actions.analyze_image",
+            new=AsyncMock(return_value=analysis),
+        ), patch(
+            "app.api.routes_generation_actions._prepare_history_ai_vision_data",
+            return_value=(b"test image", MagicMock(default_ai_provider="openai")),
+        ):
+            result = asyncio.run(run_history_ai_vision("task-ai-vision", db))
+
+        assert result.title == "Luminous Painted Landscape"
+        assert result.summary == "A luminous painted landscape."
+        assert result.tags_json == '["landscape", "sunset", "AI", "Watercolor"]'
+        assert result.total_token_count == 19
+        provenance = json.loads(result.config_json)["metadata_provenance"]
+        assert provenance["title_source"] == "history_final_vision"
+        assert provenance["summary_source"] == "history_final_vision"
+        assert provenance["tags_source"] == "history_final_vision"
+        assert provenance["final_vision"]["succeeded"] is True
+        assert provenance["final_vision"]["provider"] == "openai"
+        assert db.query(GenerationStreamEventModel).filter_by(task_id="task-ai-vision").count() >= 1
+    finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
         db.close()
 
 

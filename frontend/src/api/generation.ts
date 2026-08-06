@@ -180,6 +180,15 @@ export function rejectGeneration(taskId: string) {
   );
 }
 
+export function runGenerationAIVision(taskId: string) {
+  return request<GenerationHistoryEntry>(
+    `/api/generation/history/${taskId}/ai-vision`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
 export function clearHistoryByStatus(
   status: 'rejected' | 'failed' | 'pending' | 'accepted' | 'running',
 ) {

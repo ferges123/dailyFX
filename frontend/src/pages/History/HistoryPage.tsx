@@ -7,6 +7,7 @@ import {
   getSettings,
   getGenerationHistoryEntry,
   rejectGeneration,
+  runGenerationAIVision,
   retryGenerationAcceptance,
   getImmichFilterOptions,
   type GenerationHistoryListItem,
@@ -312,6 +313,17 @@ export function HistoryPage() {
     },
   });
 
+  const aiVisionHistoryMutation = useMutation({
+    mutationFn: (taskId: string) => runGenerationAIVision(taskId),
+    onSuccess: async (updatedEntry) => {
+      queryClient.setQueryData(
+        ['generation-history-detail', updatedEntry.task_id],
+        updatedEntry,
+      );
+      await queryClient.invalidateQueries({ queryKey: ['generation-history'] });
+    },
+  });
+
   const { streamStatus } = useHistoryStreamSync({
     enabled: !!data,
     historyQueryKey,
@@ -384,6 +396,12 @@ export function HistoryPage() {
       retryHistoryMutation.mutate(selectedHistoryEntry.task_id);
     }
   }, [selectedHistoryEntry, retryHistoryMutation]);
+
+  const handleRunAIVision = useCallback(() => {
+    if (!selectedHistoryEntry) return;
+    aiVisionHistoryMutation.reset();
+    aiVisionHistoryMutation.mutate(selectedHistoryEntry.task_id);
+  }, [selectedHistoryEntry, aiVisionHistoryMutation]);
 
   const handleOpenLightbox = useCallback((imageUrl: string) => {
     if (imageUrl) {
@@ -515,10 +533,17 @@ export function HistoryPage() {
             onAcceptWithOptions={handleAcceptWithOptions}
             onReject={handleReject}
             onRetry={handleRetry}
+            onRunAIVision={handleRunAIVision}
             onOpenLightbox={handleOpenLightbox}
             acceptPending={acceptHistoryMutation.isPending}
             rejectPending={rejectHistoryMutation.isPending}
             retryPending={retryHistoryMutation.isPending}
+            aiVisionPending={aiVisionHistoryMutation.isPending}
+            aiVisionError={
+              aiVisionHistoryMutation.isError
+                ? aiVisionHistoryMutation.error
+                : null
+            }
           />
         </div>
       );
