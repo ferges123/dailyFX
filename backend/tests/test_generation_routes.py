@@ -405,6 +405,53 @@ def test_history_ai_vision_updates_summary_tags_and_provenance(tmp_path, monkeyp
         db.close()
 
 
+def test_run_history_ai_vision_with_review_token(tmp_path, monkeypatch):
+    import app.config
+    from app.api.routes_generation_actions import run_history_ai_vision
+    from app.security import create_review_token
+    from app.services.generation.ai_vision import AIVisionResult
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("REQUIRE_AUTH_FOR_REVIEW", "true")
+    app.config.get_settings.cache_clear()
+    db = _setup_generation_routes_db()
+    try:
+        image_path = tmp_path / "task-ai-vision-review.png"
+        image_path.write_bytes(b"test image")
+        _add_history_row(db, "task-ai-vision-review", output_path=str(image_path))
+        db.commit()
+
+        token = create_review_token("task-ai-vision-review")
+
+        analysis = AIVisionResult(
+            title="Review Vision Title",
+            summary="A review summary.",
+            tags=["review", "vision"],
+            token_count=5,
+            provider="openai",
+            model="gpt-4o-mini",
+        )
+        with patch(
+            "app.api.routes_generation_actions.analyze_image",
+            new=AsyncMock(return_value=analysis),
+        ), patch(
+            "app.api.routes_generation_actions._prepare_history_ai_vision_data",
+            return_value=(b"test image", MagicMock(default_ai_provider="openai")),
+        ):
+            result = asyncio.run(
+                run_history_ai_vision("task-ai-vision-review", review_token=token, db=db)
+            )
+
+        assert result.title == "Review Vision Title"
+        assert result.summary == "A review summary."
+    finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        monkeypatch.delenv("REQUIRE_AUTH_FOR_REVIEW", raising=False)
+        app.config.get_settings.cache_clear()
+        db.close()
+
+
+
 def test_get_generation_image(tmp_path, monkeypatch):
     import app.config
 
@@ -626,6 +673,7 @@ def test_get_review_page():
     assert "img-original" in content
     assert "lb-toggle-original" in content
     assert "lb-img-original" in content
+    assert "btn-ai-vision" in content
 
 
 def test_review_page_avoids_innerhtml_for_dynamic_api_values():

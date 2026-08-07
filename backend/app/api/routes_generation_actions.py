@@ -201,12 +201,14 @@ def _record_history_ai_vision_failure(
 @router.post("/history/{task_id}/ai-vision", response_model=GenerationHistoryResponse)
 async def run_history_ai_vision(
     task_id: str,
+    review_token: str | None = None,
     db: Session = Depends(get_db),
-    _: None = Depends(require_auth),
+    credentials: HTTPAuthorizationCredentials | None = Security(_review_bearer),
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     """Generate AI Vision summary and tags for a completed history item."""
     actor_ctx = resolve_actor_context(actor_ctx)
+    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
     image_bytes, settings = _prepare_history_ai_vision_data(task_id)
     try:
         analysis = await analyze_image(
