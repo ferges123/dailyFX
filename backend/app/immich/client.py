@@ -841,6 +841,19 @@ class ImmichClient:
             not_found_message="Immich asset update endpoint was not found",
         )
 
+    async def update_assets_datetime_original(self, asset_ids: list[str], date_time_original: str) -> None:
+        """Set the original capture time for existing Immich assets."""
+        if not asset_ids:
+            return
+        client = self._get_client()
+        await self._request(
+            "PUT",
+            "/assets",
+            client,
+            json_payload={"ids": asset_ids, "dateTimeOriginal": date_time_original},
+            not_found_message="Immich asset bulk update endpoint was not found",
+        )
+
     async def get_asset_thumbnail(
         self,
         asset_id: str,

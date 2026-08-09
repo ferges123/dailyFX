@@ -1,5 +1,6 @@
 """EXIF metadata embedding for generated images."""
 
+from datetime import datetime
 from fractions import Fraction
 from io import BytesIO
 
@@ -12,6 +13,8 @@ from app.immich.models import ImmichExifInfo
 TAG_IMAGE_DESCRIPTION = 0x010E
 TAG_SOFTWARE = 0x0131
 TAG_DATETIME_ORIGINAL = 0x9003
+TAG_DATETIME_DIGITIZED = 0x9004
+TAG_DATETIME = 0x0132
 TAG_MAKE = 0x010F
 TAG_MODEL = 0x0110
 TAG_LENS_MODEL = 0xA434
@@ -79,6 +82,25 @@ def _embed_gps_info(exif, exif_info: ImmichExifInfo) -> None:
         pass
 
 
+def _format_exif_datetime(value: object) -> str | None:
+    """Convert an Immich ISO timestamp to the EXIF datetime representation."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime("%Y:%m:%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
+def _embed_datetime_info(exif, exif_info: ImmichExifInfo) -> None:
+    """Preserve the original capture time when Immich provides it."""
+    taken_at = _format_exif_datetime(exif_info.get("dateTimeOriginal"))
+    if taken_at:
+        exif[TAG_DATETIME_ORIGINAL] = taken_at
+        exif[TAG_DATETIME_DIGITIZED] = taken_at
+        exif[TAG_DATETIME] = taken_at
+
+
 def embed_exif_metadata(image_bytes: bytes, asset, description: str, exif_info: ImmichExifInfo) -> bytes:
     """
     Embed EXIF metadata from source asset into generated image.
@@ -100,6 +122,7 @@ def embed_exif_metadata(image_bytes: bytes, asset, description: str, exif_info: 
     exif[TAG_IMAGE_DESCRIPTION] = description
 
     if exif_info:
+        _embed_datetime_info(exif, exif_info)
         _embed_camera_info(exif, exif_info)
         _embed_exposure_info(exif, exif_info)
         _embed_gps_info(exif, exif_info)

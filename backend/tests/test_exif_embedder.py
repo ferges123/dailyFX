@@ -33,6 +33,7 @@ def sample_exif_info():
         "iso": 400,
         "latitude": 52.5200,
         "longitude": 13.4050,
+        "dateTimeOriginal": "2026-05-12T10:15:30.123+00:00",
     }
 
 
@@ -81,6 +82,14 @@ class TestEmbedExifMetadata:
         assert exif[0x010F] == "Canon"  # TAG_MAKE
         assert exif[0x0110] == "EOS R5"  # TAG_MODEL
         assert exif[0xA434] == "RF 24-70mm F2.8"  # TAG_LENS_MODEL
+
+    def test_embed_original_capture_datetime(self, sample_image_bytes, sample_exif_info):
+        result = embed_exif_metadata(sample_image_bytes, asset=None, description="Test", exif_info=sample_exif_info)
+
+        exif = Image.open(BytesIO(result)).getexif()
+        assert exif[0x9003] == "2026:05:12 10:15:30"  # DateTimeOriginal
+        assert exif[0x9004] == "2026:05:12 10:15:30"  # DateTimeDigitized
+        assert exif[0x0132] == "2026:05:12 10:15:30"  # DateTime
 
     def test_embed_exposure_info(self, sample_image_bytes, sample_exif_info):
         """Test embedding exposure settings."""

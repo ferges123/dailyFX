@@ -5,7 +5,7 @@ from collections.abc import Callable
 from sqlalchemy.orm import Session
 
 from app.immich.client import ImmichClient
-from app.immich.models import ImmichAssetPage, ImmichAssetSummary
+from app.immich.models import ImmichAssetSummary
 from app.models.settings import SettingsModel
 from app.services.generation.ai_vision import FINAL_GENERATION_VISION_PROMPT
 from app.services.generation.exif_embedder import embed_exif_metadata
@@ -67,7 +67,7 @@ def _ai_tag_injections(module, group_name: str) -> list[str]:
 
 async def _resolve_generation_source_context(
     *,
-    page,
+    selected_assets: list[object],
     result,
     client,
     task_id: str,
@@ -76,7 +76,10 @@ async def _resolve_generation_source_context(
     people_context = None
     source_asset_id = result.source_asset_ids[0] if result.source_asset_ids else None
     if source_asset_id:
-        source_asset = next((a for a in page.items if a.id == source_asset_id), None)
+        # Automatic selection can inspect multiple Immich result pages.  The final
+        # page does not necessarily contain the selected asset, so resolve it from
+        # the explicit selection rather than from the last search response.
+        source_asset = next((a for a in selected_assets if getattr(a, "id", None) == source_asset_id), None)
         debug_log(
             "Source asset",
             task_id=task_id,
@@ -442,12 +445,12 @@ async def _pipeline_enrich_metadata(
     ctx: GenerationPipelineContext,
     module_selection: GenerationModuleSelection,
     result: GenerationResult,
-    page: ImmichAssetPage,
+    selected_assets: list[object],
     client: ImmichClient,
     photo_selection_trace: dict | None,
 ) -> tuple[ImmichAssetSummary | None, GenerationArtifacts]:
     source_asset, people_context = await _resolve_generation_source_context(
-        page=page,
+        selected_assets=selected_assets,
         result=result,
         client=client,
         task_id=ctx.task_id,

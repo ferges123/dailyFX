@@ -132,14 +132,14 @@ async def run_generation_pipeline(
         assets_res = await _pipeline_retrieve_and_select_assets(ctx, module_selection)
         if assets_res is None:
             return None
-        client, page, page_items, photo_selection_trace = assets_res
+        client, _page, page_items, photo_selection_trace = assets_res
 
         # Faza 3: Wykonanie modułu generowania
         result = await _pipeline_execute_module(ctx, module_selection, page_items, client)
 
         # Faza 4: Wzbogacanie metadanych i analiza wizyjna
         source_asset, artifacts = await _pipeline_enrich_metadata(
-            ctx, module_selection, result, page, client, photo_selection_trace
+            ctx, module_selection, result, page_items, client, photo_selection_trace
         )
 
         output_path, image_url = _generation_output_paths(ctx.task_id, getattr(result, "output_format", "png"))
