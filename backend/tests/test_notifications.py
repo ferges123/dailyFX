@@ -381,7 +381,21 @@ def test_telegram_bot_callback_handling(monkeypatch):
         callback_query = {
             "id": "cb123",
             "data": f"accept:{task_id}",
-            "message": {"chat": {"id": 999}, "message_id": 888, "caption": "Bokeh Blur Photo", "photo": []},
+            "message": {
+                "chat": {"id": 999},
+                "message_id": 888,
+                "caption": "Bokeh Blur Photo",
+                "photo": [],
+                "reply_markup": {
+                    "inline_keyboard": [
+                        [
+                            {"text": "✅ Accept", "callback_data": f"accept:{task_id}"},
+                            {"text": "❌ Reject", "callback_data": f"reject:{task_id}"},
+                            {"text": "🔍 Review", "url": "https://example.com/review/test-task-123"},
+                        ]
+                    ]
+                },
+            },
         }
 
         # Run callback handler
@@ -405,6 +419,9 @@ def test_telegram_bot_callback_handling(monkeypatch):
         assert fake_client.requests[1]["json"]["chat_id"] == 999
         assert fake_client.requests[1]["json"]["message_id"] == 888
         assert "Accepted & Uploaded" in fake_client.requests[1]["json"]["caption"]
+        assert fake_client.requests[1]["json"]["reply_markup"] == {
+            "inline_keyboard": [[{"text": "🔍 Review", "url": "https://example.com/review/test-task-123"}]]
+        }
 
     finally:
         db.close()

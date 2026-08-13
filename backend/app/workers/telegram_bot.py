@@ -188,7 +188,7 @@ async def _answer_callback(client: httpx.AsyncClient, token: str, callback_id: s
 async def _edit_message_status(
     client: httpx.AsyncClient, token: str, chat_id: int, message_id: int, message: dict, status_text: str
 ):
-    """Updates the message description to show final status and removes inline buttons."""
+    """Updates the message description and retains the Review link, when present."""
     caption = message.get("caption") or message.get("text") or ""
 
     # Strip any old status footer to avoid stacking them
@@ -201,6 +201,16 @@ async def _edit_message_status(
     # Append new status
     new_caption += f"\n\n<b>Status:</b> {status_text}"
 
+    # Accept/Reject callbacks must no longer be actionable after a decision, but
+    # the original Review URL is still useful for opening the generated image.
+    review_buttons = [
+        button
+        for row in message.get("reply_markup", {}).get("inline_keyboard", [])
+        for button in row
+        if button.get("text") == "🔍 Review" and button.get("url")
+    ]
+    reply_markup = {"inline_keyboard": [review_buttons]} if review_buttons else {"inline_keyboard": []}
+
     try:
         # Check if it was a photo or text message
         if "photo" in message:
@@ -210,7 +220,7 @@ async def _edit_message_status(
                 "message_id": message_id,
                 "caption": new_caption,
                 "parse_mode": "HTML",
-                "reply_markup": {"inline_keyboard": []},  # removes the keyboard
+                "reply_markup": reply_markup,
             }
         else:
             url = f"https://api.telegram.org/bot{token}/editMessageText"
@@ -219,7 +229,7 @@ async def _edit_message_status(
                 "message_id": message_id,
                 "text": new_caption,
                 "parse_mode": "HTML",
-                "reply_markup": {"inline_keyboard": []},
+                "reply_markup": reply_markup,
             }
 
         await client.post(url, json=payload)
