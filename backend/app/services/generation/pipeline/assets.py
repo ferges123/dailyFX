@@ -218,7 +218,7 @@ def _parse_ranking_payload(result) -> dict:
         start = text.find("{")
         end = text.rfind("}")
         if start != -1 and end != -1 and end > start:
-            json_str = text[start:end+1]
+            json_str = text[start : end + 1]
         else:
             json_str = text
 
@@ -285,7 +285,7 @@ async def rank_source_assets_for_effect(
 
         retry_prompt = (
             "You must return ONLY raw JSON. No prose, no markdown formatting. "
-            "{\"selected_index\": <1-based int>, \"selection_reason\": \"<short reason>\"}\n\n" + base_prompt
+            '{"selected_index": <1-based int>, "selection_reason": "<short reason>"}\n\n' + base_prompt
         )
 
         for attempt in range(2):
@@ -326,6 +326,7 @@ async def rank_source_assets_for_effect(
                 logger.warning("AI photo selection failed attempt %d for %s: %s", attempt + 1, task_id, exc)
 
     fallback_candidates = list(candidates[:4])
+
     def fallback_sort_key(x):
         dt = getattr(x, "created_at", "")
         return (str(dt) if dt else "", str(getattr(x, "id", "")))
@@ -346,7 +347,7 @@ async def rank_source_assets_for_effect(
         "AI photo selection failed all attempts, using deterministic fallback",
         task_id=task_id,
         failure_causes=failure_causes,
-        fallback_strategy="newest_created_at"
+        fallback_strategy="newest_created_at",
     )
     return fallback
 
@@ -773,21 +774,23 @@ async def _pipeline_retrieve_and_select_assets(
 
     # We set selection metadata on context
     ctx.asset_selection = getattr(ctx, "asset_selection", {})
-    ctx.asset_selection.update({
-        "policy": "global_usage_registry",
-        "mode": "manual" if is_manual else "automatic",
-        "candidate_count": candidate_count,
-        "unique_candidate_count": unique_candidate_count,
-        "never_used_count": never_used_count,
-        "released_count": released_count,
-        "accepted_count": accepted_count,
-        "pending_excluded_count": pending_excluded_count,
-        "search_attempts": search_attempts,
-        "required_asset_count": required_count,
-        "selected_asset_ids": selected_asset_ids,
-        "selection_reason_code": selection_reason_code,
-        "selection_reason": selection_reason,
-    })
+    ctx.asset_selection.update(
+        {
+            "policy": "global_usage_registry",
+            "mode": "manual" if is_manual else "automatic",
+            "candidate_count": candidate_count,
+            "unique_candidate_count": unique_candidate_count,
+            "never_used_count": never_used_count,
+            "released_count": released_count,
+            "accepted_count": accepted_count,
+            "pending_excluded_count": pending_excluded_count,
+            "search_attempts": search_attempts,
+            "required_asset_count": required_count,
+            "selected_asset_ids": selected_asset_ids,
+            "selection_reason_code": selection_reason_code,
+            "selection_reason": selection_reason,
+        }
+    )
 
     _trace_stage(
         ctx.db,

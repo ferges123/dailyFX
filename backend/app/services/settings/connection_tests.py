@@ -2,6 +2,45 @@ from fastapi import HTTPException
 
 from app.schemas.settings import ConnectionTestResponse
 from app.security import decrypt_secret
+from app.services.generation.ai_vision import XIAOMI_API_BASE_URL
+
+_HTTP_PROVIDER_TESTS = {
+    "openai": {
+        "encrypted_field": "encrypted_openai_api_key",
+        "url": "https://api.openai.com/v1/models",
+        "header_name": "Authorization",
+        "provider_name": "OpenAI",
+        "use_bearer": True,
+    },
+    "gemini": {
+        "encrypted_field": "encrypted_gemini_api_key",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models",
+        "header_name": "x-goog-api-key",
+        "provider_name": "Gemini",
+        "use_bearer": False,
+    },
+    "openrouter": {
+        "encrypted_field": "encrypted_openrouter_api_key",
+        "url": "https://openrouter.ai/api/v1/models",
+        "header_name": "Authorization",
+        "provider_name": "OpenRouter",
+        "use_bearer": True,
+    },
+    "byteplus": {
+        "encrypted_field": "encrypted_byteplus_api_key",
+        "url": "https://ark.ap-southeast.bytepluses.com/api/v3/models",
+        "header_name": "Authorization",
+        "provider_name": "BytePlus",
+        "use_bearer": True,
+    },
+    "xiaomi": {
+        "encrypted_field": "encrypted_xiaomi_api_key",
+        "url": f"{XIAOMI_API_BASE_URL}/models",
+        "header_name": "api-key",
+        "provider_name": "Xiaomi MiMo",
+        "use_bearer": False,
+    },
+}
 
 
 def build_connection_test_response(

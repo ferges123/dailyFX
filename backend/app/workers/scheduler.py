@@ -136,7 +136,7 @@ def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
         )
         if stuck_history:
             for task in stuck_history:
-                error = "Task timed out (stuck in RUNNING for more than 15 minutes)"
+                error = "Task timed out (stuck in RUNNING for more than 5 minutes)"
                 upsert_history_entry(
                     session,
                     task.task_id,
@@ -162,7 +162,7 @@ def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
         )
         if stuck_tasks:
             for task in stuck_tasks:
-                error = "Task timed out (stuck in running for more than 15 minutes)"
+                error = "Task timed out (stuck in running for more than 5 minutes)"
                 update_task(
                     session,
                     task.task_id,
@@ -400,28 +400,14 @@ async def _async_main() -> None:
 
     # Reset any stuck RUNNING tasks to FAILED
     from app.database import SessionLocal
-    from app.models.generation_history import GenerationHistoryModel
+    from app.services.generation.tasks import reset_stuck_tasks_on_startup
     from app.workers.telegram_bot import start_telegram_bot_listener
 
     session = SessionLocal()
     try:
-        stuck_tasks = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").all()
-        if stuck_tasks:
-            for task in stuck_tasks:
-                task.status = "FAILED"
-                task.error = "Interrupted by scheduler restart"
-            session.commit()
-            logger.info("Reset %d stuck RUNNING tasks to FAILED", len(stuck_tasks))
-
-        from app.models.generation_task import GenerationTaskModel
-
-        stuck_queued_tasks = session.query(GenerationTaskModel).filter(GenerationTaskModel.status == "running").all()
-        if stuck_queued_tasks:
-            for task in stuck_queued_tasks:
-                task.status = "failed"
-                task.error = "Interrupted by scheduler restart"
-            session.commit()
-            logger.info("Reset %d stuck running queued tasks to failed", len(stuck_queued_tasks))
+        reset_count = reset_stuck_tasks_on_startup(session, reason="Interrupted by scheduler restart")
+        if reset_count > 0:
+            logger.info("Reset %d stuck tasks to FAILED/failed on scheduler startup", reset_count)
     except Exception as exc:
         logger.exception("Failed to reset stuck tasks: %s", exc)
         session.rollback()

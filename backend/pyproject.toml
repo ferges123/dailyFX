@@ -1,6 +1,6 @@
 [project]
 name = "dailyfx-backend"
-version = "0.20.12"
+version = "0.21.8"
 description = "FastAPI backend for DailyFX for immich"
 requires-python = ">=3.13"
 dependencies = [
@@ -32,6 +32,7 @@ dailyfx = "app.cli:main"
 test = [
     "pytest>=8.0.0",
     "pytest-timeout>=2.4.0",
+    "pytest-cov>=5.0.0",
 ]
 lint = [
     "ruff>=0.8.0",

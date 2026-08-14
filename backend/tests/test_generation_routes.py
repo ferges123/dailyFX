@@ -379,12 +379,15 @@ def test_history_ai_vision_updates_summary_tags_and_provenance(tmp_path, monkeyp
             provider="openai",
             model="gpt-4o-mini",
         )
-        with patch(
-            "app.api.routes_generation_actions.analyze_image",
-            new=AsyncMock(return_value=analysis),
-        ), patch(
-            "app.api.routes_generation_actions._prepare_history_ai_vision_data",
-            return_value=(b"test image", MagicMock(default_ai_provider="openai")),
+        with (
+            patch(
+                "app.api.routes_generation_actions.analyze_image",
+                new=AsyncMock(return_value=analysis),
+            ),
+            patch(
+                "app.api.routes_generation_actions._prepare_history_ai_vision_data",
+                return_value=(b"test image", MagicMock(default_ai_provider="openai")),
+            ),
         ):
             result = asyncio.run(run_history_ai_vision("task-ai-vision", db))
 
@@ -431,16 +434,17 @@ def test_run_history_ai_vision_with_review_token(tmp_path, monkeypatch):
             provider="openai",
             model="gpt-4o-mini",
         )
-        with patch(
-            "app.api.routes_generation_actions.analyze_image",
-            new=AsyncMock(return_value=analysis),
-        ), patch(
-            "app.api.routes_generation_actions._prepare_history_ai_vision_data",
-            return_value=(b"test image", MagicMock(default_ai_provider="openai")),
+        with (
+            patch(
+                "app.api.routes_generation_actions.analyze_image",
+                new=AsyncMock(return_value=analysis),
+            ),
+            patch(
+                "app.api.routes_generation_actions._prepare_history_ai_vision_data",
+                return_value=(b"test image", MagicMock(default_ai_provider="openai")),
+            ),
         ):
-            result = asyncio.run(
-                run_history_ai_vision("task-ai-vision-review", review_token=token, db=db)
-            )
+            result = asyncio.run(run_history_ai_vision("task-ai-vision-review", review_token=token, db=db))
 
         assert result.title == "Review Vision Title"
         assert result.summary == "A review summary."
@@ -449,7 +453,6 @@ def test_run_history_ai_vision_with_review_token(tmp_path, monkeypatch):
         monkeypatch.delenv("REQUIRE_AUTH_FOR_REVIEW", raising=False)
         app.config.get_settings.cache_clear()
         db.close()
-
 
 
 def test_get_generation_image(tmp_path, monkeypatch):

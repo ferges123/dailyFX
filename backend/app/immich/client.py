@@ -682,7 +682,9 @@ class ImmichClient:
                     payload = await self._post_json("/search/metadata", client, body)
                     assets_payload = payload.get("assets", {})
                     if not isinstance(assets_payload, dict):
-                        raise ImmichUnexpectedResponseError("Immich returned unexpected assets field in search metadata")
+                        raise ImmichUnexpectedResponseError(
+                            "Immich returned unexpected assets field in search metadata"
+                        )
                     items = assets_payload.get("items", [])
                     if not isinstance(items, list):
                         items = []
@@ -701,7 +703,9 @@ class ImmichClient:
                 except ImmichUnexpectedResponseError as exc:
                     if "not found" in str(exc).lower() or "404" in str(exc):
                         random_body = self._build_random_search_body(filters, person_ids)
-                        payload = await self._request_any_json("POST", "/search/random", client, json_payload=random_body)
+                        payload = await self._request_any_json(
+                            "POST", "/search/random", client, json_payload=random_body
+                        )
                         if not isinstance(payload, list):
                             assets = []
                         else:
@@ -718,7 +722,9 @@ class ImmichClient:
                     break
 
                 if exclude_ids:
-                    filtered_assets = [asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)]
+                    filtered_assets = [
+                        asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)
+                    ]
                     if not filtered_assets:
                         if can_paginate:
                             current_page += 1

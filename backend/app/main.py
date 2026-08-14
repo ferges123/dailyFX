@@ -36,18 +36,12 @@ setup_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    # Reset any stuck RUNNING tasks to FAILED
     from app.database import SessionLocal
-    from app.models.generation_history import GenerationHistoryModel
+    from app.services.generation.tasks import reset_stuck_tasks_on_startup
 
     db = SessionLocal()
     try:
-        stuck_tasks = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").all()
-        if stuck_tasks:
-            for task in stuck_tasks:
-                task.status = "FAILED"
-                task.error = "Interrupted by system restart"
-            db.commit()
+        reset_stuck_tasks_on_startup(db, reason="Interrupted by system restart")
     except Exception:
         db.rollback()
     finally:

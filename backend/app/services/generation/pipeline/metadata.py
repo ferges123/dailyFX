@@ -43,6 +43,7 @@ def _inject_ai_tags(tags: list[str], module, group_name: str) -> list[str]:
 
 logger = logging.getLogger(__name__)
 
+
 def _initial_artifact_state(result) -> dict[str, object]:
     return {
         "ai_title": result.title,

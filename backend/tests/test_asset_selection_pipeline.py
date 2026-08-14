@@ -335,10 +335,12 @@ def test_no_candidates_records_dailyfx_exclusion_diagnostics(mock_debug_log, moc
     settings.ai_photo_selection_enabled = False
     db.commit()
 
-    page = _make_mock_page([
-        _make_mock_asset("asset-dailyfx-1", "dailyfx-one.png"),
-        _make_mock_asset("asset-dailyfx-2", "DailyFX-two.png"),
-    ])
+    page = _make_mock_page(
+        [
+            _make_mock_asset("asset-dailyfx-1", "dailyfx-one.png"),
+            _make_mock_asset("asset-dailyfx-2", "DailyFX-two.png"),
+        ]
+    )
     mock_search.return_value = (MagicMock(), page)
     ctx = GenerationPipelineContext(
         db=db, settings=settings, task_id="auto-task-empty", filters=ImmichSearchFilters(person_filters=[])
@@ -405,6 +407,7 @@ def test_manual_selection_override(mock_search, setup_db):
     assert page_items[0].id == "asset-1"
     assert ctx.asset_selection["selection_reason_code"] == "manual_override"
 
+
 @patch("app.services.generation.pipeline.assets.analyze_images")
 def test_rank_source_assets_initial_success(mock_analyze):
     assets = [_make_mock_asset(f"asset-{i}") for i in range(1, 5)]
@@ -419,14 +422,17 @@ def test_rank_source_assets_initial_success(mock_analyze):
     mock_analyze.return_value = mock_result
 
     trace = {}
-    selected = asyncio.run(rank_source_assets_for_effect(
-        client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
-    ))
+    selected = asyncio.run(
+        rank_source_assets_for_effect(
+            client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
+        )
+    )
 
     assert selected.id == "asset-2"
     assert trace["succeeded"] is True
     assert trace["retry_count"] == 0
     assert mock_analyze.call_count == 1
+
 
 @patch("app.services.generation.pipeline.assets.analyze_images")
 def test_rank_source_assets_malformed_then_retry_success(mock_analyze):
@@ -447,15 +453,18 @@ def test_rank_source_assets_malformed_then_retry_success(mock_analyze):
     mock_analyze.side_effect = [fail_result, success_result]
 
     trace = {}
-    selected = asyncio.run(rank_source_assets_for_effect(
-        client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
-    ))
+    selected = asyncio.run(
+        rank_source_assets_for_effect(
+            client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
+        )
+    )
 
     assert selected.id == "asset-3"
     assert trace["succeeded"] is True
     assert trace["retry_count"] == 1
     assert mock_analyze.call_count == 2
     assert "ONLY raw JSON" in mock_analyze.call_args_list[1][1]["prompt"]
+
 
 @patch("app.services.generation.pipeline.assets.analyze_images")
 def test_rank_source_assets_double_failure_local_fallback(mock_analyze):
@@ -475,9 +484,11 @@ def test_rank_source_assets_double_failure_local_fallback(mock_analyze):
     mock_analyze.side_effect = Exception("Vision API failed")
 
     trace = {}
-    selected = asyncio.run(rank_source_assets_for_effect(
-        client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
-    ))
+    selected = asyncio.run(
+        rank_source_assets_for_effect(
+            client=client, settings=settings, candidates=assets, module=module, task_id="test", trace=trace
+        )
+    )
 
     # asset-2 should be selected because it's newer (deterministic fallback)
     assert selected.id == "asset-2"

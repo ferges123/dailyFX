@@ -157,7 +157,9 @@ async def repair(*, apply: bool, update_immich: bool) -> dict[str, int]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Repair missing source metadata in DailyFX generation history.")
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--dry-run", action="store_true", help="Inspect repairable records without changing files or data.")
+    mode.add_argument(
+        "--dry-run", action="store_true", help="Inspect repairable records without changing files or data."
+    )
     mode.add_argument("--apply", action="store_true", help="Apply the one-off local file and history repair.")
     parser.add_argument(
         "--update-immich",

@@ -78,3 +78,26 @@ def update_task(
     db.refresh(row)
     record_task_snapshot(db, row)
     return row
+
+
+def reset_stuck_tasks_on_startup(db: Session, reason: str = "Interrupted by system restart") -> int:
+    from app.models.generation_history import GenerationHistoryModel
+
+    count = 0
+    stuck_history = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.status == "RUNNING").all()
+    if stuck_history:
+        for task in stuck_history:
+            task.status = "FAILED"
+            task.error = reason
+            count += 1
+
+    stuck_queued_tasks = db.query(GenerationTaskModel).filter(GenerationTaskModel.status == "running").all()
+    if stuck_queued_tasks:
+        for task in stuck_queued_tasks:
+            task.status = "failed"
+            task.error = reason
+            count += 1
+
+    if count > 0:
+        db.commit()
+    return count

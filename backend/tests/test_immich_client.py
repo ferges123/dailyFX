@@ -137,14 +137,18 @@ def test_search_assets_applies_filters_and_sampling(monkeypatch: pytest.MonkeyPa
         requests.append(json.loads(request.content.decode()))
         return httpx.Response(
             200,
-            json={"assets": {"items": [
-                {
-                    "id": "asset-2",
-                    "originalFileName": "b.jpg",
-                    "type": "VIDEO",
-                    "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
+            json={
+                "assets": {
+                    "items": [
+                        {
+                            "id": "asset-2",
+                            "originalFileName": "b.jpg",
+                            "type": "VIDEO",
+                            "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
+                        }
+                    ]
                 }
-            ]}},
+            },
         )
 
     original_async_client = httpx.AsyncClient
@@ -191,12 +195,16 @@ def test_search_assets_uses_requested_random_size_and_returns_all_assets(monkeyp
         requests.append(json.loads(request.content.decode()))
         return httpx.Response(
             200,
-            json={"assets": {"items": [
-                {"id": "asset-1", "originalFileName": "a.jpg", "type": "IMAGE", "people": []},
-                {"id": "asset-2", "originalFileName": "b.jpg", "type": "IMAGE", "people": []},
-                {"id": "asset-3", "originalFileName": "c.jpg", "type": "IMAGE", "people": []},
-                {"id": "asset-4", "originalFileName": "d.jpg", "type": "IMAGE", "people": []},
-            ]}},
+            json={
+                "assets": {
+                    "items": [
+                        {"id": "asset-1", "originalFileName": "a.jpg", "type": "IMAGE", "people": []},
+                        {"id": "asset-2", "originalFileName": "b.jpg", "type": "IMAGE", "people": []},
+                        {"id": "asset-3", "originalFileName": "c.jpg", "type": "IMAGE", "people": []},
+                        {"id": "asset-4", "originalFileName": "d.jpg", "type": "IMAGE", "people": []},
+                    ]
+                }
+            },
         )
 
     original_async_client = httpx.AsyncClient
@@ -287,14 +295,18 @@ def test_search_assets_sends_obligatory_people_to_request(monkeypatch: pytest.Mo
         requests.append(json.loads(request.content.decode()))
         return httpx.Response(
             200,
-            json={"assets": {"items": [
-                {
-                    "id": "asset-1",
-                    "originalFileName": "a.jpg",
-                    "type": "IMAGE",
-                    "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
+            json={
+                "assets": {
+                    "items": [
+                        {
+                            "id": "asset-1",
+                            "originalFileName": "a.jpg",
+                            "type": "IMAGE",
+                            "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
+                        }
+                    ]
                 }
-            ]}},
+            },
         )
 
     original_async_client = httpx.AsyncClient
@@ -330,17 +342,21 @@ def test_search_assets_tries_optional_person_combinations(monkeypatch: pytest.Mo
             return httpx.Response(200, json={"assets": {"items": []}})
         return httpx.Response(
             200,
-            json={"assets": {"items": [
-                {
-                    "id": "asset-2",
-                    "originalFileName": "b.jpg",
-                    "type": "IMAGE",
-                    "people": [
-                        {"id": "person-1", "name": "Alice", "isHidden": False},
-                        {"id": "person-2", "name": "Bob", "isHidden": False},
-                    ],
-                },
-            ]}},
+            json={
+                "assets": {
+                    "items": [
+                        {
+                            "id": "asset-2",
+                            "originalFileName": "b.jpg",
+                            "type": "IMAGE",
+                            "people": [
+                                {"id": "person-1", "name": "Alice", "isHidden": False},
+                                {"id": "person-2", "name": "Bob", "isHidden": False},
+                            ],
+                        },
+                    ]
+                }
+            },
         )
 
     original_async_client = httpx.AsyncClient
@@ -380,17 +396,21 @@ def test_search_assets_obligatory_optional_falls_back_after_empty_response(monke
             return httpx.Response(200, json={"assets": {"items": []}})
         return httpx.Response(
             200,
-            json={"assets": {"items": [
-                {
-                    "id": "asset-10",
-                    "originalFileName": "combo.jpg",
-                    "type": "IMAGE",
-                    "people": [
-                        {"id": "person-1", "name": "Alice", "isHidden": False},
-                        {"id": "person-2", "name": "Bob", "isHidden": False},
-                    ],
+            json={
+                "assets": {
+                    "items": [
+                        {
+                            "id": "asset-10",
+                            "originalFileName": "combo.jpg",
+                            "type": "IMAGE",
+                            "people": [
+                                {"id": "person-1", "name": "Alice", "isHidden": False},
+                                {"id": "person-2", "name": "Bob", "isHidden": False},
+                            ],
+                        }
+                    ]
                 }
-            ]}},
+            },
         )
 
     original_async_client = httpx.AsyncClient

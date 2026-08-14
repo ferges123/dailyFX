@@ -45,10 +45,10 @@ jobs:
           cd backend
           pip-audit --disable-pip --no-deps --requirement requirements.lock
 
-      - name: Run pytest
+      - name: Run pytest with coverage
         run: |
           cd backend
-          pytest
+          pytest --cov=app --cov-report=term-missing
 
   frontend-build:
     runs-on: ubuntu-latest

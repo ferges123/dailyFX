@@ -421,9 +421,9 @@ def test_reset_stuck_tasks_at_runtime():
         assert recent_history.status == "RUNNING"
 
         assert stuck_task.status == "failed"
-        assert stuck_task.error == "Task timed out (stuck in running for more than 15 minutes)"
+        assert stuck_task.error == "Task timed out (stuck in running for more than 5 minutes)"
         assert stuck_history.status == "FAILED"
-        assert stuck_history.error == "Task timed out (stuck in RUNNING for more than 15 minutes)"
+        assert stuck_history.error == "Task timed out (stuck in RUNNING for more than 5 minutes)"
     finally:
         db.close()
 
