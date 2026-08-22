@@ -6,6 +6,7 @@ from _contract_helpers import FakeSettingsRow, configure_contract_test_db
 from app.api import routes_settings
 from app.immich.errors import ImmichAuthenticationError
 from app.schemas.settings import ConnectionTestResponse
+from app.services.generation.ai_vision import XIAOMI_API_BASE_URL
 
 configure_contract_test_db("api_contracts_settings_tests")
 
@@ -160,5 +161,5 @@ def test_http_provider_contracts(monkeypatch):
     assert seen["gemini"]["url"] == "https://generativelanguage.googleapis.com/v1beta/models"
     assert seen["openrouter"]["url"] == "https://openrouter.ai/api/v1/models"
     assert seen["byteplus"]["url"] == "https://ark.ap-southeast.bytepluses.com/api/v3/models"
-    assert seen["xiaomi"]["url"] == f"{routes_settings.XIAOMI_API_BASE_URL}/models"
+    assert seen["xiaomi"]["url"] == f"{XIAOMI_API_BASE_URL}/models"
     assert seen["local"]["url"] == "https://local-ai.example.test/v1/models"
