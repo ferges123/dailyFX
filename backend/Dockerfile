@@ -26,7 +26,12 @@ COPY --from=builder /app/app ./app
 COPY alembic.ini ./
 COPY healthcheck.py ./
 COPY start.sh ./
-RUN chmod +x start.sh && chmod -R o+rX /app
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    /opt/venv/bin/pip uninstall --yes setuptools && \
+    chmod +x start.sh && \
+    chmod -R o+rX /app
 
 ENV HOME=/tmp
 USER nobody
