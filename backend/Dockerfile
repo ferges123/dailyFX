@@ -29,7 +29,9 @@ COPY start.sh ./
 RUN apt-get update && \
     apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/* && \
-    /opt/venv/bin/pip uninstall --yes setuptools && \
+    rm -rf /usr/local/lib/python3.13/site-packages/pip* \
+           /opt/venv/lib/python3.13/site-packages/pip* && \
+    rm -f /usr/local/bin/pip* /opt/venv/bin/pip* && \
     chmod +x start.sh && \
     chmod -R o+rX /app
 
