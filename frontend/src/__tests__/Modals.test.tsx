@@ -60,6 +60,37 @@ describe('ConfirmDeleteModal', () => {
 });
 
 describe('LightboxModal', () => {
+  it('replaces the effect with the original image instead of layering both', () => {
+    const mockEntry = {
+      task_id: 'task-123',
+      title: 'Test Lightbox Title',
+      source_asset_ids: JSON.stringify(['source-asset-123']),
+    } as unknown as GenerationHistoryEntry;
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <LightboxModal
+          isOpen={true}
+          imageUrl="http://test.com/effect.png"
+          entry={mockEntry}
+          exif={null}
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByAltText('Preview')).toBeInTheDocument();
+    expect(screen.queryByAltText('Original Preview')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Original' }));
+
+    expect(screen.queryByAltText('Preview')).not.toBeInTheDocument();
+    expect(screen.getByAltText('Original Preview')).toHaveAttribute(
+      'src',
+      '/api/immich/assets/source-asset-123/thumbnail?size=preview',
+    );
+  });
+
   it('renders image preview and details correctly', () => {
     const onClose = vi.fn();
     const mockEntry = {

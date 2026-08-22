@@ -696,27 +696,22 @@ export const LightboxModal = memo(function LightboxModal({
                 willChange: 'transform',
               }}
             >
-              <SecureImage
-                src={imageUrl}
-                alt="Preview"
-                className="h-full w-full rounded-lg object-contain pointer-events-none"
-                decoding="async"
-                showLoadingIndicator
-              />
-              {originalImageUrl && (
-                <div
-                  className={`absolute inset-0 bg-stone-50 rounded-lg transition-opacity duration-200 pointer-events-none ${
-                    showOriginal ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
-                  <SecureImage
-                    src={originalImageUrl}
-                    alt="Original Preview"
-                    className="h-full w-full rounded-lg object-contain pointer-events-none"
-                    decoding="async"
-                    showLoadingIndicator
-                  />
-                </div>
+              {showOriginal && originalImageUrl ? (
+                <SecureImage
+                  src={originalImageUrl}
+                  alt="Original Preview"
+                  className="h-full w-full rounded-lg object-contain pointer-events-none"
+                  decoding="async"
+                  showLoadingIndicator
+                />
+              ) : (
+                <SecureImage
+                  src={imageUrl}
+                  alt="Preview"
+                  className="h-full w-full rounded-lg object-contain pointer-events-none"
+                  decoding="async"
+                  showLoadingIndicator
+                />
               )}
             </div>
           </div>
