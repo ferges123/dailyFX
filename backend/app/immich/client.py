@@ -653,6 +653,13 @@ class ImmichClient:
         except asyncio.TimeoutError as exc:
             raise ImmichConnectionError("Asset search timed out after 60 s — try fewer person filters") from exc
 
+    async def search_random_assets(self, filters: ImmichSearchFilters) -> ImmichAssetPage:
+        """Return a random sample of assets matching the supplied automation filters."""
+        try:
+            return await asyncio.wait_for(self._search_random_assets_inner(filters), timeout=60.0)
+        except asyncio.TimeoutError as exc:
+            raise ImmichConnectionError("Random asset search timed out after 60 s — try fewer person filters") from exc
+
     async def _search_assets_inner(self, filters: ImmichSearchFilters, page: int = 1) -> ImmichAssetPage:
         selected, actual_page = await self._search_metadata_asset(filters, page)
         return ImmichAssetPage(
@@ -661,6 +668,36 @@ class ImmichClient:
             count=len(selected),
             next_page=str(actual_page + 1) if selected else None,
         )
+
+    async def _search_random_assets_inner(self, filters: ImmichSearchFilters) -> ImmichAssetPage:
+        exclude_ids = {f.person_id for f in filters.person_filters if f.mode == "exclude"}
+        client = self._get_client()
+
+        for person_ids in self._build_person_request_sets(filters):
+            # A random response can consist entirely of excluded people. Retry a
+            # bounded number of times before trying the next optional-person set.
+            for _ in range(3):
+                body = self._build_random_search_body(filters, person_ids)
+                payload = await self._request_any_json("POST", "/search/random", client, json_payload=body)
+                if not isinstance(payload, list):
+                    raise ImmichUnexpectedResponseError("Immich returned unexpected random search response")
+
+                assets = [
+                    summary
+                    for item in payload
+                    if isinstance(item, dict) and (summary := self._coerce_asset_summary(item)) is not None
+                ]
+                if not assets:
+                    break
+
+                if exclude_ids:
+                    assets = [
+                        asset for asset in assets if not any(person.id in exclude_ids for person in asset.people)
+                    ]
+                if assets:
+                    return ImmichAssetPage(items=assets, total=len(assets), count=len(assets), next_page=None)
+
+        return ImmichAssetPage(items=[], total=0, count=0, next_page=None)
 
     async def _search_metadata_asset(
         self,

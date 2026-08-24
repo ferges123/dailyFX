@@ -226,6 +226,56 @@ def test_search_assets_uses_requested_random_size_and_returns_all_assets(monkeyp
     assert result.count == 4
 
 
+def test_search_random_assets_uses_random_endpoint_and_preserves_filters(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/search/random"
+        requests.append(json.loads(request.content.decode()))
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "id": "asset-random",
+                    "originalFileName": "random.jpg",
+                    "type": "IMAGE",
+                    "people": [{"id": "person-1", "name": "Alice", "isHidden": False}],
+                }
+            ],
+        )
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+
+    result = asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").search_random_assets(
+            ImmichSearchFilters(
+                album_ids=["album-1"],
+                person_filters=[ImmichPersonFilter(person_id="person-1", mode="obligatory")],
+                taken_after=date(2026, 5, 1),
+                taken_before=date(2026, 5, 31),
+                media_type="photo",
+                random_size=30,
+            )
+        )
+    )
+
+    assert len(requests) == 1
+    assert requests[0]["size"] == 30
+    assert requests[0]["albumIds"] == ["album-1"]
+    assert requests[0]["personIds"] == ["person-1"]
+    assert requests[0]["type"] == "IMAGE"
+    assert requests[0]["takenAfter"] == "2026-05-01T00:00:00Z"
+    assert requests[0]["takenBefore"] == "2026-05-31T23:59:59.999999Z"
+    assert result.next_page is None
+    assert [item.id for item in result.items] == ["asset-random"]
+
+
 def test_search_assets_allows_random_size_up_to_100(monkeypatch: pytest.MonkeyPatch) -> None:
     requests: list[dict[str, object]] = []
 

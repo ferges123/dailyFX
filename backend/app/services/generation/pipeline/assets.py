@@ -26,6 +26,7 @@ async def _search_assets_for_generation(
     _task_update: Callable[..., None],
     _progress: Callable[[str], None],
     page: int = 1,
+    random_selection: bool = False,
 ) -> tuple[object, object]:
     from app.services.immich import build_immich_client
 
@@ -40,7 +41,10 @@ async def _search_assets_for_generation(
     )
     _task_update(step="selecting_asset", progress=0.1)
     _progress("Searching for photos…")
-    page_obj = await client.search_assets(filters, page=page)
+    if random_selection:
+        page_obj = await client.search_random_assets(filters)
+    else:
+        page_obj = await client.search_assets(filters, page=page)
     return client, page_obj
 
 
@@ -482,6 +486,7 @@ async def _pipeline_retrieve_and_select_assets(
                     _task_update=ctx.task_update,
                     _progress=ctx.progress_msg,
                     page=current_page,
+                    random_selection=True,
                 )
             except Exception as exc:
                 logger.warning("Search attempt %d failed: %s", search_attempts, exc)
