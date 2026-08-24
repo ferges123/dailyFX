@@ -44,7 +44,10 @@ async function requestStudioPreview(
   headers: Record<string, string> = {},
 ): Promise<StudioPreviewResponse> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  // AI image providers routinely need longer than a minute.  Keep this distinct
+  // from the standard API timeout so a completed Studio render is not presented
+  // as a failed request merely because the response arrived a little late.
+  const timeoutId = setTimeout(() => controller.abort(), 180000);
   try {
     const response = await fetch(`${apiBase}${path}`, {
       signal: controller.signal,
@@ -61,7 +64,7 @@ async function requestStudioPreview(
     return response.json() as Promise<StudioPreviewResponse>;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError(408, 'Studio preview request timed out (60s limit)');
+      throw new ApiError(408, 'Studio preview request timed out (3 minute limit)');
     }
     throw error;
   } finally {
