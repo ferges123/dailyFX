@@ -16,7 +16,7 @@ from app.immich.models import (
 
 
 def checksum(content: bytes) -> str:
-    return hashlib.sha1(content).hexdigest()
+    return hashlib.sha1(content, usedforsecurity=False).hexdigest()
 
 
 def to_iso_utc_start(value: date) -> str:

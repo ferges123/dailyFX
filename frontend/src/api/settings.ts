@@ -19,12 +19,14 @@ export function updateSettings(payload: SettingsUpdate) {
 export function testImmichConnection() {
   return request<ConnectionTest>('/api/settings/test-immich', {
     method: 'POST',
+    timeoutMs: 60_000,
   });
 }
 
 export function testProviderConnection(provider: string) {
   return request<ConnectionTest>(`/api/settings/test-provider/${provider}`, {
     method: 'POST',
+    timeoutMs: 60_000,
   });
 }
 
@@ -41,4 +43,4 @@ export function getDebugLog() {
 
 export type RetentionPreview = { files: number; metadata: number; tasks: number; bytes: number; missing_files: number; orphan_files: number; warnings: string[] };
 export function getRetentionPreview() { return request<RetentionPreview>('/api/settings/retention/preview'); }
-export function runRetention(dryRun = true) { return request<RetentionPreview>(`/api/settings/retention/run?dry_run=${dryRun}`, { method: 'POST' }); }
+export function runRetention(dryRun = true) { return request<RetentionPreview>(`/api/settings/retention/run?dry_run=${dryRun}`, { method: 'POST', timeoutMs: 120_000 }); }

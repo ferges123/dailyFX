@@ -24,6 +24,7 @@ _background_tasks: set[asyncio.Task] = set()
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = int(os.environ.get("AUTOMATION_POLL_INTERVAL_SECONDS", "10"))
+GENERATION_WORKER_TIMEOUT_SECONDS = int(os.environ.get("GENERATION_WORKER_TIMEOUT_SECONDS", "300"))
 from app.workers.schedule_parser import (
     _compute_next_run,
     _local_now,
@@ -39,16 +40,28 @@ async def _run_queued_task_in_background(task_id: str) -> None:
     process = context.Process(target=run_generation_task_process, args=(task_id, result_queue))
     try:
         process.start()
-        await asyncio.to_thread(process.join)
-        try:
-            result = await asyncio.to_thread(result_queue.get, True, 1)
-        except Empty:
-            result = {
-                "status": "failed",
-                "error": f"Generation worker exited without a result (exit code {process.exitcode})",
-            }
+        await asyncio.to_thread(process.join, GENERATION_WORKER_TIMEOUT_SECONDS)
+        timed_out = process.is_alive()
+        if timed_out:
+            timeout_error = f"Generation worker exceeded {GENERATION_WORKER_TIMEOUT_SECONDS}s timeout"
+            logger.error("%s for task %s; terminating process", timeout_error, task_id)
+            process.terminate()
+            await asyncio.to_thread(process.join, 5)
+            if process.is_alive():
+                logger.error("Generation worker %s did not terminate; killing process", task_id)
+                process.kill()
+                await asyncio.to_thread(process.join, 5)
+            result = {"status": "failed", "error": timeout_error}
+        else:
+            try:
+                result = await asyncio.to_thread(result_queue.get, True, 1)
+            except Empty:
+                result = {
+                    "status": "failed",
+                    "error": f"Generation worker exited without a result (exit code {process.exitcode})",
+                }
 
-        if process.exitcode not in (0, None):
+        if not timed_out and process.exitcode not in (0, None):
             result = {
                 "status": "failed",
                 "error": f"Generation worker exited with code {process.exitcode}",
@@ -62,9 +75,17 @@ async def _run_queued_task_in_background(task_id: str) -> None:
         logger.exception("Exception while supervising generation worker %s: %s", task_id, exc)
         _record_worker_failure(task_id, str(exc))
     finally:
+        if process.is_alive():
+            logger.warning("Terminating unfinished generation worker during cleanup: %s", task_id)
+            process.terminate()
+            process.join(timeout=5)
+            if process.is_alive():
+                process.kill()
+                process.join(timeout=5)
         result_queue.close()
         result_queue.join_thread()
-        process.close()
+        if not process.is_alive():
+            process.close()
         _running_task_ids.discard(task_id)
         logger.info(
             "Generation worker finished and released memory: %s. Current running count: %d",

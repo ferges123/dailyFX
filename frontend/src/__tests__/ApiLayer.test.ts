@@ -101,6 +101,17 @@ describe('API Layer - Base', () => {
     }
   });
 
+  it('uses a caller-provided timeout', async () => {
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+
+    await request('/long-running-endpoint', { timeoutMs: 60_000 });
+
+    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+  });
+
   it('fails fast with a clear error while the browser is offline', async () => {
     Object.defineProperty(navigator, 'onLine', {
       configurable: true,

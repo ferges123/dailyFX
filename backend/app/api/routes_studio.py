@@ -83,7 +83,7 @@ def _resolve_ai_provider_for_studio(settings, db: Session, field_prefix: str) ->
 
         providers = ["gemini", "openai", "openrouter", "xiaomi", "local"]
         default_models = {
-            "gemini": "gemini-1.5-flash",
+            "gemini": "gemini-2.5-flash",
             "openai": "gpt-4o-mini",
             "openrouter": "google/gemini-2.5-flash",
             "xiaomi": "mimo-v2.5",

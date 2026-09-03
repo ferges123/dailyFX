@@ -188,6 +188,7 @@ export function runGenerationAIVision(taskId: string) {
     `/api/generation/history/${taskId}/ai-vision`,
     {
       method: 'POST',
+      timeoutMs: 120_000,
     },
   );
 }

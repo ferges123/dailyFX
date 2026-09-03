@@ -5,6 +5,11 @@ function resolveApiBase(): string {
 }
 
 export const apiBase = resolveApiBase();
+export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
+export type ApiRequestOptions = RequestInit & {
+  timeoutMs?: number;
+};
 
 export function getAuthToken(): string | null {
   return localStorage.getItem('dailyfx_token');
@@ -51,14 +56,14 @@ export async function handleResponseError(response: Response): Promise<never> {
   throw new ApiError(response.status, detail);
 }
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new ApiError(0, 'Offline: this action requires a connection');
   }
+  const { headers: initHeaders, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, ...restInit } = options;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const { headers: initHeaders, ...restInit } = init || {};
     const response = await fetch(`${apiBase}${path}`, {
       signal: controller.signal,
       headers: {
@@ -79,7 +84,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError(408, 'API request timed out (15s limit)');
+      throw new ApiError(408, `API request timed out (${timeoutMs / 1000}s limit)`);
     }
     throw error;
   }
@@ -87,15 +92,15 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function requestText(
   path: string,
-  init?: RequestInit,
+  options: ApiRequestOptions = {},
 ): Promise<string> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new ApiError(0, 'Offline: this action requires a connection');
   }
+  const { headers: initHeaders, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, ...restInit } = options;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const { headers: initHeaders, ...restInit } = init || {};
     const response = await fetch(`${apiBase}${path}`, {
       signal: controller.signal,
       headers: {
@@ -112,7 +117,7 @@ export async function requestText(
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError(408, 'API request timed out (15s limit)');
+      throw new ApiError(408, `API request timed out (${timeoutMs / 1000}s limit)`);
     }
     throw error;
   }

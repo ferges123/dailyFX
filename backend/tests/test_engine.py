@@ -44,6 +44,13 @@ def _make_fake_page(assets):
     return page
 
 
+def _stub_asset_search(client, assets) -> None:
+    """Make the test double support both automatic asset-selection paths."""
+    page = _make_fake_page(assets)
+    client.search_assets = AsyncMock(return_value=page)
+    client.search_random_assets = AsyncMock(return_value=page)
+
+
 def _fake_image_bytes() -> bytes:
     from io import BytesIO
 
@@ -197,7 +204,7 @@ def test_run_generation_cycle_no_assets():
         db.commit()
 
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([]))
+        _stub_asset_search(fake_client, [])
 
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {}}}
 
@@ -220,7 +227,7 @@ def test_run_generation_cycle_instafilter(tmp_path):
         db.commit()
 
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([_make_fake_asset()]))
+        _stub_asset_search(fake_client, [_make_fake_asset()])
         fake_client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
         fake_client.get_asset_exif = AsyncMock(
             return_value={"make": "Canon", "model": "EOS R5", "latitude": 52.2, "longitude": 21.0}
@@ -265,7 +272,7 @@ def test_run_generation_cycle_requested_module_and_selected_assets(tmp_path):
         asset_a = _make_fake_asset("asset-a")
         asset_b = _make_fake_asset("asset-b")
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([asset_a, asset_b]))
+        _stub_asset_search(fake_client, [asset_a, asset_b])
         fake_client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
         fake_client.get_asset_exif = AsyncMock(return_value={})
 
@@ -311,7 +318,7 @@ def test_run_generation_cycle_saves_failed_on_error(tmp_path):
         db.commit()
 
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([_make_fake_asset()]))
+        _stub_asset_search(fake_client, [_make_fake_asset()])
         fake_client.get_asset_data = AsyncMock(side_effect=RuntimeError("network error"))
 
         effects_config = {"instafilter": {"enabled": True, "weight": 1, "config": {"styles": ["aden"]}}}
@@ -344,7 +351,7 @@ def test_run_generation_cycle_collage(tmp_path):
         db.commit()
 
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([_make_fake_asset()]))
+        _stub_asset_search(fake_client, [_make_fake_asset()])
         fake_client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
         fake_client.get_asset_exif = AsyncMock(return_value={"make": "Sony", "model": "A7", "iso": 400})
 
@@ -582,7 +589,7 @@ def test_ai_module_tags_injection(tmp_path):
         db.commit()
 
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([_make_fake_asset()]))
+        _stub_asset_search(fake_client, [_make_fake_asset()])
         fake_client.get_asset_data = AsyncMock(return_value=_fake_image_bytes())
         fake_client.get_asset_exif = AsyncMock(return_value={"iso": 200})
 
@@ -665,7 +672,7 @@ def test_run_generation_cycle_ai_module_uses_final_vision_image(tmp_path):
         final_bytes = _fake_image_bytes_color((44, 55, 66))
 
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([_make_fake_asset()]))
+        _stub_asset_search(fake_client, [_make_fake_asset()])
         fake_client.get_asset_data = AsyncMock(return_value=source_bytes)
         fake_client.get_asset_thumbnail = AsyncMock(return_value=(source_bytes, "image/jpeg"))
         fake_client.get_asset_exif = AsyncMock(return_value={})
@@ -795,7 +802,7 @@ def test_run_generation_cycle_uses_people_context_for_source_vision(tmp_path):
             people=[SimpleNamespace(id="person-1", name="Alicja")],
         )
         fake_client = AsyncMock()
-        fake_client.search_assets = AsyncMock(return_value=_make_fake_page([fake_asset]))
+        _stub_asset_search(fake_client, [fake_asset])
         fake_client.get_asset_data = AsyncMock(return_value=source_bytes)
         fake_client.get_asset_thumbnail = AsyncMock(return_value=(source_bytes, "image/jpeg"))
         fake_client.get_asset_exif = AsyncMock(return_value={})

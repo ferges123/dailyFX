@@ -1,6 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 from _contract_helpers import configure_contract_test_db
 
@@ -9,7 +10,7 @@ from app.models.generation_task import GenerationTaskModel
 from app.models.schedule import ScheduleModel, schedule_notification_preset_association
 from app.models.settings import SettingsModel
 from app.services.immich import get_or_create_settings
-from app.workers.scheduler import _perform_tick, _running_task_ids
+from app.workers.scheduler import _perform_tick, _run_queued_task_in_background, _running_task_ids
 
 test_db = configure_contract_test_db("scheduler_concurrency")
 
@@ -88,3 +89,72 @@ def test_scheduler_async_concurrency_limit(monkeypatch):
     finally:
         db.close()
         test_db.unlink(missing_ok=True)
+
+
+def test_scheduler_terminates_generation_worker_after_timeout(monkeypatch):
+    """A stuck child must release its concurrency slot without a scheduler restart."""
+
+    class FakeQueue:
+        def close(self):
+            pass
+
+        def join_thread(self):
+            pass
+
+    class FakeProcess:
+        def __init__(self):
+            self.alive = True
+            self.exitcode = None
+            self.join_timeouts: list[int | None] = []
+            self.terminated = False
+            self.killed = False
+            self.closed = False
+
+        def start(self):
+            pass
+
+        def join(self, timeout=None):
+            self.join_timeouts.append(timeout)
+            if self.terminated or self.killed:
+                self.alive = False
+                self.exitcode = -15
+
+        def is_alive(self):
+            return self.alive
+
+        def terminate(self):
+            self.terminated = True
+
+        def kill(self):
+            self.killed = True
+
+        def close(self):
+            self.closed = True
+
+    process = FakeProcess()
+
+    class FakeContext:
+        def Queue(self, maxsize):
+            assert maxsize == 1
+            return FakeQueue()
+
+        def Process(self, target, args):
+            return process
+
+    failures: list[tuple[str, str]] = []
+    monkeypatch.setattr("app.workers.scheduler.GENERATION_WORKER_TIMEOUT_SECONDS", 0)
+    monkeypatch.setattr(
+        "app.workers.scheduler._record_worker_failure", lambda task_id, error: failures.append((task_id, error))
+    )
+    monkeypatch.setattr("app.workers.scheduler._update_schedule_after_queued_task", lambda *args: None)
+    _running_task_ids.clear()
+
+    with patch("app.workers.scheduler.multiprocessing.get_context", return_value=FakeContext()):
+        asyncio.run(_run_queued_task_in_background("stuck-task"))
+
+    assert process.join_timeouts == [0, 5]
+    assert process.terminated is True
+    assert process.killed is False
+    assert process.closed is True
+    assert failures == [("stuck-task", "Generation worker exceeded 0s timeout")]
+    assert "stuck-task" not in _running_task_ids
