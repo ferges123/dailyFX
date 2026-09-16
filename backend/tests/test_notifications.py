@@ -337,6 +337,7 @@ def test_send_telegram_notification_with_review_url(monkeypatch):
 def test_telegram_bot_callback_handling(monkeypatch):
     from app.database import SessionLocal, init_db
     from app.models.generation_history import GenerationHistoryModel
+    from app.models.notification_preset import NotificationPresetModel
     from app.workers.telegram_bot import _handle_callback_query
 
     init_db()
@@ -360,6 +361,15 @@ def test_telegram_bot_callback_handling(monkeypatch):
             config_json="{}",
         )
         db.add(row)
+        preset = db.query(NotificationPresetModel).filter_by(name="Telegram callback test chat").first()
+        if preset is None:
+            db.add(
+                NotificationPresetModel(
+                    name="Telegram callback test chat",
+                    provider="telegram",
+                    topic="999",
+                )
+            )
         db.commit()
 
         # Mock calls
@@ -423,6 +433,51 @@ def test_telegram_bot_callback_handling(monkeypatch):
             "inline_keyboard": [[{"text": "🔍 Review", "url": "https://example.com/review/test-task-123"}]]
         }
 
+    finally:
+        db.close()
+
+
+def test_telegram_bot_rejects_callback_from_unconfigured_chat(monkeypatch):
+    from app.database import SessionLocal, init_db
+    from app.models.generation_history import GenerationHistoryModel
+    from app.workers.telegram_bot import _handle_callback_query
+
+    init_db()
+    db = SessionLocal()
+    try:
+        task_id = "test-task-unconfigured-chat"
+        db.query(GenerationHistoryModel).filter_by(task_id=task_id).delete()
+        db.add(
+            GenerationHistoryModel(
+                task_id=task_id,
+                generation_type="bokeh_blur",
+                status="PENDING_REVIEW",
+                title="Bokeh Blur Photo",
+                summary="A nice blur",
+                source_asset_ids="[]",
+                config_json="{}",
+            )
+        )
+        db.commit()
+
+        accepted_tasks = []
+
+        async def mock_accept(*args, **kwargs):
+            accepted_tasks.append(args[0])
+
+        monkeypatch.setattr("app.workers.telegram_bot.accept_generation", mock_accept)
+        fake_client = FakeTelegramAsyncClient(response=FakeResponse(json_body={"ok": True}))
+        callback_query = {
+            "id": "cb-unconfigured",
+            "data": f"accept:{task_id}",
+            "message": {"chat": {"id": 99887766}, "message_id": 888},
+        }
+
+        asyncio.run(_handle_callback_query(fake_client, "fake-token", callback_query))
+
+        assert accepted_tasks == []
+        assert len(fake_client.requests) == 1
+        assert fake_client.requests[0]["json"]["text"] == "Unauthorized chat."
     finally:
         db.close()
 

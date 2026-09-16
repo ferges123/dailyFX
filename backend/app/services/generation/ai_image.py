@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
+import socket
 from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from PIL import Image
@@ -29,6 +32,7 @@ PROVIDER_IMAGE_FORMATS = {
     "byteplus": "jpeg",
     "local": "png",
 }
+MAX_REMOTE_IMAGE_BYTES = 25 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -230,10 +234,36 @@ async def _fetch_image_bytes(image_ref: str) -> bytes:
         raise AIImageError("Unsupported data URL returned by BytePlus")
 
     if image_ref.startswith(("http://", "https://")):
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.get(image_ref)
-            response.raise_for_status()
-            return response.content
+        parsed = urlsplit(image_ref)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            raise AIImageError("BytePlus returned an invalid image URL")
+
+        try:
+            addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
+            resolved_ips = {entry[4][0] for entry in addresses}
+        except socket.gaierror as exc:
+            raise AIImageError("Could not resolve BytePlus image host") from exc
+        if not resolved_ips or any(not ipaddress.ip_address(address).is_global for address in resolved_ips):
+            raise AIImageError("BytePlus image URL resolves to a non-public address")
+
+        timeout = httpx.Timeout(120.0, connect=10.0)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            async with client.stream("GET", image_ref, headers={"Accept": "image/*"}) as response:
+                response.raise_for_status()
+                content_length = response.headers.get("content-length")
+                if content_length is not None:
+                    try:
+                        if int(content_length) > MAX_REMOTE_IMAGE_BYTES:
+                            raise AIImageError("BytePlus image exceeds the maximum allowed size")
+                    except ValueError:
+                        pass
+
+                content = bytearray()
+                async for chunk in response.aiter_bytes():
+                    content.extend(chunk)
+                    if len(content) > MAX_REMOTE_IMAGE_BYTES:
+                        raise AIImageError("BytePlus image exceeds the maximum allowed size")
+                return bytes(content)
 
     return base64.b64decode(image_ref)
 

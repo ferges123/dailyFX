@@ -315,15 +315,25 @@ class ImmichClient:
         raise ImmichUnexpectedResponseError("Could not validate Immich API key")
 
     async def _get_server_version(self, client: httpx.AsyncClient) -> str | None:
-        try:
-            payload = await self._get_json("/server-info/version", client)
-        except (ImmichUnexpectedResponseError, ImmichAuthenticationError, ImmichPermissionError):
+        payload = None
+        for endpoint in ("/server/version", "/server-info/version"):
+            try:
+                payload = await self._get_json(endpoint, client)
+                break
+            except (ImmichUnexpectedResponseError, ImmichAuthenticationError, ImmichPermissionError):
+                continue
+        if not payload:
             return None
         major = payload.get("major")
         minor = payload.get("minor")
         patch = payload.get("patch")
         if major is None or minor is None or patch is None:
             return None
+        prerelease = payload.get("prerelease")
+        if prerelease is not None and prerelease != 0:
+            if isinstance(prerelease, int):
+                return f"{major}.{minor}.{patch}-rc.{prerelease}"
+            return f"{major}.{minor}.{patch}-{prerelease}"
         return f"{major}.{minor}.{patch}"
 
     async def get_assets(
@@ -874,13 +884,26 @@ class ImmichClient:
             return
 
         client = self._get_client()
-        await self._request(
-            "PATCH",
-            f"/assets/{asset_id}",
-            client,
-            json_payload=payload,
-            not_found_message="Immich asset update endpoint was not found",
-        )
+        last_error: Exception | None = None
+        for method in ("PUT", "PATCH"):
+            try:
+                await self._request(
+                    method,
+                    f"/assets/{asset_id}",
+                    client,
+                    json_payload=payload,
+                    not_found_message="Immich asset update endpoint was not found",
+                )
+                return
+            except ImmichUnexpectedResponseError as exc:
+                last_error = exc
+                exc_str = str(exc).lower()
+                is_not_found = "not found" in exc_str
+                is_method_not_allowed = "http 405" in exc_str or "method not allowed" in exc_str
+                if not (is_not_found or is_method_not_allowed):
+                    raise
+        if last_error is not None:
+            raise last_error
 
     async def update_assets_datetime_original(self, asset_ids: list[str], date_time_original: str) -> None:
         """Set the original capture time for existing Immich assets."""

@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import socket
 from datetime import datetime, timezone
 from io import BytesIO
 from types import SimpleNamespace
@@ -58,6 +59,20 @@ class _FakeResponse:
                 "boom", request=httpx.Request("POST", "https://example.test"), response=httpx.Response(self.status_code)
             )
 
+    async def aiter_bytes(self):
+        yield self.content
+
+
+class _FakeStreamContext:
+    def __init__(self, response):
+        self.response = response
+
+    async def __aenter__(self):
+        return self.response
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
 
 class _FakeAsyncClient:
     def __init__(self, *args, **kwargs):
@@ -80,6 +95,10 @@ class _FakeAsyncClient:
     async def get(self, url, headers=None):
         self.requests.append({"method": "GET", "url": url, "headers": headers})
         return self.next_get_response
+
+    def stream(self, method, url, headers=None):
+        self.requests.append({"method": method, "url": url, "headers": headers})
+        return _FakeStreamContext(self.next_get_response)
 
 
 def test_ai_budget_counts_vision_and_image_separately():
@@ -279,6 +298,10 @@ def test_generate_ai_image_uses_byteplus_images_endpoint(monkeypatch):
     with (
         patch("app.services.generation.ai_image._decrypt_provider_key", return_value="secret"),
         patch("app.services.generation.ai_image.reserve_ai_usage", return_value=None),
+        patch(
+            "app.services.generation.ai_image.socket.getaddrinfo",
+            return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))],
+        ),
     ):
         result = asyncio.run(generate_ai_image(settings, _png_bytes(), "make it playful"))
 
@@ -290,6 +313,18 @@ def test_generate_ai_image_uses_byteplus_images_endpoint(monkeypatch):
     assert fake_client.requests[0]["json"]["image"].startswith("data:image/jpeg;base64,")
     assert fake_client.requests[0]["json"]["size"] == "1920x1920"
     assert "messages" not in fake_client.requests[0]["json"]
+
+
+def test_byteplus_image_url_rejects_private_address(monkeypatch):
+    from app.services.generation.ai_image import AIImageError, _fetch_image_bytes
+
+    monkeypatch.setattr(
+        "app.services.generation.ai_image.socket.getaddrinfo",
+        lambda *args, **kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))],
+    )
+
+    with pytest.raises(AIImageError, match="non-public"):
+        asyncio.run(_fetch_image_bytes("https://cdn.example.test/result.png"))
 
 
 def test_encode_image_for_provider_uses_expected_format():

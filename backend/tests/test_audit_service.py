@@ -62,10 +62,27 @@ def test_redact_value():
     assert redacted["custom_prompt"] == "[REDACTED]"
     assert redacted["nested_dict"]["token"] == "[REDACTED]"
     assert redacted["nested_dict"]["nested_normal"] == 123
-    assert redacted["url_with_token"] == "https://example.com/webhook?token=[REDACTED]&other=1"
+    assert redacted["url_with_token"] == "[REDACTED]"
     assert redacted["url_normal"] == "https://example.com/webhook?other=1"
     assert redacted["list_val"][0]["secret"] == "[REDACTED]"
     assert redacted["list_val"][1]["normal"] == "safe"
+
+
+def test_record_audit_event_redacts_summary_and_sensitive_url_values(db_session: Session):
+    event = record_audit_event(
+        db=db_session,
+        action="test",
+        category="test",
+        outcome="failure",
+        actor_type="system",
+        summary="Request to https://example.test/callback?api_key=secret-value failed",
+        metadata={"token": "https://example.test/callback"},
+    )
+
+    assert event is not None
+    assert "secret-value" not in event.summary
+    assert "api_key=[REDACTED]" in event.summary
+    assert '"token": "[REDACTED]"' in event.metadata_json
 
 
 def test_build_settings_diff():
@@ -213,7 +230,7 @@ def test_generation_api_auditing(db_session: Session):
 
     from app.database import get_db_dependency
     from app.main import app
-    from app.security import require_auth
+    from app.security import create_review_token, require_auth
 
     # Mock require_auth to bypass authentication
     async def override_auth():
@@ -239,9 +256,10 @@ def test_generation_api_auditing(db_session: Session):
         db_session.commit()
 
         client = TestClient(app)
+        review_token = create_review_token("task-test-audit")
 
         # 1. Test like endpoint audits
-        response = client.post("/api/generation/history/task-test-audit/like")
+        response = client.post(f"/api/generation/history/task-test-audit/like?review_token={review_token}")
         assert response.status_code == 200
 
         # Verify audit event was written
@@ -251,7 +269,7 @@ def test_generation_api_auditing(db_session: Session):
         assert events[0].outcome == "success"
 
         # 2. Test dislike endpoint audits
-        response = client.post("/api/generation/history/task-test-audit/dislike")
+        response = client.post(f"/api/generation/history/task-test-audit/dislike?review_token={review_token}")
         assert response.status_code == 200
 
         events = (

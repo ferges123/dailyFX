@@ -206,6 +206,25 @@ def test_review_token_rejects_expired_token(monkeypatch):
     assert app.security.verify_review_token(token, "task-review-1", now=now + timedelta(seconds=301)) is False
 
 
+def test_mutating_review_access_requires_token_even_when_public_reviews_are_enabled(monkeypatch):
+    import pytest
+
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("REQUIRE_AUTH_FOR_REVIEW", "false")
+
+    import app.config
+    import app.security
+
+    app.config.get_settings.cache_clear()
+    with pytest.raises(HTTPException) as exc_info:
+        app.security.authorize_mutating_review_access("task-review-1")
+    assert exc_info.value.status_code == 401
+
+    token = app.security.create_review_token("task-review-1")
+    app.security.authorize_mutating_review_access("task-review-1", review_token=token)
+
+
 def test_openapi_security_schema():
     from app.main import app
 

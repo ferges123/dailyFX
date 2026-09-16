@@ -9,6 +9,21 @@ from app.services.audit import record_audit_event
 
 class QueueRepository:
     @staticmethod
+    def claim_task_if_queued(db: Session, task_id: str, worker_id: str) -> bool:
+        """Atomically claim one known queued task for a scheduler worker."""
+        now = datetime.now(timezone.utc)
+        updated_rows = (
+            db.query(GenerationTaskModel)
+            .filter(GenerationTaskModel.task_id == task_id, GenerationTaskModel.status == "queued")
+            .update(
+                {"status": "running", "worker_id": worker_id, "started_at": now, "heartbeat_at": now},
+                synchronize_session=False,
+            )
+        )
+        db.commit()
+        return updated_rows > 0
+
+    @staticmethod
     def claim_next_task(db: Session, worker_id: str) -> GenerationTaskModel | None:
         now = datetime.now(timezone.utc)
         starvation_cutoff = now - timedelta(minutes=30)

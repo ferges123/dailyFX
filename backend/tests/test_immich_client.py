@@ -8,7 +8,7 @@ import pytest
 from PIL import Image
 
 from app.immich.client import ImmichClient, ImmichPersonFilter, ImmichSearchFilters
-from app.immich.errors import ImmichAuthenticationError
+from app.immich.errors import ImmichAuthenticationError, ImmichUnexpectedResponseError
 from app.immich.models import ImmichUploadMetadata
 
 
@@ -77,6 +77,53 @@ def test_connection_accepts_album_probe_when_user_probe_is_rejected(monkeypatch)
     assert result.ok is True
     assert result.server_version == "1.2.3"
     assert any(path.endswith("/albums") for path in requests)
+
+
+def test_get_server_version_supports_v3_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if request.url.path.endswith("/server/version"):
+            return httpx.Response(200, json={"major": 3, "minor": 2, "patch": 0, "prerelease": 2})
+        return httpx.Response(404, json={})
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    client = ImmichClient("https://photos.example.com", "secret-key")
+    version = asyncio.run(client._get_server_version(client._get_client()))
+    assert version == "3.2.0-rc.2"
+    assert any(c.endswith("/server/version") for c in calls)
+
+
+def test_get_server_version_falls_back_to_legacy_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if request.url.path.endswith("/server/version"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        if request.url.path.endswith("/server-info/version"):
+            return httpx.Response(200, json={"major": 1, "minor": 105, "patch": 0})
+        return httpx.Response(404, json={})
+
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    client = ImmichClient("https://photos.example.com", "secret-key")
+    version = asyncio.run(client._get_server_version(client._get_client()))
+    assert version == "1.105.0"
+    assert any(c.endswith("/server/version") for c in calls)
+    assert any(c.endswith("/server-info/version") for c in calls)
 
 
 def test_get_assets_calls_search_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -870,7 +917,7 @@ def test_get_asset_data_falls_back_to_alternate_and_legacy_endpoints(monkeypatch
     assert content == b"image-bytes-legacy"
 
 
-def test_update_asset_uses_v3_patch_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_asset_uses_put_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
 
     async def fake_request(self, method, path, client, **kwargs):
@@ -890,10 +937,35 @@ def test_update_asset_uses_v3_patch_endpoint(monkeypatch: pytest.MonkeyPatch) ->
     )
 
     assert seen == {
-        "method": "PATCH",
+        "method": "PUT",
         "path": "/assets/asset-1",
         "json": {"description": "DailyFX result", "isFavorite": True},
     }
+
+
+def test_update_asset_falls_back_to_patch_on_405_or_404(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    async def fake_request(self, method, path, client, **kwargs):
+        calls.append((method, path))
+        if method == "PUT":
+            raise ImmichUnexpectedResponseError("Immich returned HTTP 405 (Method Not Allowed)")
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(ImmichClient, "_request", fake_request)
+
+    asyncio.run(
+        ImmichClient("https://photos.example.com", "secret-key").update_asset(
+            "asset-1",
+            description="DailyFX fallback",
+            is_favorite=False,
+        )
+    )
+
+    assert calls == [
+        ("PUT", "/assets/asset-1"),
+        ("PATCH", "/assets/asset-1"),
+    ]
 
 
 def test_upsert_tags_uses_put_tags_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:

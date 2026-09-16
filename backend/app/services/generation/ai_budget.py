@@ -1,21 +1,16 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from threading import Lock
 
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models.ai_usage import AIUsageEventModel
+from app.models.ai_usage import AIUsageEventModel, AIUsageLockModel
 
 logger = logging.getLogger(__name__)
 
 WINDOW = timedelta(hours=1)
-_USAGE_LOCKS: dict[str, Lock] = defaultdict(Lock)
-
-
 class AIUsageLimitExceededError(RuntimeError):
     pass
 
@@ -59,24 +54,33 @@ def reserve_ai_usage(
     if limit <= 0:
         raise AIUsageLimitExceededError(f"AI {normalized} limit is disabled")
 
-    lock = _USAGE_LOCKS[normalized]
-    with lock:
-        db = SessionLocal()
-        try:
-            current = count_recent_usage(db, normalized, now=now)
-            if current >= limit:
-                raise AIUsageLimitExceededError(
-                    f"AI {normalized} limit exceeded: {current}/{limit} uses in the last hour"
-                )
-            row = AIUsageEventModel(
-                usage_type=normalized,
-                provider=provider,
-                model=model,
-                task_id=task_id,
+    db = SessionLocal()
+    try:
+        # Updating this durable sentinel serializes reservations across API and
+        # worker processes (row lock on server DBs; writer lock on SQLite).
+        lock_row = db.get(AIUsageLockModel, normalized)
+        if lock_row is None:
+            raise RuntimeError(f"Missing AI usage lock for {normalized}")
+        lock_row.updated_at = now or datetime.now(timezone.utc)
+        db.flush()
+
+        current = count_recent_usage(db, normalized, now=now)
+        if current >= limit:
+            raise AIUsageLimitExceededError(
+                f"AI {normalized} limit exceeded: {current}/{limit} uses in the last hour"
             )
-            db.add(row)
-            db.commit()
-            db.refresh(row)
-            return row
-        finally:
-            db.close()
+        row = AIUsageEventModel(
+            usage_type=normalized,
+            provider=provider,
+            model=model,
+            task_id=task_id,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()

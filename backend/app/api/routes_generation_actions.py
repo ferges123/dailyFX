@@ -49,6 +49,7 @@ from app.schemas.generation import GenerationAcceptRequest, GenerationHistoryRes
 from app.security import (
     ActorContext,
     authorize_review_access,
+    authorize_mutating_review_access,
     get_actor_context_dependency,
     require_auth,
     resolve_actor_context,
@@ -79,7 +80,7 @@ async def run_history_ai_vision(
 ):
     """Generate AI Vision summary and tags for a completed history item."""
     actor_ctx = resolve_actor_context(actor_ctx)
-    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
+    authorize_mutating_review_access(task_id, review_token=review_token, credentials=credentials)
     image_bytes, settings = _prepare_history_ai_vision_data(task_id)
     try:
         analysis = await analyze_image(
@@ -341,7 +342,7 @@ def like_generation(
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
-    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
+    authorize_mutating_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Entry not found")
@@ -386,7 +387,7 @@ def dislike_generation(
     actor_ctx: ActorContext = Depends(get_actor_context_dependency),
 ):
     actor_ctx = resolve_actor_context(actor_ctx)
-    authorize_review_access(task_id, review_token=review_token, credentials=credentials)
+    authorize_mutating_review_access(task_id, review_token=review_token, credentials=credentials)
     row = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Entry not found")

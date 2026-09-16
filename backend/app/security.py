@@ -139,6 +139,30 @@ def authorize_review_access(
     raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def authorize_mutating_review_access(
+    task_id: str,
+    *,
+    review_token: str | None = None,
+    credentials: HTTPAuthorizationCredentials | None = None,
+) -> None:
+    """Require app auth or a signed token for state-changing review actions.
+
+    Read-only review links can remain public when configured that way, but possession
+    of a task identifier alone must never authorize a mutation.
+    """
+    if credentials is not None and not isinstance(credentials, HTTPAuthorizationCredentials):
+        credentials = None
+
+    app_token = get_settings().app_access_token
+    if app_token and credentials is not None and secrets.compare_digest(credentials.credentials, app_token):
+        return
+
+    if verify_review_token(review_token, task_id):
+        return
+
+    raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 def _fernet() -> Fernet:
     digest = hashlib.sha256(get_settings().secret_key_material.encode("utf-8")).digest()
     key = base64.urlsafe_b64encode(digest)

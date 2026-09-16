@@ -15,3 +15,17 @@ class AIUsageEventModel(Base):
     model: Mapped[str | None] = mapped_column(String(100), nullable=True)
     task_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), index=True)
+
+
+class AIUsageLockModel(Base):
+    """One durable lock row per usage type for cross-process budget reservations."""
+
+    __tablename__ = "ai_usage_locks"
+
+    usage_type: Mapped[str] = mapped_column(String(20), primary_key=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

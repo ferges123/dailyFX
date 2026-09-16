@@ -1,5 +1,5 @@
 from app.models.ai_effect import AIEffectModel
-from app.models.ai_usage import AIUsageEventModel
+from app.models.ai_usage import AIUsageEventModel, AIUsageLockModel
 from app.models.asset_usage import AssetUsageModel
 from app.models.audit_event import AuditEventModel
 from app.models.effect_preset import EffectPresetModel
@@ -20,6 +20,7 @@ __all__ = [
     "GenerationTaskModel",
     "GenerationStreamEventModel",
     "AIUsageEventModel",
+    "AIUsageLockModel",
     "AIEffectModel",
     "PushSubscriptionModel",
     "VapidKeyModel",

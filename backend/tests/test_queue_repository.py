@@ -29,3 +29,20 @@ def test_queue_fetching_priority_and_starvation():
     assert first is not None
     assert first.task_id == "starved"
     db.close()
+
+
+def test_claim_task_if_queued_is_single_use():
+    init_db()
+    db = SessionLocal()
+    try:
+        db.query(GenerationTaskModel).filter_by(task_id="atomic-claim").delete()
+        db.add(GenerationTaskModel(task_id="atomic-claim", status="queued"))
+        db.commit()
+
+        assert QueueRepository.claim_task_if_queued(db, "atomic-claim", "scheduler-a") is True
+        assert QueueRepository.claim_task_if_queued(db, "atomic-claim", "scheduler-b") is False
+        row = db.get(GenerationTaskModel, "atomic-claim")
+        assert row.status == "running"
+        assert row.worker_id == "scheduler-a"
+    finally:
+        db.close()

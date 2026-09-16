@@ -357,6 +357,7 @@ def test_reject_already_uploaded():
 
 def test_history_ai_vision_updates_summary_tags_and_provenance(tmp_path, monkeypatch):
     import app.config
+    from app.security import create_review_token
     from app.services.generation.ai_vision import AIVisionResult
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
@@ -389,7 +390,13 @@ def test_history_ai_vision_updates_summary_tags_and_provenance(tmp_path, monkeyp
                 return_value=(b"test image", MagicMock(default_ai_provider="openai")),
             ),
         ):
-            result = asyncio.run(run_history_ai_vision("task-ai-vision", db))
+            result = asyncio.run(
+                run_history_ai_vision(
+                    "task-ai-vision",
+                    review_token=create_review_token("task-ai-vision"),
+                    db=db,
+                )
+            )
 
         assert result.title == "Luminous Painted Landscape"
         assert result.summary == "A luminous painted landscape."

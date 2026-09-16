@@ -135,6 +135,16 @@ async def _handle_callback_query(client: httpx.AsyncClient, token: str, callback
 
     db = SessionLocal()
     try:
+        allowed_chat_ids = {
+            preset.topic.strip()
+            for preset in db.query(NotificationPresetModel).all()
+            if preset.topic and "telegram" in {provider.strip() for provider in preset.provider.split(",")}
+        }
+        if str(chat_id) not in allowed_chat_ids:
+            logger.warning("Telegram callback rejected for unauthorized chat %s", chat_id)
+            await _answer_callback(client, token, callback_id, "Unauthorized chat.")
+            return
+
         # 1. Look up the task
         row = db.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
         if not row:

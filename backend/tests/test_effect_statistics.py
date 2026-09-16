@@ -112,6 +112,7 @@ def test_persist_generation_result_logs_effect(db_session: Session):
 
 def test_like_dislike_api(authenticated_client: TestClient, db_session: Session):
     from app.models.generation_history import GenerationHistoryModel
+    from app.security import create_review_token
 
     # Create history entry
     hist = GenerationHistoryModel(
@@ -122,19 +123,20 @@ def test_like_dislike_api(authenticated_client: TestClient, db_session: Session)
     log = EffectStatisticsLogModel(effect_id="cyanotype", task_id="task_abc", liked=None)
     db_session.add(log)
     db_session.commit()
+    review_token = create_review_token("task_abc")
 
     # POST to like
-    response = authenticated_client.post("/api/generation/history/task_abc/like")
+    response = authenticated_client.post(f"/api/generation/history/task_abc/like?review_token={review_token}")
     assert response.status_code == 200
     assert response.json()["liked"] is True
 
     # POST to like again (toggle)
-    response = authenticated_client.post("/api/generation/history/task_abc/like")
+    response = authenticated_client.post(f"/api/generation/history/task_abc/like?review_token={review_token}")
     assert response.status_code == 200
     assert response.json()["liked"] is None
 
     # POST to dislike
-    response = authenticated_client.post("/api/generation/history/task_abc/dislike")
+    response = authenticated_client.post(f"/api/generation/history/task_abc/dislike?review_token={review_token}")
     assert response.status_code == 200
     assert response.json()["liked"] is False
 

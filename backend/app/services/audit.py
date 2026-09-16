@@ -44,6 +44,10 @@ def is_sensitive_key(key: str) -> bool:
 
 
 def redact_value(val: Any, key: str | None = None) -> Any:
+    if key is not None and is_sensitive_key(key):
+        if isinstance(val, dict) and set(val) == {"changed"} and isinstance(val["changed"], bool):
+            return {"changed": val["changed"]}
+        return "[REDACTED]"
     if isinstance(val, dict):
         return {k: redact_value(v, k) for k, v in val.items()}
     elif isinstance(val, list):
@@ -52,13 +56,7 @@ def redact_value(val: Any, key: str | None = None) -> Any:
         if "http" in val:
             if any(s in val.lower() for s in ["token", "key", "secret"]):
                 val = re.sub(r"(?i)(\?|&)([^=]*(?:token|key|secret|auth|pass)[^=]*)=([^&]+)", r"\1\2=[REDACTED]", val)
-            if key is not None and is_sensitive_key(key):
-                return val
-        if key is not None and is_sensitive_key(key):
-            return "[REDACTED]"
         return val
-    elif key is not None and is_sensitive_key(key):
-        return "[REDACTED]"
     return val
 
 
@@ -123,10 +121,10 @@ def record_audit_event(
             target_id=str(target_id) if target_id is not None else None,
             task_id=task_id,
             schedule_id=schedule_id,
-            summary=summary,
+            summary=redact_value(summary),
             changes_json=changes_json,
             metadata_json=metadata_json,
-            error_code=error_code,
+            error_code=redact_value(error_code),
         )
 
         db.add(event)
