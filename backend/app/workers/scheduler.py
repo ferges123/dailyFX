@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.services.generation.engine import run_generation_cycle
 from app.services.generation.history import upsert_history_entry
+from app.services.generation.queue_repository import QueueRepository
 from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.generation.schedule_runs import build_scheduled_run_context
-from app.services.generation.queue_repository import QueueRepository
 from app.services.generation.tasks import ensure_task, update_task
 from app.services.immich import get_or_create_settings
 from app.workers.generation_worker import run_generation_task_process

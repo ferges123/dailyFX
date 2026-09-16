@@ -11,6 +11,8 @@ from app.models.ai_usage import AIUsageEventModel, AIUsageLockModel
 logger = logging.getLogger(__name__)
 
 WINDOW = timedelta(hours=1)
+
+
 class AIUsageLimitExceededError(RuntimeError):
     pass
 
@@ -66,9 +68,7 @@ def reserve_ai_usage(
 
         current = count_recent_usage(db, normalized, now=now)
         if current >= limit:
-            raise AIUsageLimitExceededError(
-                f"AI {normalized} limit exceeded: {current}/{limit} uses in the last hour"
-            )
+            raise AIUsageLimitExceededError(f"AI {normalized} limit exceeded: {current}/{limit} uses in the last hour")
         row = AIUsageEventModel(
             usage_type=normalized,
             provider=provider,

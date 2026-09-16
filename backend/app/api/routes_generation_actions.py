@@ -48,7 +48,6 @@ from app.models.generation_history import GenerationHistoryModel
 from app.schemas.generation import GenerationAcceptRequest, GenerationHistoryResponse
 from app.security import (
     ActorContext,
-    authorize_review_access,
     authorize_mutating_review_access,
     get_actor_context_dependency,
     require_auth,
