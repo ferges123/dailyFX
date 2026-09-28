@@ -17,6 +17,34 @@ from .base import (
 
 logger = logging.getLogger(__name__)
 
+_VISION_COMPLETION_TOKENS = (1024, 2048)
+
+
+async def _request_vision_json(client: httpx.AsyncClient, url: str, headers: dict, payload: dict) -> dict:
+    """Retry a truncated or malformed model answer without retrying HTTP failures."""
+    for attempt, token_limit in enumerate(_VISION_COMPLETION_TOKENS):
+        payload["max_completion_tokens"] = token_limit
+        response = await client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        try:
+            choice = data["choices"][0]
+            content = choice["message"]["content"]
+            if choice.get("finish_reason") == "length":
+                raise ValueError("completion token limit reached")
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError("empty completion content")
+            content = content.strip().removeprefix("```json").removesuffix("```").strip()
+            json.loads(content)
+            choice["message"]["content"] = content
+            return data
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            if attempt == len(_VISION_COMPLETION_TOKENS) - 1:
+                raise AIVisionError(f"Invalid Xiaomi vision JSON after retry: {redact_sensitive(exc)}") from exc
+            logger.warning("Xiaomi vision returned invalid JSON; retrying with a larger token limit")
+
+    raise AIVisionError("Xiaomi vision returned no valid response")
+
 
 async def _analyze_images_with_xiaomi(
     api_key: str,
@@ -30,14 +58,14 @@ async def _analyze_images_with_xiaomi(
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": _chat_image_content(prompt, b64_images)}],
-        "max_completion_tokens": 300,
+        "max_completion_tokens": _VISION_COMPLETION_TOKENS[0],
+        "thinking": {"type": "disabled"},
         "response_format": {"type": "json_object"},
     }
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return _vision_result_from_chat_json(response.json(), provider="xiaomi", model=model)
+            data = await _request_vision_json(client, url, headers, payload)
+            return _vision_result_from_chat_json(data, provider="xiaomi", model=model)
         except httpx.TimeoutException as exc:
             logger.error("Xiaomi multi-image vision error (timeout)", exc_info=True)
             raise AIVisionError("Xiaomi multi-image analysis failed: Request timed out") from exc
@@ -75,15 +103,14 @@ async def _analyze_with_xiaomi(
                 ],
             }
         ],
-        "max_completion_tokens": 300,
+        "max_completion_tokens": _VISION_COMPLETION_TOKENS[0],
+        "thinking": {"type": "disabled"},
         "response_format": {"type": "json_object"},
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
+            data = await _request_vision_json(client, url, headers, payload)
 
             content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)

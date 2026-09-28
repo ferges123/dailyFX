@@ -7,6 +7,7 @@ import pytest
 from PIL import Image
 
 from app.services.generation.ai_vision import AIVisionError, AIVisionResult, analyze_image, analyze_images
+from app.services.generation.vision.xiaomi import _analyze_images_with_xiaomi, _analyze_with_xiaomi
 
 
 def _fake_image_bytes() -> bytes:
@@ -144,3 +145,52 @@ def test_xiaomi_exceptions_handling():
             asyncio.run(analyze_image(settings, _fake_image_bytes()))
         assert "HTTP error 502" in str(exc_info.value)
         mock_logger.error.assert_called_with("Xiaomi vision error (HTTP error)", exc_info=True)
+
+
+def test_xiaomi_vision_retries_truncated_json_with_larger_limit():
+    requests = []
+
+    async def fake_post(_url, *, headers, json):
+        requests.append(json.copy())
+        response = MagicMock()
+        response.json.return_value = (
+            {"choices": [{"finish_reason": "length", "message": {"content": '{"title":"Cut'}}]}
+            if len(requests) == 1
+            else {
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": '{"title":"Gym","summary":"A workout.","tags":["gym"]}'},
+                    }
+                ],
+                "usage": {"total_tokens": 150},
+            }
+        )
+        return response
+
+    with patch("httpx.AsyncClient.post", side_effect=fake_post):
+        result = asyncio.run(_analyze_with_xiaomi("secret", "image", "Describe", "mimo-v2.5"))
+
+    assert result.title == "Gym"
+    assert [request["max_completion_tokens"] for request in requests] == [1024, 2048]
+    assert all(request["thinking"] == {"type": "disabled"} for request in requests)
+
+
+def test_xiaomi_multi_image_retries_empty_json():
+    requests = []
+
+    async def fake_post(_url, *, headers, json):
+        requests.append(json.copy())
+        response = MagicMock()
+        response.json.return_value = (
+            {"choices": [{"finish_reason": "stop", "message": {"content": ""}}]}
+            if len(requests) == 1
+            else {"choices": [{"finish_reason": "stop", "message": {"content": '{"selected_index":2}'}}]}
+        )
+        return response
+
+    with patch("httpx.AsyncClient.post", side_effect=fake_post):
+        result = asyncio.run(_analyze_images_with_xiaomi("secret", ["one", "two"], "Rank", "mimo-v2.5"))
+
+    assert result.summary == '{"selected_index": 2}'
+    assert [request["max_completion_tokens"] for request in requests] == [1024, 2048]
