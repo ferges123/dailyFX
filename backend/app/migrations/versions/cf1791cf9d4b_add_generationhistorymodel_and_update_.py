@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_generation_history_task_id"), "generation_history", ["task_id"], unique=True)
-    op.add_column("settings", sa.Column("automation_enabled", sa.Boolean(), server_default="0", nullable=False))
+    op.add_column("settings", sa.Column("automation_enabled", sa.Boolean(), server_default=sa.false(), nullable=False))
     op.add_column(
         "settings", sa.Column("automation_schedule", sa.String(length=50), server_default="weekly", nullable=False)
     )

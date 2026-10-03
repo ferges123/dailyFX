@@ -15,7 +15,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("schedules", sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default="0"))
+    op.add_column("schedules", sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.false()))
     op.create_index("ix_schedules_is_deleted", "schedules", ["is_deleted"])
 
 

@@ -34,8 +34,8 @@ def upgrade() -> None:
         sa.Column("upload_status", sa.String(length=50), nullable=True),
         sa.Column("album_id", sa.String(length=64), nullable=True),
         sa.Column("album_name", sa.String(length=255), nullable=True),
-        sa.Column("album_created", sa.Boolean(), nullable=False, server_default=sa.text("0")),
-        sa.Column("album_updated", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("album_created", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column("album_updated", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False

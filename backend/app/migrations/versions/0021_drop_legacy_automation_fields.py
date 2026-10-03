@@ -43,7 +43,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.batch_alter_table("settings") as batch_op:
-        batch_op.add_column(sa.Column("automation_enabled", sa.Boolean(), nullable=False, server_default="0"))
+        batch_op.add_column(sa.Column("automation_enabled", sa.Boolean(), nullable=False, server_default=sa.false()))
         batch_op.add_column(sa.Column("automation_schedule", sa.String(50), nullable=False, server_default="weekly"))
         batch_op.add_column(sa.Column("automation_person_ids_json", sa.Text(), nullable=True))
         batch_op.add_column(sa.Column("automation_filters_json", sa.Text(), nullable=True))

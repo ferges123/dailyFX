@@ -17,7 +17,7 @@ depends_on = None
 def upgrade() -> None:
     with op.batch_alter_table("schedules", schema=None) as batch_op:
         batch_op.add_column(
-            sa.Column("ai_photo_selection_enabled", sa.Boolean(), nullable=False, server_default=sa.text("0"))
+            sa.Column("ai_photo_selection_enabled", sa.Boolean(), nullable=False, server_default=sa.false())
         )
 
 

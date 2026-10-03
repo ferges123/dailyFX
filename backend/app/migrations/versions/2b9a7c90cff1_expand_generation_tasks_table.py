@@ -55,7 +55,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("worker_id", sa.String(length=64), nullable=True))
         batch_op.add_column(sa.Column("heartbeat_at", app.database.UTCDateTime(timezone=True), nullable=True))
         batch_op.add_column(sa.Column("error_code", sa.String(length=64), nullable=True))
-        batch_op.add_column(sa.Column("error_retryable", sa.Boolean(), server_default=sa.text("0"), nullable=False))
+        batch_op.add_column(sa.Column("error_retryable", sa.Boolean(), server_default=sa.false(), nullable=False))
         batch_op.create_index(batch_op.f("ix_generation_tasks_created_at"), ["created_at"], unique=False)
         batch_op.create_index(batch_op.f("ix_generation_tasks_heartbeat_at"), ["heartbeat_at"], unique=False)
         batch_op.create_index(batch_op.f("ix_generation_tasks_priority"), ["priority"], unique=False)

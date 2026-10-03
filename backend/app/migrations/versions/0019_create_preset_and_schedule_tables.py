@@ -62,7 +62,7 @@ def upgrade() -> None:
         "schedules",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="0"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("schedule_expr", sa.String(100), nullable=False, server_default="weekly"),
         sa.Column("filter_preset_id", sa.Integer(), nullable=False),
         sa.Column("effect_preset_id", sa.Integer(), nullable=False),

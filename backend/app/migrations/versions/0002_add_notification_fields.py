@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0002_add_notification_fields"
-down_revision = "0001_create_settings"
+down_revision = "0001b_widen_version_num"
 branch_labels = None
 depends_on = None
 

@@ -11,7 +11,7 @@ depends_on = None
 
 def upgrade() -> None:
     columns = [
-        sa.Column("retention_enabled", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+        sa.Column("retention_enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("retention_rejected_files_days", sa.Integer(), nullable=True, server_default=sa.text("7")),
         sa.Column("retention_rejected_metadata_days", sa.Integer(), nullable=True, server_default=sa.text("90")),
         sa.Column("retention_failed_files_days", sa.Integer(), nullable=True, server_default=sa.text("7")),

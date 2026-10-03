@@ -40,6 +40,11 @@ services:
       - ./data:/data
     ports:
       - "127.0.0.1:8438:8438"
+    networks:
+      - default
+      # Access to the shared external Postgres (host `postgres`).
+      # Unused when DATABASE_URL points to SQLite — harmless then.
+      - selfhost
     logging:
       driver: json-file
       options:
@@ -81,3 +86,8 @@ services:
 volumes:
   pgdata:
     name: dailyfx-pgdata
+
+networks:
+  # Shared network of the external /app/postgresql stack (host `postgres`).
+  selfhost:
+    external: true

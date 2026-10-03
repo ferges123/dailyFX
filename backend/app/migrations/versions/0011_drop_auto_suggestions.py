@@ -32,7 +32,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.batch_alter_table("settings") as batch_op:
-        batch_op.add_column(sa.Column("auto_suggestions_enabled", sa.Boolean(), nullable=False, server_default="0"))
+        batch_op.add_column(sa.Column("auto_suggestions_enabled", sa.Boolean(), nullable=False, server_default=sa.false()))
         batch_op.add_column(
             sa.Column("auto_suggestions_schedule", sa.String(50), nullable=False, server_default="weekly")
         )
