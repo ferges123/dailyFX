@@ -14,6 +14,9 @@ class AppSettings(BaseSettings):
     app_port: int = Field(default=8438, alias="APP_PORT", ge=1, le=65535)
     data_dir: Path = Field(default=Path("./data"), alias="DATA_DIR")
     database_url: str = Field(default="sqlite:///./data/app.db", alias="DATABASE_URL")
+    db_pool_size: int = Field(default=10, alias="DB_POOL_SIZE", ge=1, le=50)
+    db_max_overflow: int = Field(default=20, alias="DB_MAX_OVERFLOW", ge=0, le=100)
+    db_statement_timeout_ms: int = Field(default=30000, alias="DB_STATEMENT_TIMEOUT_MS", ge=1000, le=600000)
     app_secret_key: str = Field(alias="APP_SECRET_KEY")
     immich_thumbnail_cache_ttl: str | int = Field(default="7d", alias="IMMICH_THUMBNAIL_CACHE_TTL")
     immich_thumbnail_cache_ttl_seconds: int = Field(default=604800, alias="IMMICH_THUMBNAIL_CACHE_TTL_SECONDS")
@@ -97,6 +100,26 @@ class AppSettings(BaseSettings):
     @property
     def secret_key_material(self) -> str:
         return self.app_secret_key
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        normalized = (value or "").strip()
+        if not normalized:
+            raise ValueError("DATABASE_URL must not be blank")
+        allowed_prefixes = (
+            "sqlite://",
+            "sqlite+pysqlite://",
+            "postgresql://",
+            "postgresql+psycopg://",
+            "postgresql+psycopg2://",
+        )
+        if not normalized.startswith(allowed_prefixes):
+            raise ValueError(
+                "DATABASE_URL must start with one of: sqlite://, postgresql+psycopg:// "
+                "(recommended for PostgreSQL), postgresql://, postgresql+psycopg2://"
+            )
+        return normalized
 
     @field_validator("app_external_url", mode="before")
     @classmethod

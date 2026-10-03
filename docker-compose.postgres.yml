@@ -1,0 +1,20 @@
+# PostgreSQL override for DailyFX.
+# Usage — internal Postgres in this stack:
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up --build -d
+# Usage — external Postgres (another docker / host):
+#   do NOT use this file; set DATABASE_URL in .env instead, e.g.
+#   DATABASE_URL=postgresql+psycopg://dailyfx:secret@other-host:5432/dailyfx
+services:
+  db:
+    # Re-enable the optional `db` service from the base file (which is
+    # gated behind `profiles: ["pg"]`). `!reset` clears the profile gate
+    # so plain `up` with this override starts Postgres.
+    profiles: !reset []
+    restart: unless-stopped
+
+  api:
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-dailyfx}:${POSTGRES_PASSWORD:-dailyfx}@db:5432/${POSTGRES_DB:-dailyfx}"
+    depends_on:
+      db:
+        condition: service_healthy

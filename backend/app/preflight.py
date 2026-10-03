@@ -46,6 +46,22 @@ def _check_sqlite_parent_directory(database_url: str) -> None:
     _ensure_writable_directory(parent, "SQLite database directory")
 
 
+def _check_postgres_connectivity(database_url: str) -> None:
+    if not database_url.startswith("postgresql"):
+        return
+    from sqlalchemy import create_engine, text
+
+    try:
+        probe = create_engine(database_url, connect_args={"connect_timeout": 5}, pool_pre_ping=False)
+        with probe.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        probe.dispose()
+    except Exception as exc:
+        raise RuntimeError(
+            f"Cannot connect to PostgreSQL (DATABASE_URL host unreachable or auth failed): {exc}"
+        ) from exc
+
+
 def run_preflight_checks() -> None:
     try:
         settings = get_settings()
@@ -70,6 +86,7 @@ def run_preflight_checks() -> None:
 
     _ensure_writable_directory(settings.data_dir, "DATA_DIR")
     _check_sqlite_parent_directory(settings.database_url)
+    _check_postgres_connectivity(settings.database_url)
 
     print(
         f"Preflight OK: data_dir={settings.data_dir} database_url={settings.database_url}",

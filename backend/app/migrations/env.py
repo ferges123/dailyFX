@@ -34,6 +34,8 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        # render_as_batch=True is safe for all backends: batch "recreate"
+        # style applies to SQLite only; PostgreSQL uses plain ALTER TABLE.
         context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
         with context.begin_transaction():
             context.run_migrations()

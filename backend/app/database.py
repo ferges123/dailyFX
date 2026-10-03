@@ -38,51 +38,48 @@ SessionLocal = sessionmaker(autoflush=False, autocommit=False)
 _current_database_url: str | None = None
 
 
+def is_sqlite_url(database_url: str) -> bool:
+    return database_url.startswith("sqlite")
+
+
+def is_postgres_url(database_url: str) -> bool:
+    return database_url.startswith("postgresql")
+
+
 def _ensure_engine() -> Engine:
     global engine, _current_database_url
 
-    database_url = get_settings().database_url
+    settings = get_settings()
+    database_url = settings.database_url
     if engine is not None and database_url == _current_database_url:
         return engine
 
     if engine is not None:
         engine.dispose()
 
-    connect_args = {}
-    if database_url.startswith("sqlite"):
+    if is_sqlite_url(database_url):
         connect_args = {
             "check_same_thread": False,
             "timeout": 30,
         }
+        if "test" in database_url:
+            from sqlalchemy.pool import NullPool
 
-    if database_url.startswith("sqlite") and "test" in database_url:
-        from sqlalchemy.pool import NullPool
+            engine = create_engine(
+                database_url,
+                connect_args=connect_args,
+                poolclass=NullPool,
+            )
+        else:
+            engine = create_engine(
+                database_url,
+                connect_args=connect_args,
+                pool_pre_ping=True,
+                pool_size=5,
+                max_overflow=10,
+                pool_timeout=30,
+            )
 
-        engine = create_engine(
-            database_url,
-            connect_args=connect_args,
-            poolclass=NullPool,
-        )
-    elif database_url.startswith("sqlite"):
-        engine = create_engine(
-            database_url,
-            connect_args=connect_args,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-            pool_timeout=30,
-        )
-    else:
-        engine = create_engine(
-            database_url,
-            connect_args=connect_args,
-            pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
-            pool_timeout=30,
-        )
-
-    if database_url.startswith("sqlite"):
         from sqlalchemy import event
 
         @event.listens_for(engine, "connect")
@@ -91,6 +88,25 @@ def _ensure_engine() -> Engine:
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
+    elif is_postgres_url(database_url):
+        # URL format: postgresql+psycopg://user:pass@host:port/dbname
+        # (postgresql:// also works — SQLAlchemy defaults to psycopg2 dialect,
+        # so prefer the explicit +psycopg suffix documented in .env.example).
+        connect_args = {
+            "connect_timeout": 10,
+            "options": f"-c statement_timeout={settings.db_statement_timeout_ms}",
+        }
+        engine = create_engine(
+            database_url,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
+            pool_timeout=30,
+            pool_recycle=1800,
+        )
+    else:  # pragma: no cover — guarded by config validator
+        raise RuntimeError(f"Unsupported DATABASE_URL scheme: {database_url!r}")
 
     SessionLocal.configure(bind=engine)
     _current_database_url = database_url
