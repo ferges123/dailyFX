@@ -12,7 +12,7 @@ Prerequisites (target must already exist as an empty database):
            .venv/bin/python scripts/migrate_sqlite_to_postgres.py \
                --sqlite-url 'sqlite:////opt/dailyFX/data/app.db' \
                --postgres-url 'postgresql+psycopg://dailyfx:SECRET@127.0.0.1:5432/dailyfx'
-       (password也可 via PG_URL env var to avoid shell history)
+       (pass the password via the PG_URL env var to avoid shell history)
     5. Verify counts, switch DATABASE_URL in /opt/dailyFX/.env, start API.
 
 The script is idempotent-ish: it DELETES target table contents before
