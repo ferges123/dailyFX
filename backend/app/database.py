@@ -169,7 +169,26 @@ def init_db() -> None:
     alembic_cfg = Config(str(alembic_ini_path))
     alembic_cfg.set_main_option("script_location", str(backend_root / "app" / "migrations"))
 
-    command.upgrade(alembic_cfg, "head")
+    try:
+        command.upgrade(alembic_cfg, "head")
+    except Exception as exc:
+        from alembic.util.exc import CommandError
+
+        # When migrations are squashed into a baseline, an existing database
+        # may have a legacy revision recorded in alembic_version that no longer
+        # exists in ScriptDirectory. If the schema is already populated, stamp it
+        # with purge=True to the baseline head so execution can continue seamlessly.
+        if isinstance(exc, CommandError) and "Can't locate revision identified by" in str(exc):
+            from sqlalchemy import inspect
+
+            inspector = inspect(engine)
+            if "settings" in inspector.get_table_names():
+                command.stamp(alembic_cfg, "head", purge=True)
+                command.upgrade(alembic_cfg, "head")
+            else:
+                raise
+        else:
+            raise
     bootstrap_builtin_ai_effects()
 
     # Backfill asset usage registry and effect statistics log from existing history

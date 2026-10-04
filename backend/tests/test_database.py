@@ -88,3 +88,38 @@ def test_init_db_fallback_path_resolution(monkeypatch):
 
     assert len(upgrade_called) == 1
     assert upgrade_called[0].config_file_name == "/app/alembic.ini"
+
+
+def test_init_db_squashed_baseline_stamping(monkeypatch):
+    from alembic.util.exc import CommandError
+
+    calls = []
+
+    def mock_upgrade(cfg, revision):
+        calls.append(("upgrade", revision))
+        if len(calls) == 1:
+            raise CommandError("Can't locate revision identified by '0042_legacy'")
+
+    def mock_stamp(cfg, revision, purge=False):
+        calls.append(("stamp", revision, purge))
+
+    mock_inspector = MagicMock()
+    mock_inspector.get_table_names.return_value = ["settings", "alembic_version"]
+
+    monkeypatch.setattr("alembic.command.upgrade", mock_upgrade)
+    monkeypatch.setattr("alembic.command.stamp", mock_stamp)
+    monkeypatch.setattr("sqlalchemy.inspect", lambda eng: mock_inspector)
+    monkeypatch.setattr("app.database._ensure_engine", lambda: None)
+    monkeypatch.setattr("app.services.generation.bootstrap.bootstrap_builtin_ai_effects", lambda: None)
+    monkeypatch.setattr("app.database._initialized_databases", set())
+    monkeypatch.setattr("app.database.SessionLocal", MagicMock())
+
+    from app.database import init_db
+
+    init_db()
+
+    assert calls == [
+        ("upgrade", "head"),
+        ("stamp", "head", True),
+        ("upgrade", "head"),
+    ]
