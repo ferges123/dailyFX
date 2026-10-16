@@ -155,6 +155,7 @@ describe('SettingsPage', () => {
 
   it('only offers Xiaomi vision models that support image input', () => {
     expect(XIAOMI_VISION_MODELS.map((option) => option.value)).toEqual([
+      'mimo-v2.6-flash',
       'mimo-v2.5',
     ]);
   });

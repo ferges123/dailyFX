@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 # Default vision models for analysis
 OPENAI_VISION_MODEL = "gpt-4o-mini"
 GEMINI_VISION_MODEL = "gemini-2.5-flash"
-XIAOMI_VISION_MODEL = "mimo-v2.5"
+XIAOMI_VISION_MODEL = "mimo-v2.6-flash"
 XIAOMI_API_BASE_URL = "https://api.xiaomimimo.com/v1"
-XIAOMI_IMAGE_MODELS = {"mimo-v2.5"}
+XIAOMI_IMAGE_MODELS = {"mimo-v2.5", "mimo-v2.6-flash"}
 
 
 @dataclass(frozen=True)

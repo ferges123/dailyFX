@@ -63,7 +63,7 @@ def _merge_history_ai_tags(vision_tags: list[str], tag_injections: object) -> li
     return merged
 
 
-def _prepare_history_ai_vision_data(task_id: str) -> tuple[bytes, SettingsModel]:
+async def _prepare_history_ai_vision_data(task_id: str) -> tuple[bytes, SettingsModel]:
     session = SessionLocal()
     try:
         row = session.query(GenerationHistoryModel).filter(GenerationHistoryModel.task_id == task_id).first()
@@ -71,17 +71,6 @@ def _prepare_history_ai_vision_data(task_id: str) -> tuple[bytes, SettingsModel]
             raise HTTPException(status_code=404, detail="Generation history entry not found")
         if row.status not in _AI_VISION_HISTORY_STATUSES:
             raise HTTPException(status_code=409, detail="AI Vision is available only for completed generations")
-        if getattr(row, "local_file_status", "available") == "deleted_by_retention":
-            raise HTTPException(status_code=410, detail="Local image was deleted by retention")
-        if not row.output_path:
-            raise HTTPException(status_code=404, detail="Output path not available in history")
-
-        image_path = Path(row.output_path).resolve()
-        data_dir = get_settings().data_dir.resolve()
-        if not image_path.is_relative_to(data_dir):
-            raise HTTPException(status_code=400, detail="Invalid path")
-        if not image_path.exists():
-            raise HTTPException(status_code=404, detail="Generated image not found on disk")
 
         settings = session.query(SettingsModel).first()
         if not settings:
@@ -92,7 +81,33 @@ def _prepare_history_ai_vision_data(task_id: str) -> tuple[bytes, SettingsModel]
         if (getattr(settings, "default_ai_provider", "none") or "none").strip().lower() == "none":
             raise HTTPException(status_code=422, detail="AI Vision provider is not configured")
 
-        return image_path.read_bytes(), settings
+        image_bytes: bytes | None = None
+        if getattr(row, "local_file_status", "available") != "deleted_by_retention" and row.output_path:
+            image_path = Path(row.output_path).resolve()
+            data_dir = get_settings().data_dir.resolve()
+            if not image_path.is_relative_to(data_dir):
+                raise HTTPException(status_code=400, detail="Invalid path")
+            if image_path.exists():
+                image_bytes = image_path.read_bytes()
+
+        # If local file was deleted by retention or missing, try downloading from Immich if uploaded
+        if image_bytes is None and row.uploaded_asset_id:
+            try:
+                from app.services.immich import build_immich_client
+
+                client = build_immich_client(settings)
+                image_bytes = await client.get_asset_data(row.uploaded_asset_id)
+            except Exception as exc:
+                logger.warning("Could not download asset from Immich for task %s: %s", task_id, exc)
+
+        if image_bytes is None:
+            if getattr(row, "local_file_status", "available") == "deleted_by_retention":
+                raise HTTPException(status_code=410, detail="Local image was deleted by retention")
+            if not row.output_path:
+                raise HTTPException(status_code=404, detail="Output path not available in history")
+            raise HTTPException(status_code=404, detail="Generated image not found on disk")
+
+        return image_bytes, settings
     finally:
         session.close()
 
@@ -143,6 +158,12 @@ def _save_history_ai_vision_result(task_id: str, analysis, actor_ctx: ActorConte
             "provider": analysis.provider,
             "model": analysis.model,
         }
+        if row.uploaded_asset_id:
+            provenance["immich_sync"] = {
+                "attempted": True,
+                "asset_id": row.uploaded_asset_id,
+                "synced_at": run_at,
+            }
         row.config_json = json.dumps(config, ensure_ascii=False)
         session.commit()
         session.refresh(row)

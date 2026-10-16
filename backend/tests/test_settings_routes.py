@@ -431,3 +431,67 @@ def test_get_provider_models_byteplus_success():
     finally:
         app.dependency_overrides.clear()
         db.close()
+
+
+def test_get_provider_models_xiaomi_success():
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db}"
+    os.environ["APP_SECRET_KEY"] = "test-api-secret"
+    from unittest.mock import MagicMock, patch
+
+    from fastapi.testclient import TestClient
+
+    from app.database import SessionLocal, init_db
+    from app.main import app
+    from app.security import require_auth
+    from app.services.immich import get_or_create_settings
+
+    init_db()
+    db = SessionLocal()
+
+    route_require_auth = require_auth
+    for route in app.routes:
+        if getattr(route, "path", None) == "/api/settings/models/{provider}":
+            dependant = getattr(route, "dependant", None)
+            if dependant:
+                for d in dependant.dependencies:
+                    if d.call.__name__ == "require_auth":
+                        route_require_auth = d.call
+                        break
+    app.dependency_overrides[route_require_auth] = lambda: None
+
+    try:
+        with (
+            patch("app.api.routes_settings.decrypt_secret", return_value="xiaomi-secret-key"),
+            patch("httpx.AsyncClient.get") as mock_get,
+        ):
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json = MagicMock(
+                return_value={
+                    "object": "list",
+                    "data": [
+                        {"id": "mimo-v2.6-flash", "object": "model"},
+                        {"id": "mimo-v2.5", "object": "model"},
+                        {"id": "mimo-v2.5-tts", "object": "model"},
+                    ],
+                }
+            )
+            mock_get.return_value = mock_response
+
+            client = TestClient(app)
+
+            row = get_or_create_settings(db)
+            row.encrypted_xiaomi_api_key = "encrypted"
+            db.add(row)
+            db.commit()
+
+            response = client.get("/api/settings/models/xiaomi")
+            assert response.status_code == 200
+            data = response.json()
+            assert "vision_models" in data
+            assert any(m["value"] == "mimo-v2.6-flash" for m in data["vision_models"])
+            assert any(m["value"] == "mimo-v2.5" for m in data["vision_models"])
+            assert not any("tts" in m["value"] for m in data["vision_models"])
+    finally:
+        app.dependency_overrides.clear()
+        db.close()

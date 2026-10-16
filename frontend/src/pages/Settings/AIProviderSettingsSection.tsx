@@ -309,6 +309,7 @@ export const GEMINI_VISION_MODELS = [
   { label: 'gemini-2.0-flash-lite', value: 'gemini-2.0-flash-lite' },
 ];
 export const XIAOMI_VISION_MODELS = [
+  { label: 'mimo-v2.6-flash', value: 'mimo-v2.6-flash' },
   { label: 'mimo-v2.5', value: 'mimo-v2.5' },
 ];
 export function getVisionModelOptions(provider: string) {

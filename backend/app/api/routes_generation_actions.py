@@ -18,6 +18,7 @@ mitigated by re-querying the database row in Phase 3 and enforcing status precon
 before committing updates.
 """
 
+import inspect
 import logging
 from datetime import datetime, timezone
 
@@ -80,14 +81,38 @@ async def run_history_ai_vision(
     """Generate AI Vision summary and tags for a completed history item."""
     actor_ctx = resolve_actor_context(actor_ctx)
     authorize_mutating_review_access(task_id, review_token=review_token, credentials=credentials)
-    image_bytes, settings = _prepare_history_ai_vision_data(task_id)
+    prep = _prepare_history_ai_vision_data(task_id)
+    if inspect.isawaitable(prep):
+        image_bytes, settings = await prep
+    else:
+        image_bytes, settings = prep
+
     try:
         analysis = await analyze_image(
             settings,
             image_bytes,
             prompt=FINAL_GENERATION_VISION_PROMPT,
         )
-        return _save_history_ai_vision_result(task_id, analysis, actor_ctx)
+        saved_row = _save_history_ai_vision_result(task_id, analysis, actor_ctx)
+        if saved_row.uploaded_asset_id:
+            try:
+                client = build_immich_client(settings)
+                await _apply_uploaded_asset_caption_and_tags(
+                    client=client, upload_asset_id=saved_row.uploaded_asset_id, row=saved_row
+                )
+                logger.info(
+                    "Successfully synced updated AI Vision metadata to Immich asset %s for task %s",
+                    saved_row.uploaded_asset_id,
+                    task_id,
+                )
+            except Exception as sync_exc:
+                logger.warning(
+                    "Failed to sync AI Vision metadata to Immich asset %s for task %s: %s",
+                    saved_row.uploaded_asset_id,
+                    task_id,
+                    sync_exc,
+                )
+        return saved_row
     except AIUsageLimitExceededError as exc:
         _record_history_ai_vision_failure(db, task_id, actor_ctx, exc)
         raise HTTPException(status_code=429, detail=str(exc)) from exc

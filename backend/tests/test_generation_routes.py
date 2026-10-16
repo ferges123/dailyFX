@@ -462,6 +462,180 @@ def test_run_history_ai_vision_with_review_token(tmp_path, monkeypatch):
         db.close()
 
 
+def test_history_ai_vision_syncs_to_immich_when_uploaded(tmp_path, monkeypatch):
+    import app.config
+    from app.api.routes_generation_actions import run_history_ai_vision
+    from app.security import create_review_token
+    from app.services.generation.ai_vision import AIVisionResult
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
+    db = _setup_generation_routes_db()
+    try:
+        image_path = tmp_path / "task-ai-vision-uploaded.png"
+        image_path.write_bytes(b"test image")
+        row = _add_history_row(db, "task-ai-vision-uploaded", output_path=str(image_path))
+        row.status = "UPLOADED"
+        row.uploaded_asset_id = "immich-asset-123"
+        db.commit()
+
+        analysis = AIVisionResult(
+            title="Synced Landscape",
+            summary="A synced landscape summary.",
+            tags=["synced", "immich"],
+            token_count=10,
+            provider="xiaomi",
+            model="mimo-v2.6-flash",
+        )
+        mock_apply = AsyncMock()
+        mock_immich_client = MagicMock()
+
+        with (
+            patch(
+                "app.api.routes_generation_actions.analyze_image",
+                new=AsyncMock(return_value=analysis),
+            ),
+            patch(
+                "app.api.routes_generation_actions._prepare_history_ai_vision_data",
+                return_value=(b"test image", MagicMock(default_ai_provider="xiaomi")),
+            ),
+            patch(
+                "app.api.routes_generation_actions.build_immich_client",
+                return_value=mock_immich_client,
+            ),
+            patch(
+                "app.api.routes_generation_actions._apply_uploaded_asset_caption_and_tags",
+                mock_apply,
+            ),
+        ):
+            result = asyncio.run(
+                run_history_ai_vision(
+                    "task-ai-vision-uploaded",
+                    review_token=create_review_token("task-ai-vision-uploaded"),
+                    db=db,
+                )
+            )
+
+        assert result.title == "Synced Landscape"
+        assert result.summary == "A synced landscape summary."
+        mock_apply.assert_awaited_once()
+        args, kwargs = mock_apply.await_args
+        assert kwargs["upload_asset_id"] == "immich-asset-123"
+        assert kwargs["client"] == mock_immich_client
+        assert kwargs["row"].summary == "A synced landscape summary."
+        provenance = json.loads(result.config_json)["metadata_provenance"]
+        assert provenance["immich_sync"]["attempted"] is True
+        assert provenance["immich_sync"]["asset_id"] == "immich-asset-123"
+    finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
+        db.close()
+
+
+def test_history_ai_vision_gracefully_handles_immich_sync_failure(tmp_path, monkeypatch):
+    import app.config
+    from app.api.routes_generation_actions import run_history_ai_vision
+    from app.security import create_review_token
+    from app.services.generation.ai_vision import AIVisionResult
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
+    db = _setup_generation_routes_db()
+    try:
+        image_path = tmp_path / "task-ai-vision-failure.png"
+        image_path.write_bytes(b"test image")
+        row = _add_history_row(db, "task-ai-vision-failure", output_path=str(image_path))
+        row.status = "UPLOADED"
+        row.uploaded_asset_id = "immich-asset-456"
+        db.commit()
+
+        analysis = AIVisionResult(
+            title="Fallback Landscape",
+            summary="A fallback landscape summary.",
+            tags=["fallback"],
+            token_count=10,
+            provider="xiaomi",
+            model="mimo-v2.6-flash",
+        )
+        mock_apply = AsyncMock(side_effect=RuntimeError("Immich network error"))
+
+        with (
+            patch(
+                "app.api.routes_generation_actions.analyze_image",
+                new=AsyncMock(return_value=analysis),
+            ),
+            patch(
+                "app.api.routes_generation_actions._prepare_history_ai_vision_data",
+                return_value=(b"test image", MagicMock(default_ai_provider="xiaomi")),
+            ),
+            patch(
+                "app.api.routes_generation_actions.build_immich_client",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.api.routes_generation_actions._apply_uploaded_asset_caption_and_tags",
+                mock_apply,
+            ),
+        ):
+            result = asyncio.run(
+                run_history_ai_vision(
+                    "task-ai-vision-failure",
+                    review_token=create_review_token("task-ai-vision-failure"),
+                    db=db,
+                )
+            )
+
+        assert result.title == "Fallback Landscape"
+        assert result.summary == "A fallback landscape summary."
+        mock_apply.assert_awaited_once()
+    finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
+        db.close()
+
+
+def test_prepare_history_ai_vision_data_downloads_from_immich_when_retention_deleted(tmp_path, monkeypatch):
+    import app.config
+    from app.api.generation_action_helpers import _prepare_history_ai_vision_data
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    app.config.get_settings.cache_clear()
+    db = _setup_generation_routes_db()
+    try:
+        from app.models.schedule import ScheduleModel
+
+        schedule = ScheduleModel(
+            name="Retention Schedule",
+            enabled=True,
+            people_preset_id=1,
+            effect_preset_id=1,
+            ai_vision_provider="xiaomi",
+            ai_vision_model="mimo-v2.6-flash",
+        )
+        db.add(schedule)
+        settings_row = get_or_create_settings(db)
+        settings_row.default_ai_provider = "xiaomi"
+        row = _add_history_row(db, "task-retention-test", output_path=str(tmp_path / "deleted.png"))
+        row.status = "UPLOADED"
+        row.uploaded_asset_id = "immich-asset-789"
+        row.local_file_status = "deleted_by_retention"
+        row.schedule_id = schedule.id
+        db.commit()
+
+        mock_immich = MagicMock()
+        mock_immich.get_asset_data = AsyncMock(return_value=b"downloaded from immich bytes")
+
+        with patch("app.services.immich.build_immich_client", return_value=mock_immich):
+            image_bytes, settings = asyncio.run(_prepare_history_ai_vision_data("task-retention-test"))
+
+        assert image_bytes == b"downloaded from immich bytes"
+        mock_immich.get_asset_data.assert_awaited_once_with("immich-asset-789")
+    finally:
+        monkeypatch.delenv("DATA_DIR", raising=False)
+        app.config.get_settings.cache_clear()
+        db.close()
+
+
 def test_get_generation_image(tmp_path, monkeypatch):
     import app.config
 

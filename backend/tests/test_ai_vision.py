@@ -64,6 +64,7 @@ def test_analyze_image_rejects_unsupported_xiaomi_model_for_vision():
 
     message = str(exc_info.value)
     assert "mimo-v2.5" in message
+    assert "mimo-v2.6-flash" in message
     assert "mimo-v2.5-pro" in message
 
 

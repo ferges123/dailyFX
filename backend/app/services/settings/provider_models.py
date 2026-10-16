@@ -89,12 +89,14 @@ def _parse_local_models(payload: dict) -> tuple[list[dict], list[dict]]:
 def _parse_xiaomi_models(payload: dict) -> tuple[list[dict], list[dict]]:
     vision_models = []
     image_models = []
-    models_list = payload.get("models", [])
+    models_list = payload.get("models") or payload.get("data") or []
     for m in models_list:
         model_id = m.get("id", "")
         name = m.get("name", model_id)
         if "mimo" in model_id.lower():
-            vision_models.append({"label": name, "value": model_id})
+            # Exclude speech/audio models (ASR, TTS, voice design/clone)
+            if not any(x in model_id.lower() for x in ["asr", "tts", "voice"]):
+                vision_models.append({"label": name, "value": model_id})
     return vision_models, image_models
 
 
@@ -138,7 +140,10 @@ async def fetch_provider_models(provider: str, db, decrypt_secret_fn=None) -> Av
             {"label": "gemini-3-pro-image-preview", "value": "gemini-3-pro-image-preview"},
         ]
     elif provider == "xiaomi":
-        fallback_vision = [{"label": "mimo-v2.5", "value": "mimo-v2.5"}]
+        fallback_vision = [
+            {"label": "mimo-v2.6-flash", "value": "mimo-v2.6-flash"},
+            {"label": "mimo-v2.5", "value": "mimo-v2.5"},
+        ]
 
     config = _HTTP_PROVIDER_TESTS.get(provider)
     if not config and provider != "local":
