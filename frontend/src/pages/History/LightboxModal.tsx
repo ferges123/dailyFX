@@ -55,6 +55,24 @@ function formatFileSize(bytes: number | undefined | null): string {
   return `${mib.toFixed(1)} MB`;
 }
 
+function mimeToExtension(mimeType?: string | null, fallback = 'png'): string {
+  if (!mimeType) return fallback;
+  const normalized = mimeType.toLowerCase().split(';')[0].trim();
+  switch (normalized) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return 'jpg';
+    case 'image/png':
+      return 'png';
+    case 'image/webp':
+      return 'webp';
+    case 'image/gif':
+      return 'gif';
+    default:
+      return fallback;
+  }
+}
+
 function makeSafeFileName(title: string | null | undefined, ext = 'png') {
   const base = (title || 'dailyfx-image')
     .trim()
@@ -62,7 +80,19 @@ function makeSafeFileName(title: string | null | undefined, ext = 'png') {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  return `${base || 'dailyfx-image'}.${ext}`;
+  const cleanExt = (ext || 'png').replace(/^\./, '').toLowerCase();
+  return `${base || 'dailyfx-image'}.${cleanExt}`;
+}
+
+function triggerFileDownload(blob: Blob, filename: string) {
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
 
 const SWIPE_MIN_DISTANCE = 56;
@@ -129,9 +159,26 @@ export const LightboxModal = memo(function LightboxModal({
   }, [entry?.tags_json]);
 
   const [isSharing, setIsSharing] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>(
-    'idle',
-  );
+  const [shareStatus, setShareStatus] = useState<
+    'idle' | 'downloaded' | 'copied' | 'error'
+  >('idle');
+  const imageBlobRef = useRef<{ taskId: string; blob: Blob } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !entry?.task_id) return;
+    let active = true;
+    fetch(`/api/generation/history/${entry.task_id}/image`)
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((blob) => {
+        if (active && blob) {
+          imageBlobRef.current = { taskId: entry.task_id, blob };
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isOpen, entry?.task_id]);
   const [showOriginal, setShowOriginal] = useState(false);
   const swipeStartRef = useRef<{
     x: number;
@@ -487,64 +534,69 @@ export const LightboxModal = memo(function LightboxModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, onPrev, onNext, hasPrev, hasNext]);
 
+  async function getImageBlob(): Promise<Blob> {
+    if (imageBlobRef.current && imageBlobRef.current.taskId === entry.task_id) {
+      return imageBlobRef.current.blob;
+    }
+    const response = await fetch(
+      `/api/generation/history/${entry.task_id}/image`,
+    );
+    if (!response.ok) throw new Error('Failed to fetch image');
+    const blob = await response.blob();
+    imageBlobRef.current = { taskId: entry.task_id, blob };
+    return blob;
+  }
+
   async function handleShare() {
     if (isSharing) return;
 
-    const shareUrl = `${window.location.origin}/api/generation/history/${entry.task_id}/image`;
+    setIsSharing(true);
+    try {
+      const blob = await getImageBlob();
+      const ext = mimeToExtension(blob.type, entry.output_format || 'png');
+      const filename = makeSafeFileName(entry.title, ext);
+      const file = new File([blob], filename, {
+        type: blob.type || `image/${ext}`,
+      });
 
-    if (typeof navigator.share === 'function') {
-      setIsSharing(true);
-      try {
-        const response = await fetch(
-          `/api/generation/history/${entry.task_id}/image`,
-        );
-        if (!response.ok) throw new Error('Failed to fetch image');
-
-        const ext = entry.output_format || 'png';
-        const blob = await response.blob();
-        const file = new File([blob], makeSafeFileName(entry.title, ext), {
-          type: blob.type || `image/${ext}`,
-        });
-
-        if (
-          typeof navigator.canShare === 'function' &&
-          !navigator.canShare({ files: [file] })
-        ) {
-          throw new Error('File sharing not supported by browser');
-        }
-
+      if (
+        typeof navigator.share === 'function' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] })
+      ) {
         await navigator.share({
           files: [file],
           title: entry.title || 'DailyFX image',
         });
-      } catch (error) {
-        logger.warn('Native file share failed, trying URL fallback:', error);
-        try {
-          await navigator.share({
-            title: entry.title || 'DailyFX image',
-            url: shareUrl,
-          });
-        } catch (urlError) {
-          logger.error('URL sharing failed:', urlError);
-          await fallbackCopyLink(shareUrl);
-        }
-      } finally {
-        setIsSharing(false);
+      } else {
+        triggerFileDownload(blob, filename);
+        setShareStatus('downloaded');
+        setTimeout(() => setShareStatus('idle'), 2000);
       }
-    } else {
-      await fallbackCopyLink(shareUrl);
-    }
-  }
-
-  async function fallbackCopyLink(url: string) {
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareStatus('copied');
-      setTimeout(() => setShareStatus('idle'), 2000);
-    } catch (err) {
-      logger.error('Failed to copy link:', err);
-      setShareStatus('error');
-      setTimeout(() => setShareStatus('idle'), 2000);
+    } catch (error) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'name' in error &&
+        error.name === 'AbortError'
+      ) {
+        return;
+      }
+      logger.warn('Native file share failed, falling back to download:', error);
+      try {
+        const blob = await getImageBlob();
+        const ext = mimeToExtension(blob.type, entry.output_format || 'png');
+        const filename = makeSafeFileName(entry.title, ext);
+        triggerFileDownload(blob, filename);
+        setShareStatus('downloaded');
+        setTimeout(() => setShareStatus('idle'), 2000);
+      } catch (dlErr) {
+        logger.error('Download fallback failed:', dlErr);
+        setShareStatus('error');
+        setTimeout(() => setShareStatus('idle'), 2000);
+      }
+    } finally {
+      setIsSharing(false);
     }
   }
 
@@ -984,19 +1036,26 @@ export const LightboxModal = memo(function LightboxModal({
                   className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 shadow-lg transition hover:bg-stone-200 hover:text-stone-850 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Share image"
                   title={
-                    shareStatus === 'copied'
-                      ? 'Link copied!'
-                      : shareStatus === 'error'
-                        ? 'Failed to copy'
-                        : 'Share image'
+                    shareStatus === 'downloaded'
+                      ? 'Image downloaded!'
+                      : shareStatus === 'copied'
+                        ? 'Link copied!'
+                        : shareStatus === 'error'
+                          ? 'Failed to share'
+                          : 'Share image'
                   }
                 >
-                  {shareStatus === 'copied' ? (
+                  {shareStatus === 'downloaded' || shareStatus === 'copied' ? (
                     <Check size={14} className="text-emerald-500" />
                   ) : shareStatus === 'error' ? (
                     <X size={14} className="text-rose-500" />
                   ) : (
                     <Share2 size={14} />
+                  )}
+                  {shareStatus === 'downloaded' && (
+                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-sm bg-emerald-700 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">
+                      Downloaded!
+                    </span>
                   )}
                   {shareStatus === 'copied' && (
                     <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-sm bg-emerald-700 px-2 py-0.5 text-[10px] font-medium text-white shadow-md">

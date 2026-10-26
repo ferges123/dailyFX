@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ConfirmDeleteModal } from '../pages/History/ConfirmDeleteModal';
 import { LightboxModal } from '../pages/History/LightboxModal';
@@ -331,6 +331,194 @@ describe('LightboxModal', () => {
       'w-full',
       'object-contain',
     );
+  });
+
+  describe('LightboxModal sharing', () => {
+    const originalShare = navigator.share;
+    const originalCanShare = navigator.canShare;
+    const originalFetch = window.fetch;
+
+    beforeEach(() => {
+      window.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(new Blob(['fake-image'], { type: 'image/webp' })),
+      } as unknown as Response);
+    });
+
+    afterEach(() => {
+      Object.defineProperty(navigator, 'share', {
+        value: originalShare,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(navigator, 'canShare', {
+        value: originalCanShare,
+        configurable: true,
+        writable: true,
+      });
+      window.fetch = originalFetch;
+      vi.restoreAllMocks();
+    });
+
+    it('shares the image file with matching extension when file sharing is supported', async () => {
+      const shareMock = vi.fn().mockResolvedValue(undefined);
+      const canShareMock = vi.fn().mockReturnValue(true);
+
+      Object.defineProperty(navigator, 'share', {
+        value: shareMock,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(navigator, 'canShare', {
+        value: canShareMock,
+        configurable: true,
+        writable: true,
+      });
+
+      const mockEntry = {
+        task_id: 'task-share-123',
+        title: 'Fancy Image Title',
+        output_format: 'webp',
+      } as unknown as GenerationHistoryEntry;
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <LightboxModal
+            isOpen={true}
+            imageUrl="http://test.com/effect.webp"
+            entry={mockEntry}
+            exif={null}
+            onClose={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
+
+      const shareBtn = screen.getByRole('button', { name: 'Share image' });
+      fireEvent.click(shareBtn);
+
+      await waitFor(() => {
+        expect(shareMock).toHaveBeenCalledTimes(1);
+      });
+
+      const callArgs = shareMock.mock.calls[0][0];
+      expect(callArgs.files).toHaveLength(1);
+      const sharedFile = callArgs.files[0] as File;
+      expect(sharedFile.name).toBe('Fancy-Image-Title.webp');
+      expect(sharedFile.type).toBe('image/webp');
+      expect(callArgs.title).toBe('Fancy Image Title');
+      expect(callArgs.url).toBeUndefined();
+    });
+
+    it('falls back to direct file download when canShare returns false', async () => {
+      const shareMock = vi.fn();
+      const canShareMock = vi.fn().mockReturnValue(false);
+
+      Object.defineProperty(navigator, 'share', {
+        value: shareMock,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(navigator, 'canShare', {
+        value: canShareMock,
+        configurable: true,
+        writable: true,
+      });
+
+      const clickMock = vi.fn();
+      const origCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        const el = origCreateElement(tagName);
+        if (tagName === 'a') {
+          el.click = clickMock;
+        }
+        return el;
+      });
+      window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+      window.URL.revokeObjectURL = vi.fn();
+
+      const mockEntry = {
+        task_id: 'task-share-fallback',
+        title: 'Fallback Download Image',
+        output_format: 'png',
+      } as unknown as GenerationHistoryEntry;
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <LightboxModal
+            isOpen={true}
+            imageUrl="http://test.com/effect.png"
+            entry={mockEntry}
+            exif={null}
+            onClose={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
+
+      const shareBtn = screen.getByRole('button', { name: 'Share image' });
+      fireEvent.click(shareBtn);
+
+      await waitFor(() => {
+        expect(clickMock).toHaveBeenCalledTimes(1);
+      });
+
+      expect(shareMock).not.toHaveBeenCalled();
+      expect(screen.getByText('Downloaded!')).toBeInTheDocument();
+    });
+
+    it('handles AbortError silently when user cancels the share dialog', async () => {
+      const shareMock = vi.fn().mockRejectedValue({ name: 'AbortError' });
+      const canShareMock = vi.fn().mockReturnValue(true);
+
+      Object.defineProperty(navigator, 'share', {
+        value: shareMock,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(navigator, 'canShare', {
+        value: canShareMock,
+        configurable: true,
+        writable: true,
+      });
+
+      const clickMock = vi.fn();
+      const origCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        const el = origCreateElement(tagName);
+        if (tagName === 'a') {
+          el.click = clickMock;
+        }
+        return el;
+      });
+
+      const mockEntry = {
+        task_id: 'task-share-abort',
+        title: 'Abort Image Title',
+        output_format: 'png',
+      } as unknown as GenerationHistoryEntry;
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <LightboxModal
+            isOpen={true}
+            imageUrl="http://test.com/effect.png"
+            entry={mockEntry}
+            exif={null}
+            onClose={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
+
+      const shareBtn = screen.getByRole('button', { name: 'Share image' });
+      fireEvent.click(shareBtn);
+
+      await waitFor(() => {
+        expect(shareMock).toHaveBeenCalledTimes(1);
+      });
+
+      // No fallback download triggered when user dismissed
+      expect(clickMock).not.toHaveBeenCalled();
+      expect(screen.queryByText('Downloaded!')).not.toBeInTheDocument();
+    });
   });
 });
 
