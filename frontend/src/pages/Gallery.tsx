@@ -633,7 +633,10 @@ export function GalleryPage() {
           <LightboxModal
             isOpen={true}
             entry={lightboxEntry}
-            imageUrl={lightboxEntry.image_url || ''}
+            imageUrl={
+              lightboxEntry.image_url ||
+              `/api/generation/history/${lightboxEntry.task_id}/image`
+            }
             exif={selectedExif}
             scheduleName={lightboxScheduleName}
             onClose={handleCloseLightbox}

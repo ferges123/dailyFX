@@ -26,6 +26,7 @@ import {
   type GenerationHistoryEntry,
   likeGeneration,
   dislikeGeneration,
+  getAuthToken,
 } from '../../api/client';
 
 import { SecureImage } from '../../components/SecureImage';
@@ -163,22 +164,6 @@ export const LightboxModal = memo(function LightboxModal({
     'idle' | 'downloaded' | 'copied' | 'error'
   >('idle');
   const imageBlobRef = useRef<{ taskId: string; blob: Blob } | null>(null);
-
-  useEffect(() => {
-    if (!isOpen || !entry?.task_id) return;
-    let active = true;
-    fetch(`/api/generation/history/${entry.task_id}/image`)
-      .then((r) => (r.ok ? r.blob() : null))
-      .then((blob) => {
-        if (active && blob) {
-          imageBlobRef.current = { taskId: entry.task_id, blob };
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [isOpen, entry?.task_id]);
   const [showOriginal, setShowOriginal] = useState(false);
   const swipeStartRef = useRef<{
     x: number;
@@ -538,8 +523,14 @@ export const LightboxModal = memo(function LightboxModal({
     if (imageBlobRef.current && imageBlobRef.current.taskId === entry.task_id) {
       return imageBlobRef.current.blob;
     }
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     const response = await fetch(
       `/api/generation/history/${entry.task_id}/image`,
+      { headers },
     );
     if (!response.ok) throw new Error('Failed to fetch image');
     const blob = await response.blob();
@@ -622,10 +613,10 @@ export const LightboxModal = memo(function LightboxModal({
       >
         {/* Photo Canvas */}
         <div
-          className={`relative flex min-h-0 flex-1 items-center justify-center ${
+          className={`relative flex min-h-0 min-w-0 flex-1 items-center justify-center ${
             isFullscreen
               ? 'h-full w-full max-h-none bg-black p-0'
-              : 'h-[52vh] md:h-full md:min-w-0 md:max-h-none bg-stone-50 p-2'
+              : 'h-[55dvh] md:h-full md:max-h-none bg-stone-50 p-2'
           }`}
         >
           {hasPrev && onPrev && (
@@ -739,29 +730,29 @@ export const LightboxModal = memo(function LightboxModal({
             onMouseDown={handleMouseDown}
           >
             <div
-              className="relative flex h-full w-full items-center justify-center"
+              className="relative flex h-full w-full min-h-0 min-w-0 max-h-full max-w-full items-center justify-center"
               style={{
                 transform: `translate3d(${position.x}px, ${position.y}px, 0px) scale(${scale})`,
                 transition: isDragging
                   ? 'none'
                   : 'transform 0.15s cubic-bezier(0.2, 0, 0.2, 1)',
-                willChange: 'transform',
+                willChange: scale > 1 || isDragging ? 'transform' : undefined,
               }}
             >
               {showOriginal && originalImageUrl ? (
                 <SecureImage
                   src={originalImageUrl}
                   alt="Original Preview"
-                  className="h-full w-full rounded-lg object-contain pointer-events-none"
-                  decoding="async"
+                  className="h-full w-full min-h-0 min-w-0 max-h-full max-w-full rounded-lg object-contain pointer-events-none"
+                  decoding="auto"
                   showLoadingIndicator
                 />
               ) : (
                 <SecureImage
                   src={imageUrl}
                   alt="Preview"
-                  className="h-full w-full rounded-lg object-contain pointer-events-none"
-                  decoding="async"
+                  className="h-full w-full min-h-0 min-w-0 max-h-full max-w-full rounded-lg object-contain pointer-events-none"
+                  decoding="auto"
                   showLoadingIndicator
                 />
               )}
@@ -785,7 +776,7 @@ export const LightboxModal = memo(function LightboxModal({
 
         {/* Premium EXIF Details Overlay Panel */}
         {!isFullscreen && (
-          <div className="flex h-[48vh] md:h-auto min-h-0 w-full shrink-0 flex-col bg-stone-50 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
+          <div className="flex h-[45dvh] md:h-auto min-h-0 w-full shrink-0 flex-col bg-stone-50 text-stone-850 select-none md:max-h-[92vh] md:w-80 md:border-l md:border-stone-200/80 border-t border-stone-200/80 md:border-t-0">
             <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5 space-y-4">
               <div>
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">

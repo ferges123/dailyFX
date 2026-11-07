@@ -173,12 +173,12 @@ export const SecureImage = memo(function SecureImage({
         {showLoadingIndicator && (
           <div
             role="status"
-            className="pointer-events-none flex flex-col items-center justify-center gap-2 text-white/80"
+            className="pointer-events-none flex flex-col items-center justify-center gap-2 text-stone-500 dark:text-stone-300"
           >
             <LoaderCircle
-              size={30}
+              size={32}
               aria-hidden="true"
-              className="animate-spin motion-reduce:animate-none"
+              className="animate-spin motion-reduce:animate-none text-emerald-600 dark:text-emerald-400"
             />
             <span className="sr-only">Loading image...</span>
           </div>
