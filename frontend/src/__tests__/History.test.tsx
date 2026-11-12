@@ -183,6 +183,45 @@ const mockQueuedHistoryItem = {
   total_token_count: null,
 };
 
+const mockFailedHistoryItem = {
+  id: 4,
+  task_id: 'man-4',
+  generation_type: 'ai_claymation',
+  status: 'FAILED',
+  title: 'Failed Claymation',
+  summary: 'Generation worker exceeded 300s timeout',
+  source_asset_ids: '["asset-4"]',
+  output_path: null,
+  image_url: null,
+  provider: null,
+  model: null,
+  tags_json: null,
+  created_at: '2026-05-27T13:00:00.000Z',
+  album_name: 'AI Photos',
+  album_id: null,
+  album_created: false,
+  album_updated: false,
+  accept_notes: 'Generation worker exceeded 300s timeout',
+  accepted_at: null,
+  uploaded_asset_id: null,
+  upload_status: null,
+  updated_at: '2026-05-27T13:05:00.000Z',
+  config_json: JSON.stringify({
+    state: 'running',
+    task_trace: [
+      {
+        stage: 'assets_selected',
+        message: 'Selected 1 asset(s) for generation',
+        step: 'selecting_asset',
+        status: 'running',
+        progress: 0.1,
+      },
+    ],
+  }),
+  task_step: 'failed',
+  total_token_count: null,
+};
+
 const mockHistoryPage = {
   items: [mockHistoryItem1, mockHistoryItem2],
   total: 2,
@@ -193,6 +232,12 @@ const mockQueuedHistoryPage = {
   items: [mockQueuedHistoryItem, mockHistoryItem1],
   total: 2,
   latest_event_id: 11,
+};
+
+const mockFailedHistoryPage = {
+  items: [mockFailedHistoryItem],
+  total: 1,
+  latest_event_id: 12,
 };
 
 const mockFilterOptions = {
@@ -223,6 +268,7 @@ describe('HistoryPage', () => {
         mockHistoryItem1,
         mockHistoryItem2,
         mockQueuedHistoryItem,
+        mockFailedHistoryItem,
       ];
       const found = allMockItems.find((e) => e.task_id === taskId);
       return Promise.resolve(found ?? mockHistoryItem1);
@@ -301,6 +347,25 @@ describe('HistoryPage', () => {
         'This task is queued and waiting for the worker to start it.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('renders failed task trace correctly even if trace ended in running state', async () => {
+    vi.mocked(client.getSettings).mockResolvedValue(mockSettings);
+    vi.mocked(client.getGenerationHistory).mockResolvedValue(
+      mockFailedHistoryPage,
+    );
+    vi.mocked(client.getImmichFilterOptions).mockResolvedValue(
+      mockFilterOptions,
+    );
+
+    renderHistory('/history/man-4');
+
+    expect((await screen.findAllByText('Failed Claymation')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Task is still running')).not.toBeInTheDocument();
+    expect(screen.getByText('Task trace failed')).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Generation worker exceeded 300s timeout').length,
+    ).toBeGreaterThan(0);
   });
 
   it('keeps history usable when settings cannot be loaded initially', async () => {

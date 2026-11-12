@@ -99,13 +99,18 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
     return taskTrace[taskTrace.length - 1];
   }, [taskTrace]);
 
-  const latestTaskTraceStatus = (latestTaskTrace?.status || '')
+  const rawTraceStatus = (latestTaskTrace?.status || '')
     .toString()
     .toLowerCase();
+  const isTraceFailed =
+    entry?.status === 'FAILED' ||
+    rawTraceStatus === 'failed' ||
+    rawTraceStatus === 'error';
   const isTraceRunning =
-    latestTaskTraceStatus === 'running' ||
-    latestTaskTraceStatus === 'in_progress' ||
-    latestTaskTraceStatus === 'queued';
+    !isTraceFailed &&
+    (rawTraceStatus === 'running' ||
+      rawTraceStatus === 'in_progress' ||
+      rawTraceStatus === 'queued');
 
   const tags = useMemo(() => {
     if (!entry?.tags_json) return [];
@@ -292,7 +297,7 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
             className={`rounded-xl border px-3 py-2 text-[10px] font-medium ${
               isTraceRunning
                 ? 'border-blue-200 bg-blue-50/70 text-blue-800'
-                : latestTaskTraceStatus === 'failed'
+                : isTraceFailed
                   ? 'border-red-200 bg-red-50/70 text-red-800'
                   : 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
             }`}
@@ -301,7 +306,7 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
               <span className="mt-0.5 inline-flex shrink-0 items-center justify-center">
                 {isTraceRunning ? (
                   <Loader2 size={12} className="animate-spin" />
-                ) : latestTaskTraceStatus === 'failed' ? (
+                ) : isTraceFailed ? (
                   <XCircle size={12} />
                 ) : (
                   <Check size={12} />
@@ -312,7 +317,7 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
                   <span className="font-semibold">
                     {isTraceRunning
                       ? 'Task is still running'
-                      : latestTaskTraceStatus === 'failed'
+                      : isTraceFailed
                         ? 'Task trace failed'
                         : 'Task trace completed'}
                   </span>
@@ -327,7 +332,9 @@ export const HistoryDetailPanel = memo(function HistoryDetailPanel({
                     )}
                 </div>
                 <div className="mt-0.5 text-[9px] leading-snug">
-                  {latestTaskTrace.message || 'No status message available.'}
+                  {isTraceFailed && rawTraceStatus !== 'failed' && entry?.summary
+                    ? entry.summary
+                    : latestTaskTrace.message || 'No status message available.'}
                 </div>
               </div>
             </div>

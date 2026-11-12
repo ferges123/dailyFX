@@ -424,6 +424,55 @@ def test_reset_stuck_tasks_at_runtime():
         assert stuck_task.error == "Task timed out (stuck in running for more than 5 minutes)"
         assert stuck_history.status == "FAILED"
         assert stuck_history.error == "Task timed out (stuck in RUNNING for more than 5 minutes)"
+        import json
+
+        stuck_config = json.loads(stuck_history.config_json)
+        assert stuck_config["task_trace"][-1]["status"] == "failed"
+        assert stuck_config["task_trace"][-1]["stage"] == "failed"
+    finally:
+        db.close()
+
+
+def test_record_worker_failure(monkeypatch):
+    import json
+
+    from app.models.generation_history import GenerationHistoryModel
+    from app.models.generation_task import GenerationTaskModel
+    from app.services.generation.history import append_history_trace
+    from app.services.generation.tasks import ensure_task
+    from app.workers.scheduler import _record_worker_failure
+
+    db = _setup_scheduler_db()
+    monkeypatch.setattr("app.workers.scheduler.SessionLocal", lambda: db)
+    try:
+        task_id = "test-fail-task-1"
+        ensure_task(db, task_id, status="running")
+        append_history_trace(
+            db,
+            task_id,
+            stage="assets_selected",
+            message="Selected 1 asset(s)",
+            status="running",
+            progress=0.1,
+        )
+        db.commit()
+
+        _record_worker_failure(task_id, "Generation worker exceeded 300s timeout")
+
+        db.expire_all()
+        task = db.get(GenerationTaskModel, task_id)
+        assert task.status == "failed"
+        assert task.error == "Generation worker exceeded 300s timeout"
+
+        history = db.query(GenerationHistoryModel).filter_by(task_id=task_id).first()
+        assert history.status == "FAILED"
+        assert history.summary == "Generation worker exceeded 300s timeout"
+        config = json.loads(history.config_json)
+        assert config["state"] == "failed"
+        assert len(config["task_trace"]) == 2
+        assert config["task_trace"][-1]["stage"] == "failed"
+        assert config["task_trace"][-1]["status"] == "failed"
+        assert config["task_trace"][-1]["message"] == "Generation worker exceeded 300s timeout"
     finally:
         db.close()
 

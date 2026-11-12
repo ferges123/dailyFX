@@ -95,6 +95,8 @@ def append_history_trace(
     config["task_trace"] = trace[-max_entries:]
     if details:
         config["task_trace_last"] = details
+    if status in ("failed", "error"):
+        config["state"] = "failed"
 
     return upsert_history_entry(
         db,

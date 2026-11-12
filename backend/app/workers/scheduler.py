@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.services.generation.engine import run_generation_cycle
-from app.services.generation.history import upsert_history_entry
+from app.services.generation.history import append_history_trace, upsert_history_entry
 from app.services.generation.queue_repository import QueueRepository
 from app.services.generation.run_now import parse_run_now_task_payload
 from app.services.generation.schedule_runs import build_scheduled_run_context
@@ -100,6 +100,16 @@ def _record_worker_failure(task_id: str, error: str) -> None:
     session = SessionLocal()
     try:
         update_task(session, task_id, status="failed", step="failed", progress=0.0, error=error)
+        append_history_trace(
+            session,
+            task_id,
+            stage="failed",
+            message=error,
+            step="failed",
+            status="failed",
+            progress=0.0,
+            details={"error": error},
+        )
         upsert_history_entry(session, task_id, status="FAILED", summary=error, task_step="failed")
     except Exception:
         logger.exception("Could not persist worker failure for task %s", task_id)
@@ -159,6 +169,16 @@ def _reset_stuck_tasks_at_runtime(session: Session, current: datetime) -> None:
         if stuck_history:
             for task in stuck_history:
                 error = "Task timed out (stuck in RUNNING for more than 5 minutes)"
+                append_history_trace(
+                    session,
+                    task.task_id,
+                    stage="failed",
+                    message=error,
+                    step="failed",
+                    status="failed",
+                    progress=0.0,
+                    details={"error": error},
+                )
                 upsert_history_entry(
                     session,
                     task.task_id,
