@@ -331,8 +331,14 @@ export const GEMINI_IMAGE_MODELS = [
   },
   { label: 'gemini-3-pro-image-preview', value: 'gemini-3-pro-image-preview' },
 ];
+export const BYTEPLUS_IMAGE_MODELS = [
+  { label: 'dola-seedream-5-5', value: 'dola-seedream-5-5-261028' },
+  { label: 'seedream-5-0', value: 'seedream-5-0-260128' },
+  { label: 'dola-seedream-5-0-flash', value: 'dola-seedream-5-0-flash-260915' },
+];
 export function getImageModelOptions(provider: string) {
   if (provider === 'openai') return OPENAI_IMAGE_MODELS;
   if (provider === 'gemini') return GEMINI_IMAGE_MODELS;
+  if (provider === 'byteplus') return BYTEPLUS_IMAGE_MODELS;
   return [];
 }

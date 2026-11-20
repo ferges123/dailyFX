@@ -239,6 +239,13 @@ def test_expanded_ai_effect_prompt_pack_is_seeded_and_listed():
         "ai_old_master_pastel": "Artistic",
         "ai_documentary_photoessay": "Photography",
         "ai_museum_diorama": "3D / Toy",
+        "ai_flat_cartoon": "Illustration",
+        "ai_blueprint": "Artistic",
+        "ai_riso_print": "Artistic",
+        "ai_pixel_art_16bit": "Illustration",
+        "ai_ink_silhouette": "Artistic",
+        "ai_rubber_hose": "Illustration",
+        "ai_ascii_art": "Artistic",
     }
 
     init_db()

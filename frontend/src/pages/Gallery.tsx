@@ -51,6 +51,13 @@ const EFFECT_LABELS: Record<string, string> = {
   ai_editorial_black_white: 'Editorial B&W',
   ai_miniature_train_set: 'Miniature',
   ai_ukiyo_e_print: 'Ukiyo-e',
+  ai_flat_cartoon: 'Flat Cartoon',
+  ai_blueprint: 'Blueprint',
+  ai_riso_print: 'Riso Print',
+  ai_pixel_art_16bit: '16-Bit Pixel Art',
+  ai_ink_silhouette: 'Ink Silhouette',
+  ai_rubber_hose: 'Rubber Hose',
+  ai_ascii_art: 'ASCII Art',
 };
 
 function GalleryCard({

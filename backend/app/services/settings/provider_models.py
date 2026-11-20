@@ -62,14 +62,15 @@ def _parse_byteplus_models(payload: dict) -> tuple[list[dict], list[dict]]:
         model_id = m.get("id", "")
         name = m.get("name", model_id)
         domain = m.get("domain", "")
-        task_types = m.get("task_type") or []
-        if not isinstance(task_types, list):
-            task_types = []
+        raw_task_types = m.get("task_type") or []
+        if not isinstance(raw_task_types, list):
+            raw_task_types = []
+        task_types = {str(t).lower().replace("_", "") for t in raw_task_types}
 
-        if "VisualQuestionAnswering" in task_types or domain == "VLM":
+        if "visualquestionanswering" in task_types or domain == "VLM":
             vision_models.append({"label": name, "value": model_id})
 
-        if "ImageToImage" in task_types:
+        if "imagetoimage" in task_types:
             if "seededit" not in model_id.lower():
                 image_models.append({"label": name, "value": model_id})
     return vision_models, image_models
@@ -143,6 +144,16 @@ async def fetch_provider_models(provider: str, db, decrypt_secret_fn=None) -> Av
         fallback_vision = [
             {"label": "mimo-v2.6-flash", "value": "mimo-v2.6-flash"},
             {"label": "mimo-v2.5", "value": "mimo-v2.5"},
+        ]
+    elif provider == "byteplus":
+        fallback_vision = [
+            {"label": "seed-2.0-pro", "value": "seed-2-0-pro-260328"},
+            {"label": "seed-2.0-lite", "value": "seed-2-0-lite-260428"},
+        ]
+        fallback_image = [
+            {"label": "dola-seedream-5-5", "value": "dola-seedream-5-5-261028"},
+            {"label": "seedream-5-0", "value": "seedream-5-0-260128"},
+            {"label": "dola-seedream-5-0-flash", "value": "dola-seedream-5-0-flash-260915"},
         ]
 
     config = _HTTP_PROVIDER_TESTS.get(provider)

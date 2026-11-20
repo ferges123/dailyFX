@@ -380,6 +380,41 @@
       "id": "ai_muscular",
       "display_group": "Portrait",
       "hidden": false
+    },
+    {
+      "id": "ai_flat_cartoon",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_blueprint",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_riso_print",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_pixel_art_16bit",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_ink_silhouette",
+      "display_group": "Artistic",
+      "hidden": false
+    },
+    {
+      "id": "ai_rubber_hose",
+      "display_group": "Illustration",
+      "hidden": false
+    },
+    {
+      "id": "ai_ascii_art",
+      "display_group": "Artistic",
+      "hidden": false
     }
   ]
 }

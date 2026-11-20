@@ -374,6 +374,12 @@ def test_get_provider_models_byteplus_success():
                             "task_type": ["ImageToImage", "TextToImage"],
                         },
                         {
+                            "id": "dola-seedream-5-5-261028",
+                            "name": "dola-seedream-5-5",
+                            "domain": "ImageGeneration",
+                            "task_type": ["text_to_image", "image_to_image"],
+                        },
+                        {
                             "id": "seedream-3-0-t2i-250415",
                             "name": "Seedream 3.0",
                             "domain": "ImageGeneration",
@@ -422,6 +428,7 @@ def test_get_provider_models_byteplus_success():
             assert not any(m["value"] == "seed-2-0-pro-260328" for m in data["image_models"])
             # SeeDream 5.0 is image only
             assert any(m["value"] == "seedream-5-0-260128" for m in data["image_models"])
+            assert any(m["value"] == "dola-seedream-5-5-261028" for m in data["image_models"])
             assert not any(m["value"] == "seedream-5-0-260128" for m in data["vision_models"])
             # Text-to-image-only BytePlus models are not valid for the app's img2img flow.
             assert not any(m["value"] == "seedream-3-0-t2i-250415" for m in data["image_models"])

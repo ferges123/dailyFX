@@ -207,6 +207,13 @@ export function createDefaultModificationGroups(): ModificationGroupsConfig {
     ai_street_art_stencil: { enabled: false, weight: 1, config: {} },
     ai_cybernetic_upgrade: { enabled: false, weight: 1, config: {} },
     ai_sand_sculpture: { enabled: false, weight: 1, config: {} },
+    ai_flat_cartoon: { enabled: false, weight: 1, config: {} },
+    ai_blueprint: { enabled: false, weight: 1, config: {} },
+    ai_riso_print: { enabled: false, weight: 1, config: {} },
+    ai_pixel_art_16bit: { enabled: false, weight: 1, config: {} },
+    ai_ink_silhouette: { enabled: false, weight: 1, config: {} },
+    ai_rubber_hose: { enabled: false, weight: 1, config: {} },
+    ai_ascii_art: { enabled: false, weight: 1, config: {} },
     museum_archive: { enabled: true, weight: 3, config: {} },
   };
 }

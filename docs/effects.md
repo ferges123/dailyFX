@@ -1,6 +1,6 @@
 # 📸 DailyFX Creative Effects & AI Modules
 
-DailyFX includes over 40 built-in creative modules and 70 Generative AI styles that you can schedule or apply manually in the web UI.
+DailyFX includes over 40 built-in creative modules and 83 Generative AI styles that you can schedule or apply manually in the web UI.
 
 ---
 
@@ -41,7 +41,7 @@ These filters run locally on your server without requiring any external APIs or 
 > [!IMPORTANT]
 > AI transformations require an AI provider API key (like OpenAI or local alternative) configured dynamically in the web UI **Settings** tab.
 
-Here is the complete list of 70 AI-powered styles supported by DailyFX, grouped by category:
+Here is the complete list of 83 AI-powered styles supported by DailyFX, grouped by category:
 
 ### 3D / Toy
 | Effect | Description |
@@ -63,14 +63,18 @@ Here is the complete list of 70 AI-powered styles supported by DailyFX, grouped 
 |---|---|
 | **AI Ancient Statue** | Reimagines a photo as a museum-quality marble or bronze statue. |
 | **AI Art Nouveau** | Transforms portraits into Alphonse Mucha style Art Nouveau posters. |
+| **AI ASCII Art** | Transforms the photo into highly detailed ASCII character art. |
+| **AI Blueprint** | Transforms the photo into an architectural blueprint-style illustration. |
 | **AI Cubist Portrait** | Reimagines a photo as a geometric cubist portrait while retaining identity cues. |
 | **AI Expressionist Portrait** | Creates an emotionally charged expressionist painted portrait. |
+| **AI Ink Silhouette** | Transforms the photo into a dramatic black ink silhouette illustration. |
 | **AI Linocut Print** | Renders a photo as a hand-carved high-contrast linocut print. |
 | **AI Medieval Tapestry** | Turns a photo into a woven medieval tapestry scene. |
 | **AI Modern Ukiyo-e** | Blends contemporary scenery with traditional Japanese woodblock-print language. |
 | **AI Old Master Pastel** | Turns a photo into a soft classical pastel portrait. |
 | **AI Pop Art** | Transforms a photo into a bold mid-century pop-art screen print. |
 | **AI Renaissance Oil** | Transforms the photo into a classic Renaissance oil painting on canvas. |
+| **AI Riso Print** | Transforms the photo into a handcrafted risograph print illustration. |
 | **AI Stained Glass** | Turns the photo into a colorful medieval gothic stained glass window. |
 | **AI Street Art Stencil** | Renders the photo as a two-tone spray-paint stencil on a textured brick wall. |
 | **AI Ukiyo-e Print** | Woodblock-print inspired artwork in the style of traditional Japanese prints. |
@@ -100,13 +104,16 @@ Here is the complete list of 70 AI-powered styles supported by DailyFX, grouped 
 ### Illustration
 | Effect | Description |
 |---|---|
+| **AI 16-Bit Pixel Art** | Transforms the photo into authentic 16-bit console game pixel art. |
 | **AI Anime** | Turns a photo into anime-style art. |
 | **AI Anime Chibi** | Turns people and pets into cheerful small-bodied chibi characters. |
 | **AI Comic Book** | Turns a photo into a retro comic book illustration. |
 | **AI Comic Noir** | Turns a photo into a stark, rain-soaked noir graphic-novel panel. |
 | **AI Cyberpunk** | Reimagines the photo with a vibrant, neon-soaked cyberpunk aesthetic. |
 | **AI Fairytale Storybook** | Turns a photo into a soft classic fairytale storybook illustration. |
+| **AI Flat Cartoon** | Transforms the photo into a polished flat cartoon illustration. |
 | **AI Pixel RPG 8-Bit** | Transforms the photo into a retro 16-bit pixel art character and scene. |
+| **AI Rubber Hose** | Transforms the photo into a classic 1930s rubber hose cartoon illustration. |
 | **AI Watercolor Postcard** | Turns a photo into a soft watercolor postcard illustration. |
 | **AI Whimsical Anime Storybook** | Creates a warm, hand-painted Ghibli-inspired anime storybook scene. |
 
